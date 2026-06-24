@@ -2,7 +2,7 @@
 <!--
   Joelboard — web app (migration off Apps Script)
   © 2026 Joel Soluções LTDA. All rights reserved.
-  Phase 1, step 1: prove Google Sign-In + an API token work end-to-end.
+  Phase 1, step 2: sign in → connect sheet → read all tabs via Sheets API → load report.
 -->
 <html lang="pt-BR">
 <head>
@@ -15,63 +15,230 @@
 <style>
 :root{ --bg:#0d0f18; --surface:#1b1f32; --surface2:#252a40; --border:#2b3147; --primary:#818cf8; --income:#34d399; --expense:#f87171; --text:#e2e8f0; --muted:#67708a; }
 *{ box-sizing:border-box; margin:0; padding:0; }
-body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
-.card{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:40px 32px; width:100%; max-width:420px; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.3); }
-.mark{ width:56px; height:56px; margin:0 auto 16px; }
-h1{ font-size:28px; font-weight:800; letter-spacing:-0.5px; margin-bottom:4px; }
-.tag{ font-size:14px; color:var(--muted); margin-bottom:28px; }
-.btn{ display:inline-flex; align-items:center; gap:10px; background:#fff; color:#1f2430; border:none; border-radius:12px; padding:12px 20px; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; transition:transform .1s ease, opacity .15s; }
-.btn:hover{ transform:translateY(-1px); }
-.btn:disabled{ opacity:0.5; cursor:default; transform:none; }
+body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; min-height:100vh; padding:24px; }
+.wrap{ max-width:560px; margin:0 auto; }
+.card{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:32px 28px; box-shadow:0 10px 40px rgba(0,0,0,0.3); }
+.head{ display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+.mark{ width:44px; height:44px; }
+h1{ font-size:24px; font-weight:800; letter-spacing:-0.5px; }
+.tag{ font-size:13px; color:var(--muted); margin-bottom:24px; }
+.btn{ display:inline-flex; align-items:center; justify-content:center; gap:10px; background:#fff; color:#1f2430; border:none; border-radius:12px; padding:12px 20px; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; }
+.btn.primary{ background:var(--primary); color:#fff; width:100%; }
+.btn:disabled{ opacity:0.5; cursor:default; }
 .gicon{ width:20px; height:20px; }
-.status{ margin-top:24px; font-size:14px; line-height:1.5; min-height:22px; }
+.field{ margin:16px 0; }
+.field label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:600; }
+.field input{ width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:11px 13px; color:var(--text); font-size:14px; font-family:inherit; }
+.status{ margin-top:18px; font-size:14px; line-height:1.5; }
 .status.ok{ color:var(--income); font-weight:700; }
-.status.err{ color:var(--expense); font-weight:600; }
+.status.err{ color:var(--expense); font-weight:600; white-space:pre-wrap; }
 .status.wait{ color:var(--muted); }
-.foot{ margin-top:28px; font-size:11px; color:var(--muted); opacity:0.6; }
+.report{ margin-top:20px; display:none; }
+.rrow{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border); font-size:14px; }
+.rrow .k{ color:var(--muted); }
+.rrow .v{ font-weight:700; }
+.muted-btn{ background:none; border:none; color:var(--muted); font-size:12px; text-decoration:underline; cursor:pointer; font-family:inherit; margin-top:14px; }
+details{ margin-top:16px; } summary{ cursor:pointer; font-size:12px; color:var(--muted); }
+pre{ margin-top:8px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:11px; overflow:auto; max-height:300px; color:var(--text); }
+.foot{ margin-top:24px; font-size:11px; color:var(--muted); opacity:0.6; text-align:center; }
+.hidden{ display:none; }
 </style>
 </head>
 <body>
-<div class="card">
-  <svg class="mark" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#818cf8"/><rect x="14" y="46.5" width="36" height="2.6" rx="1.3" fill="#fff" opacity="0.35"/><rect x="15" y="33" width="8" height="13" rx="3" fill="#fff" opacity="0.5"/><rect x="28" y="26" width="8" height="20" rx="3" fill="#fff" opacity="0.78"/><rect x="41" y="20" width="8" height="26" rx="3" fill="#fff"/><circle cx="45" cy="17" r="9" fill="#34d399" stroke="#fff" stroke-width="2.5"/><text x="45" y="20.7" text-anchor="middle" font-family="Arial,sans-serif" font-size="9.5" font-weight="800" fill="#fff">R$</text></svg>
-  <h1>Joelboard</h1>
-  <div class="tag">Suas finanças pessoais</div>
-  <button class="btn" id="signin" onclick="signIn()" disabled>
-    <svg class="gicon" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.5 13.3l7.9 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.2-3.9 6.6-9.6 6.6-16.5z"/><path fill="#FBBC05" d="M10.4 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-7.9-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.5-5.6l-7.1-5.5c-2 1.3-4.5 2.1-8.4 2.1-6.3 0-11.7-3.7-13.6-9l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
-    Entrar com Google
-  </button>
-  <div class="status wait" id="status">Carregando…</div>
-  <div class="foot">© 2026 Joel Soluções LTDA · teste de login (Fase 1)</div>
+<div class="wrap">
+  <div class="card">
+    <div class="head">
+      <svg class="mark" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#818cf8"/><rect x="14" y="46.5" width="36" height="2.6" rx="1.3" fill="#fff" opacity="0.35"/><rect x="15" y="33" width="8" height="13" rx="3" fill="#fff" opacity="0.5"/><rect x="28" y="26" width="8" height="20" rx="3" fill="#fff" opacity="0.78"/><rect x="41" y="20" width="8" height="26" rx="3" fill="#fff"/><circle cx="45" cy="17" r="9" fill="#34d399" stroke="#fff" stroke-width="2.5"/><text x="45" y="20.7" text-anchor="middle" font-family="Arial,sans-serif" font-size="9.5" font-weight="800" fill="#fff">R$</text></svg>
+      <div><h1>Joelboard</h1></div>
+    </div>
+    <div class="tag">Fase 1 — teste de leitura dos dados</div>
+
+    <!-- Step 1: sign in -->
+    <div id="signinBox">
+      <button class="btn" id="signin" onclick="signIn()" disabled>
+        <svg class="gicon" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.5 13.3l7.9 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.2-3.9 6.6-9.6 6.6-16.5z"/><path fill="#FBBC05" d="M10.4 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-7.9-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.5-5.6l-7.1-5.5c-2 1.3-4.5 2.1-8.4 2.1-6.3 0-11.7-3.7-13.6-9l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+        Entrar com Google
+      </button>
+    </div>
+
+    <!-- Step 2: link sheet -->
+    <div id="linkBox" class="hidden">
+      <div class="field">
+        <label>Cole o link da sua planilha do Joelboard/Financeboard</label>
+        <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/…">
+      </div>
+      <button class="btn primary" onclick="linkSheet()">Conectar e carregar</button>
+    </div>
+
+    <div class="status wait" id="status">Carregando…</div>
+
+    <!-- Step 3: report -->
+    <div class="report" id="report"></div>
+    <button class="muted-btn hidden" id="reloadBtn" onclick="loadData()">Recarregar</button>
+    <button class="muted-btn hidden" id="unlinkBtn" onclick="unlinkSheet()">Trocar de planilha</button>
+    <details id="rawWrap" class="hidden"><summary>Ver dados brutos (JSON)</summary><pre id="raw"></pre></details>
+
+    <div class="foot">© 2026 Joel Soluções LTDA · Fase 1</div>
+  </div>
 </div>
 
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script>
 const CLIENT_ID = '49262188240-l70ka2666t315gb2gmsvu357f2h7769i.apps.googleusercontent.com';
 const SCOPES = 'openid email profile https://www.googleapis.com/auth/spreadsheets';
-let tokenClient = null, accessToken = '';
+const LS_SHEET = 'joelboard_sheet_id';
+let tokenClient = null, accessToken = '', userEmail = '', DATA = null;
 
-function setStatus(msg, cls){ const el = document.getElementById('status'); el.textContent = msg; el.className = 'status ' + (cls || ''); }
+const TABS = ['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings'];
 
+function $(id){ return document.getElementById(id); }
+function setStatus(msg, cls){ const el = $('status'); el.textContent = msg; el.className = 'status ' + (cls||''); }
+function show(id){ $(id).classList.remove('hidden'); }
+function hide(id){ $(id).classList.add('hidden'); }
+
+/* ---------- auth ---------- */
 function initAuth(){
   tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
+    client_id: CLIENT_ID, scope: SCOPES,
     callback: function(resp){
       if (resp.error){ setStatus('Erro no login: ' + resp.error, 'err'); return; }
       accessToken = resp.access_token;
-      setStatus('Token recebido — verificando…', 'wait');
-      fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + accessToken } })
-        .then(function(r){ return r.json(); })
-        .then(function(u){ setStatus('✓ Conectado como ' + (u.email || u.name || '?') + ' — tudo certo!', 'ok'); })
-        .catch(function(e){ setStatus('Token OK, mas a verificação falhou: ' + e, 'err'); });
+      afterSignIn();
     }
   });
-  document.getElementById('signin').disabled = false;
-  setStatus('Pronto — toque em "Entrar com Google".', 'wait');
+  $('signin').disabled = false;
+  setStatus('Toque em "Entrar com Google".', 'wait');
 }
-function signIn(){ if (tokenClient) tokenClient.requestAccessToken(); }
+function signIn(){ if (tokenClient) tokenClient.requestAccessToken({ prompt: '' }); }
+function afterSignIn(){
+  hide('signinBox');
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + accessToken } })
+    .then(function(r){ return r.json(); })
+    .then(function(u){ userEmail = u.email || ''; setStatus('Conectado como ' + userEmail + '.', 'wait'); routeSheet(); })
+    .catch(function(){ routeSheet(); });
+}
+function routeSheet(){
+  const saved = localStorage.getItem(LS_SHEET);
+  if (saved){ loadData(); } else { show('linkBox'); setStatus('Conecte sua planilha para carregar os dados.', 'wait'); }
+}
+function linkSheet(){
+  const url = ($('sheetUrl').value || '').trim();
+  const m = url.match(/[a-zA-Z0-9_-]{30,}/);
+  if (!m){ setStatus('Link inválido — cole a URL completa da planilha.', 'err'); return; }
+  localStorage.setItem(LS_SHEET, m[0]);
+  hide('linkBox');
+  loadData();
+}
+function unlinkSheet(){ localStorage.removeItem(LS_SHEET); location.reload(); }
 
-// GIS loads async; wait for it.
+/* ---------- Sheets API read ---------- */
+function api(url){
+  return fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } }).then(function(r){
+    if (!r.ok) return r.text().then(function(t){ throw new Error('HTTP ' + r.status + ' — ' + t.slice(0, 300)); });
+    return r.json();
+  });
+}
+function loadData(){
+  const id = localStorage.getItem(LS_SHEET);
+  if (!id){ routeSheet(); return; }
+  setStatus('Carregando dados…', 'wait');
+  hide('report'); hide('reloadBtn'); hide('unlinkBtn'); hide('rawWrap');
+  // 1) which tabs exist?
+  api('https://sheets.googleapis.com/v4/spreadsheets/' + id + '?fields=sheets.properties.title')
+    .then(function(meta){
+      const titles = (meta.sheets || []).map(function(s){ return s.properties.title; });
+      const want = TABS.filter(function(t){ return titles.indexOf(t) > -1; });
+      if (!want.length) throw new Error('Nenhuma aba do Joelboard encontrada nesta planilha.');
+      const ranges = want.map(function(t){ return 'ranges=' + encodeURIComponent(t); }).join('&');
+      // 2) read them all (unformatted so numbers/dates come as numbers/serials)
+      return api('https://sheets.googleapis.com/v4/spreadsheets/' + id +
+        '/values:batchGet?' + ranges + '&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER')
+        .then(function(res){
+          const byTitle = {};
+          (res.valueRanges || []).forEach(function(vr, i){ byTitle[want[i]] = vr.values || []; });
+          DATA = buildData(byTitle);
+          renderReport();
+        });
+    })
+    .catch(function(e){ setStatus('Erro ao carregar: ' + e.message, 'err'); show('unlinkBtn'); });
+}
+
+/* ---------- mapping (port of Code.gs getSheetData) ---------- */
+function bool(v){ return v === true || String(v).toUpperCase() === 'TRUE'; }
+function num(v){ const n = Number(v); return isNaN(n) ? 0 : n; }
+function dateFromSerial(v){
+  if (typeof v === 'number'){ const d = new Date(Date.UTC(1899,11,30) + Math.round(v * 86400000)); return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0'); }
+  return String(v || '');
+}
+function monthOf(v){ if (typeof v === 'number') return dateFromSerial(v).slice(0,7); return String(v || '').replace(/^m/, '').slice(0,7); }
+function body(rows){ return (rows || []).slice(1); } // drop header row
+
+function buildData(t){
+  const transactions = body(t.Transactions).filter(function(r){ return r[1]; }).map(function(r){
+    return { id:r[6], date:dateFromSerial(r[0]), description:r[1], category:r[2], amount:num(r[3]), type:r[4], pending:bool(r[5]) };
+  });
+  const budget = body(t.Budget).filter(function(r){ return r[0]; }).map(function(r){ return { id:r[2], category:r[0], budget:num(r[1]) }; });
+  const goals = body(t.Goals).filter(function(r){ return r[0]; }).map(function(r){
+    return { id:r[5], name:r[0], target:num(r[1]), current:num(r[2]), deadline:(typeof r[3]==='number'?dateFromSerial(r[3]):(r[3]?String(r[3]):'')), color:r[4] || '#818cf8' };
+  });
+  const recurring = body(t.Recurring).filter(function(r){ return r[0]; }).map(function(r){
+    return { id:r[7], name:r[0], amount:num(r[1]), dueDay:num(r[2])||1, frequency:r[3]||'Monthly', category:r[4], installments:num(r[5])||0, startMonth:monthOf(r[6]) };
+  });
+  const allocations = body(t.Allocations).filter(function(r){ return r[0]; }).map(function(r){
+    return { id:r[4], goalId:r[0], amount:num(r[1]), installments:num(r[2])||0, startMonth:monthOf(r[3]) };
+  });
+  const bundles = body(t.Bundles).filter(function(r){ return r[0]; }).map(function(r){
+    let items = []; try { items = JSON.parse(r[2] || '[]'); } catch(e){ items = []; }
+    return { id:r[3], name:r[0], payee:r[1]||'', items:items };
+  });
+  const categories = body(t.Categories).filter(function(r){ return r[0]; }).map(function(r){ return { id:r[2], name:r[0], color:r[1]||'' }; });
+  const debts = body(t.Debts).filter(function(r){ return r[3]; }).map(function(r){
+    return { id:r[8], splitId:String(r[0]), created:num(r[1]), title:r[2]||'', person:r[3], amount:num(r[4]), paid:bool(r[5]), paidDate:num(r[6]), mine:bool(r[7]) };
+  });
+  const workLog = body(t.WorkLog).filter(function(r){ return r[0]; }).map(function(r){
+    return { date:dateFromSerial(r[0]), worked:bool(r[1]), hours:num(r[2]), otHours:num(r[3]) };
+  });
+  const payments = body(t.Payments).filter(function(r){ return r[0] && r[2]; }).map(function(r){
+    return { month:String(r[0]).replace(/^m/,'').slice(0,7), type:r[1], itemId:String(r[2]),
+      actualAmount:(r[4]===''||r[4]==null)?null:num(r[4]), paidDate:(typeof r[5]==='number'?dateFromSerial(r[5]):(r[5]?String(r[5]).slice(0,10):'')) };
+  });
+  const settings = { hourly_rate:0, exchange_rate:0, off_weekdays:[0,6], mode:'hourly', monthly_salary:0, daily_hours:8, overtime_mode:'off', overtime_mult:1.5, convert_enabled:'true', currency_from:'USD', currency_to:'BRL', profile_set:'true' };
+  body(t.Settings).forEach(function(r){
+    if (!r[0]) return;
+    if (r[0] === 'off_weekdays'){ const mm = String(r[1]).match(/\d+/g); settings.off_weekdays = mm ? mm.map(Number) : []; }
+    else { const n = Number(r[1]); settings[r[0]] = (r[1]==='' || isNaN(n)) ? r[1] : n; }
+  });
+  return { transactions, budget, goals, recurring, allocations, bundles, categories, debts, workLog, payments, settings, email:userEmail };
+}
+
+/* ---------- verification report ---------- */
+function brl(n){ return 'R$ ' + (Math.abs(Number(n)||0)).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+function renderReport(){
+  const d = DATA;
+  const owed = d.debts.filter(function(x){ return !x.mine && !x.paid; }).reduce(function(s,x){ return s + (x.amount||0); }, 0);
+  const rows = [
+    ['Conectado como', d.email || '—'],
+    ['Lançamentos (transactions)', d.transactions.length],
+    ['Contas (recurring/bills)', d.recurring.length],
+    ['Metas (goals)', d.goals.length],
+    ['Categorias', d.categories.length],
+    ['Orçamentos', d.budget.length],
+    ['Pacotes (bundles)', d.bundles.length],
+    ['Dias trabalhados (work log)', d.workLog.length],
+    ['Pagamentos marcados', d.payments.length],
+    ['Dívidas (quem me deve)', d.debts.length],
+    ['A receber (não pago)', brl(owed)],
+    ['Saldo de poupança (settings)', brl(d.settings.savings_balance || 0)],
+    ['Salário recorrente', brl(d.settings.salary_amount || 0)],
+    ['Moeda', d.settings.currency_to || '—']
+  ];
+  $('report').innerHTML = rows.map(function(r){ return '<div class="rrow"><span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span></div>'; }).join('');
+  show('report'); show('reloadBtn'); show('unlinkBtn'); show('rawWrap');
+  $('raw').textContent = JSON.stringify(d, null, 2);
+  setStatus('✓ Dados carregados com sucesso! Confira os números abaixo com o app atual.', 'ok');
+}
+
+/* ---------- boot ---------- */
 (function wait(){
   if (window.google && google.accounts && google.accounts.oauth2) initAuth();
   else setTimeout(wait, 120);

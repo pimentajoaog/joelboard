@@ -117,7 +117,7 @@ button, input, select, textarea { font-family: inherit; }
 .card, .summary-card, .goal-card { box-shadow: var(--shadow); }
 input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; appearance: textfield; }
-body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; padding: 28px 24px; font-size: 14px; line-height: 1.5; transition: background 0.2s ease, color 0.2s ease; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; overflow-x: hidden; padding: 28px 24px; font-size: 14px; line-height: 1.5; transition: background 0.2s ease, color 0.2s ease; }
 * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -132,7 +132,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
-.hub-corner { position: fixed; top: 12px; left: 12px; z-index: 50; width: 42px; height: 42px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--primary); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 3px 12px rgba(0,0,0,0.22); transition: border-color .15s ease, transform .1s ease; }
+.hub-corner { position: fixed; bottom: 20px; left: 16px; z-index: 50; width: 42px; height: 42px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--primary); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 3px 12px rgba(0,0,0,0.22); transition: border-color .15s ease, transform .1s ease; }
 .hub-corner:hover { border-color: var(--primary); }
 .hub-corner:active { transform: scale(0.93); }
 .header-left h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
@@ -642,7 +642,7 @@ select.cs-native { position: absolute; width: 1px; height: 1px; padding: 0; marg
   .header-left h1 { font-size: 18px; }
   .nav-btn { width: 38px; height: 38px; }
   .gear-btn { width: 40px; height: 40px; }
-  .tabbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .tabbar { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .tabbar::-webkit-scrollbar { display: none; }
   .tab-btn { flex: 0 0 auto; padding: 12px 15px; }
   .check { width: 26px; height: 26px; }

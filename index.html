@@ -1864,21 +1864,56 @@ function jbInstallShim(){ if (!window.google) window.google = {}; google.script 
 function jbStartAuth(){
   if (!(window.google && window.google.accounts && google.accounts.oauth2)) { setTimeout(jbStartAuth, 120); return; }
   jbTokenClient = google.accounts.oauth2.initTokenClient({ client_id: JB_CLIENT_ID, scope: JB_SCOPES, callback: function(resp){
-    jbInstallShim();
-    if (resp.error){ jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">Erro no login: ' + resp.error + '</div>'); return; }
-    jbToken = resp.access_token; jbAfterSignIn();
+    if (resp && resp.access_token){ jbInstallShim(); jbToken = resp.access_token; jbAfterSignIn(); }
+    else { jbShowSignIn(); }
   }});
-  jbShowSignIn();
+  jbLoadingHtml('<div style="text-align:center;padding:44px;color:var(--muted)">Entrando…</div>');
+  try { jbTokenClient.requestAccessToken({ prompt: '' }); } catch(e){ jbShowSignIn(); }
 }
 function jbShowSignIn(){ jbLoadingHtml('<div style="text-align:center;padding:48px 20px"><div style="font-size:24px;font-weight:800;letter-spacing:-.5px">💰 Joelboard</div><div style="color:var(--muted);font-size:13px;margin:6px 0 26px">Suas finanças pessoais</div><button onclick="jbSignIn()" style="background:#fff;color:#1f2430;border:none;border-radius:12px;padding:13px 22px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Entrar com Google</button></div>'); }
-function jbSignIn(){ if (jbTokenClient) jbTokenClient.requestAccessToken({ prompt: '' }); }
+function jbSignIn(){ if (jbTokenClient) jbTokenClient.requestAccessToken(); }
 function jbAfterSignIn(){
   jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando…</div>');
   fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + jbToken } })
     .then(function(r){ return r.json(); }).then(function(u){ jbEmail = u.email || ''; }).catch(function(){})
     .then(function(){ if (localStorage.getItem(JB_LS_SHEET)) jbLoadAndBoot(); else jbShowLink(); });
 }
-function jbShowLink(){ jbLoadingHtml('<div style="max-width:420px;margin:0 auto;padding:46px 20px;text-align:center"><div style="font-size:18px;font-weight:700;margin-bottom:6px">Conecte sua planilha</div><div style="color:var(--muted);font-size:12px;margin-bottom:16px">Cole o link da sua planilha do Joelboard.</div><input id="jbSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/…" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-size:14px;margin-bottom:12px;font-family:inherit"><button onclick="jbLink()" style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:11px 18px;font-weight:700;cursor:pointer;width:100%;font-family:inherit">Conectar</button><div id="jbLinkErr" style="color:var(--expense);font-size:12px;margin-top:10px"></div></div>'); }
+function jbShowLink(){
+  jbLoadingHtml('<div style="max-width:430px;margin:0 auto;padding:42px 20px;text-align:center">'
+    + '<div style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px">💰 Joelboard</div>'
+    + '<div style="color:var(--muted);font-size:13px;margin-bottom:24px">Vamos configurar suas finanças.</div>'
+    + '<button onclick="jbCreateSheet()" style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px 18px;font-weight:700;cursor:pointer;width:100%;font-family:inherit;font-size:15px">✨ Criar nova planilha</button>'
+    + '<div style="color:var(--muted);font-size:12px;margin:18px 0 12px">— ou já tem uma? —</div>'
+    + '<input id="jbSheetUrl" placeholder="Cole o link da planilha" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-size:14px;margin-bottom:10px;font-family:inherit">'
+    + '<button onclick="jbLink()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer;width:100%;font-family:inherit">Conectar planilha existente</button>'
+    + '<div id="jbLinkErr" style="color:var(--expense);font-size:12px;margin-top:10px"></div></div>');
+}
+var JB_DEFAULT_CATS = ['🍔 Alimentação','🚌 Transporte','🏠 Moradia e Contas','🎬 Entretenimento','💊 Saúde','🛍️ Compras','💼 Salário','💻 Freelance','✂️ Cuidados Pessoais','🙏 Espiritual','📚 Educação','💡 Contas','🎮 Jogos e Tecnologia','❓ Outros'];
+var JB_HEADERS = [
+  ['Transactions',['Date','Description','Category','Amount','Type','Pending','ID']],
+  ['Budget',['Category','Monthly Budget','ID']],
+  ['Goals',['Goal Name','Target Amount','Current Amount','Deadline','Color','ID']],
+  ['Recurring',['Name','Amount','Due Day','Frequency','Category','Installments','Start Month','ID']],
+  ['Allocations',['Goal ID','Amount','Installments','Start Month','ID']],
+  ['Bundles',['Name','Payee','Items','ID']],
+  ['Categories',['Name','Color','ID']],
+  ['Debts',['Split ID','Date','Title','Person','Amount','Paid','Paid Date','Mine','ID']],
+  ['WorkLog',['Date','Worked','Hours','OT Hours']],
+  ['Payments',['Month','Type','Item ID','Paid','Actual Amount','Paid Date']],
+  ['Settings',['Key','Value']]
+];
+function jbCreateSheet(){
+  jbLoadingHtml('<div style="text-align:center;padding:44px;color:var(--muted)">Criando sua planilha…</div>');
+  var title = '💰 Joelboard — ' + (jbEmail ? jbEmail.split('@')[0] : 'Pessoal');
+  var body = { properties:{ title:title }, sheets: JB_HEADERS.map(function(t){ return { properties:{ title:t[0] } }; }) };
+  jbReq('POST','https://sheets.googleapis.com/v4/spreadsheets', body).then(function(ss){
+    localStorage.setItem(JB_LS_SHEET, ss.spreadsheetId);
+    var data = JB_HEADERS.map(function(t){ return { range:t[0]+'!A1', values:[t[1]] }; });
+    data.push({ range:'Categories!A2', values: JB_DEFAULT_CATS.map(function(n){ return [n,'',jbUuid()]; }) });
+    data.push({ range:'Settings!A2', values:[['hourly_rate',0],['exchange_rate',0],['off_weekdays','d0,d6'],['mode','hourly'],['monthly_salary',0],['daily_hours',8],['overtime_mode','off'],['overtime_mult',1.5],['convert_enabled','true'],['currency_from','USD'],['currency_to','BRL'],['profile_set','false'],['schema_version',3]] });
+    return jbReq('POST','https://sheets.googleapis.com/v4/spreadsheets/'+ss.spreadsheetId+'/values:batchUpdate', { valueInputOption:'RAW', data:data });
+  }).then(function(){ jbLoadAndBoot(); }).catch(function(e){ jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">Erro ao criar: '+e.message+'</div>'); });
+}
 function jbLink(){ var url=(document.getElementById('jbSheetUrl').value||'').trim(); var m=url.match(/[a-zA-Z0-9_-]{30,}/); if(!m){ document.getElementById('jbLinkErr').textContent='Link inválido.'; return; } localStorage.setItem(JB_LS_SHEET, m[0]); jbLoadAndBoot(); }
 function jbUnlink(){ localStorage.removeItem(JB_LS_SHEET); location.reload(); }
 function jbApi(url){ return fetch(url, { headers: { Authorization: 'Bearer ' + jbToken } }).then(function(r){ if (!r.ok) return r.text().then(function(tx){ throw new Error('HTTP ' + r.status + ' — ' + tx.slice(0,200)); }); return r.json(); }); }

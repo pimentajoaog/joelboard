@@ -1962,7 +1962,7 @@ function jbLoad(){
     });
   });
 }
-function jbLoadAndBoot(){ jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando seus dados…</div>'); jbLoad().then(function(data){ boot(data); }).catch(function(e){ jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">Erro ao carregar: ' + e.message + '<br><br><button onclick="jbUnlink()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit">Trocar planilha</button></div>'); }); }
+function jbLoadAndBoot(){ jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando seus dados…</div>'); jbLoad().then(function(data){ boot(data); }).catch(function(e){ var m=String((e&&e.message)||''); if (m.indexOf('403')>-1 || m.indexOf('404')>-1 || m.indexOf('PERMISSION')>-1 || m.indexOf('not found')>-1) { try{ localStorage.removeItem(JB_LS_SHEET); }catch(_){} jbDetect(); return; } jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">Erro ao carregar: ' + e.message + '<br><br><button onclick="jbUnlink()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit">Trocar planilha</button></div>'); }); }
 function jbBool(v){ return v === true || String(v).toUpperCase() === 'TRUE'; }
 function jbNum(v){ var n = Number(v); return isNaN(n) ? 0 : n; }
 function jbDate(v){ if (typeof v === 'number'){ var d = new Date(Date.UTC(1899,11,30) + Math.round(v * 86400000)); return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0'); } return String(v || ''); }

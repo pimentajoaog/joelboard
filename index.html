@@ -1800,7 +1800,7 @@ var JB_CLIENT_ID = '49262188240-l70ka2666t315gb2gmsvu357f2h7769i.apps.googleuser
 var JB_SCOPES = 'openid email profile https://www.googleapis.com/auth/spreadsheets';
 var JB_LS_SHEET = 'joelboard_sheet_id';
 var JB_TABS = ['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings'];
-var jbToken = '', jbTokenClient = null, jbEmail = '', jbGrid = {};
+var jbToken = '', jbTokenClient = null, jbEmail = '', jbGrid = {}, jbAuthDone = false;
 function jbLoadingHtml(h){ var el = document.getElementById('loading'); if (el){ el.style.display='block'; el.innerHTML = h; } }
 /* ----- write layer: Sheets API ops behind a google.script.run drop-in ----- */
 function jbUuid(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){ var r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16); }); }
@@ -1867,13 +1867,14 @@ function jbLogout(){ try { var t=localStorage.getItem('jb_tok'); if (t && window
 function jbStartAuth(){
   if (!(window.google && window.google.accounts && google.accounts.oauth2)) { setTimeout(jbStartAuth, 120); return; }
   jbTokenClient = google.accounts.oauth2.initTokenClient({ client_id: JB_CLIENT_ID, scope: JB_SCOPES, callback: function(resp){
-    if (resp && resp.access_token){ jbToken = resp.access_token; jbSaveToken(jbToken, resp.expires_in); jbInstallShim(); jbAfterSignIn(); }
+    if (resp && resp.access_token){ jbAuthDone = true; jbToken = resp.access_token; jbSaveToken(jbToken, resp.expires_in); jbInstallShim(); jbAfterSignIn(); }
     else { jbShowSignIn(); }
   }});
   var cached = jbCachedToken();
   if (cached){ jbToken = cached; jbEmail = (localStorage.getItem('jb_email') || ''); jbInstallShim(); jbAfterSignIn(); return; }
   jbLoadingHtml('<div style="text-align:center;padding:44px;color:var(--muted)">Entrando…</div>');
-  try { jbTokenClient.requestAccessToken({ prompt: '' }); } catch(e){ jbShowSignIn(); }
+  try { jbTokenClient.requestAccessToken({ prompt: '' }); } catch(e){ jbShowSignIn(); return; }
+  setTimeout(function(){ if (!jbAuthDone) jbShowSignIn(); }, 3000);
 }
 function jbShowSignIn(){ jbLoadingHtml('<div style="text-align:center;padding:48px 20px"><div style="font-size:24px;font-weight:800;letter-spacing:-.5px">💰 Joelboard</div><div style="color:var(--muted);font-size:13px;margin:6px 0 26px">Suas finanças pessoais</div><button onclick="jbSignIn()" style="background:#fff;color:#1f2430;border:none;border-radius:12px;padding:13px 22px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Entrar com Google</button></div>'); }
 function jbSignIn(){ if (jbTokenClient) jbTokenClient.requestAccessToken(); }

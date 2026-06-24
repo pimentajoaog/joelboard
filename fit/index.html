@@ -128,6 +128,10 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
 .volgname{ flex:1; font-size:13px; }
 .vmini{ width:62px; text-align:center; }
 .vdash{ color:var(--muted); }
+.set-tabs{ display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid var(--border); flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; touch-action:pan-x; overscroll-behavior-x:contain; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.set-tabs::-webkit-scrollbar{ display:none; }
+.set-tab{ background:none; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:13px; font-weight:700; padding:8px 12px; cursor:pointer; margin-bottom:-1px; white-space:nowrap; flex:0 0 auto; font-family:inherit; }
+.set-tab.active{ color:var(--accent); border-bottom-color:var(--accent); }
 </style>
 </head>
 <body>
@@ -187,12 +191,30 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
 <div class="overlay" id="setOverlay" onclick="if(event.target===this)closeSettings()">
   <div class="modal">
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>
-    <div class="fg"><label class="fl">Unidade de peso</label><div id="setUnit"></div></div>
-    <div class="fg"><label class="fl">Programa semanal</label><div id="setSched"></div></div>
-    <div class="fg"><label class="fl">Grupos musculares</label><div id="setTags"></div><div style="display:flex;gap:8px;margin-top:10px"><input class="fi" id="newTag" placeholder="Novo grupo…"><button class="btn" onclick="addTag()">Adicionar</button></div></div>
-    <div class="fg"><label class="fl">Descanso padrão (segundos)</label><input class="fi" id="setRest" type="number" inputmode="numeric" onchange="saveDefault('rest',this.value)"></div>
-    <div class="fg"><label class="fl">Incremento de carga (kg)</label><input class="fi" id="setInc" type="number" inputmode="decimal" step="0.5" onchange="saveDefault('inc',this.value)"></div>
-    <div class="fg"><label class="fl">Metas de volume (séries/semana)</label><div id="setVol"></div></div>
+    <div class="set-tabs">
+      <button class="set-tab active" data-st="geral" onclick="switchSet('geral')">Geral</button>
+      <button class="set-tab" data-st="programa" onclick="switchSet('programa')">Programa</button>
+      <button class="set-tab" data-st="volume" onclick="switchSet('volume')">Volume</button>
+      <button class="set-tab" data-st="sobre" onclick="switchSet('sobre')">Sobre</button>
+    </div>
+    <div class="set-pane" data-pane="geral">
+      <div class="fg"><label class="fl">Unidade de peso</label><div id="setUnit"></div></div>
+      <div class="fg"><label class="fl">Descanso padrão (segundos)</label><input class="fi" id="setRest" type="number" inputmode="numeric" onchange="saveDefault('rest',this.value)"></div>
+      <div class="fg"><label class="fl">Incremento de carga (kg)</label><input class="fi" id="setInc" type="number" inputmode="decimal" step="0.5" onchange="saveDefault('inc',this.value)"></div>
+      <div class="fg"><label class="fl">Biblioteca de exercícios</label><button class="btn ghost" style="width:100%" onclick="loadDefaults()">↻ Carregar exercícios padrão (inclui calistenia)</button></div>
+    </div>
+    <div class="set-pane" data-pane="programa" style="display:none">
+      <div class="fg"><label class="fl">Programa semanal</label><div id="setSched"></div></div>
+    </div>
+    <div class="set-pane" data-pane="volume" style="display:none">
+      <div class="fg"><label class="fl">Grupos musculares</label><div id="setTags"></div><div style="display:flex;gap:8px;margin-top:10px"><input class="fi" id="newTag" placeholder="Novo grupo…"><button class="btn" onclick="addTag()">Adicionar</button></div></div>
+      <div class="fg"><label class="fl">Metas de volume (séries/semana)</label><div id="setVol"></div></div>
+    </div>
+    <div class="set-pane" data-pane="sobre" style="display:none">
+      <div class="fg"><button class="btn ghost" style="width:100%" onclick="JB.feedback('Joelboard Fit')">💬 Enviar feedback</button></div>
+      <div class="fg"><button class="del" style="width:100%" onclick="fitSignOut()">Sair</button></div>
+      <div class="rg" style="text-align:center;font-size:11px;margin-top:4px">Joelboard Fit</div>
+    </div>
     <button class="save" onclick="closeSettings()">Pronto</button>
   </div>
 </div>
@@ -216,7 +238,7 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
 var DATA=null, fitGrid={}, editingEx=null, authDone=false;
 var FIT_TABS=[['Exercicios',['Nome','Grupo','ID']],['Treinos',['Nome','Itens','ID']],['Sessoes',['Data','Treino','Notas','ID']],['Series',['Sessao ID','Exercicio ID','Serie','Reps','Peso','ID']],['Config',['Chave','Valor']]];
 var DEFAULT_TAGS=['Peito','Costas','Pernas','Glúteos','Ombros','Bíceps','Tríceps','Core','Panturrilha','Cardio','Outro'];
-var STARTER=[['Supino reto','Peito'],['Supino inclinado','Peito'],['Crucifixo','Peito'],['Crossover','Peito'],['Flexão','Peito'],['Puxada alta','Costas'],['Remada curvada','Costas'],['Remada baixa','Costas'],['Barra fixa','Costas'],['Levantamento terra','Costas'],['Agachamento','Pernas'],['Leg press','Pernas'],['Cadeira extensora','Pernas'],['Mesa flexora','Pernas'],['Afundo','Pernas'],['Hip thrust','Glúteos'],['Desenvolvimento','Ombros'],['Elevação lateral','Ombros'],['Elevação frontal','Ombros'],['Encolhimento','Ombros'],['Rosca direta','Bíceps'],['Rosca alternada','Bíceps'],['Rosca martelo','Bíceps'],['Tríceps na polia','Tríceps'],['Tríceps testa','Tríceps'],['Mergulho','Tríceps'],['Prancha','Core'],['Abdominal','Core'],['Panturrilha em pé','Panturrilha'],['Esteira','Cardio'],['Bicicleta','Cardio']];
+var STARTER=[['Supino reto','Peito'],['Supino inclinado','Peito'],['Crucifixo','Peito'],['Crossover','Peito'],['Flexão','Peito'],['Puxada alta','Costas'],['Remada curvada','Costas'],['Remada baixa','Costas'],['Barra fixa','Costas'],['Levantamento terra','Costas'],['Agachamento','Pernas'],['Leg press','Pernas'],['Cadeira extensora','Pernas'],['Mesa flexora','Pernas'],['Afundo','Pernas'],['Hip thrust','Glúteos'],['Desenvolvimento','Ombros'],['Elevação lateral','Ombros'],['Elevação frontal','Ombros'],['Encolhimento','Ombros'],['Rosca direta','Bíceps'],['Rosca alternada','Bíceps'],['Rosca martelo','Bíceps'],['Tríceps na polia','Tríceps'],['Tríceps testa','Tríceps'],['Mergulho','Tríceps'],['Prancha','Core'],['Abdominal','Core'],['Panturrilha em pé','Panturrilha'],['Esteira','Cardio'],['Bicicleta','Cardio'],['Barra australiana','Costas'],['Chin-up (supinado)','Bíceps'],['Muscle-up','Costas'],['Flexão diamante','Tríceps'],['Flexão declinada','Peito'],['Pistol squat','Pernas'],['Agachamento búlgaro','Pernas'],['Ponte de glúteo','Glúteos'],['Elevação de pernas suspensa','Core'],['L-sit','Core'],['Prancha lateral','Core'],['Superman','Costas'],['Burpee','Cardio'],['Mountain climber','Core'],['Polichinelo','Cardio'],['Step-up (subida no banco)','Pernas'],['Dips de banco','Tríceps']];
 function $(id){ return document.getElementById(id); }
 function uuid(){ return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);}); }
 function loadingHtml(h){ $('loading').style.display='block'; $('loading').innerHTML=h; }
@@ -495,7 +517,7 @@ function renderProgresso(){
   el.innerHTML=volSec+exSec;
 }
 function fillGroupSelect(val){ var sel=$('exGroup'); var tags=(DATA.config&&DATA.config.tags)||DEFAULT_TAGS; var opts='<option value="">— sem grupo —</option>'; if(val && tags.indexOf(val)<0) opts+='<option value="'+esc(val)+'">'+esc(val)+'</option>'; opts+=tags.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join(''); sel.innerHTML=opts; sel.value=val||''; }
-function openSettings(){ renderSettings(); $('setOverlay').classList.add('open'); }
+function openSettings(){ renderSettings(); switchSet('geral'); $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function renderSettings(){
   var u=unit();
@@ -505,6 +527,8 @@ function renderSettings(){
   if($('setRest')) $('setRest').value=restDefault(); if($('setInc')) $('setInc').value=incDefault();
   renderSched(); renderVolGoals();
 }
+function switchSet(name){ document.querySelectorAll('#setOverlay .set-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-st')===name); }); document.querySelectorAll('#setOverlay .set-pane').forEach(function(p){ p.style.display=(p.getAttribute('data-pane')===name)?'':'none'; }); }
+function loadDefaults(){ var have={}; (DATA.exercicios||[]).forEach(function(e){ have[(e.name||'').toLowerCase()]=1; }); var add=STARTER.filter(function(e){ return !have[e[0].toLowerCase()]; }); if(!add.length){ toast('Biblioteca já está completa ✓'); return; } var rows=add.map(function(e){ var id=uuid(); DATA.exercicios.push({id:id,name:e[0],group:e[1]}); return [e[0],e[1],id]; }); renderExercicios(); renderSettings(); toast('+'+add.length+' exercícios adicionados'); JB.api('POST', ssUrl('/values/'+encodeURIComponent('Exercicios')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:rows}).catch(function(){ toast('Erro ao salvar — recarregue'); }); }
 function setUnitS(u){ DATA.config=DATA.config||{}; DATA.config.unit=u; saveConfig('unit',u); renderSettings(); renderHoje(); }
 function persistTags(){ saveConfig('tags', JSON.stringify(DATA.config.tags||[])); }
 function addTag(){ var v=($('newTag').value||'').trim(); if(!v) return; DATA.config=DATA.config||{}; if(!DATA.config.tags) DATA.config.tags=DEFAULT_TAGS.slice(); if(DATA.config.tags.indexOf(v)<0) DATA.config.tags.push(v); $('newTag').value=''; persistTags(); renderSettings(); }

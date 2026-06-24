@@ -138,11 +138,49 @@
   function whenReady(fn){ if (document.body) fn(); else document.addEventListener('DOMContentLoaded', fn); }
   whenReady(initScrollLock);
 
+  // --- shared feedback (posts to the app owner's Google Form) + a tiny core toast ---
+  var FB_FORM = { action: 'https://docs.google.com/forms/d/e/1FAIpQLSdfIXwvv96V8E2aMsS0Yu9AlugAy0NZ7-eAklGisFO6cuSCuA/formResponse', nameEntry: 'entry.2102774097', kindEntry: 'entry.1066607309', msgEntry: 'entry.315076588' };
+  function jbToast(msg){ var t = document.createElement('div'); t.textContent = msg; t.setAttribute('style', 'position:fixed;left:50%;bottom:32px;transform:translateX(-50%);background:#1b1f32;border:1px solid #2b3147;color:#e7eaf3;padding:12px 18px;border-radius:99px;z-index:100000;font-family:inherit;font-size:14px;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,0.4)'); document.body.appendChild(t); setTimeout(function(){ if (t.parentNode) t.parentNode.removeChild(t); }, 2600); }
+  function feedback(appName){
+    var ov = document.createElement('div'); ov.id = 'jbFb';
+    ov.setAttribute('style', 'position:fixed;inset:0;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px');
+    var kind = 'bug';
+    ov.innerHTML = '<div style="background:#1b1f32;border:1px solid #2b3147;border-radius:20px;max-width:430px;width:100%;padding:24px;color:#e7eaf3;max-height:92vh;overflow:auto;font-family:inherit">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:19px;font-weight:800">Enviar feedback</div><button id="jbFbX" style="background:none;border:none;color:#8a93a8;font-size:20px;cursor:pointer;font-family:inherit;line-height:1">×</button></div>'
+      + '<div style="font-size:12px;color:#8a93a8;margin-bottom:14px">' + (appName || 'Joelboard') + ' · vai direto pro Joel 👋</div>'
+      + '<div style="display:flex;gap:8px;margin-bottom:12px"><button id="jbFbBug" style="flex:1;border-radius:10px;padding:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">🐛 Bug</button><button id="jbFbFeat" style="flex:1;border-radius:10px;padding:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">💡 Ideia</button></div>'
+      + '<input id="jbFbName" placeholder="Seu nome (opcional)" style="width:100%;background:#252a40;border:1px solid #2b3147;border-radius:10px;padding:11px;color:#e7eaf3;font-size:14px;margin-bottom:10px;font-family:inherit">'
+      + '<textarea id="jbFbMsg" placeholder="O que aconteceu? O que você gostaria?" rows="4" style="width:100%;background:#252a40;border:1px solid #2b3147;border-radius:10px;padding:11px;color:#e7eaf3;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>'
+      + '<div id="jbFbErr" style="color:#fb7185;font-size:12px;margin-top:8px;min-height:14px"></div>'
+      + '<button id="jbFbSend" style="background:#fff;color:#1f2430;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;width:100%;cursor:pointer;font-family:inherit;margin-top:4px">Enviar</button>'
+      + '</div>';
+    document.body.appendChild(ov);
+    function close(){ if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    ov.addEventListener('click', function(e){ if (e.target === ov) close(); });
+    var bug = ov.querySelector('#jbFbBug'), feat = ov.querySelector('#jbFbFeat');
+    function paint(){ bug.style.background = kind==='bug'?'#fff':'transparent'; bug.style.color = kind==='bug'?'#1f2430':'#e7eaf3'; bug.style.border = kind==='bug'?'none':'1px solid #2b3147'; feat.style.background = kind==='feature'?'#fff':'transparent'; feat.style.color = kind==='feature'?'#1f2430':'#e7eaf3'; feat.style.border = kind==='feature'?'none':'1px solid #2b3147'; }
+    bug.onclick = function(){ kind='bug'; paint(); }; feat.onclick = function(){ kind='feature'; paint(); }; paint();
+    ov.querySelector('#jbFbName').value = email() ? email().split('@')[0] : '';
+    ov.querySelector('#jbFbX').onclick = close;
+    ov.querySelector('#jbFbSend').onclick = function(){
+      var msg = (ov.querySelector('#jbFbMsg').value || '').trim();
+      if (!msg) { ov.querySelector('#jbFbErr').textContent = 'Escreva uma mensagem.'; return; }
+      var btn = ov.querySelector('#jbFbSend'); btn.disabled = true; btn.textContent = 'Enviando…';
+      var fd = new FormData();
+      fd.append(FB_FORM.nameEntry, (ov.querySelector('#jbFbName').value || '').trim() || email() || '');
+      fd.append(FB_FORM.kindEntry, kind==='feature' ? 'Feature request' : 'Bug report');
+      fd.append(FB_FORM.msgEntry, '[' + (appName || 'Joelboard') + '] ' + msg + (email() ? (' — ' + email()) : ''));
+      function done(){ close(); jbToast('✓ Feedback enviado. Obrigado!'); }
+      fetch(FB_FORM.action, { method: 'POST', mode: 'no-cors', body: fd }).then(done, done);
+    };
+  }
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, email: email, fetchEmail: fetchEmail,
     requestToken: requestToken, api: api, signOut: signOut,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
-    resolveSheet: resolveSheet, sheetTabs: sheetTabs
+    resolveSheet: resolveSheet, sheetTabs: sheetTabs,
+    feedback: feedback, toast: jbToast
   };
 })();

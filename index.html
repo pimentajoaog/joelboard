@@ -39,13 +39,25 @@ a.tile:hover{ transform:translateY(-3px); border-color:var(--primary); }
 .tile.ghost{ opacity:0.62; }
 .soon{ margin-top:13px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); background:var(--surface2); border:1px solid var(--border); border-radius:99px; padding:4px 11px; }
 .foot{ margin-top:40px; font-size:11px; color:var(--muted); opacity:0.6; text-align:center; }
+.gear{ background:var(--surface2); border:1px solid var(--border); color:var(--muted); font-size:14px; border-radius:99px; width:32px; height:32px; cursor:pointer; font-family:inherit; }
+.gear:hover{ border-color:var(--primary); color:var(--primary); }
+.overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.65); display:none; align-items:center; justify-content:center; z-index:200; padding:20px; backdrop-filter:blur(4px); }
+.overlay.open{ display:flex; }
+.modal{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:22px; width:100%; max-width:380px; }
+.mh{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.mt{ font-size:18px; font-weight:800; }
+.x{ background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; font-family:inherit; }
+.acctline{ font-size:13px; color:var(--muted); margin-bottom:16px; word-break:break-all; }
+.mbtn{ display:block; width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:11px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; margin-bottom:10px; }
+.mbtn:hover{ border-color:var(--primary); }
+.vrs{ text-align:center; font-size:11px; color:var(--muted); opacity:0.6; margin-top:6px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
     <div class="brand"><img src="/icon-192.png" alt="Joelboard"><span class="wm">Joelboard</span></div>
-    <div class="acct"><span id="greet">Olá 👋</span><button class="authbtn" id="authbtn">Entrar</button></div>
+    <div class="acct"><span id="greet">Olá 👋</span><button class="authbtn" id="authbtn">Entrar</button><button class="gear" id="gearBtn" onclick="openHubSet()" aria-label="Ajustes" title="Ajustes">⚙</button></div>
   </div>
   <div class="sub">Seus apps, num lugar só.</div>
 
@@ -69,6 +81,15 @@ a.tile:hover{ transform:translateY(-3px); border-color:var(--primary); }
   <div class="foot">© 2026 Joel Soluções LTDA · Todos os direitos reservados.</div>
 </div>
 
+<div class="overlay" id="hubSet" onclick="if(event.target===this)closeHubSet()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeHubSet()">✕</button></div>
+    <div id="hubAcct" class="acctline"></div>
+    <button class="mbtn" onclick="JB.feedback('Joelboard Hub')">💬 Enviar feedback</button>
+    <button class="mbtn" id="hubAuthBtn" onclick="hubAuth()">Entrar com Google</button>
+    <div class="vrs">Joelboard · © 2026 Joel Soluções LTDA</div>
+  </div>
+</div>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="/joelboard.js"></script>
 <script>
@@ -76,6 +97,9 @@ var greetEl=document.getElementById("greet"), btnEl=document.getElementById("aut
 function setGreet(){ var em=JB.email(); var on=!!JB.cachedToken()&&!!em; greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; }
 function doIn(){ JB.requestToken(true).then(function(t){ return JB.fetchEmail(t); }).then(setGreet).catch(function(){}); }
 function doOut(){ JB.signOut(); setGreet(); }
+function openHubSet(){ var em=JB.email(); var on=!!JB.cachedToken()&&!!em; document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; document.getElementById("hubSet").classList.add("open"); }
+function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
+function hubAuth(){ var on=!!JB.cachedToken()&&!!JB.email(); closeHubSet(); if(on) doOut(); else doIn(); }
 setGreet();
 </script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}</script>

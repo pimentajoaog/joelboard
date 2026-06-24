@@ -8,6 +8,12 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0d0f18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Joelboard">
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{ --bg:#0d0f18; --surface:#1b1f32; --surface2:#252a40; --border:#2b3147; --primary:#818cf8; --income:#34d399; --fit:#fb7185; --text:#e7eaf3; --muted:#7b85a0; --radius:18px; }
@@ -76,5 +82,6 @@ function hubSignIn(){ if(tc) tc.requestAccessToken(); }
 function hubSignOut(){ try{ var t=localStorage.getItem('jb_tok'); if(t&&window.google&&google.accounts&&google.accounts.oauth2&&google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t,function(){}); }catch(_){} try{ localStorage.removeItem('jb_tok'); localStorage.removeItem('jb_tok_exp'); localStorage.removeItem('jb_email'); }catch(_){} setGreet(); }
 setGreet(); initGis();
 </script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}</script>
 </body>
 </html>

@@ -1800,9 +1800,67 @@ var JB_CLIENT_ID = '49262188240-l70ka2666t315gb2gmsvu357f2h7769i.apps.googleuser
 var JB_SCOPES = 'openid email profile https://www.googleapis.com/auth/spreadsheets';
 var JB_LS_SHEET = 'joelboard_sheet_id';
 var JB_TABS = ['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings'];
-var jbToken = '', jbTokenClient = null, jbEmail = '';
+var jbToken = '', jbTokenClient = null, jbEmail = '', jbGrid = {};
 function jbLoadingHtml(h){ var el = document.getElementById('loading'); if (el){ el.style.display='block'; el.innerHTML = h; } }
-function jbInstallShim(){ if (!window.google) window.google = {}; google.script = google.script || {}; google.script.run = new Proxy({}, { get: function(){ return function(){ return google.script.run; }; } }); }
+/* ----- write layer: Sheets API ops behind a google.script.run drop-in ----- */
+function jbUuid(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){ var r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16); }); }
+function jbColLetter(n){ var s=''; n=n+1; while(n>0){ var m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
+function jbReq(method,url,body){ var o={ method:method, headers:{ Authorization:'Bearer '+jbToken } }; if(body){ o.headers['Content-Type']='application/json'; o.body=JSON.stringify(body); } return fetch(url,o).then(function(r){ if(!r.ok) return r.text().then(function(tx){ throw new Error('HTTP '+r.status+' '+tx.slice(0,200)); }); return r.status===200?r.json():{}; }); }
+function jbSid(){ return localStorage.getItem(JB_LS_SHEET); }
+function jbValuesUrl(a1){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+jbSid()+'/values/'+encodeURIComponent(a1); }
+function jbBatchUrl(){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+jbSid()+':batchUpdate'; }
+function jbAppend(tab,row){ return jbReq('POST', jbValuesUrl(tab)+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', { values:[row] }); }
+function jbPutRange(a1,values){ return jbReq('PUT', jbValuesUrl(a1)+'?valueInputOption=RAW', { values:values }); }
+function jbGetVals(tab){ return jbApi(jbValuesUrl(tab)+'?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER').then(function(res){ return res.values||[]; }); }
+function jbDeleteRow(tab,rowNum){ return jbReq('POST', jbBatchUrl(), { requests:[{ deleteDimension:{ range:{ sheetId:jbGrid[tab], dimension:'ROWS', startIndex:rowNum-1, endIndex:rowNum } } }] }); }
+function jbFindRow(tab,idColIdx,id){ return jbGetVals(tab).then(function(vals){ for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[idColIdx])===String(id)) return i+1; } return -1; }); }
+function jbCsvCell(v){ v=(v===null||v===undefined)?'':String(v); if(/[",\n\r]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v; }
+function jbCascade(tab,colIdx,oldName,newName){ return jbGetVals(tab).then(function(vals){ var data=[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[colIdx])===oldName) data.push({ range:tab+'!'+jbColLetter(colIdx)+(i+1), values:[[newName]] }); } if(!data.length) return {}; return jbReq('POST','https://sheets.googleapis.com/v4/spreadsheets/'+jbSid()+'/values:batchUpdate',{ valueInputOption:'RAW', data:data }); }); }
+
+var JB_TAB = { transactions:'Transactions', budget:'Budget', goals:'Goals', recurring:'Recurring', allocations:'Allocations', bundles:'Bundles', categories:'Categories', debts:'Debts' };
+var JB_DATACOLS = { transactions:6, budget:2, goals:5, recurring:7, allocations:4, bundles:3, categories:2, debts:8 };
+var JB_COLS = {
+  transactions: function(d,id){ return [d.date, d.description, d.category, parseFloat(d.amount), d.type, (d.pending===true||d.pending==='true'), id]; },
+  budget: function(d,id){ return [d.category, parseFloat(d.budget), id]; },
+  goals: function(d,id){ return [d.name, parseFloat(d.target), parseFloat(d.current)||0, d.deadline||'', d.color||'#818cf8', id]; },
+  recurring: function(d,id){ var c=parseInt(d.installments,10), has=c&&c>0; return [d.name, parseFloat(d.amount), parseInt(d.dueDay,10)||1, d.frequency||'Monthly', d.category, has?c:'', d.startMonth||'', id]; },
+  allocations: function(d,id){ var c=parseInt(d.installments,10), has=c&&c>0; return [d.goalId, parseFloat(d.amount), has?c:'', d.startMonth, id]; },
+  bundles: function(d,id){ return [d.name, d.payee||'', JSON.stringify(d.items||[]), id]; },
+  categories: function(d,id){ return [d.name, d.color||'', id]; },
+  debts: function(d,id){ return [String(d.splitId||''), Number(d.created)||Date.now(), d.title||'', d.person||'', parseFloat(d.amount)||0, (d.paid===true||d.paid==='true'), (d.paidDate?Number(d.paidDate):''), (d.mine===true||d.mine==='true'), id]; }
+};
+
+var JB_IMPL = {
+  addRecord: function(type,data){ var id=jbUuid(); return jbAppend(JB_TAB[type], JB_COLS[type](data,id)).then(function(){ return { success:true, id:id }; }); },
+  updateRecord: function(type,id,data){ var arr=JB_COLS[type](data,id); return jbFindRow(JB_TAB[type], JB_DATACOLS[type], id).then(function(row){ if(row<0) throw new Error('Registro não encontrado — atualize.'); return jbPutRange(JB_TAB[type]+'!A'+row+':'+jbColLetter(arr.length-1)+row, [arr]); }).then(function(){ return {success:true}; }); },
+  deleteRecord: function(type,id){ return jbFindRow(JB_TAB[type], JB_DATACOLS[type], id).then(function(row){ if(row<0) throw new Error('Registro não encontrado.'); return jbDeleteRow(JB_TAB[type], row); }).then(function(){ return {success:true}; }); },
+  addSplit: function(rows){ var ch=Promise.resolve(); (rows||[]).forEach(function(d){ if(!d||!d.person) return; ch=ch.then(function(){ return jbAppend('Debts', JB_COLS.debts(d, d.id||jbUuid())); }); }); return ch.then(function(){ return {success:true}; }); },
+  setDebtPaid: function(id,paid,paidDate){ return jbFindRow('Debts',8,id).then(function(row){ if(row<0) throw new Error('não encontrado'); var on=(paid===true||paid==='true'); return jbPutRange('Debts!F'+row+':G'+row, [[on, on?(Number(paidDate)||Date.now()):'']]); }).then(function(){ return {success:true}; }); },
+  deleteSplit: function(splitId){ return jbGetVals('Debts').then(function(vals){ var reqs=[]; for(var i=vals.length-1;i>=1;i--){ if(String((vals[i]||[])[0])===String(splitId)) reqs.push({ deleteDimension:{ range:{ sheetId:jbGrid['Debts'], dimension:'ROWS', startIndex:i, endIndex:i+1 } } }); } if(!reqs.length) return {}; return jbReq('POST', jbBatchUrl(), { requests:reqs }); }).then(function(){ return {success:true}; }); },
+  setWorkDay: function(date,worked,hours,otHours){ var arr=[date,(worked===true||worked==='true'),Number(hours),Number(otHours)||0]; return jbGetVals('WorkLog').then(function(vals){ for(var i=1;i<vals.length;i++){ var dv=(vals[i]||[])[0]; var ds=(typeof dv==='number')?jbDate(dv):String(dv); if(ds===date) return jbPutRange('WorkLog!A'+(i+1)+':D'+(i+1), [arr]); } return jbAppend('WorkLog', arr); }).then(function(){ return {success:true}; }); },
+  clearWorkDay: function(date){ return jbGetVals('WorkLog').then(function(vals){ for(var i=1;i<vals.length;i++){ var dv=(vals[i]||[])[0]; var ds=(typeof dv==='number')?jbDate(dv):String(dv); if(ds===date) return jbDeleteRow('WorkLog', i+1); } return {}; }).then(function(){ return {success:true}; }); },
+  setPaid: function(month,type,itemId,paid,actualAmount,paidDate){ var on=(paid===true||paid==='true'); var amt=(actualAmount===undefined||actualAmount===null||actualAmount==='')?'':Number(actualAmount); var pd=(paidDate===undefined||paidDate===null)?'':String(paidDate); return jbGetVals('Payments').then(function(vals){ var row=-1; for(var i=1;i<vals.length;i++){ var r=vals[i]||[]; var m=String(r[0]).replace(/^m/,'').slice(0,7); if(m===month && String(r[1])===String(type) && String(r[2])===String(itemId)){ row=i+1; break; } } if(on){ var rr=['m'+month,type,String(itemId),true,amt,pd]; return row<0 ? jbAppend('Payments',rr) : jbPutRange('Payments!A'+row+':F'+row,[rr]); } return row>0 ? jbDeleteRow('Payments',row) : {}; }).then(function(){ return {success:true}; }); },
+  setBillSkip: function(month,id){ return jbAppend('Payments', ['m'+month,'skip',String(id),true,'','']).then(function(){ return {success:true}; }); },
+  saveSetting: function(key,value){ return jbGetVals('Settings').then(function(vals){ for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===String(key)) return jbPutRange('Settings!B'+(i+1), [[value]]); } return jbAppend('Settings', [key,value]); }).then(function(){ return {success:true}; }); },
+  saveProfile: function(data){ var ch=Promise.resolve(); Object.keys(data).forEach(function(k){ var v=data[k]; if(k==='off_weekdays' && Object.prototype.toString.call(v)==='[object Array]') v=v.map(function(d){ return 'd'+d; }).join(','); ch=ch.then(function(){ return JB_IMPL.saveSetting(k,v); }); }); return ch.then(function(){ return {success:true}; }); },
+  savingsMove: function(newBase,tx){ return JB_IMPL.saveSetting('savings_balance',newBase).then(function(){ return JB_IMPL.addRecord('transactions',tx); }).then(function(){ return {success:true}; }); },
+  logMonthlySalary: function(targetMonth,data){ return jbGetVals('Transactions').then(function(vals){ var reqs=[]; for(var i=vals.length-1;i>=1;i--){ var r=vals[i]||[]; var dv=r[0]; var ym=(typeof dv==='number')?jbDate(dv).slice(0,7):String(dv).slice(0,7); if(String(r[4])==='Income' && String(r[2])===String(data.category) && ym===targetMonth) reqs.push({ deleteDimension:{ range:{ sheetId:jbGrid['Transactions'], dimension:'ROWS', startIndex:i, endIndex:i+1 } } }); } return reqs.length ? jbReq('POST', jbBatchUrl(), { requests:reqs }) : {}; }).then(function(){ var id=jbUuid(); return jbAppend('Transactions', JB_COLS.transactions(data,id)).then(function(){ return {success:true,id:id}; }); }); },
+  importTransactions: function(rows){ var ch=Promise.resolve(); var n=0; (rows||[]).forEach(function(d){ if(!d||!d.date||!(Number(d.amount)>0)) return; n++; ch=ch.then(function(){ return jbAppend('Transactions', JB_COLS.transactions(d, jbUuid())); }); }); return ch.then(function(){ return {success:true,count:n}; }); },
+  renameCategory: function(id,newName){ newName=String(newName||'').trim(); if(!newName) return Promise.reject(new Error('Nome não pode ser vazio.')); var oldName=''; return jbGetVals('Categories').then(function(vals){ var row=-1, names=[]; for(var i=1;i<vals.length;i++){ var r=vals[i]||[]; names.push(String(r[0])); if(String(r[2])===String(id)){ row=i+1; oldName=String(r[0]); } } if(row<0) throw new Error('Categoria não encontrada.'); if(oldName===newName) return 'skip'; if(names.indexOf(newName)>-1) throw new Error('Já existe uma categoria com esse nome.'); return jbPutRange('Categories!A'+row, [[newName]]).then(function(){ return 'go'; }); }).then(function(st){ if(st==='skip') return {success:true}; return jbCascade('Transactions',2,oldName,newName).then(function(){ return jbCascade('Recurring',4,oldName,newName); }).then(function(){ return jbCascade('Budget',0,oldName,newName); }).then(function(){ return {success:true}; }); }); },
+  exportBackup: function(){ var tabs=['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings']; var out=[]; var ch=Promise.resolve(); tabs.forEach(function(tb){ ch=ch.then(function(){ return jbGetVals(tb).then(function(vals){ if(!vals.length) return; out.push('### '+tb); vals.forEach(function(row){ out.push((row||[]).map(jbCsvCell).join(',')); }); out.push(''); }).catch(function(){}); }); }); return ch.then(function(){ var csv='﻿'+out.join('\r\n'); var url=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); return { url:url, name:'joelboard-backup-'+new Date().toISOString().slice(0,10)+'.csv' }; }); }
+};
+
+function jbMakeRunner(){
+  var onOk=null, onErr=null;
+  var p = new Proxy({}, { get:function(target,prop){
+    if(prop==='withSuccessHandler') return function(f){ onOk=f; return p; };
+    if(prop==='withFailureHandler') return function(f){ onErr=f; return p; };
+    return function(){ var args=[].slice.call(arguments); Promise.resolve().then(function(){ var fn=JB_IMPL[prop]; return fn ? fn.apply(null,args) : undefined; }).then(function(res){ if(onOk) onOk(res); }).catch(function(e){ if(onErr) onErr(e); else { try{ showToast('Erro: '+e.message,'error'); }catch(_){ console.error(e); } } }); return p; };
+  }});
+  return p;
+}
+
+function jbInstallShim(){ if (!window.google) window.google = {}; google.script = { get run(){ return jbMakeRunner(); }, host:{ close:function(){}, setHeight:function(){}, editor:{} } }; }
 function jbStartAuth(){
   if (!(window.google && window.google.accounts && google.accounts.oauth2)) { setTimeout(jbStartAuth, 120); return; }
   jbTokenClient = google.accounts.oauth2.initTokenClient({ client_id: JB_CLIENT_ID, scope: JB_SCOPES, callback: function(resp){
@@ -1827,8 +1885,9 @@ function jbApi(url){ return fetch(url, { headers: { Authorization: 'Bearer ' + j
 function jbLoad(){
   var id = localStorage.getItem(JB_LS_SHEET);
   if (!id) return Promise.reject(new Error('no sheet'));
-  return jbApi('https://sheets.googleapis.com/v4/spreadsheets/' + id + '?fields=sheets.properties.title').then(function(meta){
-    var titles = (meta.sheets || []).map(function(x){ return x.properties.title; });
+  return jbApi('https://sheets.googleapis.com/v4/spreadsheets/' + id + '?fields=sheets.properties(sheetId,title)').then(function(meta){
+    var titles = []; jbGrid = {};
+    (meta.sheets || []).forEach(function(x){ titles.push(x.properties.title); jbGrid[x.properties.title] = x.properties.sheetId; });
     var want = JB_TABS.filter(function(tb){ return titles.indexOf(tb) > -1; });
     if (!want.length) throw new Error('Nenhuma aba do Joelboard encontrada.');
     var ranges = want.map(function(tb){ return 'ranges=' + encodeURIComponent(tb); }).join('&');

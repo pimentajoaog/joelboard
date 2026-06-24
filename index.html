@@ -45,7 +45,7 @@ a.tile:hover{ transform:translateY(-3px); border-color:var(--primary); }
 <div class="wrap">
   <div class="top">
     <div class="brand"><img src="/icon-192.png" alt="Joelboard"><span class="wm">Joelboard</span></div>
-    <div class="acct"><span id="greet">Olá 👋</span><button class="authbtn" id="authbtn" onclick="hubSignIn()">Entrar</button></div>
+    <div class="acct"><span id="greet">Olá 👋</span><button class="authbtn" id="authbtn">Entrar</button></div>
   </div>
   <div class="sub">Seus apps, num lugar só.</div>
 
@@ -70,17 +70,13 @@ a.tile:hover{ transform:translateY(-3px); border-color:var(--primary); }
 </div>
 
 <script src="https://accounts.google.com/gsi/client" async></script>
+<script src="/joelboard.js"></script>
 <script>
-var CLIENT_ID='49262188240-l70ka2666t315gb2gmsvu357f2h7769i.apps.googleusercontent.com';
-var SCOPES='openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
-var tc=null;
-function cachedTok(){ try{ var t=localStorage.getItem('jb_tok'), e=Number(localStorage.getItem('jb_tok_exp')||0); if(t && Date.now()<e) return t; }catch(_){} return ''; }
-function setGreet(){ var em=localStorage.getItem('jb_email')||''; var on=!!cachedTok()&&!!em; document.getElementById('greet').textContent = on ? ('Olá, '+em.split('@')[0]+' 👋') : 'Olá 👋'; var b=document.getElementById('authbtn'); b.textContent = on ? 'Sair' : 'Entrar'; b.onclick = on ? hubSignOut : hubSignIn; }
-function initGis(){ if(!(window.google&&google.accounts&&google.accounts.oauth2)){ setTimeout(initGis,150); return; } tc=google.accounts.oauth2.initTokenClient({ client_id:CLIENT_ID, scope:SCOPES, callback:function(r){ if(r&&r.access_token){ try{ localStorage.setItem('jb_tok',r.access_token); localStorage.setItem('jb_tok_exp',String(Date.now()+(Number(r.expires_in)||3600)*1000-120000)); }catch(_){}
-  fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+r.access_token}}).then(function(x){return x.json();}).then(function(u){ try{localStorage.setItem('jb_email',u.email||'');}catch(_){} setGreet(); }).catch(setGreet); } } }); }
-function hubSignIn(){ if(tc) tc.requestAccessToken(); }
-function hubSignOut(){ try{ var t=localStorage.getItem('jb_tok'); if(t&&window.google&&google.accounts&&google.accounts.oauth2&&google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t,function(){}); }catch(_){} try{ localStorage.removeItem('jb_tok'); localStorage.removeItem('jb_tok_exp'); localStorage.removeItem('jb_email'); }catch(_){} setGreet(); }
-setGreet(); initGis();
+var greetEl=document.getElementById("greet"), btnEl=document.getElementById("authbtn");
+function setGreet(){ var em=JB.email(); var on=!!JB.cachedToken()&&!!em; greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; }
+function doIn(){ JB.requestToken(true).then(function(t){ return JB.fetchEmail(t); }).then(setGreet).catch(function(){}); }
+function doOut(){ JB.signOut(); setGreet(); }
+setGreet();
 </script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}</script>
 </body>

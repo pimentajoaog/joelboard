@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<!-- Joelboard Fit. © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Joelboard Fit</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0d0f18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fit">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --accent:#fb7185; --accent2:#3a2530; --text:#e7eaf3; --muted:#7b85a0; --radius:16px; }
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{ overflow-x:hidden; }
+body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; min-height:100vh; padding:26px 18px 90px; font-size:14px; line-height:1.5; }
+#loading{ max-width:480px; margin:0 auto; }
+#app{ display:none; max-width:760px; margin:0 auto; }
+.header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:20px; }
+.hl{ display:flex; align-items:center; gap:10px; }
+.hl img{ width:34px; height:34px; border-radius:9px; }
+.hl h1{ font-size:20px; font-weight:800; letter-spacing:-.4px; }
+.acct{ font-size:12px; color:var(--muted); display:flex; align-items:center; gap:10px; }
+.lnk{ background:none; border:none; color:var(--accent); font-weight:700; font-size:12px; cursor:pointer; font-family:inherit; }
+.tabbar{ display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:20px; overflow-x:auto; overflow-y:hidden; touch-action:pan-x; scrollbar-width:none; }
+.tabbar::-webkit-scrollbar{ display:none; }
+.tabb{ flex:0 0 auto; background:none; border:none; color:var(--muted); font-family:inherit; font-size:14px; font-weight:600; padding:12px 14px; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+.tabb.on{ color:var(--accent); border-bottom-color:var(--accent); }
+.page{ display:none; }
+.page.on{ display:block; }
+.secbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.sect{ font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--muted); }
+.btn{ background:var(--accent); color:#3a0f17; border:none; border-radius:99px; padding:8px 15px; font-weight:800; font-size:13px; cursor:pointer; font-family:inherit; }
+.btn.ghost{ background:var(--surface2); color:var(--text); border:1px solid var(--border); font-weight:700; }
+.row{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:8px; cursor:pointer; }
+.row:hover{ border-color:var(--accent); }
+.rn{ font-size:15px; font-weight:600; }
+.rg{ font-size:12px; color:var(--muted); margin-top:1px; }
+.empty{ color:var(--muted); text-align:center; padding:40px 16px; font-size:13px; }
+.soon{ color:var(--muted); text-align:center; padding:60px 16px; }
+.soon .big{ font-size:18px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.fab{ position:fixed; bottom:22px; right:18px; width:54px; height:54px; border-radius:50%; background:var(--accent); color:#3a0f17; border:none; font-size:30px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 22px rgba(251,113,133,0.4); z-index:40; }
+.door{ position:fixed; bottom:20px; left:16px; z-index:40; width:42px; height:42px; border-radius:12px; background:var(--surface); border:1px solid var(--border); color:var(--accent); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 12px rgba(0,0,0,0.25); }
+.overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.65); display:none; align-items:center; justify-content:center; z-index:200; padding:18px; }
+.overlay.open{ display:flex; }
+.modal{ background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:24px; width:100%; max-width:400px; }
+.mh{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.mt{ font-size:17px; font-weight:800; }
+.x{ background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; }
+.fg{ margin-bottom:14px; }
+.fl{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:600; }
+.fi{ width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:11px 13px; color:var(--text); font-size:14px; font-family:inherit; }
+.save{ width:100%; background:var(--accent); color:#3a0f17; border:none; border-radius:12px; padding:13px; font-weight:800; font-size:15px; cursor:pointer; font-family:inherit; }
+.del{ width:100%; background:none; border:none; color:var(--muted); font-size:13px; text-decoration:underline; cursor:pointer; font-family:inherit; margin-top:12px; }
+.toast{ position:fixed; left:50%; bottom:84px; transform:translateX(-50%); background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:10px 16px; border-radius:99px; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:300; white-space:nowrap; }
+.toast.show{ opacity:1; }
+.foot{ text-align:center; color:var(--muted); font-size:11px; opacity:0.55; margin-top:36px; }
+.gate{ max-width:420px; margin:40px auto; text-align:center; }
+.gate .gt{ font-size:22px; font-weight:800; letter-spacing:-.5px; }
+.gate .gs{ color:var(--muted); font-size:13px; margin:6px 0 24px; }
+</style>
+</head>
+<body>
+<div id="loading"></div>
+
+<div id="app">
+  <div class="header">
+    <div class="hl"><img src="/icon-192.png" alt="Joelboard"><h1>Fit</h1></div>
+    <div class="acct"><span id="acctEmail"></span><button class="lnk" onclick="fitSignOut()">Sair</button></div>
+  </div>
+  <div class="tabbar">
+    <button class="tabb on" data-tab="hoje" onclick="tab('hoje')">Hoje</button>
+    <button class="tabb" data-tab="treinos" onclick="tab('treinos')">Treinos</button>
+    <button class="tabb" data-tab="exercicios" onclick="tab('exercicios')">Exercícios</button>
+    <button class="tabb" data-tab="progresso" onclick="tab('progresso')">Progresso</button>
+  </div>
+
+  <div class="page on" id="p-hoje"><div class="soon"><div class="big">🏋️ Registrar treino</div>Em breve — registrar séries do dia.</div></div>
+  <div class="page" id="p-treinos"><div class="soon"><div class="big">📋 Seus treinos</div>Em breve — montar splits (Push, Pull, Pernas…).</div></div>
+  <div class="page" id="p-exercicios">
+    <div class="secbar"><div class="sect">Biblioteca de exercícios</div><button class="btn" onclick="openExercise()">+ Adicionar</button></div>
+    <div id="exList"></div>
+  </div>
+  <div class="page" id="p-progresso"><div class="soon"><div class="big">📈 Progresso</div>Em breve — evolução de carga por exercício.</div></div>
+
+  <div class="foot">© 2026 Joel Soluções LTDA</div>
+</div>
+
+<button class="door" onclick="location.href='/'" title="Voltar ao Joelboard" aria-label="Voltar ao Joelboard">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg>
+</button>
+<button class="fab" id="fab" onclick="openExercise()" style="display:none;">+</button>
+
+<div class="overlay" id="exOverlay" onclick="if(event.target===this)closeEx()">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="exTitle">Novo exercício</div><button class="x" onclick="closeEx()">✕</button></div>
+    <div class="fg"><label class="fl">Nome</label><input class="fi" id="exName" placeholder="ex.: Supino reto"></div>
+    <div class="fg"><label class="fl">Grupo muscular (opcional)</label><input class="fi" id="exGroup" placeholder="ex.: Peito"></div>
+    <button class="save" id="exSave" onclick="saveExercise()">Salvar</button>
+    <button class="del" id="exDel" onclick="deleteExercise()" style="display:none;">Excluir exercício</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="/joelboard.js"></script>
+<script>
+var DATA=null, fitGrid={}, editingEx=null, authDone=false;
+var FIT_TABS=[['Exercicios',['Nome','Grupo','ID']],['Treinos',['Nome','Itens','ID']],['Sessoes',['Data','Treino','Notas','ID']],['Series',['Sessao ID','Exercicio ID','Serie','Reps','Peso','ID']],['Config',['Chave','Valor']]];
+var STARTER=['Supino reto','Agachamento','Levantamento terra','Desenvolvimento','Remada curvada','Puxada alta','Leg press','Rosca direta','Tríceps na polia','Elevação lateral'];
+function $(id){ return document.getElementById(id); }
+function uuid(){ return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);}); }
+function loadingHtml(h){ $('loading').style.display='block'; $('loading').innerHTML=h; }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},2200); }
+
+/* ---- auth (shared core) ---- */
+function startAuth(){
+  if (JB.cachedToken()){ afterAuth(); return; }
+  loadingHtml('<div class="gate"><div class="gt">💪 Joelboard Fit</div><div class="gs">Entrando…</div></div>');
+  JB.requestToken(false).then(function(){ authDone=true; afterAuth(); }).catch(showSignIn);
+  setTimeout(function(){ if(!authDone && !JB.cachedToken()) showSignIn(); }, 3000);
+}
+function showSignIn(){ loadingHtml('<div class="gate"><div class="gt">💪 Joelboard Fit</div><div class="gs">Treinos e progressão de carga.</div><button class="btn" onclick="doSignIn()">Entrar com Google</button></div>'); }
+function doSignIn(){ JB.requestToken(true).then(function(){ authDone=true; afterAuth(); }).catch(function(){}); }
+function fitSignOut(){ JB.signOut(); location.reload(); }
+function afterAuth(){
+  loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>');
+  JB.fetchEmail().then(function(){ if (JB.getSheetId('fit')) loadAll(); else detect(); });
+}
+
+/* ---- sheet bootstrap ---- */
+function detect(){
+  loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando seu treino…</div></div>');
+  JB.api('GET','https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and name contains 'Joelboard Fit'")+'&fields=files(id,name)&orderBy=createdTime')
+    .then(function(res){ var f=(res.files||[]); if(f.length>=1) offerLink(f[0]); else gate(); }).catch(gate);
+}
+function gate(){
+  loadingHtml('<div class="gate"><div class="gt">💪 Vamos treinar</div><div class="gs">Crie sua planilha de treino — ela fica no seu Google Drive.</div>'
+    + '<button class="save" onclick="createSheet()">✨ Criar meu treino</button>'
+    + '<div style="color:var(--muted);font-size:12px;margin:16px 0 10px">— ou já tem uma? —</div>'
+    + '<input class="fi" id="fitUrl" placeholder="Cole o link da planilha"><button class="btn ghost" style="width:100%;margin-top:10px" onclick="linkSheet()">Conectar planilha</button>'
+    + '<div id="fitErr" style="color:var(--accent);font-size:12px;margin-top:10px"></div></div>');
+}
+function offerLink(f){ loadingHtml('<div class="gate"><div class="gt">Encontramos seu treino 🎉</div><div class="gs">'+esc(f.name)+'</div><button class="save" onclick="pick(\''+f.id+'\')">Vincular e abrir</button><button class="del" onclick="gate()">usar outro / criar novo</button></div>'); }
+function pick(id){ JB.setSheetId('fit',id); loadAll(); }
+function linkSheet(){ var u=($('fitUrl').value||'').trim(); var m=u.match(/[a-zA-Z0-9_-]{30,}/); if(!m){ $('fitErr').textContent='Link inválido.'; return; } JB.setSheetId('fit',m[0]); loadAll(); }
+function createSheet(){
+  loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Criando seu treino…</div></div>');
+  var title='💪 Joelboard Fit — '+(JB.email()?JB.email().split('@')[0]:'Pessoal');
+  JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets',{ properties:{title:title}, sheets:FIT_TABS.map(function(t){return {properties:{title:t[0]}};}) })
+    .then(function(ss){ JB.setSheetId('fit',ss.spreadsheetId);
+      var data=FIT_TABS.map(function(t){return {range:t[0]+'!A1',values:[t[1]]};});
+      data.push({range:'Exercicios!A2',values:STARTER.map(function(n){return [n,'',uuid()];})});
+      data.push({range:'Config!A2',values:[['unit','kg']]});
+      return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+ss.spreadsheetId+'/values:batchUpdate',{valueInputOption:'RAW',data:data});
+    }).then(loadAll).catch(function(e){ loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro ao criar: '+esc(e.message)+'</div></div>'); });
+}
+
+/* ---- load ---- */
+function ssUrl(p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+JB.getSheetId('fit')+p; }
+function loadAll(){
+  loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>');
+  JB.api('GET', ssUrl('?fields=sheets.properties(sheetId,title)')).then(function(meta){
+    fitGrid={}; var titles=[]; (meta.sheets||[]).forEach(function(x){ titles.push(x.properties.title); fitGrid[x.properties.title]=x.properties.sheetId; });
+    var want=FIT_TABS.map(function(t){return t[0];}).filter(function(t){return titles.indexOf(t)>-1;});
+    var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
+    return JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER')).then(function(res){
+      var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
+      DATA=buildFit(by); render();
+    });
+  }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('fit'); detect(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro: '+esc(e.message)+'</div></div>'); });
+}
+function body(rows){ return (rows||[]).slice(1); }
+function buildFit(t){
+  var config={ unit:'kg' };
+  body(t.Config).forEach(function(r){ if(r[0]) config[r[0]]=r[1]; });
+  return {
+    exercicios: body(t.Exercicios).filter(function(r){return r[0];}).map(function(r){ return { id:r[2], name:r[0], group:r[1]||'' }; }),
+    treinos: body(t.Treinos).filter(function(r){return r[0];}).map(function(r){ var it=[]; try{it=JSON.parse(r[1]||'[]');}catch(e){} return { id:r[2], name:r[0], items:it }; }),
+    sessoes: body(t.Sessoes), series: body(t.Series), config: config
+  };
+}
+
+/* ---- render ---- */
+function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('fab').style.display='flex'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); }
+function tab(name){
+  ['hoje','treinos','exercicios','progresso'].forEach(function(n){ $('p-'+n).classList.toggle('on', n===name); });
+  document.querySelectorAll('.tabb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===name); });
+  $('fab').style.display = (name==='exercicios') ? 'flex' : 'none';
+}
+function renderExercicios(){
+  var el=$('exList'); var ex=(DATA.exercicios||[]);
+  if(!ex.length){ el.innerHTML='<div class="empty">Nenhum exercício ainda. Toque em “+ Adicionar”.</div>'; return; }
+  el.innerHTML = ex.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(x){
+    return '<div class="row" onclick="openExercise(\''+x.id+'\')"><div><div class="rn">'+esc(x.name)+'</div>'+(x.group?'<div class="rg">'+esc(x.group)+'</div>':'')+'</div><span style="color:var(--muted)">›</span></div>';
+  }).join('');
+}
+
+/* ---- exercise CRUD (via shared JB.api) ---- */
+function fitFindRow(tab,idCol,id){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; for(var i=1;i<v.length;i++){ if(String((v[i]||[])[idCol])===String(id)) return i+1; } return -1; }); }
+function openExercise(id){
+  editingEx = id || null;
+  var ex = id ? (DATA.exercicios||[]).find(function(x){return x.id===id;}) : null;
+  $('exTitle').textContent = ex ? 'Editar exercício' : 'Novo exercício';
+  $('exName').value = ex ? ex.name : '';
+  $('exGroup').value = ex ? ex.group : '';
+  $('exDel').style.display = ex ? 'block' : 'none';
+  $('exOverlay').classList.add('open');
+}
+function closeEx(){ $('exOverlay').classList.remove('open'); }
+function saveExercise(){
+  var name=($('exName').value||'').trim(), group=($('exGroup').value||'').trim();
+  if(!name){ $('exName').focus(); return; }
+  if(editingEx){
+    var x=(DATA.exercicios||[]).find(function(e){return e.id===editingEx;}); if(x){ x.name=name; x.group=group; }
+    var id=editingEx; renderExercicios(); closeEx(); toast('✓ Salvo');
+    fitFindRow('Exercicios',2,id).then(function(row){ if(row<0) throw new Error('not found'); return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Exercicios!A'+row+':C'+row)+'?valueInputOption=RAW'), { values:[[name,group,id]] }); }).catch(function(){ toast('Erro ao salvar'); reload(); });
+  } else {
+    var nid=uuid(); DATA.exercicios.push({ id:nid, name:name, group:group }); renderExercicios(); closeEx(); toast('✓ Adicionado');
+    JB.api('POST', ssUrl('/values/'+encodeURIComponent('Exercicios')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[[name,group,nid]] }).catch(function(){ toast('Erro ao adicionar'); reload(); });
+  }
+}
+function deleteExercise(){
+  if(!editingEx) return; var id=editingEx;
+  DATA.exercicios=(DATA.exercicios||[]).filter(function(e){return e.id!==id;}); renderExercicios(); closeEx(); toast('✓ Excluído');
+  fitFindRow('Exercicios',2,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:fitGrid['Exercicios'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){ toast('Erro ao excluir'); reload(); });
+}
+function reload(){ JB.api('GET', ssUrl('/values:batchGet?ranges=Exercicios&ranges=Config&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var by={}; (res.valueRanges||[]).forEach(function(vr){ by[(vr.range||'').split('!')[0].replace(/'/g,'')]=vr.values||[]; }); if(by.Exercicios){ DATA.exercicios=body(by.Exercicios).filter(function(r){return r[0];}).map(function(r){return {id:r[2],name:r[0],group:r[1]||''};}); renderExercicios(); } }).catch(function(){}); }
+
+startAuth();
+</script>
+</body>
+</html>

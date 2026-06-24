@@ -722,6 +722,7 @@ select.cs-native { position: absolute; width: 1px; height: 1px; padding: 0; marg
 .btn-ghost:hover { border-color:var(--primary); }
 </style>
 <script src="https://accounts.google.com/gsi/client" async></script>
+<script src="/joelboard.js"></script>
 </head>
 <body>
 
@@ -1816,8 +1817,8 @@ function jbLoadingHtml(h){ var el = document.getElementById('loading'); if (el){
 /* ----- write layer: Sheets API ops behind a google.script.run drop-in ----- */
 function jbUuid(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){ var r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16); }); }
 function jbColLetter(n){ var s=''; n=n+1; while(n>0){ var m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
-function jbReq(method,url,body){ var o={ method:method, headers:{ Authorization:'Bearer '+jbToken } }; if(body){ o.headers['Content-Type']='application/json'; o.body=JSON.stringify(body); } return fetch(url,o).then(function(r){ if(!r.ok) return r.text().then(function(tx){ throw new Error('HTTP '+r.status+' '+tx.slice(0,200)); }); return r.status===200?r.json():{}; }); }
-function jbSid(){ return localStorage.getItem(JB_LS_SHEET); }
+function jbReq(method,url,body){ return JB.api(method,url,body); }
+function jbSid(){ return JB.getSheetId('finance'); }
 function jbValuesUrl(a1){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+jbSid()+'/values/'+encodeURIComponent(a1); }
 function jbBatchUrl(){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+jbSid()+':batchUpdate'; }
 function jbAppend(tab,row){ return jbReq('POST', jbValuesUrl(tab)+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', { values:[row] }); }
@@ -1873,28 +1874,21 @@ function jbMakeRunner(){
 
 function jbInstallShim(){ if (!window.google) window.google = {}; google.script = { get run(){ return jbMakeRunner(); }, host:{ close:function(){}, setHeight:function(){}, editor:{} } }; }
 function jbSaveToken(tok, expiresIn){ try { localStorage.setItem('jb_tok', tok); localStorage.setItem('jb_tok_exp', String(Date.now() + (Number(expiresIn)||3600)*1000 - 120000)); if (jbEmail) localStorage.setItem('jb_email', jbEmail); } catch(e){} }
-function jbCachedToken(){ try { var t=localStorage.getItem('jb_tok'), e=Number(localStorage.getItem('jb_tok_exp')||0); if (t && Date.now() < e) return t; } catch(_){} return ''; }
-function jbLogout(){ try { var t=localStorage.getItem('jb_tok'); if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function(){}); } catch(e){} try { localStorage.removeItem('jb_tok'); localStorage.removeItem('jb_tok_exp'); localStorage.removeItem('jb_email'); } catch(e){} location.reload(); }
+function jbCachedToken(){ return JB.cachedToken(); }
+function jbLogout(){ JB.signOut(); location.reload(); }
 function jbStartAuth(){
-  if (!(window.google && window.google.accounts && google.accounts.oauth2)) { setTimeout(jbStartAuth, 120); return; }
-  jbTokenClient = google.accounts.oauth2.initTokenClient({ client_id: JB_CLIENT_ID, scope: JB_SCOPES, callback: function(resp){
-    if (resp && resp.access_token){ jbAuthDone = true; jbToken = resp.access_token; jbSaveToken(jbToken, resp.expires_in); jbInstallShim(); jbAfterSignIn(); }
-    else { jbShowSignIn(); }
-  }});
-  var cached = jbCachedToken();
-  if (cached){ jbToken = cached; jbEmail = (localStorage.getItem('jb_email') || ''); jbInstallShim(); jbAfterSignIn(); return; }
+  if (JB.cachedToken()){ jbEmail = JB.email(); jbInstallShim(); jbAfterSignIn(); return; }
   jbLoadingHtml('<div style="text-align:center;padding:44px;color:var(--muted)">Entrando…</div>');
-  try { jbTokenClient.requestAccessToken({ prompt: '' }); } catch(e){ jbShowSignIn(); return; }
-  setTimeout(function(){ if (!jbAuthDone) jbShowSignIn(); }, 3000);
+  JB.requestToken(false).then(function(){ jbAuthDone = true; jbInstallShim(); jbAfterSignIn(); }).catch(function(){ jbShowSignIn(); });
+  setTimeout(function(){ if (!jbAuthDone && !JB.cachedToken()) jbShowSignIn(); }, 3000);
 }
 function jbShowSignIn(){ jbLoadingHtml('<div style="text-align:center;padding:48px 20px"><div style="font-size:24px;font-weight:800;letter-spacing:-.5px">💰 Joelboard</div><div style="color:var(--muted);font-size:13px;margin:6px 0 26px">Suas finanças pessoais</div><button onclick="jbSignIn()" style="background:#fff;color:#1f2430;border:none;border-radius:12px;padding:13px 22px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Entrar com Google</button></div>'); }
-function jbSignIn(){ if (jbTokenClient) jbTokenClient.requestAccessToken(); }
+function jbSignIn(){ JB.requestToken(true).then(function(){ jbAuthDone = true; jbInstallShim(); jbAfterSignIn(); }).catch(function(){}); }
 function jbAfterSignIn(){
   jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando…</div>');
-  function go(){ if (localStorage.getItem(JB_LS_SHEET)) jbLoadAndBoot(); else jbDetect(); }
-  if (jbEmail){ go(); return; }
-  fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + jbToken } })
-    .then(function(r){ return r.json(); }).then(function(u){ jbEmail = u.email || ''; try { localStorage.setItem('jb_email', jbEmail); } catch(e){} }).catch(function(){}).then(go);
+  function go(){ if (JB.getSheetId('finance')) jbLoadAndBoot(); else jbDetect(); }
+  if (JB.email()){ jbEmail = JB.email(); go(); return; }
+  JB.fetchEmail().then(function(em){ jbEmail = em; }).then(go);
 }
 function jbDetect(){
   jbLoadingHtml('<div style="text-align:center;padding:44px;color:var(--muted)">Procurando sua planilha…</div>');
@@ -1902,7 +1896,7 @@ function jbDetect(){
     .then(function(res){ var f=(res.files||[]); if(f.length===1) jbOfferLink(f[0]); else if(f.length>1) jbOfferPick(f); else jbShowLink(); })
     .catch(function(){ jbShowLink(); });
 }
-function jbPick(id){ localStorage.setItem(JB_LS_SHEET, id); jbLoadAndBoot(); }
+function jbPick(id){ JB.setSheetId('finance', id); jbLoadAndBoot(); }
 function jbOfferLink(f){
   jbLoadingHtml('<div style="max-width:430px;margin:0 auto;padding:44px 20px;text-align:center"><div style="font-size:19px;font-weight:800;margin-bottom:6px">Encontramos sua planilha 🎉</div><div style="color:var(--muted);font-size:13px;margin-bottom:20px">' + esc(f.name) + '</div><button onclick="jbPick(\'' + f.id + '\')" style="background:var(--primary);color:#fff;border:none;border-radius:11px;padding:12px 18px;font-weight:700;cursor:pointer;width:100%;font-family:inherit;font-size:15px">Vincular e abrir</button><br><button onclick="jbShowLink()" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;margin-top:14px">usar outra / criar nova</button></div>');
 }
@@ -1939,18 +1933,18 @@ function jbCreateSheet(){
   var title = '💰 Joelboard — ' + (jbEmail ? jbEmail.split('@')[0] : 'Pessoal');
   var body = { properties:{ title:title }, sheets: JB_HEADERS.map(function(t){ return { properties:{ title:t[0] } }; }) };
   jbReq('POST','https://sheets.googleapis.com/v4/spreadsheets', body).then(function(ss){
-    localStorage.setItem(JB_LS_SHEET, ss.spreadsheetId);
+    JB.setSheetId('finance', ss.spreadsheetId);
     var data = JB_HEADERS.map(function(t){ return { range:t[0]+'!A1', values:[t[1]] }; });
     data.push({ range:'Categories!A2', values: JB_DEFAULT_CATS.map(function(n){ return [n,'',jbUuid()]; }) });
     data.push({ range:'Settings!A2', values:[['hourly_rate',0],['exchange_rate',0],['off_weekdays','d0,d6'],['mode','hourly'],['monthly_salary',0],['daily_hours',8],['overtime_mode','off'],['overtime_mult',1.5],['convert_enabled','true'],['currency_from','USD'],['currency_to','BRL'],['profile_set','false'],['schema_version',3]] });
     return jbReq('POST','https://sheets.googleapis.com/v4/spreadsheets/'+ss.spreadsheetId+'/values:batchUpdate', { valueInputOption:'RAW', data:data });
   }).then(function(){ jbLoadAndBoot(); }).catch(function(e){ jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">Erro ao criar: '+e.message+'</div>'); });
 }
-function jbLink(){ var url=(document.getElementById('jbSheetUrl').value||'').trim(); var m=url.match(/[a-zA-Z0-9_-]{30,}/); if(!m){ document.getElementById('jbLinkErr').textContent='Link inválido.'; return; } localStorage.setItem(JB_LS_SHEET, m[0]); jbLoadAndBoot(); }
-function jbUnlink(){ localStorage.removeItem(JB_LS_SHEET); location.reload(); }
-function jbApi(url){ return fetch(url, { headers: { Authorization: 'Bearer ' + jbToken } }).then(function(r){ if (!r.ok) return r.text().then(function(tx){ throw new Error('HTTP ' + r.status + ' — ' + tx.slice(0,200)); }); return r.json(); }); }
+function jbLink(){ var url=(document.getElementById('jbSheetUrl').value||'').trim(); var m=url.match(/[a-zA-Z0-9_-]{30,}/); if(!m){ document.getElementById('jbLinkErr').textContent='Link inválido.'; return; } JB.setSheetId('finance', m[0]); jbLoadAndBoot(); }
+function jbUnlink(){ JB.clearSheetId('finance'); location.reload(); }
+function jbApi(url){ return JB.api('GET', url); }
 function jbLoad(){
-  var id = localStorage.getItem(JB_LS_SHEET);
+  var id = JB.getSheetId('finance');
   if (!id) return Promise.reject(new Error('no sheet'));
   return jbApi('https://sheets.googleapis.com/v4/spreadsheets/' + id + '?fields=sheets.properties(sheetId,title)').then(function(meta){
     var titles = []; jbGrid = {};
@@ -1964,7 +1958,7 @@ function jbLoad(){
     });
   });
 }
-function jbLoadAndBoot(){ jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando seus dados…</div>'); jbLoad().then(function(data){ boot(data); }).catch(function(e){ var m=String((e&&e.message)||''); if (m.indexOf('403')>-1 || m.indexOf('404')>-1 || m.indexOf('PERMISSION')>-1 || m.indexOf('not found')>-1) { try{ localStorage.removeItem(JB_LS_SHEET); }catch(_){} jbDetect(); return; } jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">Erro ao carregar: ' + e.message + '<br><br><button onclick="jbUnlink()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit">Trocar planilha</button></div>'); }); }
+function jbLoadAndBoot(){ jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando seus dados…</div>'); jbLoad().then(function(data){ boot(data); }).catch(function(e){ var m=String((e&&e.message)||''); if (m.indexOf('403')>-1 || m.indexOf('404')>-1 || m.indexOf('PERMISSION')>-1 || m.indexOf('not found')>-1) { try{ JB.clearSheetId('finance'); }catch(_){} jbDetect(); return; } jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">Erro ao carregar: ' + e.message + '<br><br><button onclick="jbUnlink()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit">Trocar planilha</button></div>'); }); }
 function jbBool(v){ return v === true || String(v).toUpperCase() === 'TRUE'; }
 function jbNum(v){ var n = Number(v); return isNaN(n) ? 0 : n; }
 function jbDate(v){ if (typeof v === 'number'){ var d = new Date(Date.UTC(1899,11,30) + Math.round(v * 86400000)); return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0'); } return String(v || ''); }

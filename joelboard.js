@@ -52,7 +52,12 @@
   // interactive=false => silent; true => shows the pre-consent explainer (first login / when scopes change), then Google
   function requestToken(interactive){
     return new Promise(function (res, rej) {
-      function go(){ ensureClient(function () { pendingRes = res; pendingRej = rej; try { tokenClient.requestAccessToken(interactive ? {} : { prompt: '' }); } catch (e) { pendingRes = pendingRej = null; rej(e); } }); }
+      function go(){ ensureClient(function () {
+        pendingRes = res; pendingRej = rej;
+        if (!interactive) setTimeout(function () { if (pendingRej === rej) { pendingRes = pendingRej = null; rej(new Error('silent_timeout')); } }, 4500);
+        try { tokenClient.requestAccessToken(interactive ? {} : { prompt: '' }); }
+        catch (e) { if (pendingRej === rej) { pendingRes = pendingRej = null; } rej(e); }
+      }); }
       if (interactive && needConsent()) showConsent(function(){ ackConsent(); go(); }, function(){ rej(new Error('cancelled')); });
       else go();
     });
@@ -100,20 +105,23 @@
       .then(function (res) { return res.files || []; });
   }
   // opts {app, namePart, requiredTabs}. Resolves {id, grid}. Rejects Error('JB_NEED_SHEET') with .files (0 or >1) when the app must show its gate/picker.
+  function isAuthErr(err){ var m = String((err && err.message) || ''); return m.indexOf('silent_timeout') > -1 || m.indexOf('auth_failed') > -1 || m.indexOf('401') > -1 || m.indexOf('cancelled') > -1; }
   function resolveSheet(opts){
     var app = opts.app, namePart = opts.namePart, need = opts.requiredTabs || [];
     function valid(grid){ return need.length ? need.some(function (t) { return grid[t] != null; }) : true; }
-    function check(id){ return sheetTabs(id).then(function (grid) { if (valid(grid)) return { id: id, grid: grid }; throw new Error('JB_INVALID'); }); }
+    // returns {id,grid} if this sheet matches; null to skip (wrong tabs / 403 / 404); rethrows auth errors so the app can re-login
+    function tryId(id){ return sheetTabs(id).then(function (grid) { return valid(grid) ? { id: id, grid: grid } : null; }, function (err) { if (isAuthErr(err)) throw err; return null; }); }
     function needErr(files){ var e = new Error('JB_NEED_SHEET'); e.files = files || []; return e; }
     function fromSearch(){
       return searchSheets(namePart).then(function (files) {
-        if (files.length === 1) return check(files[0].id).then(function (ctx) { setSheetId(app, ctx.id); return ctx; }, function () { throw needErr([]); });
-        throw needErr(files);
+        var i = 0;
+        function next(){ if (i >= files.length) throw needErr([]); return tryId(files[i].id).then(function (ctx) { if (ctx) { setSheetId(app, ctx.id); return ctx; } i++; return next(); }); }
+        return next();
       });
     }
     var cached = getSheetId(app);
     if (!cached) return fromSearch();
-    return check(cached).catch(function () { clearSheetId(app); return fromSearch(); });
+    return tryId(cached).then(function (ctx) { if (ctx) return ctx; clearSheetId(app); return fromSearch(); });
   }
 
   function signOut(){ var t = lg(TOK); try { if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function () {}); } catch (_) {} lr(TOK); lr(EXP); lr(EML); }

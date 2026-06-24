@@ -220,9 +220,9 @@ function afterAuth(){
 /* ---- sheet bootstrap ---- */
 function bootSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando seu treino…</div></div>');
-  JB.resolveSheet({ app:'fit', namePart:'Joelboard Fit', requiredTabs: FIT_TABS.map(function(t){return t[0];}) })
+  JB.resolveSheet({ app:'fit', namePart:'Joelboard', requiredTabs: FIT_TABS.map(function(t){return t[0];}) })
     .then(function(ctx){ fitGrid=ctx.grid; loadData(); })
-    .catch(function(e){ var m=String((e&&e.message)||''); if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro: '+esc(m)+'</div></div>'); });
+    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro: '+esc(m)+'</div></div>'); });
 }
 function gate(){
   loadingHtml('<div class="gate"><div class="gt">💪 Vamos treinar</div><div class="gs">Crie sua planilha de treino — ela fica no seu Google Drive.</div>'

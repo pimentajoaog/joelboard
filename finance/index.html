@@ -1894,10 +1894,11 @@ function jbAfterSignIn(){
 }
 function jbBootSheet(){
   jbLoadingHtml('<div style="text-align:center;padding:44px;color:var(--muted)">Procurando sua planilha…</div>');
-  JB.resolveSheet({ app:'finance', namePart:'Joelboard Finance', requiredTabs: JB_TABS }).then(function(ctx){
+  JB.resolveSheet({ app:'finance', namePart:'Joelboard', requiredTabs: JB_TABS }).then(function(ctx){
     jbGrid = ctx.grid; jbLoadAndBoot();
   }).catch(function(e){
     var m = String((e&&e.message)||'');
+    if (m.indexOf('silent_timeout')>-1 || m.indexOf('auth_failed')>-1 || m.indexOf('401')>-1 || m.indexOf('cancelled')>-1) { jbShowSignIn(); return; }
     if (m === 'JB_NEED_SHEET'){ var f=(e.files||[]); if (f.length>1) jbOfferPick(f); else jbShowLink(); return; }
     jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">Erro ao carregar: ' + m + '<br><br><button onclick="jbUnlink()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit">Trocar planilha</button></div>');
   });

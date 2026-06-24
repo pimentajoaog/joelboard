@@ -137,6 +137,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .hub-corner:active { transform: scale(0.93); }
 .header-left h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
 .header-left .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.header-left { display: flex; align-items: center; gap: 10px; }
+.app-mark { width: 34px; height: 34px; border-radius: 9px; flex: none; }
 .month-nav { display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .month-nav-row { display: flex; align-items: center; gap: 8px; }
 .today-slot { height: 20px; display: flex; align-items: center; justify-content: center; }
@@ -732,7 +734,7 @@ select.cs-native { position: absolute; width: 1px; height: 1px; padding: 0; marg
 
   <button class="hub-corner" id="hubBtn" onclick="goToHub()" title="Voltar ao hub" data-i18n-title="action.hub" aria-label="Voltar ao hub" style="display:none;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg></button>
   <div class="header">
-    <div class="header-left"><h1 data-i18n="app.title">Finance</h1><div class="sub" data-i18n="app.subtitle">Personal dashboard</div></div>
+    <div class="header-left"><img class="app-mark" src="/icon-192.png" alt="Joelboard"><div class="header-titles"><h1 data-i18n="app.title">Finance</h1><div class="sub" data-i18n="app.subtitle">Personal dashboard</div></div></div>
     <div class="month-nav">
       <div class="month-nav-row">
         <button class="nav-btn" onclick="navigate(-1)">‹</button>

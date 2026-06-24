@@ -214,14 +214,15 @@ function doSignIn(){ JB.requestToken(true).then(function(){ authDone=true; after
 function fitSignOut(){ JB.signOut(); location.reload(); }
 function afterAuth(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>');
-  JB.fetchEmail().then(function(){ if (JB.getSheetId('fit')) loadAll(); else detect(); });
+  JB.fetchEmail().then(bootSheet);
 }
 
 /* ---- sheet bootstrap ---- */
-function detect(){
+function bootSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando seu treino…</div></div>');
-  JB.api('GET','https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and name contains 'Joelboard Fit'")+'&fields=files(id,name)&orderBy=createdTime')
-    .then(function(res){ var f=(res.files||[]); if(f.length>=1) offerLink(f[0]); else gate(); }).catch(gate);
+  JB.resolveSheet({ app:'fit', namePart:'Joelboard Fit', requiredTabs: FIT_TABS.map(function(t){return t[0];}) })
+    .then(function(ctx){ fitGrid=ctx.grid; loadData(); })
+    .catch(function(e){ var m=String((e&&e.message)||''); if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro: '+esc(m)+'</div></div>'); });
 }
 function gate(){
   loadingHtml('<div class="gate"><div class="gt">💪 Vamos treinar</div><div class="gs">Crie sua planilha de treino — ela fica no seu Google Drive.</div>'
@@ -231,8 +232,8 @@ function gate(){
     + '<div id="fitErr" style="color:var(--accent);font-size:12px;margin-top:10px"></div></div>');
 }
 function offerLink(f){ loadingHtml('<div class="gate"><div class="gt">Encontramos seu treino 🎉</div><div class="gs">'+esc(f.name)+'</div><button class="save" onclick="pick(\''+f.id+'\')">Vincular e abrir</button><button class="del" onclick="gate()">usar outro / criar novo</button></div>'); }
-function pick(id){ JB.setSheetId('fit',id); loadAll(); }
-function linkSheet(){ var u=($('fitUrl').value||'').trim(); var m=u.match(/[a-zA-Z0-9_-]{30,}/); if(!m){ $('fitErr').textContent='Link inválido.'; return; } JB.setSheetId('fit',m[0]); loadAll(); }
+function pick(id){ JB.setSheetId('fit',id); bootSheet(); }
+function linkSheet(){ var u=($('fitUrl').value||'').trim(); var m=u.match(/[a-zA-Z0-9_-]{30,}/); if(!m){ $('fitErr').textContent='Link inválido.'; return; } JB.setSheetId('fit',m[0]); bootSheet(); }
 function createSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Criando seu treino…</div></div>');
   var title='💪 Joelboard Fit — '+(JB.email()?JB.email().split('@')[0]:'Pessoal');
@@ -242,22 +243,19 @@ function createSheet(){
       data.push({range:'Exercicios!A2',values:STARTER.map(function(e){return [e[0],e[1],uuid()];})});
       data.push({range:'Config!A2',values:[['unit','kg'],['tags',JSON.stringify(DEFAULT_TAGS)]]});
       return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+ss.spreadsheetId+'/values:batchUpdate',{valueInputOption:'RAW',data:data});
-    }).then(loadAll).catch(function(e){ loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro ao criar: '+esc(e.message)+'</div></div>'); });
+    }).then(bootSheet).catch(function(e){ loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro ao criar: '+esc(e.message)+'</div></div>'); });
 }
 
 /* ---- load ---- */
 function ssUrl(p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+JB.getSheetId('fit')+p; }
-function loadAll(){
+function loadData(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>');
-  JB.api('GET', ssUrl('?fields=sheets.properties(sheetId,title)')).then(function(meta){
-    fitGrid={}; var titles=[]; (meta.sheets||[]).forEach(function(x){ titles.push(x.properties.title); fitGrid[x.properties.title]=x.properties.sheetId; });
-    var want=FIT_TABS.map(function(t){return t[0];}).filter(function(t){return titles.indexOf(t)>-1;});
-    var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
-    return JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER')).then(function(res){
-      var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
-      DATA=buildFit(by); render();
-    });
-  }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('fit'); detect(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro: '+esc(e.message)+'</div></div>'); });
+  var want=FIT_TABS.map(function(t){return t[0];}).filter(function(t){return fitGrid[t]!=null;});
+  var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
+  JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER')).then(function(res){
+    var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
+    DATA=buildFit(by); render();
+  }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('fit'); bootSheet(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro: '+esc(e.message)+'</div></div>'); });
 }
 function body(rows){ return (rows||[]).slice(1); }
 function buildFit(t){

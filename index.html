@@ -72,7 +72,7 @@ a.tile:hover{ transform:translateY(-3px); border-color:var(--primary); }
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script>
 var CLIENT_ID='49262188240-l70ka2666t315gb2gmsvu357f2h7769i.apps.googleusercontent.com';
-var SCOPES='openid email profile https://www.googleapis.com/auth/spreadsheets';
+var SCOPES='openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 var tc=null;
 function cachedTok(){ try{ var t=localStorage.getItem('jb_tok'), e=Number(localStorage.getItem('jb_tok_exp')||0); if(t && Date.now()<e) return t; }catch(_){} return ''; }
 function setGreet(){ var em=localStorage.getItem('jb_email')||''; var on=!!cachedTok()&&!!em; document.getElementById('greet').textContent = on ? ('Olá, '+em.split('@')[0]+' 👋') : 'Olá 👋'; var b=document.getElementById('authbtn'); b.textContent = on ? 'Sair' : 'Entrar'; b.onclick = on ? hubSignOut : hubSignIn; }

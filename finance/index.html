@@ -1806,7 +1806,7 @@ let editing = { type: null, id: null }, editingHoursDate = null, allocGoalId = n
 <!-- JB-DATA-LAYER -->
 /* ===================== Joelboard web data layer (Sheets API) ===================== */
 var JB_CLIENT_ID = '49262188240-l70ka2666t315gb2gmsvu357f2h7769i.apps.googleusercontent.com';
-var JB_SCOPES = 'openid email profile https://www.googleapis.com/auth/spreadsheets';
+var JB_SCOPES = 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 var JB_LS_SHEET = 'joelboard_sheet_id';
 var JB_TABS = ['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings'];
 var jbToken = '', jbTokenClient = null, jbEmail = '', jbGrid = {}, jbAuthDone = false;
@@ -1889,10 +1889,24 @@ function jbShowSignIn(){ jbLoadingHtml('<div style="text-align:center;padding:48
 function jbSignIn(){ if (jbTokenClient) jbTokenClient.requestAccessToken(); }
 function jbAfterSignIn(){
   jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando…</div>');
-  function go(){ if (localStorage.getItem(JB_LS_SHEET)) jbLoadAndBoot(); else jbShowLink(); }
+  function go(){ if (localStorage.getItem(JB_LS_SHEET)) jbLoadAndBoot(); else jbDetect(); }
   if (jbEmail){ go(); return; }
   fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + jbToken } })
     .then(function(r){ return r.json(); }).then(function(u){ jbEmail = u.email || ''; try { localStorage.setItem('jb_email', jbEmail); } catch(e){} }).catch(function(){}).then(go);
+}
+function jbDetect(){
+  jbLoadingHtml('<div style="text-align:center;padding:44px;color:var(--muted)">Procurando sua planilha…</div>');
+  jbApi('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and name contains 'Joelboard'") + '&fields=files(id,name)&orderBy=createdTime')
+    .then(function(res){ var f=(res.files||[]); if(f.length===1) jbOfferLink(f[0]); else if(f.length>1) jbOfferPick(f); else jbShowLink(); })
+    .catch(function(){ jbShowLink(); });
+}
+function jbPick(id){ localStorage.setItem(JB_LS_SHEET, id); jbLoadAndBoot(); }
+function jbOfferLink(f){
+  jbLoadingHtml('<div style="max-width:430px;margin:0 auto;padding:44px 20px;text-align:center"><div style="font-size:19px;font-weight:800;margin-bottom:6px">Encontramos sua planilha 🎉</div><div style="color:var(--muted);font-size:13px;margin-bottom:20px">' + esc(f.name) + '</div><button onclick="jbPick(\'' + f.id + '\')" style="background:var(--primary);color:#fff;border:none;border-radius:11px;padding:12px 18px;font-weight:700;cursor:pointer;width:100%;font-family:inherit;font-size:15px">Vincular e abrir</button><br><button onclick="jbShowLink()" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;margin-top:14px">usar outra / criar nova</button></div>');
+}
+function jbOfferPick(files){
+  var items = files.map(function(f){ return '<button onclick="jbPick(\'' + f.id + '\')" style="display:block;width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;font-family:inherit;font-size:14px">📊 ' + esc(f.name) + '</button>'; }).join('');
+  jbLoadingHtml('<div style="max-width:430px;margin:0 auto;padding:44px 20px"><div style="font-size:18px;font-weight:800;margin-bottom:14px;text-align:center">Qual planilha?</div>' + items + '<button onclick="jbShowLink()" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;display:block;margin:8px auto 0">criar nova / colar link</button></div>');
 }
 function jbShowLink(){
   jbLoadingHtml('<div style="max-width:430px;margin:0 auto;padding:42px 20px;text-align:center">'

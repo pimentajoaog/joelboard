@@ -508,12 +508,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .fselect.mini:hover { border-color: var(--primary); background-color: color-mix(in srgb, var(--primary) 8%, var(--surface2)); }
 .fselect.mini:focus { border-color: var(--primary); }
 
-.fab-wrap { position: fixed; bottom: 28px; right: 28px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.fab-wrap { position: fixed; bottom: 28px; right: 28px; z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none; }
 .fab-menu { display: flex; flex-direction: column; gap: 8px; opacity: 0; pointer-events: none; transform: translateY(10px); transition: all 0.2s; }
 .fab-menu.open { opacity: 1; pointer-events: all; transform: translateY(0); }
 .fab-option { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.3); transition: border-color 0.15s; }
 .fab-option:hover { border-color: var(--primary); }
-.fab { width: 54px; height: 54px; align-self: flex-end; background: var(--primary); border: none; border-radius: 50%; cursor: pointer; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 24px rgba(129,140,248,0.45); transition: transform 0.2s; }
+.fab { width: 54px; height: 54px; align-self: flex-end; background: var(--primary); border: none; border-radius: 50%; cursor: pointer; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 24px rgba(129,140,248,0.45); transition: transform 0.2s; pointer-events: auto; }
 .fab:hover { transform: scale(1.08); }
 .fab.open { transform: rotate(45deg); }
 

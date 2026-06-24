@@ -64,6 +64,17 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
 .gate{ max-width:420px; margin:40px auto; text-align:center; }
 .gate .gt{ font-size:22px; font-weight:800; letter-spacing:-.5px; }
 .gate .gs{ color:var(--muted); font-size:13px; margin:6px 0 24px; }
+.exc{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:10px; }
+.exh{ display:flex; justify-content:space-between; align-items:center; }
+.rmx{ background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit; }
+.ll{ font-size:12px;color:var(--muted);margin:2px 0 10px; }
+.setrow{ display:flex;align-items:center;gap:8px;margin-bottom:7px; }
+.setn{ width:18px;color:var(--muted);font-size:12px;font-weight:700;text-align:center; }
+.si{ width:74px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:14px;font-family:inherit;text-align:center; }
+.xs{ color:var(--muted); }
+.un{ font-size:12px;color:var(--muted);width:20px; }
+.rm{ background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;margin-left:auto; }
+.addset{ background:none;border:1px dashed var(--border);color:var(--accent);border-radius:8px;padding:7px;width:100%;cursor:pointer;font-family:inherit;font-weight:700;font-size:12px;margin-top:4px; }
 </style>
 </head>
 <body>
@@ -81,7 +92,7 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
     <button class="tabb" data-tab="progresso" onclick="tab('progresso')">Progresso</button>
   </div>
 
-  <div class="page on" id="p-hoje"><div class="soon"><div class="big">🏋️ Registrar treino</div>Em breve — registrar séries do dia.</div></div>
+  <div class="page on" id="p-hoje"><div id="hoje"></div></div>
   <div class="page" id="p-treinos"><div class="secbar"><div class="sect">Seus treinos</div><button class="btn" onclick="openTreino()">+ Adicionar</button></div><div id="treinoList"></div></div>
   <div class="page" id="p-exercicios">
     <div class="secbar"><div class="sect">Biblioteca de exercícios</div><button class="btn" onclick="openExercise()">+ Adicionar</button></div>
@@ -115,6 +126,9 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
     <button class="save" id="trSave" onclick="saveTreino()">Salvar</button>
     <button class="del" id="trDel" onclick="deleteTreino()" style="display:none;">Excluir treino</button>
   </div>
+</div>
+<div class="overlay" id="sessPickOverlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal"><div class="mh"><div class="mt">Adicionar exercício</div><button class="x" onclick="document.getElementById('sessPickOverlay').classList.remove('open')">✕</button></div><div id="sessPickList" style="max-height:340px;overflow-y:auto"></div></div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -194,16 +208,19 @@ function buildFit(t){
   return {
     exercicios: body(t.Exercicios).filter(function(r){return r[0];}).map(function(r){ return { id:r[2], name:r[0], group:r[1]||'' }; }),
     treinos: body(t.Treinos).filter(function(r){return r[0];}).map(function(r){ var it=[]; try{it=JSON.parse(r[1]||'[]');}catch(e){} return { id:r[2], name:r[0], items:it }; }),
-    sessoes: body(t.Sessoes), series: body(t.Series), config: config
+    sessoes: body(t.Sessoes).filter(function(r){return r[0];}).map(function(r){ return { id:r[3], date:String(r[0]), treino:r[1]||'', notas:r[2]||'' }; }),
+    series: body(t.Series).filter(function(r){return r[0]&&r[1];}).map(function(r){ return { id:r[5], sessaoId:String(r[0]), exId:String(r[1]), serie:Number(r[2])||0, reps:Number(r[3])||0, peso:Number(r[4])||0 }; }),
+    config: config
   };
 }
 
 /* ---- render ---- */
-function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); }
+function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); }
 function tab(name){
   ['hoje','treinos','exercicios','progresso'].forEach(function(n){ $('p-'+n).classList.toggle('on', n===name); });
   document.querySelectorAll('.tabb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===name); });
   $('fab').style.display = (name==='exercicios'||name==='treinos') ? 'flex' : 'none';
+  if(name==='hoje') renderHoje(); else if(name==='treinos') renderTreinos(); else if(name==='exercicios') renderExercicios();
 }
 function renderExercicios(){
   var el=$('exList'); var ex=(DATA.exercicios||[]);
@@ -286,6 +303,47 @@ function deleteTreino(){
   if(!editingTreino) return; var id=editingTreino;
   DATA.treinos=(DATA.treinos||[]).filter(function(x){return x.id!==id;}); renderTreinos(); closeTr(); toast('✓ Excluído');
   fitFindRow('Treinos',2,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:fitGrid['Treinos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){ toast('Erro ao excluir'); });
+}
+var sess=null;
+function unit(){ return (DATA.config&&DATA.config.unit)||'kg'; }
+function toggleUnit(){ DATA.config=DATA.config||{}; DATA.config.unit= unit()==='kg'?'lb':'kg'; renderHoje(); saveConfig('unit',DATA.config.unit); }
+function saveConfig(k,v){ JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var vals=res.values||[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]}); } return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]}); }).catch(function(){}); }
+function fmtLast(l){ return l.sets.map(function(s){return s.reps+'×'+s.peso;}).join(' · '); }
+function lastFor(exId){ var ss=(DATA.series||[]).filter(function(x){return x.exId===exId;}); if(!ss.length) return null; var dateOf={}; (DATA.sessoes||[]).forEach(function(s){dateOf[s.id]=s.date;}); var best=null,bd='-'; ss.forEach(function(x){ var d=dateOf[x.sessaoId]||''; if(d>=bd){bd=d;best=x.sessaoId;} }); var sets=ss.filter(function(x){return x.sessaoId===best;}).sort(function(a,b){return a.serie-b.serie;}); return {date:bd,sets:sets}; }
+function recentHtml(){ var s=(DATA.sessoes||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,5); if(!s.length) return ''; return '<div class="sect" style="margin:26px 0 10px">Últimos treinos</div>'+s.map(function(x){ var c=(DATA.series||[]).filter(function(y){return y.sessaoId===x.id;}).length; return '<div class="row" style="cursor:default"><div><div class="rn">'+esc(x.treino||'Avulso')+'</div><div class="rg">'+esc(x.date)+' · '+c+' séries</div></div></div>'; }).join(''); }
+function renderHoje(){
+  var el=$('hoje'); if(!el) return;
+  if(!sess){
+    var routs=(DATA.treinos||[]).map(function(r){ return '<div class="row" onclick="startSession(\''+r.id+'\')"><div><div class="rn">'+esc(r.name)+'</div><div class="rg">'+((r.items||[]).length)+' exercícios</div></div><span style="color:var(--accent)">▶</span></div>'; }).join('');
+    el.innerHTML='<div class="secbar"><div class="sect">Começar treino</div><button class="lnk" onclick="toggleUnit()" title="unidade">'+unit()+'</button></div>'+routs+'<div class="row" style="border-style:dashed" onclick="startSession()"><div class="rn">Treino avulso</div><span style="color:var(--accent)">▶</span></div>'+recentHtml();
+    return;
+  }
+  var cards=sess.exercises.map(function(ex,ei){
+    var last=lastFor(ex.exId); var lt=last?('última ('+last.date+'): '+fmtLast(last)):'primeira vez';
+    var sets=ex.sets.map(function(st,si){ return '<div class="setrow"><span class="setn">'+(si+1)+'</span><input class="si" type="number" inputmode="numeric" placeholder="reps" value="'+(st.reps===''||st.reps==null?'':st.reps)+'" oninput="setVal('+ei+','+si+',\'reps\',this.value)"><span class="xs">×</span><input class="si" type="number" inputmode="decimal" placeholder="peso" value="'+(st.peso===''||st.peso==null?'':st.peso)+'" oninput="setVal('+ei+','+si+',\'peso\',this.value)"><span class="un">'+unit()+'</span><button class="rm" onclick="rmSet('+ei+','+si+')">✕</button></div>'; }).join('');
+    return '<div class="exc"><div class="exh"><div class="rn">'+esc(exName(ex.exId))+'</div><button class="rmx" onclick="rmSessEx('+ei+')">remover</button></div><div class="ll">'+lt+'</div>'+sets+'<button class="addset" onclick="addSet('+ei+')">+ série</button></div>';
+  }).join('');
+  el.innerHTML='<div class="secbar"><div><div class="rn">'+esc(sess.treinoName)+'</div><div class="rg">'+sess.date+'</div></div><button class="lnk" onclick="cancelSession()">Cancelar</button></div>'+(cards||'<div class="empty">Adicione um exercício.</div>')+'<button class="btn ghost" style="width:100%;margin:8px 0 12px" onclick="openSessPick()">+ Exercício</button><button class="save" onclick="saveSession()">Salvar treino</button>';
+}
+function startSession(tid){ var date=new Date().toISOString().slice(0,10); var name='Avulso', ex=[]; if(tid){ var r=(DATA.treinos||[]).find(function(x){return x.id===tid;}); if(r){ name=r.name; ex=(r.items||[]).slice(); } } sess={ treinoName:name, date:date, exercises: ex.map(function(eid){ return { exId:eid, sets:[{reps:'',peso:''}] }; }) }; renderHoje(); window.scrollTo(0,0); }
+function cancelSession(){ if(confirm('Descartar este treino?')){ sess=null; renderHoje(); } }
+function setVal(ei,si,f,v){ sess.exercises[ei].sets[si][f]=v; }
+function addSet(ei){ var st=sess.exercises[ei].sets; var prev=st[st.length-1]||{}; st.push({reps:'',peso:(prev.peso||'')}); renderHoje(); }
+function rmSet(ei,si){ sess.exercises[ei].sets.splice(si,1); if(!sess.exercises[ei].sets.length) sess.exercises[ei].sets.push({reps:'',peso:''}); renderHoje(); }
+function rmSessEx(ei){ sess.exercises.splice(ei,1); renderHoje(); }
+function openSessPick(){ $('sessPickList').innerHTML=(DATA.exercicios||[]).slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(x){ return '<div onclick="addSessEx(\''+x.id+'\')" style="padding:11px 12px;border-radius:8px;cursor:pointer;font-size:14px">'+esc(x.name)+'</div>'; }).join('')||'<div class="empty">Sem exercícios.</div>'; $('sessPickOverlay').classList.add('open'); }
+function addSessEx(id){ sess.exercises.push({exId:id,sets:[{reps:'',peso:''}]}); $('sessPickOverlay').classList.remove('open'); renderHoje(); }
+function saveSession(){
+  var sid=uuid(); var rows=[];
+  sess.exercises.forEach(function(ex){ var n=0; ex.sets.forEach(function(st){ var reps=Number(st.reps)||0, peso=Number(st.peso)||0; if(reps>0||peso>0){ n++; rows.push([sid, ex.exId, n, reps, peso, uuid()]); } }); });
+  if(!rows.length){ toast('Preencha pelo menos uma série'); return; }
+  var date=sess.date, tname=sess.treinoName;
+  DATA.sessoes.push({ id:sid, date:date, treino:tname, notas:'' });
+  rows.forEach(function(r){ DATA.series.push({ id:r[5], sessaoId:sid, exId:r[1], serie:r[2], reps:r[3], peso:r[4] }); });
+  sess=null; renderHoje(); toast('✓ Treino salvo!');
+  JB.api('POST', ssUrl('/values/Sessoes:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[[date,tname,'',sid]] })
+    .then(function(){ return JB.api('POST', ssUrl('/values/Series:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:rows }); })
+    .catch(function(){ toast('Erro ao salvar — recarregue'); });
 }
 startAuth();
 </script>

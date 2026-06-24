@@ -999,7 +999,7 @@ select.cs-native { position: absolute; width: 1px; height: 1px; padding: 0; marg
 <div class="overlay" id="setOverlay" onclick="bgClose(event,'setOverlay')">
   <div class="modal">
     <div class="modal-head"><div class="modal-title" data-i18n="set.title">⚙️ Settings</div><button class="close-btn" onclick="closeOverlay('setOverlay')">✕</button></div>
-    <div class="acct-bar"><span class="acct-email" id="acctEmail">—</span></div>
+    <div class="acct-bar"><span class="acct-email" id="acctEmail">—</span><button class="acct-switch" onclick="jbLogout()" data-i18n="acct.logout">Sign out</button></div>
     <div class="acct-hint" data-i18n="acct.hint">If the wrong account opens, use an incognito window.</div>
     <div class="set-tabs">
       <button class="set-tab active" id="setTabGeneral" onclick="switchSetTab('income')" data-i18n="set.tabIncome">Income</button>
@@ -1434,7 +1434,7 @@ const I18N = {
     'fb.bug':'🐛 Bug', 'fb.feature':'💡 Feature', 'fb.message':'Message',
     'fb.ph':'Describe it — what happened, or what you\u2019d like…',
     'fb.send':'Send', 'fb.sent':'✓ Thanks! Sent.', 'fb.empty':'Write a short message first.',
-    'fb.reportBug':'🐛 Report a bug', 'fb.requestFeature':'💡 Feature request', 'fb.open':'💬 Send feedback', 'fb.name':'Name', 'fb.namePh':'Your name', 'footer.rights':'All rights reserved.', 'acct.switch':'Switch', 'acct.hint':'To use a different Google account, open the app in an incognito window or a separate browser profile signed into that account.',
+    'fb.reportBug':'🐛 Report a bug', 'fb.requestFeature':'💡 Feature request', 'fb.open':'💬 Send feedback', 'fb.name':'Name', 'fb.namePh':'Your name', 'footer.rights':'All rights reserved.', 'acct.switch':'Switch', 'acct.logout':'Sign out', 'acct.hint':'Tap Sign out to switch Google accounts.',
     'runway.label': v => '≈ ' + v.n + ' months of buffer', 'goal.eta': v => '🎯 reaches ~' + v.date,
     'sec.trend':'📈 Spending — last 6 months',
     'recap.open':'📋 Month summary', 'recap.saved':'Saved', 'recap.top':'Top categories', 'recap.none':'No spending this month.',
@@ -1703,7 +1703,7 @@ const I18N = {
     'fb.bug':'🐛 Bug', 'fb.feature':'💡 Recurso', 'fb.message':'Mensagem',
     'fb.ph':'Descreva — o que aconteceu, ou o que você gostaria…',
     'fb.send':'Enviar', 'fb.sent':'✓ Obrigado! Enviado.', 'fb.empty':'Escreva uma mensagem curta primeiro.',
-    'fb.reportBug':'🐛 Reportar um bug', 'fb.requestFeature':'💡 Sugerir um recurso', 'fb.open':'💬 Enviar feedback', 'fb.name':'Nome', 'fb.namePh':'Seu nome', 'footer.rights':'Todos os direitos reservados.', 'acct.switch':'Trocar', 'acct.hint':'Para usar outra conta do Google, abra o app numa janela anônima ou num perfil de navegador conectado a essa conta.',
+    'fb.reportBug':'🐛 Reportar um bug', 'fb.requestFeature':'💡 Sugerir um recurso', 'fb.open':'💬 Enviar feedback', 'fb.name':'Nome', 'fb.namePh':'Seu nome', 'footer.rights':'Todos os direitos reservados.', 'acct.switch':'Trocar', 'acct.logout':'Sair', 'acct.hint':'Toque em Sair para trocar de conta do Google.',
     'runway.label': v => '≈ ' + v.n + ' meses de reserva', 'goal.eta': v => '🎯 atinge ~' + v.date,
     'sec.trend':'📈 Gastos — últimos 6 meses',
     'recap.open':'📋 Resumo do mês', 'recap.saved':'Poupado', 'recap.top':'Maiores categorias', 'recap.none':'Sem gastos neste mês.',
@@ -1861,12 +1861,17 @@ function jbMakeRunner(){
 }
 
 function jbInstallShim(){ if (!window.google) window.google = {}; google.script = { get run(){ return jbMakeRunner(); }, host:{ close:function(){}, setHeight:function(){}, editor:{} } }; }
+function jbSaveToken(tok, expiresIn){ try { localStorage.setItem('jb_tok', tok); localStorage.setItem('jb_tok_exp', String(Date.now() + (Number(expiresIn)||3600)*1000 - 120000)); if (jbEmail) localStorage.setItem('jb_email', jbEmail); } catch(e){} }
+function jbCachedToken(){ try { var t=localStorage.getItem('jb_tok'), e=Number(localStorage.getItem('jb_tok_exp')||0); if (t && Date.now() < e) return t; } catch(_){} return ''; }
+function jbLogout(){ try { var t=localStorage.getItem('jb_tok'); if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function(){}); } catch(e){} try { localStorage.removeItem('jb_tok'); localStorage.removeItem('jb_tok_exp'); localStorage.removeItem('jb_email'); } catch(e){} location.reload(); }
 function jbStartAuth(){
   if (!(window.google && window.google.accounts && google.accounts.oauth2)) { setTimeout(jbStartAuth, 120); return; }
   jbTokenClient = google.accounts.oauth2.initTokenClient({ client_id: JB_CLIENT_ID, scope: JB_SCOPES, callback: function(resp){
-    if (resp && resp.access_token){ jbInstallShim(); jbToken = resp.access_token; jbAfterSignIn(); }
+    if (resp && resp.access_token){ jbToken = resp.access_token; jbSaveToken(jbToken, resp.expires_in); jbInstallShim(); jbAfterSignIn(); }
     else { jbShowSignIn(); }
   }});
+  var cached = jbCachedToken();
+  if (cached){ jbToken = cached; jbEmail = (localStorage.getItem('jb_email') || ''); jbInstallShim(); jbAfterSignIn(); return; }
   jbLoadingHtml('<div style="text-align:center;padding:44px;color:var(--muted)">Entrando…</div>');
   try { jbTokenClient.requestAccessToken({ prompt: '' }); } catch(e){ jbShowSignIn(); }
 }
@@ -1874,9 +1879,10 @@ function jbShowSignIn(){ jbLoadingHtml('<div style="text-align:center;padding:48
 function jbSignIn(){ if (jbTokenClient) jbTokenClient.requestAccessToken(); }
 function jbAfterSignIn(){
   jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando…</div>');
+  function go(){ if (localStorage.getItem(JB_LS_SHEET)) jbLoadAndBoot(); else jbShowLink(); }
+  if (jbEmail){ go(); return; }
   fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + jbToken } })
-    .then(function(r){ return r.json(); }).then(function(u){ jbEmail = u.email || ''; }).catch(function(){})
-    .then(function(){ if (localStorage.getItem(JB_LS_SHEET)) jbLoadAndBoot(); else jbShowLink(); });
+    .then(function(r){ return r.json(); }).then(function(u){ jbEmail = u.email || ''; try { localStorage.setItem('jb_email', jbEmail); } catch(e){} }).catch(function(){}).then(go);
 }
 function jbShowLink(){
   jbLoadingHtml('<div style="max-width:430px;margin:0 auto;padding:42px 20px;text-align:center">'

@@ -82,7 +82,7 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
   </div>
 
   <div class="page on" id="p-hoje"><div class="soon"><div class="big">🏋️ Registrar treino</div>Em breve — registrar séries do dia.</div></div>
-  <div class="page" id="p-treinos"><div class="soon"><div class="big">📋 Seus treinos</div>Em breve — montar splits (Push, Pull, Pernas…).</div></div>
+  <div class="page" id="p-treinos"><div class="secbar"><div class="sect">Seus treinos</div><button class="btn" onclick="openTreino()">+ Adicionar</button></div><div id="treinoList"></div></div>
   <div class="page" id="p-exercicios">
     <div class="secbar"><div class="sect">Biblioteca de exercícios</div><button class="btn" onclick="openExercise()">+ Adicionar</button></div>
     <div id="exList"></div>
@@ -95,7 +95,7 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
 <button class="door" onclick="location.href='/'" title="Voltar ao Joelboard" aria-label="Voltar ao Joelboard">
   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg>
 </button>
-<button class="fab" id="fab" onclick="openExercise()" style="display:none;">+</button>
+<button class="fab" id="fab" onclick="fabAdd()" style="display:none;">+</button>
 
 <div class="overlay" id="exOverlay" onclick="if(event.target===this)closeEx()">
   <div class="modal">
@@ -107,6 +107,15 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
   </div>
 </div>
 
+<div class="overlay" id="trOverlay" onclick="if(event.target===this)closeTr()">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="trTitle">Novo treino</div><button class="x" onclick="closeTr()">✕</button></div>
+    <div class="fg"><label class="fl">Nome do treino</label><input class="fi" id="trName" placeholder="ex.: Push, Pernas…"></div>
+    <div class="fg"><label class="fl">Exercícios (toque para incluir, na ordem)</label><div id="trPick" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;padding:6px;background:var(--surface2)"></div></div>
+    <button class="save" id="trSave" onclick="saveTreino()">Salvar</button>
+    <button class="del" id="trDel" onclick="deleteTreino()" style="display:none;">Excluir treino</button>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="https://accounts.google.com/gsi/client" async></script>
@@ -190,11 +199,11 @@ function buildFit(t){
 }
 
 /* ---- render ---- */
-function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('fab').style.display='flex'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); }
+function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); }
 function tab(name){
   ['hoje','treinos','exercicios','progresso'].forEach(function(n){ $('p-'+n).classList.toggle('on', n===name); });
   document.querySelectorAll('.tabb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===name); });
-  $('fab').style.display = (name==='exercicios') ? 'flex' : 'none';
+  $('fab').style.display = (name==='exercicios'||name==='treinos') ? 'flex' : 'none';
 }
 function renderExercicios(){
   var el=$('exList'); var ex=(DATA.exercicios||[]);
@@ -235,6 +244,49 @@ function deleteExercise(){
 }
 function reload(){ JB.api('GET', ssUrl('/values:batchGet?ranges=Exercicios&ranges=Config&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var by={}; (res.valueRanges||[]).forEach(function(vr){ by[(vr.range||'').split('!')[0].replace(/'/g,'')]=vr.values||[]; }); if(by.Exercicios){ DATA.exercicios=body(by.Exercicios).filter(function(r){return r[0];}).map(function(r){return {id:r[2],name:r[0],group:r[1]||''};}); renderExercicios(); } }).catch(function(){}); }
 
+var editingTreino=null, trSel=[];
+function exName(id){ var x=(DATA.exercicios||[]).find(function(e){return e.id===id;}); return x?x.name:'—'; }
+function fabAdd(){ var on=document.querySelector('.page.on'); var t=on?on.id.replace('p-',''):''; if(t==='treinos') openTreino(); else openExercise(); }
+function renderTreinos(){
+  var el=$('treinoList'); if(!el) return; var tr=(DATA.treinos||[]);
+  if(!tr.length){ el.innerHTML='<div class="empty">Nenhum treino ainda. Toque em “+ Adicionar” para montar um split.</div>'; return; }
+  el.innerHTML=tr.map(function(r){ var names=(r.items||[]).map(exName); var prev=names.slice(0,3).join(' · ')+(names.length>3?(' +'+(names.length-3)):''); return '<div class="row" onclick="openTreino(\''+r.id+'\')"><div><div class="rn">'+esc(r.name)+'</div><div class="rg">'+(names.length?esc(prev):'sem exercícios')+'</div></div><span style="color:var(--muted)">›</span></div>'; }).join('');
+}
+function openTreino(id){
+  if(!(DATA.exercicios||[]).length){ toast('Adicione exercícios primeiro'); tab('exercicios'); return; }
+  editingTreino=id||null;
+  var r= id?(DATA.treinos||[]).find(function(x){return x.id===id;}):null;
+  $('trTitle').textContent= r?'Editar treino':'Novo treino';
+  $('trName').value= r?r.name:'';
+  trSel= r?(r.items||[]).slice():[];
+  $('trDel').style.display= r?'block':'none';
+  renderTrPick(); $('trOverlay').classList.add('open');
+}
+function renderTrPick(){
+  $('trPick').innerHTML=(DATA.exercicios||[]).slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(x){
+    var i=trSel.indexOf(x.id), on=i>-1;
+    return '<div onclick="toggleTrEx(\''+x.id+'\')" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border-radius:8px;cursor:pointer;'+(on?'background:var(--accent2)':'')+'"><span style="font-size:14px;'+(on?'font-weight:700':'')+'">'+esc(x.name)+'</span><span style="font-size:12px;color:var(--accent);font-weight:800">'+(on?('✓ '+(i+1)):'')+'</span></div>';
+  }).join('');
+}
+function toggleTrEx(id){ var i=trSel.indexOf(id); if(i>-1) trSel.splice(i,1); else trSel.push(id); renderTrPick(); }
+function closeTr(){ $('trOverlay').classList.remove('open'); }
+function saveTreino(){
+  var name=($('trName').value||'').trim(); if(!name){ $('trName').focus(); return; }
+  var items=trSel.slice();
+  if(editingTreino){
+    var r=(DATA.treinos||[]).find(function(x){return x.id===editingTreino;}); if(r){r.name=name;r.items=items;}
+    var id=editingTreino; renderTreinos(); closeTr(); toast('✓ Salvo');
+    fitFindRow('Treinos',2,id).then(function(row){ if(row<0) throw new Error('nf'); return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Treinos!A'+row+':C'+row)+'?valueInputOption=RAW'), { values:[[name,JSON.stringify(items),id]] }); }).catch(function(){ toast('Erro ao salvar'); });
+  } else {
+    var nid=uuid(); DATA.treinos.push({id:nid,name:name,items:items}); renderTreinos(); closeTr(); toast('✓ Treino criado');
+    JB.api('POST', ssUrl('/values/'+encodeURIComponent('Treinos')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[[name,JSON.stringify(items),nid]] }).catch(function(){ toast('Erro ao criar'); });
+  }
+}
+function deleteTreino(){
+  if(!editingTreino) return; var id=editingTreino;
+  DATA.treinos=(DATA.treinos||[]).filter(function(x){return x.id!==id;}); renderTreinos(); closeTr(); toast('✓ Excluído');
+  fitFindRow('Treinos',2,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:fitGrid['Treinos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){ toast('Erro ao excluir'); });
+}
 startAuth();
 </script>
 </body>

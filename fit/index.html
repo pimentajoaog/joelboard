@@ -75,6 +75,10 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
 .un{ font-size:12px;color:var(--muted);width:20px; }
 .rm{ background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;margin-left:auto; }
 .addset{ background:none;border:1px dashed var(--border);color:var(--accent);border-radius:8px;padding:7px;width:100%;cursor:pointer;font-family:inherit;font-weight:700;font-size:12px;margin-top:4px; }
+.prg{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+.prc{ background:var(--surface2); border-radius:12px; padding:12px 10px; text-align:center; }
+.prl{ font-size:11px; color:var(--muted); }
+.prv{ font-size:18px; font-weight:800; color:var(--accent); margin-top:2px; }
 </style>
 </head>
 <body>
@@ -98,7 +102,7 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
     <div class="secbar"><div class="sect">Biblioteca de exercícios</div><button class="btn" onclick="openExercise()">+ Adicionar</button></div>
     <div id="exList"></div>
   </div>
-  <div class="page" id="p-progresso"><div class="soon"><div class="big">📈 Progresso</div>Em breve — evolução de carga por exercício.</div></div>
+  <div class="page" id="p-progresso"><div id="prog"></div></div>
 
   <div class="foot">© 2026 Joel Soluções LTDA</div>
 </div>
@@ -215,12 +219,12 @@ function buildFit(t){
 }
 
 /* ---- render ---- */
-function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); }
+function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); }
 function tab(name){
   ['hoje','treinos','exercicios','progresso'].forEach(function(n){ $('p-'+n).classList.toggle('on', n===name); });
   document.querySelectorAll('.tabb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===name); });
   $('fab').style.display = (name==='exercicios'||name==='treinos') ? 'flex' : 'none';
-  if(name==='hoje') renderHoje(); else if(name==='treinos') renderTreinos(); else if(name==='exercicios') renderExercicios();
+  if(name==='hoje') renderHoje(); else if(name==='treinos') renderTreinos(); else if(name==='exercicios') renderExercicios(); else if(name==='progresso'){ progEx=null; renderProgresso(); }
 }
 function renderExercicios(){
   var el=$('exList'); var ex=(DATA.exercicios||[]);
@@ -344,6 +348,40 @@ function saveSession(){
   JB.api('POST', ssUrl('/values/Sessoes:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[[date,tname,'',sid]] })
     .then(function(){ return JB.api('POST', ssUrl('/values/Series:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:rows }); })
     .catch(function(){ toast('Erro ao salvar — recarregue'); });
+}
+var progEx=null;
+function exHasData(id){ return (DATA.series||[]).some(function(x){return x.exId===id;}); }
+function progData(exId){
+  var dateOf={}; (DATA.sessoes||[]).forEach(function(s){dateOf[s.id]=s.date;});
+  var bySes={}; (DATA.series||[]).filter(function(x){return x.exId===exId;}).forEach(function(x){ (bySes[x.sessaoId]=bySes[x.sessaoId]||[]).push(x); });
+  return Object.keys(bySes).map(function(sid){ var sets=bySes[sid]; var top=0,e1=0; sets.forEach(function(st){ if(st.peso>top)top=st.peso; var e=st.peso*(1+st.reps/30); if(e>e1)e1=e; }); return { date:dateOf[sid]||'', top:top, e1rm:Math.round(e1), sets:sets.slice().sort(function(a,b){return a.serie-b.serie;}) }; }).filter(function(d){return d.date;}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'');});
+}
+function progChart(d){
+  var pts=d.slice(-12); if(pts.length<2) return '';
+  var W=320,H=120,pad=12; var ws=pts.map(function(p){return p.top;}); var mx=Math.max.apply(null,ws), mn=Math.min.apply(null,ws); if(mx===mn)mx=mn+1;
+  var step=(W-2*pad)/(pts.length-1);
+  var co=pts.map(function(p,i){ return [pad+i*step, H-pad-((p.top-mn)/(mx-mn))*(H-2*pad)]; });
+  var line=co.map(function(c,i){return (i?'L':'M')+c[0].toFixed(1)+' '+c[1].toFixed(1);}).join(' ');
+  var dots=co.map(function(c){return '<circle cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="3" fill="#fb7185"/>';}).join('');
+  return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:6px"><div class="rg" style="margin-bottom:8px">Carga máx. por sessão ('+unit()+')</div><svg viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="none" style="height:118px;display:block"><path d="'+line+'" fill="none" stroke="#fb7185" stroke-width="2" stroke-linejoin="round"/>'+dots+'</svg></div>';
+}
+function progHdr(name){ return '<div class="secbar"><div style="display:flex;align-items:center;gap:8px"><button class="lnk" onclick="backProg()">‹ Voltar</button><div class="rn">'+esc(name)+'</div></div></div>'; }
+function openProg(id){ progEx=id; renderProgresso(); window.scrollTo(0,0); }
+function backProg(){ progEx=null; renderProgresso(); }
+function renderProgresso(){
+  var el=$('prog'); if(!el) return;
+  if(progEx){
+    var name=exName(progEx); var d=progData(progEx);
+    if(!d.length){ el.innerHTML=progHdr(name)+'<div class="empty">Sem registros ainda.</div>'; return; }
+    var prTop=0,prE=0; d.forEach(function(x){ if(x.top>prTop)prTop=x.top; if(x.e1rm>prE)prE=x.e1rm; });
+    var cards='<div class="prg"><div class="prc"><div class="prl">Melhor carga</div><div class="prv">'+prTop+' '+unit()+'</div></div><div class="prc"><div class="prl">1RM estim.</div><div class="prv">'+prE+' '+unit()+'</div></div><div class="prc"><div class="prl">Sessões</div><div class="prv">'+d.length+'</div></div></div>';
+    var hist=d.slice().reverse().map(function(x){ return '<div class="row" style="cursor:default"><div><div class="rn">'+x.date+'</div><div class="rg">'+x.sets.map(function(s){return s.reps+'×'+s.peso;}).join(' · ')+'</div></div><div style="font-weight:800;color:var(--accent)">'+x.top+' '+unit()+'</div></div>'; }).join('');
+    el.innerHTML=progHdr(name)+cards+progChart(d)+'<div class="sect" style="margin:22px 0 10px">Histórico</div>'+hist;
+    return;
+  }
+  var exs=(DATA.exercicios||[]).filter(function(x){return exHasData(x.id);}).sort(function(a,b){return a.name.localeCompare(b.name);});
+  if(!exs.length){ el.innerHTML='<div class="empty">Registre treinos para ver seu progresso aqui.</div>'; return; }
+  el.innerHTML='<div class="secbar"><div class="sect">Progresso por exercício</div></div>'+exs.map(function(x){ return '<div class="row" onclick="openProg(\''+x.id+'\')"><div class="rn">'+esc(x.name)+'</div><span style="color:var(--muted)">›</span></div>'; }).join('');
 }
 startAuth();
 </script>

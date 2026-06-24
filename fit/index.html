@@ -175,6 +175,16 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
     <button class="save" onclick="closeSettings()">Pronto</button>
   </div>
 </div>
+<div class="overlay" id="askOverlay" onclick="if(event.target===this)closeAsk()">
+  <div class="modal" style="max-width:360px">
+    <div class="mt" id="askTitle" style="margin-bottom:8px"></div>
+    <div class="rg" id="askMsg" style="margin-bottom:18px;line-height:1.5;font-size:13px"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn ghost" style="flex:1" onclick="closeAsk()">Cancelar</button>
+      <button class="btn" style="flex:1" onclick="confirmYes()">Confirmar</button>
+    </div>
+  </div>
+</div>
 <div id="restBar" class="restbar" style="display:none"></div>
 <div class="toast" id="toast"></div>
 
@@ -398,7 +408,7 @@ function renderHoje(){
 }
 function buildRunItem(ex,sets,rmin,rmax,rest){ sets=Number(sets)||3; var l=lastFor(ex); var lp=l?l.sets:[]; var arr=[]; for(var i=0;i<sets;i++){ var pp=(lp[i]&&lp[i].peso)||(lp[0]&&lp[0].peso)||''; arr.push({reps:'',peso:pp,done:false}); } return { ex:ex, name:exName(ex), sets:arr, rmin:Number(rmin)||8, rmax:Number(rmax)||12, rest:(rest!=null?rest:null) }; }
 function startSession(tid){ var date=new Date().toISOString().slice(0,10); var name='Avulso', items=[]; if(tid){ var r=(DATA.treinos||[]).find(function(x){return x.id===tid;}); if(r){ name=r.name; items=(r.items||[]).map(function(it){ return buildRunItem(it.ex,it.sets,it.rmin,it.rmax,it.rest); }); } } sess={ treinoName:name, date:date, cur:0, items:items }; stopRest(); renderHoje(); window.scrollTo(0,0); }
-function cancelSession(){ if(confirm('Descartar este treino?')){ sess=null; stopRest(); renderHoje(); } }
+function cancelSession(){ fitConfirm('Descartar treino?','O que você registrou agora será perdido.', function(){ sess=null; stopRest(); renderHoje(); }); }
 function runSet(si,f,v){ var it=sess.items[sess.cur]; if(it&&it.sets[si]) it.sets[si][f]=v; }
 function doneSet(si){ var it=sess.items[sess.cur]; if(!it||!it.sets[si]) return; it.sets[si].done=true; renderHoje(); startRest(restFor(it)); }
 function undoSet(si){ var it=sess.items[sess.cur]; if(it&&it.sets[si]) it.sets[si].done=false; stopRest(); renderHoje(); }
@@ -418,7 +428,7 @@ function addSessEx(id){ sess.items.push(buildRunItem(id,3,8,12,null)); sess.cur=
 function finishSession(){
   var sid=uuid(); var rows=[];
   sess.items.forEach(function(it){ var n=0; it.sets.forEach(function(st){ var reps=Number(st.reps)||0, peso=Number(st.peso)||0; if(reps>0||peso>0){ n++; rows.push([sid, it.ex, n, reps, peso, uuid()]); } }); });
-  if(!rows.length){ if(confirm('Nenhuma série preenchida. Sair sem salvar?')){ sess=null; stopRest(); renderHoje(); } return; }
+  if(!rows.length){ fitConfirm('Nada preenchido','Sair sem salvar este treino?', function(){ sess=null; stopRest(); renderHoje(); }); return; }
   var date=sess.date, tname=sess.treinoName;
   DATA.sessoes.push({ id:sid, date:date, treino:tname, notas:'' });
   rows.forEach(function(r){ DATA.series.push({ id:r[5], sessaoId:sid, exId:r[1], serie:r[2], reps:r[3], peso:r[4] }); });
@@ -477,7 +487,9 @@ function persistTags(){ saveConfig('tags', JSON.stringify(DATA.config.tags||[]))
 function addTag(){ var v=($('newTag').value||'').trim(); if(!v) return; DATA.config=DATA.config||{}; if(!DATA.config.tags) DATA.config.tags=DEFAULT_TAGS.slice(); if(DATA.config.tags.indexOf(v)<0) DATA.config.tags.push(v); $('newTag').value=''; persistTags(); renderSettings(); }
 function removeTag(i){ if(!DATA.config||!DATA.config.tags) return; DATA.config.tags.splice(i,1); persistTags(); renderSettings(); }
 function deleteSession(id){
-  if(!confirm('Excluir este treino do histórico?')) return;
+  fitConfirm('Excluir treino?','Remove este treino e suas séries do histórico.', function(){ doDeleteSession(id); });
+}
+function doDeleteSession(id){
   DATA.sessoes=(DATA.sessoes||[]).filter(function(s){return s.id!==id;});
   DATA.series=(DATA.series||[]).filter(function(x){return x.sessaoId!==id;});
   renderHoje(); if(progEx) renderProgresso(); toast('✓ Treino excluído');
@@ -496,6 +508,10 @@ function wdName(i){ return WD[i]||''; }
 function schedFor(wd){ var s=(DATA.config&&DATA.config.schedule)||{}; return s[wd]||s[String(wd)]||''; }
 function setSchedule(wd,rid){ DATA.config=DATA.config||{}; DATA.config.schedule=DATA.config.schedule||{}; if(rid) DATA.config.schedule[wd]=rid; else delete DATA.config.schedule[wd]; saveConfig('schedule', JSON.stringify(DATA.config.schedule)); renderHoje(); }
 function renderSched(){ if(!$('setSched')) return; var sc=(DATA.config&&DATA.config.schedule)||{}; var sh=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; $('setSched').innerHTML=sh.map(function(d,i){ var cur=sc[i]||sc[String(i)]||''; var opts='<option value="">Descanso</option>'+(DATA.treinos||[]).map(function(r){ return '<option value="'+r.id+'"'+(cur===r.id?' selected':'')+'>'+esc(r.name)+'</option>'; }).join(''); return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="width:32px;color:var(--muted);font-size:13px;font-weight:700">'+d+'</span><select class="fi" style="flex:1" onchange="setSchedule('+i+',this.value)">'+opts+'</select></div>'; }).join(''); }
+var askCb=null;
+function fitConfirm(title,msg,onYes){ askCb=onYes||null; $('askTitle').textContent=title||'Confirmar'; $('askMsg').textContent=msg||''; $('askOverlay').classList.add('open'); }
+function closeAsk(){ $('askOverlay').classList.remove('open'); askCb=null; }
+function confirmYes(){ var cb=askCb; closeAsk(); if(cb) cb(); }
 startAuth();
 </script>
 </body>

@@ -126,6 +126,18 @@
 
   function signOut(){ var t = lg(TOK); try { if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function () {}); } catch (_) {} lr(TOK); lr(EXP); lr(EML); }
 
+  // --- shared mobile scroll-lock: lock the page behind any open .overlay modal (prevents background scroll / scroll-chaining) ---
+  function initScrollLock(){
+    var st = document.createElement('style');
+    st.textContent = 'html.jb-noscroll,body.jb-noscroll{overflow:hidden!important;}.overlay,.modal{overscroll-behavior:contain;}';
+    (document.head || document.documentElement).appendChild(st);
+    function sync(){ var on = !!document.querySelector('.overlay.open'); document.documentElement.classList.toggle('jb-noscroll', on); if (document.body) document.body.classList.toggle('jb-noscroll', on); }
+    try { new MutationObserver(sync).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] }); } catch (_) {}
+    sync();
+  }
+  function whenReady(fn){ if (document.body) fn(); else document.addEventListener('DOMContentLoaded', fn); }
+  whenReady(initScrollLock);
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, email: email, fetchEmail: fetchEmail,

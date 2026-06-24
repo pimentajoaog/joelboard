@@ -526,7 +526,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
 .modal-title { font-size: 15px; font-weight: 700; }
 .modal-sub { font-size: 12px; color: var(--muted); margin: -16px 0 18px; }
-.set-tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.set-tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; overscroll-behavior-x: contain; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
 .set-tabs::-webkit-scrollbar { height: 5px; }
 .set-tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
 .set-tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-size: 13px; font-weight: 600; padding: 8px 14px; cursor: pointer; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap; flex: 0 0 auto; }
@@ -1806,7 +1806,7 @@ function catColor(c) {
 
 const now = new Date();
 let DATA = null, selY = now.getFullYear(), selM = now.getMonth(), txType = 'Expense', fabOpen = false, billRecur = true;
-let editing = { type: null, id: null }, editingHoursDate = null, allocGoalId = null, SUGG = [], confirmCtx = null, currentTab = 'overview', editingCatId = null, askCb = null, pickYear = now.getFullYear(), revealedMonths = new Set(), hiddenMonths = new Set();
+let editing = { type: null, id: null }, editingHoursDate = null, allocGoalId = null, SUGG = [], confirmCtx = null, currentTab = 'overview', editingCatId = null, askCb = null, pickYear = now.getFullYear(), revealedMonths = jbLoadSet('jb_fin_reveal'), hiddenMonths = jbLoadSet('jb_fin_hide');
 
 <!-- JB-DATA-LAYER -->
 /* ===================== Joelboard web data layer (Sheets API) ===================== */
@@ -2278,10 +2278,13 @@ function applyDim() {
   const eye=document.getElementById('eyeBtn');
   if (eye) { eye.style.display='flex'; eye.textContent = hidden ? '🙈' : '👁'; eye.title = hidden ? t('eye.show') : t('eye.hide'); eye.classList.toggle('active', hidden); }
 }
+function jbLoadSet(k){ try{ return new Set(JSON.parse(localStorage.getItem(k)||'[]')); }catch(_){ return new Set(); } }
+function saveReveal(){ try{ localStorage.setItem('jb_fin_reveal', JSON.stringify([...revealedMonths])); localStorage.setItem('jb_fin_hide', JSON.stringify([...hiddenMonths])); }catch(_){} }
 function toggleReveal() {
   const ym=curYM();
   if (isPast()) { revealedMonths.has(ym) ? revealedMonths.delete(ym) : revealedMonths.add(ym); }
   else { hiddenMonths.has(ym) ? hiddenMonths.delete(ym) : hiddenMonths.add(ym); }
+  saveReveal();
   renderAll();
 }
 

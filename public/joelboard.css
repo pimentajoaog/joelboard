@@ -1,0 +1,32 @@
+/* Joelboard — shared core styles, linked by every app. © 2026 Joel Soluções LTDA.
+   Plain CSS (not processed by the build) so it can be shared by Tailwind and non-Tailwind apps alike.
+   Uses CSS variables (--border, --muted) that each app defines in its own :root. */
+
+/* Scroll-lock behind any open modal (toggled by joelboard.js via .jb-noscroll) */
+html.jb-noscroll,
+body.jb-noscroll { overflow: hidden; }
+
+.overlay,
+.modal { overscroll-behavior: contain; }
+
+/* Aesthetic scrollbar across the whole suite */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Settings modal keeps one consistent size across tabs (content scrolls inside) */
+#setOverlay .modal { height: min(640px, 88vh); }

@@ -1,6 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './finance/index.html', './fit/index.html'],
+  // Fit keeps its own reset; disable Tailwind's preflight so adopting utilities never changes existing looks.
+  corePlugins: { preflight: false },
   theme: {
     extend: {
       colors: {

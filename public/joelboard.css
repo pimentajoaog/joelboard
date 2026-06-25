@@ -30,3 +30,11 @@ body.jb-noscroll { overflow: hidden; }
 
 /* Settings modal keeps one consistent size across tabs (content scrolls inside) */
 #setOverlay .modal { height: min(640px, 88vh); }
+
+/* Shared primitives — one definition for every app (overlay + modal). Per-app extras
+   (e.g. Finance .modal.split-modal, mobile sheet) layer on top in each app's stylesheet.
+   Uses var(--surface)/--border/--radius so it adapts per app and per Finance skin. */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none; align-items: center; justify-content: center; z-index: 200; padding: 18px; backdrop-filter: blur(4px); }
+.overlay.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; overflow-x: hidden; animation: jb-modal-in .2s ease; }
+@keyframes jb-modal-in { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }

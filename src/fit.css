@@ -50,9 +50,6 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .fab{ @apply fixed bottom-[22px] right-[18px] w-[54px] h-[54px] rounded-full bg-accent border-0 text-[30px] cursor-pointer flex items-center justify-center z-40 text-[#3a0f17]; box-shadow:0 6px 22px rgba(251,113,133,0.4); }
 .door{ @apply fixed bottom-5 left-4 z-40 w-[42px] h-[42px] rounded-xl bg-surface border border-border text-accent flex items-center justify-center cursor-pointer; box-shadow:0 3px 12px rgba(0,0,0,0.25); }
 
-.overlay{ @apply fixed inset-0 hidden items-center justify-center z-[200] p-[18px]; background:rgba(0,0,0,0.65); }
-.overlay.open{ @apply flex; }
-.modal{ @apply bg-surface border border-border rounded-[20px] p-6 w-full max-w-[400px] max-h-[90vh] overflow-y-auto; }
 .mh{ @apply flex justify-between items-center mb-4; }
 .mt{ @apply text-[17px] font-extrabold; }
 .x{ @apply bg-transparent border-0 text-muted text-lg cursor-pointer; font-family:inherit; }

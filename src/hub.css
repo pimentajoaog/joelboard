@@ -33,9 +33,6 @@ a.tile:hover{ @apply border-primary; transform:translateY(-3px); }
 
 .gear{ @apply bg-surface2 border border-border text-muted text-sm rounded-full w-8 h-8 cursor-pointer; font-family:inherit; }
 .gear:hover{ @apply border-primary text-primary; }
-.overlay{ @apply fixed inset-0 hidden items-center justify-center z-[200] p-5; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); }
-.overlay.open{ @apply flex; }
-.modal{ @apply bg-surface border border-border rounded-[18px] p-[22px] w-full max-w-[380px]; }
 .mh{ @apply flex justify-between items-center mb-4; }
 .mt{ @apply text-lg font-extrabold; }
 .x{ @apply bg-transparent border-0 text-muted text-lg cursor-pointer; font-family:inherit; }

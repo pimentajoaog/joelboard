@@ -148,6 +148,14 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
 .ppvnext{ font-size:13.5px; line-height:1.5; }
 .ppvnext b{ color:var(--text); }
 .bwtag{ font-size:10px;font-weight:700;background:var(--accent2);color:var(--accent);border-radius:6px;padding:2px 7px;vertical-align:middle;margin-left:4px; }
+.herocard{ background:linear-gradient(140deg, var(--accent2), var(--surface) 70%); border:1px solid var(--accent); border-radius:18px; padding:20px; margin-bottom:16px; }
+.herocard.rest{ background:var(--surface); border-color:var(--border); }
+.herolbl{ font-size:11px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:.6px; }
+.herocard.rest .herolbl{ color:var(--muted); }
+.heroname{ font-size:24px; font-weight:800; letter-spacing:-.5px; margin-top:4px; line-height:1.15; }
+.herometa{ font-size:12px; color:var(--muted); margin-top:3px; }
+.heroprev{ font-size:13px; color:var(--muted); margin-top:11px; line-height:1.45; }
+.herobtn{ width:100%; margin-top:16px; background:var(--accent); color:#3a0f17; border:none; border-radius:12px; padding:14px; font-size:16px; font-weight:800; cursor:pointer; font-family:inherit; }
 </style>
 </head>
 <body>
@@ -447,10 +455,18 @@ function recentHtml(){ var s=(DATA.sessoes||[]).slice().sort(function(a,b){retur
 function renderHoje(){
   var el=$('hoje'); if(!el) return;
   if(!sess){
-    var routs=(DATA.treinos||[]).map(function(r){ return '<div class="row" onclick="startSession(\''+r.id+'\')"><div><div class="rn">'+esc(r.name)+'</div><div class="rg">'+((r.items||[]).length)+' exercícios</div></div><span style="color:var(--accent)">▶</span></div>'; }).join('');
     var today=new Date().getDay(); var rid=schedFor(today); var trToday=rid?(DATA.treinos||[]).find(function(x){return x.id===rid;}):null;
-    var todayHtml= trToday ? ('<div class="todaycard"><div class="tdlabel">Hoje · '+wdName(today)+'</div><div class="tdname">'+esc(trToday.name)+'</div><button class="save" style="margin-top:12px" onclick="startSession(\''+trToday.id+'\')">Começar treino ▶</button></div>') : ('<div class="todaycard rest"><div class="tdlabel">Hoje · '+wdName(today)+'</div><div class="tdname">Dia de descanso 😌</div></div>');
-    el.innerHTML=todayHtml+volNudgeHtml()+'<div class="secbar"><div class="sect">Todos os treinos</div><button class="lnk" onclick="toggleUnit()" title="unidade">'+unit()+'</button></div>'+routs+'<div class="row" style="border-style:dashed" onclick="startSession()"><div class="rn">Treino avulso</div><span style="color:var(--accent)">▶</span></div>'+recentHtml();
+    var heroHtml;
+    if(trToday){
+      var hi=trToday.items||[]; var prev=hi.slice(0,4).map(function(it){return esc(exName(it.ex));}).join(' · ')+(hi.length>4?(' +'+(hi.length-4)):'');
+      heroHtml='<div class="herocard"><div class="herolbl">Hoje · '+wdName(today)+'</div><div class="heroname">'+esc(trToday.name)+'</div><div class="herometa">'+hi.length+' exercício'+(hi.length===1?'':'s')+'</div>'+(hi.length?('<div class="heroprev">'+prev+'</div>'):'')+'<button class="herobtn" onclick="startSession(\''+trToday.id+'\')">Começar treino ▶</button></div>';
+    } else {
+      heroHtml='<div class="herocard rest"><div class="herolbl">Hoje · '+wdName(today)+'</div><div class="heroname">Dia de descanso 😌</div><div class="heroprev">Aproveite pra recuperar — ou escolha um treino abaixo se quiser ir mesmo assim.</div></div>';
+    }
+    var others=(DATA.treinos||[]).filter(function(r){ return !trToday || r.id!==trToday.id; });
+    var routs=others.map(function(r){ return '<div class="row" onclick="startSession(\''+r.id+'\')"><div><div class="rn">'+esc(r.name)+'</div><div class="rg">'+((r.items||[]).length)+' exercícios</div></div><span style="color:var(--accent)">▶</span></div>'; }).join('');
+    var sec='<div class="secbar"><div class="sect">'+(trToday?'Outros treinos':'Treinos')+'</div><button class="lnk" onclick="toggleUnit()" title="unidade">'+unit()+'</button></div>'+routs+'<div class="row" style="border-style:dashed" onclick="startSession()"><div class="rn">Treino avulso</div><span style="color:var(--accent)">▶</span></div>';
+    el.innerHTML=heroHtml+volNudgeHtml()+sec+recentHtml();
     return;
   }
   var total=sess.items.length;

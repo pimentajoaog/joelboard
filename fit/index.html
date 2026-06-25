@@ -135,6 +135,19 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
 .set-tab.active{ color:var(--accent); border-bottom-color:var(--accent); }
 .pghint.stall{ background:rgba(251,191,36,0.16); color:#fbbf24; }
 .modebadge{ font-size:10px; font-weight:700; background:var(--accent2); color:var(--accent); border-radius:6px; padding:2px 6px; vertical-align:middle; margin-left:4px; }
+.ppv{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:14px; }
+.ppvh{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.ppvt{ font-size:14px; font-weight:800; }
+.ppvtarget{ font-size:12.5px; color:var(--muted); }
+.ppvstat{ font-size:12px; color:var(--muted); margin-top:6px; }
+.ppvlad{ display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
+.ppvstep{ font-size:11px; font-weight:700; color:var(--muted); background:var(--surface2); border:1px solid var(--border); border-radius:99px; padding:5px 10px; }
+.ppvstep.on{ color:#3a0f17; background:var(--accent); border-color:var(--accent); }
+.ppvstep.done{ color:#34d399; border-color:rgba(52,211,153,0.4); }
+.ppvnextlbl{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin:14px 0 5px; }
+.ppvnext{ font-size:13.5px; line-height:1.5; }
+.ppvnext b{ color:var(--text); }
+.bwtag{ font-size:10px;font-weight:700;background:var(--accent2);color:var(--accent);border-radius:6px;padding:2px 7px;vertical-align:middle;margin-left:4px; }
 </style>
 </head>
 <body>
@@ -392,7 +405,7 @@ function renderTrEditor(){ renderTrSelList(); initTrSort(); renderTrAdd(); }
 function renderTrSelList(){
   var el=$('trSelList');
   if(!trSel.length){ el.innerHTML='<div class="rg" style="padding:8px 2px">Nenhum exercício ainda — adicione abaixo.</div>'; return; }
-  el.innerHTML=trSel.map(function(it){ var ex=it.ex; return '<div class="selrow" data-id="'+ex+'"><span class="dh">☰</span><div style="flex:1;min-width:0"><div class="selname">'+esc(exName(ex))+'</div><div class="targrow"><input class="ti" type="number" inputmode="numeric" value="'+it.sets+'" oninput="setTarget(\''+ex+'\',\'sets\',this.value)"><span class="tl">×</span><input class="ti" type="number" inputmode="numeric" value="'+it.rmin+'" oninput="setTarget(\''+ex+'\',\'rmin\',this.value)"><span class="tl">–</span><input class="ti" type="number" inputmode="numeric" value="'+it.rmax+'" oninput="setTarget(\''+ex+'\',\'rmax\',this.value)"><span class="tl">reps</span><span class="tl" style="margin-left:3px">⏱</span><input class="ti" type="number" inputmode="numeric" placeholder="'+restDefault()+'" value="'+(it.rest!=null?it.rest:'')+'" oninput="setTarget(\''+ex+'\',\'rest\',this.value)"><span class="tl">s</span></div></div><button class="rm" onclick="removeTrEx(\''+ex+'\')">✕</button></div>'; }).join('');
+  el.innerHTML=trSel.map(function(it){ var ex=it.ex; return '<div class="selrow" data-id="'+ex+'"><span class="dh">☰</span><div style="flex:1;min-width:0"><div class="selname">'+esc(exName(ex))+(exMode(ex)==='bw'?' <span class="modebadge">corporal</span>':(exMode(ex)==='bwload'?' <span class="modebadge">carga+</span>':''))+'</div><div class="targrow"><input class="ti" type="number" inputmode="numeric" value="'+it.sets+'" oninput="setTarget(\''+ex+'\',\'sets\',this.value)"><span class="tl">×</span><input class="ti" type="number" inputmode="numeric" value="'+it.rmin+'" oninput="setTarget(\''+ex+'\',\'rmin\',this.value)"><span class="tl">–</span><input class="ti" type="number" inputmode="numeric" value="'+it.rmax+'" oninput="setTarget(\''+ex+'\',\'rmax\',this.value)"><span class="tl">reps</span><span class="tl" style="margin-left:3px">⏱</span><input class="ti" type="number" inputmode="numeric" placeholder="'+restDefault()+'" value="'+(it.rest!=null?it.rest:'')+'" oninput="setTarget(\''+ex+'\',\'rest\',this.value)"><span class="tl">s</span></div></div><button class="rm" onclick="removeTrEx(\''+ex+'\')">✕</button></div>'; }).join('');
 }
 function initTrSort(){ if(trSortable){ try{trSortable.destroy();}catch(e){} trSortable=null; } var el=$('trSelList'); if(window.Sortable && trSel.length){ trSortable=Sortable.create(el,{ animation:150, handle:'.dh', onEnd:function(){ var order=Array.prototype.slice.call(el.querySelectorAll('[data-id]')).map(function(n){return n.getAttribute('data-id');}); trSel=order.map(function(id){ return trSel.find(function(i){return i.ex===id;}); }).filter(Boolean); } }); } }
 function renderTrAdd(){
@@ -428,7 +441,7 @@ var sess=null;
 function unit(){ return (DATA.config&&DATA.config.unit)||'kg'; }
 function toggleUnit(){ DATA.config=DATA.config||{}; DATA.config.unit= unit()==='kg'?'lb':'kg'; renderHoje(); saveConfig('unit',DATA.config.unit); }
 function saveConfig(k,v){ JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var vals=res.values||[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]}); } return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]}); }).catch(function(){}); }
-function fmtLast(l){ return l.sets.map(function(s){return s.reps+'×'+s.peso;}).join(' · '); }
+function fmtLast(l,mode){ return l.sets.map(function(s){return mode==='bw'?(''+s.reps):(s.reps+'×'+s.peso);}).join(' · '); }
 function lastFor(exId){ var ss=(DATA.series||[]).filter(function(x){return x.exId===exId;}); if(!ss.length) return null; var dateOf={}; (DATA.sessoes||[]).forEach(function(s){dateOf[s.id]=s.date;}); var best=null,bd='-'; ss.forEach(function(x){ var d=dateOf[x.sessaoId]||''; if(d>=bd){bd=d;best=x.sessaoId;} }); var sets=ss.filter(function(x){return x.sessaoId===best;}).sort(function(a,b){return a.serie-b.serie;}); return {date:bd,sets:sets}; }
 function recentHtml(){ var s=(DATA.sessoes||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,5); if(!s.length) return ''; return '<div class="sect" style="margin:26px 0 10px">Últimos treinos</div>'+s.map(function(x){ var c=(DATA.series||[]).filter(function(y){return y.sessaoId===x.id;}).length; return '<div class="row" style="cursor:default"><div><div class="rn">'+esc(x.treino||'Avulso')+'</div><div class="rg">'+esc(x.date)+' · '+c+' séries</div></div><button class="rm" onclick="deleteSession(\''+x.id+'\')" title="Excluir">🗑</button></div>'; }).join(''); }
 function renderHoje(){
@@ -445,11 +458,11 @@ function renderHoje(){
   if(!total){ el.innerHTML=head+'<div class="empty">Sem exercícios neste treino.</div><button class="btn ghost" style="width:100%;margin-top:10px" onclick="openSessPick()">+ Exercício</button>'; renderRestBar(); return; }
   if(sess.cur>=total) sess.cur=total-1;
   var it=sess.items[sess.cur]; var ei=sess.cur;
-  var l=lastFor(it.ex); var lastInfo=l?('última: '+fmtLast(l)):'primeira vez';
+  var bw=(it.mode==='bw'); var l=lastFor(it.ex); var lastInfo=l?('última: '+fmtLast(l,it.mode)):'primeira vez';
   var hint=progHint(it.sg||{}, it.rmax);
   var activeIdx=-1; for(var z=0;z<it.sets.length;z++){ if(!it.sets[z].done){ activeIdx=z; break; } }
-  var setsHtml=it.sets.map(function(st,si){ var cls='setrow runset'+(st.done?' done':(si===activeIdx?' active':'')); return '<div class="'+cls+'"><span class="setn">'+(si+1)+(st.done?'✓':'')+'</span><input class="si" type="number" inputmode="numeric" placeholder="'+it.rmin+'-'+it.rmax+'" value="'+(st.reps===''||st.reps==null?'':st.reps)+'" oninput="runSet('+si+',\'reps\',this.value)"><span class="xs">×</span><input class="si" type="number" inputmode="decimal" placeholder="peso" value="'+(st.peso===''||st.peso==null?'':st.peso)+'" oninput="runSet('+si+',\'peso\',this.value)"><span class="un">'+unit()+'</span>'+(st.done?('<button class="rm" onclick="undoSet('+si+')">↺</button>'):('<button class="setok" onclick="doneSet('+si+')">✓</button>'))+'</div>'; }).join('');
-  var body='<div class="exc"><div class="rn" style="font-size:18px">'+esc(it.name)+'</div><div class="ll">alvo '+it.rmin+'-'+it.rmax+' reps · '+lastInfo+'</div>'+hint+setsHtml+'<button class="addset" onclick="addRunSet()">+ série</button></div>';
+  var setsHtml=it.sets.map(function(st,si){ var cls='setrow runset'+(st.done?' done':(si===activeIdx?' active':'')); var rv=(st.reps===''||st.reps==null?'':st.reps); var doneBtn=st.done?('<button class="rm" onclick="undoSet('+si+')">↺</button>'):('<button class="setok" onclick="doneSet('+si+')">✓</button>'); if(bw){ return '<div class="'+cls+'"><span class="setn">'+(si+1)+(st.done?'✓':'')+'</span><input class="si" type="number" inputmode="numeric" placeholder="'+it.rmin+'-'+it.rmax+'" value="'+rv+'" oninput="runSet('+si+',\'reps\',this.value)"><span class="un">reps</span>'+doneBtn+'</div>'; } var pv=(st.peso===''||st.peso==null?'':st.peso); return '<div class="'+cls+'"><span class="setn">'+(si+1)+(st.done?'✓':'')+'</span><input class="si" type="number" inputmode="numeric" placeholder="'+it.rmin+'-'+it.rmax+'" value="'+rv+'" oninput="runSet('+si+',\'reps\',this.value)"><span class="xs">×</span><input class="si" type="number" inputmode="decimal" placeholder="peso" value="'+pv+'" oninput="runSet('+si+',\'peso\',this.value)"><span class="un">'+unit()+'</span>'+doneBtn+'</div>'; }).join('');
+  var body='<div class="exc"><div class="rn" style="font-size:18px">'+esc(it.name)+(bw?' <span class="bwtag">peso corporal</span>':'')+'</div><div class="ll">alvo '+it.rmin+'-'+it.rmax+' reps · '+lastInfo+'</div>'+hint+setsHtml+'<button class="addset" onclick="addRunSet()">+ série</button></div>';
   var nav='<div class="runnav"><button class="btn ghost" onclick="prevEx()"'+(ei<=0?' disabled':'')+'>‹ Anterior</button><button class="btn ghost" onclick="nextEx()"'+(ei>=total-1?' disabled':'')+'>Próximo ›</button></div>';
   el.innerHTML=head+body+nav+'<button class="btn ghost" style="width:100%;margin-top:10px" onclick="openSessPick()">+ Exercício</button>';
   renderRestBar();
@@ -488,7 +501,7 @@ function progHint(sg,rmax){ if(!sg||!sg.kind) return ''; var u=unit();
   if(sg.kind==='bw-rest') return '<div class="pghint up">⬆ Mais densidade — descanse só '+sg.rest+'s</div>';
   if(sg.kind==='bw-harder') return '<div class="pghint up">⬆ Hora de evoluir'+(sg.harder?(': tente <b>'+esc(sg.harder)+'</b>'):' p/ uma variação mais difícil')+'</div>';
   return ''; }
-function buildRunItem(ex,sets,rmin,rmax,rest){ rmin=Number(rmin)||8; rmax=Number(rmax)||12; var baseSets=Number(sets)||3; var baseRest=(rest!=null?Number(rest):null); var sg=suggestProg(ex,{rmin:rmin,rmax:rmax,sets:baseSets,rest:(baseRest!=null?baseRest:restDefault())}); var nSets=Number(sg.sets)||baseSets; var pw=(sg.weight!==''&&sg.weight!=null)?sg.weight:''; var arr=[]; for(var i=0;i<nSets;i++){ arr.push({reps:'',peso:pw,done:false}); } return { ex:ex, name:exName(ex), sets:arr, rmin:rmin, rmax:rmax, rest:(sg.rest!=null?sg.rest:baseRest), sg:sg }; }
+function buildRunItem(ex,sets,rmin,rmax,rest){ rmin=Number(rmin)||8; rmax=Number(rmax)||12; var baseSets=Number(sets)||3; var baseRest=(rest!=null?Number(rest):null); var sg=suggestProg(ex,{rmin:rmin,rmax:rmax,sets:baseSets,rest:(baseRest!=null?baseRest:restDefault())}); var nSets=Number(sg.sets)||baseSets; var pw=(sg.weight!==''&&sg.weight!=null)?sg.weight:''; var arr=[]; for(var i=0;i<nSets;i++){ arr.push({reps:'',peso:pw,done:false}); } return { ex:ex, name:exName(ex), mode:sg.mode, sets:arr, rmin:rmin, rmax:rmax, rest:(sg.rest!=null?sg.rest:baseRest), sg:sg }; }
 function startSession(tid){ var date=new Date().toISOString().slice(0,10); var name='Avulso', items=[]; if(tid){ var r=(DATA.treinos||[]).find(function(x){return x.id===tid;}); if(r){ name=r.name; items=(r.items||[]).map(function(it){ return buildRunItem(it.ex,it.sets,it.rmin,it.rmax,it.rest); }); } } sess={ treinoName:name, date:date, cur:0, items:items }; stopRest(); renderHoje(); window.scrollTo(0,0); }
 function cancelSession(){ fitConfirm('Descartar treino?','O que você registrou agora será perdido.', function(){ sess=null; stopRest(); renderHoje(); }); }
 function runSet(si,f,v){ var it=sess.items[sess.cur]; if(it&&it.sets[si]) it.sets[si][f]=v; }
@@ -538,6 +551,31 @@ function progChart(d){
 function progHdr(name){ return '<div class="secbar"><div style="display:flex;align-items:center;gap:8px"><button class="lnk" onclick="backProg()">‹ Voltar</button><div class="rn">'+esc(name)+'</div></div></div>'; }
 function openProg(id){ progEx=id; renderProgresso(); window.scrollTo(0,0); }
 function backProg(){ progEx=null; renderProgresso(); }
+function exTarget(exId){ var found=null,pname=''; (DATA.treinos||[]).forEach(function(r){ (r.items||[]).forEach(function(it){ if(it.ex===exId && !found){ found=it; pname=r.name; } }); }); if(found) return { sets:Number(found.sets)||3, rmin:Number(found.rmin)||8, rmax:Number(found.rmax)||12, rest:(found.rest!=null?found.rest:restDefault()), prog:pname }; return { sets:3, rmin:8, rmax:12, rest:restDefault(), prog:'' }; }
+function modeLabel(m){ return m==='bw'?'Peso corporal':(m==='bwload'?'Carga + corporal':'Carga'); }
+function progNextMsg(sg,t){ var u=unit(); switch(sg.kind){
+  case 'up': return 'Você bateu o topo! Próxima sessão: <b>subir p/ '+sg.to+u+'</b>.';
+  case 'hold': return 'Agora: <b>'+sg.from+u+'</b> — busque <b>'+t.rmax+' reps</b> em todas as séries. Ao completar → <b>'+(Math.round((sg.from+incDefault())*100)/100)+u+'</b>.';
+  case 'stall': return 'Travado há 3 sessões em '+sg.from+u+'. Sugestão: <b>deload p/ '+sg.to+u+'</b> ou variação mais difícil.';
+  case 'bw-reps': return 'Agora: subir reps até <b>'+t.rmax+'</b> em todas as séries. Ao completar → <b>+1 série</b>.';
+  case 'bw-set': return 'Você dominou! Próxima sessão: <b>adicione a '+sg.sets+'ª série</b>.';
+  case 'bw-rest': return 'Você dominou! Próxima sessão: <b>reduza o descanso p/ '+sg.rest+'s</b>.';
+  case 'bw-harder': return 'Você dominou! Próximo: <b>'+esc(sg.harder||'uma variação mais difícil')+'</b>.';
+  default: return 'Registre uma sessão para ver a sugestão.';
+} }
+function progPreviewHtml(exId){
+  var t=exTarget(exId), mode=exMode(exId), sg=suggestProg(exId,t), u=unit();
+  var h=progData(exId), m=h.length?sessMetrics(h[h.length-1]):null;
+  var pct=m?Math.min(100,Math.round((m.repsMin/Math.max(t.rmax,1))*100)):0;
+  var barCls=(m&&m.repsMin>=t.rmax)?'in':'under';
+  var bar=m?('<div class="voltrack" style="margin-top:10px"><div class="volbar '+barCls+'" style="width:'+pct+'%"></div></div><div class="ppvstat">Última: '+m.repsMin+'/'+t.rmax+' reps'+(mode!=='bw'?(' @ '+m.W+u):'')+(m.nSets?(' · '+m.nSets+' séries'):'')+'</div>'):'<div class="ppvstat">Sem sessões ainda.</div>';
+  var ladder='';
+  if(mode==='bw'){ var stages=['+Reps','+Série','−Descanso','Variação']; var cur=sg.kind==='bw-set'?1:sg.kind==='bw-rest'?2:sg.kind==='bw-harder'?3:0; ladder='<div class="ppvlad">'+stages.map(function(st,i){ return '<div class="ppvstep'+(i===cur?' on':'')+(i<cur?' done':'')+'">'+st+'</div>'; }).join('')+'</div>'; }
+  return '<div class="ppv"><div class="ppvh"><span class="ppvt">Próxima progressão</span><span class="modebadge">'+modeLabel(mode)+'</span></div>'
+    +'<div class="ppvtarget">Alvo: '+t.sets+' × '+t.rmin+'–'+t.rmax+' reps · ⏱ '+t.rest+'s'+(t.prog?(' · '+esc(t.prog)):'')+'</div>'
+    +bar+ladder
+    +'<div class="ppvnextlbl">Próximo passo</div><div class="ppvnext">'+progNextMsg(sg,t)+'</div></div>';
+}
 function renderProgresso(){
   var el=$('prog'); if(!el) return;
   if(progEx){
@@ -546,8 +584,8 @@ function renderProgresso(){
     var mode=exMode(progEx);
     var prTop=0,prE=0,prReps=0; d.forEach(function(x){ if(x.top>prTop)prTop=x.top; if(x.e1rm>prE)prE=x.e1rm; x.sets.forEach(function(s){ if((Number(s.reps)||0)>prReps) prReps=Number(s.reps)||0; }); });
     var cards = (mode==='bw') ? ('<div class="prg"><div class="prc"><div class="prl">Melhor série</div><div class="prv">'+prReps+' reps</div></div><div class="prc"><div class="prl">Sessões</div><div class="prv">'+d.length+'</div></div></div>') : ('<div class="prg"><div class="prc"><div class="prl">Melhor carga</div><div class="prv">'+prTop+' '+unit()+'</div></div><div class="prc"><div class="prl">1RM estim.</div><div class="prv">'+prE+' '+unit()+'</div></div><div class="prc"><div class="prl">Sessões</div><div class="prv">'+d.length+'</div></div></div>');
-    var hist=d.slice().reverse().map(function(x){ return '<div class="row" style="cursor:default"><div><div class="rn">'+x.date+'</div><div class="rg">'+x.sets.map(function(s){return s.reps+'×'+s.peso;}).join(' · ')+'</div></div><div style="font-weight:800;color:var(--accent)">'+x.top+' '+unit()+'</div></div>'; }).join('');
-    el.innerHTML=progHdr(name)+cards+(mode==='bw'?'':progChart(d))+'<div class="sect" style="margin:22px 0 10px">Histórico</div>'+hist;
+    var hist=d.slice().reverse().map(function(x){ return '<div class="row" style="cursor:default"><div><div class="rn">'+x.date+'</div><div class="rg">'+x.sets.map(function(s){return mode==='bw'?(''+s.reps):(s.reps+'×'+s.peso);}).join(' · ')+'</div></div><div style="font-weight:800;color:var(--accent)">'+(mode==='bw'?(Math.max.apply(null,x.sets.map(function(s){return Number(s.reps)||0;}))+' reps'):(x.top+' '+unit()))+'</div></div>'; }).join('');
+    el.innerHTML=progHdr(name)+cards+progPreviewHtml(progEx)+(mode==='bw'?'':progChart(d))+'<div class="sect" style="margin:22px 0 10px">Histórico</div>'+hist;
     return;
   }
   var volSec='<div class="secbar"><div class="sect">Volume da semana</div><span class="rg" style="font-size:11px">séries / grupo</span></div><div class="volwrap">'+volPanelHtml()+'</div>';

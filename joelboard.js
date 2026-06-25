@@ -129,7 +129,17 @@
   // --- shared mobile scroll-lock: lock the page behind any open .overlay modal (prevents background scroll / scroll-chaining) ---
   function initScrollLock(){
     var st = document.createElement('style');
-    st.textContent = 'html.jb-noscroll,body.jb-noscroll{overflow:hidden!important;}.overlay,.modal{overscroll-behavior:contain;}';
+    st.textContent = 'html.jb-noscroll,body.jb-noscroll{overflow:hidden!important;}'
+      + '.overlay,.modal{overscroll-behavior:contain;}'
+      // aesthetic scrollbar across the whole suite
+      + '*{scrollbar-width:thin;scrollbar-color:var(--border) transparent;}'
+      + '::-webkit-scrollbar{width:10px;height:10px;}'
+      + '::-webkit-scrollbar-track{background:transparent;}'
+      + '::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;border:2px solid transparent;background-clip:padding-box;}'
+      + '::-webkit-scrollbar-thumb:hover{background:var(--muted);background-clip:padding-box;}'
+      + '::-webkit-scrollbar-corner{background:transparent;}'
+      // settings modal keeps one consistent size across tabs (content scrolls inside)
+      + '#setOverlay .modal{height:min(640px,88vh);}';
     (document.head || document.documentElement).appendChild(st);
     function sync(){ var on = !!document.querySelector('.overlay.open'); document.documentElement.classList.toggle('jb-noscroll', on); if (document.body) document.body.classList.toggle('jb-noscroll', on); }
     try { new MutationObserver(sync).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] }); } catch (_) {}

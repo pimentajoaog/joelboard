@@ -156,6 +156,10 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
 .herometa{ font-size:12px; color:var(--muted); margin-top:3px; }
 .heroprev{ font-size:13px; color:var(--muted); margin-top:11px; line-height:1.45; }
 .herobtn{ width:100%; margin-top:16px; background:var(--accent); color:#3a0f17; border:none; border-radius:12px; padding:14px; font-size:16px; font-weight:800; cursor:pointer; font-family:inherit; }
+.acttarget{ flex:1; font-size:13px; color:var(--text); }
+.acttarget.dim{ color:var(--muted); opacity:.7; }
+.setrow.pend{ opacity:.65; }
+.swlink{ display:block; margin:-4px auto 16px; }
 </style>
 </head>
 <body>
@@ -212,6 +216,9 @@ body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-app
 </div>
 <div class="overlay" id="sessPickOverlay" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal"><div class="mh"><div class="mt">Adicionar exercício</div><button class="x" onclick="document.getElementById('sessPickOverlay').classList.remove('open')">✕</button></div><div id="sessPickList" style="max-height:340px;overflow-y:auto"></div></div>
+</div>
+<div class="overlay" id="switchOverlay" onclick="if(event.target===this)closeSwitch()">
+  <div class="modal"><div class="mh"><div class="mt">Escolher treino</div><button class="x" onclick="closeSwitch()">✕</button></div><div id="switchList" style="max-height:380px;overflow-y:auto"></div></div>
 </div>
 <div class="overlay" id="setOverlay" onclick="if(event.target===this)closeSettings()">
   <div class="modal">
@@ -463,10 +470,8 @@ function renderHoje(){
     } else {
       heroHtml='<div class="herocard rest"><div class="herolbl">Hoje · '+wdName(today)+'</div><div class="heroname">Dia de descanso 😌</div><div class="heroprev">Aproveite pra recuperar — ou escolha um treino abaixo se quiser ir mesmo assim.</div></div>';
     }
-    var others=(DATA.treinos||[]).filter(function(r){ return !trToday || r.id!==trToday.id; });
-    var routs=others.map(function(r){ return '<div class="row" onclick="startSession(\''+r.id+'\')"><div><div class="rn">'+esc(r.name)+'</div><div class="rg">'+((r.items||[]).length)+' exercícios</div></div><span style="color:var(--accent)">▶</span></div>'; }).join('');
-    var sec='<div class="secbar"><div class="sect">'+(trToday?'Outros treinos':'Treinos')+'</div><button class="lnk" onclick="toggleUnit()" title="unidade">'+unit()+'</button></div>'+routs+'<div class="row" style="border-style:dashed" onclick="startSession()"><div class="rn">Treino avulso</div><span style="color:var(--accent)">▶</span></div>';
-    el.innerHTML=heroHtml+volNudgeHtml()+sec+recentHtml();
+    var switchLink='<button class="lnk swlink" onclick="openSwitch()">'+(trToday?'Trocar treino ▾':'Escolher um treino ▾')+'</button>';
+    el.innerHTML=heroHtml+switchLink+volNudgeHtml()+recentHtml();
     return;
   }
   var total=sess.items.length;
@@ -477,7 +482,11 @@ function renderHoje(){
   var bw=(it.mode==='bw'); var l=lastFor(it.ex); var lastInfo=l?('última: '+fmtLast(l,it.mode)):'primeira vez';
   var hint=progHint(it.sg||{}, it.rmax);
   var activeIdx=-1; for(var z=0;z<it.sets.length;z++){ if(!it.sets[z].done){ activeIdx=z; break; } }
-  var setsHtml=it.sets.map(function(st,si){ var cls='setrow runset'+(st.done?' done':(si===activeIdx?' active':'')); var rv=(st.reps===''||st.reps==null?'':st.reps); var doneBtn=st.done?('<button class="rm" onclick="undoSet('+si+')">↺</button>'):('<button class="setok" onclick="doneSet('+si+')">✓</button>'); if(bw){ return '<div class="'+cls+'"><span class="setn">'+(si+1)+(st.done?'✓':'')+'</span><input class="si" type="number" inputmode="numeric" placeholder="'+it.rmin+'-'+it.rmax+'" value="'+rv+'" oninput="runSet('+si+',\'reps\',this.value)"><span class="un">reps</span>'+doneBtn+'</div>'; } var pv=(st.peso===''||st.peso==null?'':st.peso); return '<div class="'+cls+'"><span class="setn">'+(si+1)+(st.done?'✓':'')+'</span><input class="si" type="number" inputmode="numeric" placeholder="'+it.rmin+'-'+it.rmax+'" value="'+rv+'" oninput="runSet('+si+',\'reps\',this.value)"><span class="xs">×</span><input class="si" type="number" inputmode="decimal" placeholder="peso" value="'+pv+'" oninput="runSet('+si+',\'peso\',this.value)"><span class="un">'+unit()+'</span>'+doneBtn+'</div>'; }).join('');
+  var setsHtml=it.sets.map(function(st,si){ var rv=(st.reps===''||st.reps==null?'':st.reps);
+    if(st.done){ var ub='<button class="rm" onclick="undoSet('+si+')">↺</button>'; if(bw) return '<div class="setrow runset done"><span class="setn">'+(si+1)+'✓</span><input class="si" type="number" inputmode="numeric" value="'+rv+'" oninput="runSet('+si+',\'reps\',this.value)"><span class="un">reps</span>'+ub+'</div>'; var pv=(st.peso===''||st.peso==null?'':st.peso); return '<div class="setrow runset done"><span class="setn">'+(si+1)+'✓</span><input class="si" type="number" inputmode="numeric" value="'+rv+'" oninput="runSet('+si+',\'reps\',this.value)"><span class="xs">×</span><input class="si" type="number" inputmode="decimal" value="'+pv+'" oninput="runSet('+si+',\'peso\',this.value)"><span class="un">'+unit()+'</span>'+ub+'</div>'; }
+    if(si===activeIdx){ var ld=(!bw&&st.peso!==''&&st.peso!=null)?(' · '+st.peso+unit()):''; return '<div class="setrow runset active"><span class="setn">'+(si+1)+'</span><span class="acttarget">alvo '+it.rmin+'–'+it.rmax+' reps'+ld+'</span><button class="setok" onclick="doneSet('+si+')">Concluí ✓</button></div>'; }
+    return '<div class="setrow runset pend"><span class="setn">'+(si+1)+'</span><span class="acttarget dim">alvo '+it.rmin+'–'+it.rmax+' reps</span></div>';
+  }).join('');
   var body='<div class="exc"><div class="rn" style="font-size:18px">'+esc(it.name)+(bw?' <span class="bwtag">peso corporal</span>':'')+'</div><div class="ll">alvo '+it.rmin+'-'+it.rmax+' reps · '+lastInfo+'</div>'+hint+setsHtml+'<button class="addset" onclick="addRunSet()">+ série</button></div>';
   var nav='<div class="runnav"><button class="btn ghost" onclick="prevEx()"'+(ei<=0?' disabled':'')+'>‹ Anterior</button><button class="btn ghost" onclick="nextEx()"'+(ei>=total-1?' disabled':'')+'>Próximo ›</button></div>';
   el.innerHTML=head+body+nav+'<button class="btn ghost" style="width:100%;margin-top:10px" onclick="openSessPick()">+ Exercício</button>';
@@ -521,7 +530,7 @@ function buildRunItem(ex,sets,rmin,rmax,rest){ rmin=Number(rmin)||8; rmax=Number
 function startSession(tid){ var date=new Date().toISOString().slice(0,10); var name='Avulso', items=[]; if(tid){ var r=(DATA.treinos||[]).find(function(x){return x.id===tid;}); if(r){ name=r.name; items=(r.items||[]).map(function(it){ return buildRunItem(it.ex,it.sets,it.rmin,it.rmax,it.rest); }); } } sess={ treinoName:name, date:date, cur:0, items:items }; stopRest(); renderHoje(); window.scrollTo(0,0); }
 function cancelSession(){ fitConfirm('Descartar treino?','O que você registrou agora será perdido.', function(){ sess=null; stopRest(); renderHoje(); }); }
 function runSet(si,f,v){ var it=sess.items[sess.cur]; if(it&&it.sets[si]) it.sets[si][f]=v; }
-function doneSet(si){ var it=sess.items[sess.cur]; if(!it||!it.sets[si]) return; it.sets[si].done=true; renderHoje(); startRest(restFor(it)); }
+function doneSet(si){ var it=sess.items[sess.cur]; if(!it||!it.sets[si]) return; var st=it.sets[si]; if(st.reps===''||st.reps==null) st.reps=it.rmin; st.done=true; renderHoje(); startRest(restFor(it)); }
 function undoSet(si){ var it=sess.items[sess.cur]; if(it&&it.sets[si]) it.sets[si].done=false; stopRest(); renderHoje(); }
 function addRunSet(){ var it=sess.items[sess.cur]; var prev=it.sets[it.sets.length-1]||{}; it.sets.push({reps:'',peso:(prev.peso||''),done:false}); renderHoje(); }
 function prevEx(){ if(sess.cur>0){ sess.cur--; stopRest(); renderHoje(); window.scrollTo(0,0); } }
@@ -534,6 +543,9 @@ function skipRest(){ stopRest(); }
 function addRest(n){ if(rest.id){ rest.secs+=n; renderRestBar(); } }
 function renderRestBar(){ var b=document.getElementById('restBar'); if(!b) return; if(rest.id&&rest.secs>0){ b.style.display='flex'; b.innerHTML='<span class="rt">⏱ '+rest.secs+'s</span><button class="rbtn" onclick="addRest(30)">+30s</button><button class="rbtn" onclick="skipRest()">Pular</button>'; } else { b.style.display='none'; b.innerHTML=''; } }
 function beep(){ try{ if(navigator.vibrate) navigator.vibrate([200,80,200]); }catch(e){} try{ var A=window.AudioContext||window.webkitAudioContext; if(!A) return; var a=new A(); var o=a.createOscillator(), g=a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value=880; g.gain.value=0.08; o.start(); setTimeout(function(){ try{o.stop();a.close();}catch(e){} },300); }catch(e){} }
+function openSwitch(){ var rows=(DATA.treinos||[]).map(function(r){ return '<div class="row" onclick="startFromSwitch(\''+r.id+'\')"><div><div class="rn">'+esc(r.name)+'</div><div class="rg">'+((r.items||[]).length)+' exercícios</div></div><span style="color:var(--accent)">▶</span></div>'; }).join(''); rows+='<div class="row" style="border-style:dashed" onclick="startFromSwitch(\'\')"><div class="rn">Treino avulso</div><span style="color:var(--accent)">▶</span></div>'; $('switchList').innerHTML=rows||'<div class="empty">Nenhum treino. Crie um na aba Treinos.</div>'; $('switchOverlay').classList.add('open'); }
+function closeSwitch(){ $('switchOverlay').classList.remove('open'); }
+function startFromSwitch(id){ closeSwitch(); startSession(id||undefined); }
 function openSessPick(){ $('sessPickList').innerHTML=(DATA.exercicios||[]).slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(x){ return '<div onclick="addSessEx(\''+x.id+'\')" style="padding:11px 12px;border-radius:8px;cursor:pointer;font-size:14px">'+esc(x.name)+'</div>'; }).join('')||'<div class="empty">Sem exercícios.</div>'; $('sessPickOverlay').classList.add('open'); }
 function addSessEx(id){ sess.items.push(buildRunItem(id,3,8,12,null)); sess.cur=sess.items.length-1; $('sessPickOverlay').classList.remove('open'); renderHoje(); }
 function finishSession(){

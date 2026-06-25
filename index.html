@@ -16,43 +16,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Joelboard">
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root{ --bg:#0d0f18; --surface:#1b1f32; --surface2:#252a40; --border:#2b3147; --primary:#818cf8; --income:#34d399; --fit:#fb7185; --text:#e7eaf3; --muted:#7b85a0; --radius:18px; }
-*{ box-sizing:border-box; margin:0; padding:0; }
-body{ background:var(--bg); color:var(--text); font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; min-height:100vh; padding:44px 22px 70px; }
-.wrap{ max-width:720px; margin:0 auto; }
-.top{ display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
-.brand{ display:flex; align-items:center; gap:12px; }
-.brand img{ width:40px; height:40px; border-radius:11px; display:block; }
-.wm{ font-size:25px; font-weight:800; letter-spacing:-.6px; }
-.acct{ display:flex; align-items:center; gap:12px; font-size:13px; color:var(--muted); }
-.authbtn{ background:var(--surface2); border:1px solid var(--border); color:var(--primary); font-weight:700; font-size:12px; border-radius:99px; padding:6px 13px; cursor:pointer; font-family:inherit; }
-.authbtn:hover{ border-color:var(--primary); }
-.sub{ font-size:14px; color:var(--muted); margin:8px 2px 28px; }
-.grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; }
-.tile{ display:flex; flex-direction:column; align-items:flex-start; gap:3px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:22px; text-decoration:none; color:var(--text); transition:transform .15s ease, border-color .15s ease; }
-a.tile:hover{ transform:translateY(-3px); border-color:var(--primary); }
-.ico{ width:50px; height:50px; border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
-.suite{ font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--muted); }
-.name{ font-size:19px; font-weight:800; letter-spacing:-.4px; margin-top:-2px; }
-.desc{ font-size:12.5px; color:var(--muted); line-height:1.45; margin-top:5px; }
-.open{ margin-top:13px; font-size:12px; font-weight:700; color:var(--primary); }
-.tile.ghost{ opacity:0.62; }
-.soon{ margin-top:13px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); background:var(--surface2); border:1px solid var(--border); border-radius:99px; padding:4px 11px; }
-.foot{ margin-top:40px; font-size:11px; color:var(--muted); opacity:0.6; text-align:center; }
-.gear{ background:var(--surface2); border:1px solid var(--border); color:var(--muted); font-size:14px; border-radius:99px; width:32px; height:32px; cursor:pointer; font-family:inherit; }
-.gear:hover{ border-color:var(--primary); color:var(--primary); }
-.overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.65); display:none; align-items:center; justify-content:center; z-index:200; padding:20px; backdrop-filter:blur(4px); }
-.overlay.open{ display:flex; }
-.modal{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:22px; width:100%; max-width:380px; }
-.mh{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-.mt{ font-size:18px; font-weight:800; }
-.x{ background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; font-family:inherit; }
-.acctline{ font-size:13px; color:var(--muted); margin-bottom:16px; word-break:break-all; }
-.mbtn{ display:block; width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:11px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; margin-bottom:10px; }
-.mbtn:hover{ border-color:var(--primary); }
-.vrs{ text-align:center; font-size:11px; color:var(--muted); opacity:0.6; margin-top:6px; }
-</style>
+<link rel="stylesheet" href="./src/hub.css">
 </head>
 <body>
 <div class="wrap">

@@ -1,0 +1,45 @@
+/* Joelboard Hub — styles, Tailwind-based. © 2026 Joel Soluções LTDA.
+   Preflight off; reset below + theme tokens (var-based) drive the look. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{ --bg:#0d0f18; --surface:#1b1f32; --surface2:#252a40; --border:#2b3147; --primary:#818cf8; --income:#34d399; --fit:#fb7185; --text:#e7eaf3; --muted:#7b85a0; --radius:18px; }
+
+*,::before,::after{ box-sizing:border-box; margin:0; padding:0; border-width:0; border-style:solid; border-color:var(--border); }
+button,input,select,textarea{ font-family:inherit; }
+body{ @apply min-h-screen text-ink; background:var(--bg); font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:44px 22px 70px; }
+
+.wrap{ @apply max-w-[720px] mx-auto; }
+.top{ @apply flex items-center justify-between gap-[14px] flex-wrap; }
+.brand{ @apply flex items-center gap-3; }
+.brand img{ @apply w-10 h-10 rounded-[11px] block; }
+.wm{ @apply text-[25px] font-extrabold tracking-[-.6px]; }
+.acct{ @apply flex items-center gap-3 text-[13px] text-muted; }
+.authbtn{ @apply bg-surface2 border border-border text-primary font-bold text-xs rounded-full px-[13px] py-1.5 cursor-pointer; font-family:inherit; }
+.authbtn:hover{ @apply border-primary; }
+.sub{ @apply text-sm text-muted; margin:8px 2px 28px; }
+.grid{ @apply gap-4; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); }
+.tile{ @apply flex flex-col items-start gap-[3px] bg-surface border border-border rounded-[18px] p-[22px] no-underline text-ink; transition:transform .15s ease, border-color .15s ease; }
+a.tile:hover{ @apply border-primary; transform:translateY(-3px); }
+.ico{ @apply w-[50px] h-[50px] rounded-[14px] flex items-center justify-center mb-3; }
+.suite{ @apply text-[11px] font-bold tracking-[.5px] uppercase text-muted; }
+.name{ @apply text-[19px] font-extrabold tracking-[-.4px] mt-[-2px]; }
+.desc{ @apply text-[12.5px] text-muted mt-[5px]; line-height:1.45; }
+.open{ @apply mt-[13px] text-xs font-bold text-primary; }
+.tile.ghost{ @apply opacity-[0.62]; }
+.soon{ @apply mt-[13px] text-[10px] font-bold uppercase tracking-[1px] text-muted bg-surface2 border border-border rounded-full px-[11px] py-1; }
+.foot{ @apply mt-10 text-[11px] text-muted opacity-60 text-center; }
+
+.gear{ @apply bg-surface2 border border-border text-muted text-sm rounded-full w-8 h-8 cursor-pointer; font-family:inherit; }
+.gear:hover{ @apply border-primary text-primary; }
+.overlay{ @apply fixed inset-0 hidden items-center justify-center z-[200] p-5; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); }
+.overlay.open{ @apply flex; }
+.modal{ @apply bg-surface border border-border rounded-[18px] p-[22px] w-full max-w-[380px]; }
+.mh{ @apply flex justify-between items-center mb-4; }
+.mt{ @apply text-lg font-extrabold; }
+.x{ @apply bg-transparent border-0 text-muted text-lg cursor-pointer; font-family:inherit; }
+.acctline{ @apply text-[13px] text-muted mb-4 break-all; }
+.mbtn{ @apply block w-full bg-surface2 border border-border text-ink rounded-[11px] p-3 text-sm font-bold cursor-pointer mb-2.5; font-family:inherit; }
+.mbtn:hover{ @apply border-primary; }
+.vrs{ @apply text-center text-[11px] text-muted opacity-60 mt-1.5; }

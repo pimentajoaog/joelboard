@@ -1,20 +1,24 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './finance/index.html', './fit/index.html'],
-  // Fit keeps its own reset; disable Tailwind's preflight so adopting utilities never changes existing looks.
+  // Apps keep their own resets; disable preflight so adopting utilities never changes existing looks.
   corePlugins: { preflight: false },
   theme: {
     extend: {
+      // Tokens point at CSS variables — each app's :root (and each Finance skin) supplies the value.
       colors: {
-        bg: '#0d0f18',
-        surface: '#191d2c',
-        surface2: '#232838',
-        border: '#2d3346',
-        accent: '#fb7185',
-        accent2: '#3a2530',
-        ink: '#e7eaf3',
-        muted: '#7b85a0',
-        ok: '#34d399'
+        bg: 'var(--bg)',
+        surface: 'var(--surface)',
+        surface2: 'var(--surface2)',
+        border: 'var(--border)',
+        accent: 'var(--accent)',
+        accent2: 'var(--accent2)',
+        ink: 'var(--text)',
+        muted: 'var(--muted)',
+        ok: 'var(--ok)',
+        primary: 'var(--primary)',
+        income: 'var(--income)',
+        fit: 'var(--fit)'
       },
       fontFamily: {
         sans: ['Hanken Grotesk', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif']

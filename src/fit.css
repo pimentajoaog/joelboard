@@ -6,7 +6,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --accent:#fb7185; --accent2:#3a2530; --text:#e7eaf3; --muted:#7b85a0; --radius:16px; }
+:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --accent:#fb7185; --accent2:#3a2530; --text:#e7eaf3; --muted:#7b85a0; --ok:#34d399; --radius:16px; }
 
 /* Reset: extends the original with the border + form-font defaults Tailwind's (disabled)
    preflight would normally provide, so @apply border / buttons render correctly. */

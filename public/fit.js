@@ -265,14 +265,17 @@ function renderRun(){
     return;
   }
   if(runPhase==='log'){
-    var st=it.sets[fp]||{}; var pct=rest.tot?rest.secs/rest.tot:0;
+    var st=it.sets[fp]||{}; var resting=(rest.id&&rest.secs>0); var pct=rest.tot?rest.secs/rest.tot:0;
     var loadBox=bw?'':'<div class="sbox"><div class="lbl">Carga kg</div><div class="sctl"><button onclick="rBump(\'load\',-2.5)">−</button><span class="v" id="vLoad">'+(st.peso||0)+'</span><button onclick="rBump(\'load\',2.5)">+</button></div></div>';
-    stage.innerHTML='<div class="rkick">Registrar · ⏱ '+fmtT(rest.secs)+'</div><div class="rname">'+esc(it.name)+'</div><div class="disc2" style="width:148px;height:148px;margin:14px 0">'+ringSvg(pct,'var(--primary)')+'<div class="face"><div class="big" style="font-size:32px">'+fmtT(rest.secs)+'</div></div></div><div class="small" style="color:var(--muted);margin-bottom:12px">Série '+setNo+' — quanto fez?</div><div class="rsteps"><div class="sbox"><div class="lbl">Reps</div><div class="sctl"><button onclick="rBump(\'reps\',-1)">−</button><span class="v" id="vReps">'+(st.reps||0)+'</span><button onclick="rBump(\'reps\',1)">+</button></div></div>'+loadBox+'</div>';
+    var timer=resting?('<div class="disc2" style="width:148px;height:148px;margin:14px 0">'+ringSvg(pct,'var(--primary)')+'<div class="face"><div class="big" style="font-size:32px">'+fmtT(rest.secs)+'</div></div></div>'):'';
+    stage.innerHTML='<div class="rkick">'+(resting?('Registrar · ⏱ '+fmtT(rest.secs)):'Registrar série')+'</div><div class="rname">'+esc(it.name)+'</div>'+timer+'<div class="small" style="color:var(--muted);margin:'+(resting?'0 0 12px':'16px 0 12px')+'">Série '+setNo+' — quanto fez?</div><div class="rsteps"><div class="sbox"><div class="lbl">Reps</div><div class="sctl"><button onclick="rBump(\'reps\',-1)">−</button><span class="v" id="vReps">'+(st.reps||0)+'</span><button onclick="rBump(\'reps\',1)">+</button></div></div>'+loadBox+'</div>';
     btm.innerHTML='<button class="rcta save" onclick="rSalvar()">Salvar ✓</button>';
     return;
   }
   if(runPhase==='active'){
-    stage.innerHTML='<div class="rkick">Série '+setNo+' / '+it.sets.length+'</div><div class="rname">'+esc(it.name)+'</div><div class="pulse2"><div class="face"><div class="rgo">GO</div><div class="small">faça suas reps</div></div></div>';
+    var sw=(it.sets[fp]||{}).peso; if(sw===''||sw==null){ sw=(it.sg&&it.sg.weight!==''&&it.sg.weight!=null)?it.sg.weight:null; }
+    var goSub=it.rmin+'–'+it.rmax+' reps'+((!bw&&sw!=null)?(' · '+sw+' kg'):'');
+    stage.innerHTML='<div class="rkick">Série '+setNo+' / '+it.sets.length+'</div><div class="rname">'+esc(it.name)+'</div><div class="pulse2"><div class="face"><div class="rgo">GO</div><div class="small">'+goSub+'</div></div></div>';
     btm.innerHTML='<button class="rcta finish" onclick="rConcluir()">Concluir série ✓</button>';
     return;
   }
@@ -282,7 +285,8 @@ function renderRun(){
   btm.innerHTML='<button class="rcta start" onclick="rIniciar()">Iniciar série ▶</button><button class="rsub" onclick="openSessPick()">＋ exercício avulso</button>';
 }
 function rIniciar(){ runPhase='active'; renderRun(); }
-function rConcluir(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; var st=it.sets[fp]; if(st.reps===''||st.reps==null) st.reps=it.rmin; if(st.peso===''||st.peso==null) st.peso=(it.sg&&it.sg.weight!==''&&it.sg.weight!=null)?it.sg.weight:0; runPhase='log'; startRest(restFor(it)); renderRun(); }
+function rIsLast(it,fp){ return sess.cur>=sess.items.length-1 && fp>=it.sets.length-1; }
+function rConcluir(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; var st=it.sets[fp]; if(st.reps===''||st.reps==null) st.reps=it.rmin; if(st.peso===''||st.peso==null) st.peso=(it.sg&&it.sg.weight!==''&&it.sg.weight!=null)?it.sg.weight:0; runPhase='log'; if(rIsLast(it,fp)){ stopRest(); } else { startRest(restFor(it)); } renderRun(); }
 function rBump(f,d){ var it=sess.items[sess.cur]; var fp=firstPending(it); var st=it.sets[fp]; if(!st) return; if(f==='reps'){ st.reps=Math.max(0,(Number(st.reps)||0)+d); var v=$('vReps'); if(v) v.textContent=st.reps; } else { st.peso=Math.max(0,Math.round(((Number(st.peso)||0)+d)*10)/10); var v2=$('vLoad'); if(v2) v2.textContent=st.peso; } }
 function rSalvar(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; it.sets[fp].done=true; if(rest.id&&rest.secs>0){ runPhase='rest'; renderRun(); } else { rNextSet(); } }
 function rNextSet(){ stopRest(); var it=sess.items[sess.cur]; if(firstPending(it)<0){ if(sess.cur<sess.items.length-1){ sess.cur++; runPhase='ready'; renderRun(); } else { rFinish(); } } else { runPhase='ready'; renderRun(); } }

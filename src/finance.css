@@ -6,7 +6,7 @@
 @tailwind components;
 @tailwind utilities;
 :root {
-  --brand: var(--primary); --on-brand: #fff;
+  --brand: var(--primary); --on-brand: #fff; --success: var(--income);
   --bg: #0d0f18; --surface: #151929; --surface2: #1b1f32; --border: #252840;
   --primary: #818cf8; --income: #34d399; --expense: #f87171; --warning: #fbbf24; --savings: #22d3ee;
   --text: #e2e8f0; --muted: #64748b; --radius: 16px; --radius-sm: 10px;
@@ -18,49 +18,6 @@ body.light {
   --bg: #f4f5fb; --surface: #ffffff; --surface2: #eef0f7; --border: #dde0ec;
   --primary: #6366f1; --income: #059669; --expense: #dc2626; --warning: #d97706; --savings: #0891b2;
   --text: #1e2333; --muted: #6b7280;
-}
-body[data-skin="vault"] {
-  --bg:#14140f; --surface:#1b1b15; --surface2:#222218; --border:#2e2d24;
-  --primary:#cba86a; --income:#9bbf86; --expense:#d98b6e; --warning:#cba86a; --savings:#a9b58a;
-  --text:#e9e4d6; --muted:#8f897a; --radius:13px; --radius-sm:9px; --shadow:none;
-  --font-body:'Jost',sans-serif; --font-display:'Cormorant Garamond',serif;
-}
-body[data-skin="garden"] {
-  --bg:#f3ede0; --surface:#fffdf8; --surface2:#f0e8d6; --border:#e7ddc8;
-  --primary:#7c9a6e; --income:#5f7d54; --expense:#c97b5a; --warning:#b9893f; --savings:#7b9bb0;
-  --text:#3b352c; --muted:#9a9082; --radius:22px; --radius-sm:14px; --shadow:0 4px 18px rgba(59,53,44,.07);
-  --font-body:'Hanken Grotesk',sans-serif; --font-display:'Bricolage Grotesque',sans-serif;
-}
-body[data-skin="aperture"] {
-  --bg:#fbfbf9; --surface:#ffffff; --surface2:#f1f0ec; --border:#e7e6e1;
-  --primary:#e8482b; --income:#3f7d4f; --expense:#e8482b; --warning:#b9700f; --savings:#3a6ea5;
-  --text:#101010; --muted:#a3a29c; --radius:14px; --radius-sm:10px; --shadow:none;
-  --font-body:'Hanken Grotesk',sans-serif; --font-display:'Darker Grotesque',sans-serif;
-}
-body[data-skin="arcade"] {
-  --bg:#0a0a16; --surface:#11122a; --surface2:#171936; --border:#26285a;
-  --primary:#22e0e0; --income:#b6ff3a; --expense:#ff2fb0; --warning:#ffcc33; --savings:#22e0e0;
-  --text:#dfe3ff; --muted:#7b7fb8; --radius:8px; --radius-sm:6px; --shadow:0 0 24px rgba(34,224,224,.10);
-  --font-body:'IBM Plex Mono',monospace; --font-display:'Chakra Petch',sans-serif;
-}
-
-body[data-skin="sorbet"] {
-  --bg:#fdf4fb; --surface:#ffffff; --surface2:#fbeef9; --border:#f3dcef;
-  --primary:#c264e8; --income:#2bb673; --expense:#f76b8a; --warning:#f5a524; --savings:#22b8c4;
-  --text:#4a3a52; --muted:#9c8aa6; --radius:20px; --radius-sm:14px; --shadow:0 6px 20px rgba(194,100,232,.08);
-  --font-body:'Comic Sans MS','Comic Sans',cursive; --font-display:'Comic Sans MS','Comic Sans',cursive;
-}
-body[data-skin="press"] {
-  --bg:#f3efe6; --surface:#fbf9f3; --surface2:#efeadd; --border:#ccc2ad;
-  --primary:#1a1a1a; --income:#2f6b4f; --expense:#b03a2e; --warning:#9a7b2e; --savings:#3a5a78;
-  --text:#1c1813; --muted:#7c715c; --radius:5px; --radius-sm:4px; --shadow:none;
-  --font-body:'Hanken Grotesk',sans-serif; --font-display:'Playfair Display',serif;
-}
-body[data-skin="mint"] {
-  --bg:#eefaf4; --surface:#ffffff; --surface2:#e2f5ec; --border:#c7eadb;
-  --primary:#0fb981; --income:#0ea5a0; --expense:#f43f5e; --warning:#f59e0b; --savings:#0d9488;
-  --text:#0f3329; --muted:#5f9080; --radius:16px; --radius-sm:11px; --shadow:0 4px 16px rgba(16,185,129,.07);
-  --font-body:'Hanken Grotesk',sans-serif; --font-display:'Hanken Grotesk',sans-serif;
 }
 body[data-skin="sorbet"] .tab-btn { border-bottom:none; border-radius:99px; padding:10px 16px; }
 body[data-skin="sorbet"] .tab-btn.active { background:rgba(194,100,232,.14); color:var(--primary); }
@@ -578,19 +535,9 @@ select.cs-native { position: absolute; width: 1px; height: 1px; padding: 0; marg
 .toast { position: fixed; bottom: 96px; right: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; font-size: 13px; color: var(--income); box-shadow: 0 4px 20px rgba(0,0,0,0.3); transform: translateY(12px); opacity: 0; transition: all 0.25s; z-index: 300; pointer-events: none; }
 .toast.show { transform: translateY(0); opacity: 1; }
 .toast.error { color: var(--expense); border-color: rgba(248,113,113,0.45); }
-.confirm-card { position: fixed; right: 28px; bottom: 96px; width: 300px; max-width: calc(100vw - 32px); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.45); z-index: 320; transform: translateX(120%); opacity: 0; transition: all 0.28s cubic-bezier(.4,0,.2,1); }
-.confirm-card.show { transform: translateX(0); opacity: 1; }
-.cc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 600; font-size: 13px; }
-.cc-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; }
-.cc-body { font-size: 13px; color: var(--text); }
-.cc-q strong { color: var(--income); }
 .cc-date { display: flex; gap: 8px; margin-top: 10px; }
 .cc-date-btn { flex: 1; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); transition: all 0.15s; }
 .cc-date-btn.on { background: rgba(129,140,248,0.14); border-color: var(--primary); color: var(--primary); }
-.cc-btns, .cc-input-wrap { display: flex; gap: 8px; margin-top: 12px; }
-.cc-btn { flex: 1; padding: 9px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: all 0.15s; }
-.cc-btn.yes { background: rgba(52,211,153,0.14); border-color: var(--income); color: var(--income); }
-.cc-btn:hover { opacity: 0.85; }
 .cc-input { flex: 1; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; }
 .cc-input:focus { border-color: var(--primary); }
 .empty { text-align: center; color: var(--muted); padding: 24px 16px; font-size: 13px; }
@@ -611,7 +558,6 @@ select.cs-native { position: absolute; width: 1px; height: 1px; padding: 0; marg
   .calc-result { align-items: stretch; }
   .calc-inputs-mini { justify-content: flex-start; }
   .cal-day { min-height: 44px; padding: 4px 6px; }
-  .confirm-card { right: 16px; left: 16px; width: auto; bottom: 88px; }
   /* ---- mobile polish ---- */
   .header { gap: 10px; margin-bottom: 18px; }
   .header-left h1 { font-size: 18px; }

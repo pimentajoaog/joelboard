@@ -44,3 +44,25 @@ body.jb-noscroll { overflow: hidden; }
 .field { width: 100%; padding: 10px 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; transition: border-color 0.2s; }
 .field:focus { border-color: var(--primary); }
 .btn-primary { width: 100%; padding: 12px; background: var(--brand); border: none; border-radius: var(--radius-sm); color: var(--on-brand); font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 6px; transition: opacity 0.2s; }
+
+/* Slide-in nudge / confirm card — a bottom-right toast-style prompt (NOT a modal overlay).
+   Markup: .confirm-card > .cc-head(span + .cc-x) + .cc-body(.cc-q[ strong] + .cc-btns > .cc-btn[.yes]); toggle .show to reveal.
+   Reusable across apps; affirmative green resolves per-app via --ok -> --income fallback. (Finance layers .cc-date/.cc-input on top.) */
+.confirm-card { position: fixed; right: 28px; bottom: 96px; width: 300px; max-width: calc(100vw - 32px); background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.45); z-index: 320; transform: translateX(120%); opacity: 0; transition: all 0.28s cubic-bezier(.4,0,.2,1); }
+.confirm-card.show { transform: translateX(0); opacity: 1; }
+.cc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 600; font-size: 13px; }
+.cc-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; font-family: inherit; }
+.cc-body { font-size: 13px; color: var(--text); }
+.cc-q strong { color: var(--success, #34d399); }
+.cc-btns, .cc-input-wrap { display: flex; gap: 8px; margin-top: 12px; }
+.cc-btn { flex: 1; padding: 9px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: all 0.15s; font-family: inherit; }
+.cc-btn.yes { background: rgba(52,211,153,0.14); border-color: var(--success, #34d399); color: var(--success, #34d399); }
+.cc-btn:hover { opacity: 0.85; }
+@media (max-width: 540px) { .confirm-card { right: 16px; left: 16px; width: auto; bottom: 88px; } }
+
+
+/* Shared skin picker (themes in themes.css; render via JB.renderSkinPicker(app, el)) */
+.jb-skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(94px, 1fr)); gap: 8px; }
+.jb-skin { display: flex; align-items: center; gap: 7px; padding: 11px 12px; border-radius: 12px; border: 2px solid transparent; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; text-align: left; transition: transform 0.12s; }
+.jb-skin:hover { transform: translateY(-1px); }
+.jb-skin-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 2px rgba(0,0,0,0.12); }

@@ -30,14 +30,14 @@ function bootSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando seu treino…</div></div>');
   JB.resolveSheet({ app:'fit', namePart:'Joelboard', requiredTabs: FIT_TABS.map(function(t){return t[0];}) })
     .then(function(ctx){ fitGrid=ctx.grid; loadData(); })
-    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro: '+esc(m)+'</div></div>'); });
+    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(m)+'</div></div>'); });
 }
 function gate(){
   loadingHtml('<div class="gate"><div class="gt">💪 Vamos treinar</div><div class="gs">Crie sua planilha de treino — ela fica no seu Google Drive.</div>'
     + '<button class="btn-primary" onclick="createSheet()">✨ Criar meu treino</button>'
     + '<div style="color:var(--muted);font-size:12px;margin:16px 0 10px">— ou já tem uma? —</div>'
     + '<input class="field" id="fitUrl" placeholder="Cole o link da planilha"><button class="btn ghost" style="width:100%;margin-top:10px" onclick="linkSheet()">Conectar planilha</button>'
-    + '<div id="fitErr" style="color:var(--accent);font-size:12px;margin-top:10px"></div></div>');
+    + '<div id="fitErr" style="color:var(--primary);font-size:12px;margin-top:10px"></div></div>');
 }
 function offerLink(f){ loadingHtml('<div class="gate"><div class="gt">Encontramos seu treino 🎉</div><div class="gs">'+esc(f.name)+'</div><button class="btn-primary" onclick="pick(\''+f.id+'\')">Vincular e abrir</button><button class="del" onclick="gate()">usar outro / criar novo</button></div>'); }
 function pick(id){ JB.setSheetId('fit',id); bootSheet(); }
@@ -51,7 +51,7 @@ function createSheet(){
       data.push({range:'Exercicios!A2',values:STARTER.map(function(e){return [e[0],e[1],uuid()];})});
       data.push({range:'Config!A2',values:[['unit','kg'],['tags',JSON.stringify(DEFAULT_TAGS)]]});
       return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+ss.spreadsheetId+'/values:batchUpdate',{valueInputOption:'RAW',data:data});
-    }).then(bootSheet).catch(function(e){ loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro ao criar: '+esc(e.message)+'</div></div>'); });
+    }).then(bootSheet).catch(function(e){ loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro ao criar: '+esc(e.message)+'</div></div>'); });
 }
 
 /* ---- load ---- */
@@ -63,7 +63,7 @@ function loadData(){
   JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
     DATA=buildFit(by); render();
-  }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('fit'); bootSheet(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--accent)">Erro: '+esc(e.message)+'</div></div>'); });
+  }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('fit'); bootSheet(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(e.message)+'</div></div>'); });
 }
 function body(rows){ return (rows||[]).slice(1); }
 function buildFit(t){
@@ -288,7 +288,7 @@ function rSalvar(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<
 function rNextSet(){ stopRest(); var it=sess.items[sess.cur]; if(firstPending(it)<0){ if(sess.cur<sess.items.length-1){ sess.cur++; runPhase='ready'; renderRun(); } else { rFinish(); } } else { runPhase='ready'; renderRun(); } }
 function rDiscard(){ fitConfirm('Sair do treino?','O que você registrou agora será perdido.', function(){ stopRest(); sess=null; $('runOverlay').classList.remove('open'); renderHoje(); }); }
 function beep(){ try{ if(navigator.vibrate) navigator.vibrate([200,80,200]); }catch(e){} try{ var A=window.AudioContext||window.webkitAudioContext; if(!A) return; var a=new A(); var o=a.createOscillator(), g=a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value=880; g.gain.value=0.08; o.start(); setTimeout(function(){ try{o.stop();a.close();}catch(e){} },300); }catch(e){} }
-function openSwitch(){ var rows=(DATA.treinos||[]).map(function(r){ return '<div class="row" onclick="startFromSwitch(\''+r.id+'\')"><div><div class="rn">'+esc(r.name)+'</div><div class="rg">'+((r.items||[]).length)+' exercícios</div></div><span style="color:var(--accent)">▶</span></div>'; }).join(''); rows+='<div class="row" style="border-style:dashed" onclick="startFromSwitch(\'\')"><div class="rn">Treino avulso</div><span style="color:var(--accent)">▶</span></div>'; $('switchList').innerHTML=rows||'<div class="empty">Nenhum treino. Crie um na aba Treinos.</div>'; $('switchOverlay').classList.add('open'); }
+function openSwitch(){ var rows=(DATA.treinos||[]).map(function(r){ return '<div class="row" onclick="startFromSwitch(\''+r.id+'\')"><div><div class="rn">'+esc(r.name)+'</div><div class="rg">'+((r.items||[]).length)+' exercícios</div></div><span style="color:var(--primary)">▶</span></div>'; }).join(''); rows+='<div class="row" style="border-style:dashed" onclick="startFromSwitch(\'\')"><div class="rn">Treino avulso</div><span style="color:var(--primary)">▶</span></div>'; $('switchList').innerHTML=rows||'<div class="empty">Nenhum treino. Crie um na aba Treinos.</div>'; $('switchOverlay').classList.add('open'); }
 function closeSwitch(){ $('switchOverlay').classList.remove('open'); }
 function startFromSwitch(id){ closeSwitch(); startSession(id||undefined); }
 function openSessPick(){ $('sessPickList').innerHTML=(DATA.exercicios||[]).slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(x){ return '<div onclick="addSessEx(\''+x.id+'\')" style="padding:11px 12px;border-radius:8px;cursor:pointer;font-size:14px">'+esc(x.name)+'</div>'; }).join('')||'<div class="empty">Sem exercícios.</div>'; $('sessPickOverlay').classList.add('open'); }
@@ -358,7 +358,7 @@ function renderProgresso(){
     var mode=exMode(progEx);
     var prTop=0,prE=0,prReps=0; d.forEach(function(x){ if(x.top>prTop)prTop=x.top; if(x.e1rm>prE)prE=x.e1rm; x.sets.forEach(function(s){ if((Number(s.reps)||0)>prReps) prReps=Number(s.reps)||0; }); });
     var cards = (mode==='bw') ? ('<div class="prg"><div class="prc"><div class="prl">Melhor série</div><div class="prv">'+prReps+' reps</div></div><div class="prc"><div class="prl">Sessões</div><div class="prv">'+d.length+'</div></div></div>') : ('<div class="prg"><div class="prc"><div class="prl">Melhor carga</div><div class="prv">'+prTop+' '+unit()+'</div></div><div class="prc"><div class="prl">1RM estim.</div><div class="prv">'+prE+' '+unit()+'</div></div><div class="prc"><div class="prl">Sessões</div><div class="prv">'+d.length+'</div></div></div>');
-    var hist=d.slice().reverse().map(function(x){ return '<div class="row" style="cursor:default"><div><div class="rn">'+x.date+'</div><div class="rg">'+x.sets.map(function(s){return mode==='bw'?(''+s.reps):(s.reps+'×'+s.peso);}).join(' · ')+'</div></div><div style="font-weight:800;color:var(--accent)">'+(mode==='bw'?(Math.max.apply(null,x.sets.map(function(s){return Number(s.reps)||0;}))+' reps'):(x.top+' '+unit()))+'</div></div>'; }).join('');
+    var hist=d.slice().reverse().map(function(x){ return '<div class="row" style="cursor:default"><div><div class="rn">'+x.date+'</div><div class="rg">'+x.sets.map(function(s){return mode==='bw'?(''+s.reps):(s.reps+'×'+s.peso);}).join(' · ')+'</div></div><div style="font-weight:800;color:var(--primary)">'+(mode==='bw'?(Math.max.apply(null,x.sets.map(function(s){return Number(s.reps)||0;}))+' reps'):(x.top+' '+unit()))+'</div></div>'; }).join('');
     el.innerHTML=progHdr(name)+cards+progPreviewHtml(progEx)+(mode==='bw'?'':progChart(d))+'<div class="sect" style="margin:22px 0 10px">Histórico</div>'+hist;
     return;
   }
@@ -372,6 +372,7 @@ function openSettings(){ renderSettings(); switchSet('geral'); $('setOverlay').c
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function renderSettings(){
   var u=unit();
+  JB.renderSkinPicker('fit', $('setSkins'));
   $('setUnit').innerHTML=['kg','lb'].map(function(x){ return '<button class="btn '+(x===u?'':'ghost')+'" style="margin-right:8px" onclick="setUnitS(\''+x+'\')">'+x+'</button>'; }).join('');
   var tags=(DATA.config&&DATA.config.tags)||DEFAULT_TAGS;
   $('setTags').innerHTML=tags.map(function(t,i){ return '<span class="tagchip">'+esc(t)+'<span class="tx" onclick="removeTag('+i+')">✕</span></span>'; }).join('')||'<div class="rg">Nenhum grupo.</div>';
@@ -421,4 +422,5 @@ var askCb=null;
 function fitConfirm(title,msg,onYes){ askCb=onYes||null; $('askTitle').textContent=title||'Confirmar'; $('askMsg').textContent=msg||''; $('askOverlay').classList.add('open'); }
 function closeAsk(){ $('askOverlay').classList.remove('open'); askCb=null; }
 function confirmYes(){ var cb=askCb; closeAsk(); if(cb) cb(); }
+JB.applySkin('fit');
 startAuth();

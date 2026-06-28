@@ -18,6 +18,7 @@ joelboard/
     joelboard.js        # shared core logic  -> window.JB   (served at /joelboard.js)
     finance.js / fit.js / hub.js   # each app's OWN logic   (served at /<app>.js)
     joelboard.css       # shared styles + components         (served at /joelboard.css)
+    themes.css          # shared skin palettes (body[data-skin]) (served at /themes.css)
     manifest.json, sw.js, icons
   tailwind.config.js    # tokens map to CSS vars; corePlugins.preflight = false
   vite.config.js        # MPA: rollupOptions.input = the 3 (+N) html entries
@@ -48,6 +49,9 @@ Load with `<script src="https://accounts.google.com/gsi/client" async></script>`
   `JB.sheetTabs(id)`, `JB.getSheetId(app)/setSheetId(app,id)/clearSheetId(app)` (namespaced `jb_sheet_<app>`).
 - **UI helpers:** `JB.feedback(appName)` (styled bug/idea modal → owner's Google Form),
   `JB.toast(msg)`. Background **scroll-lock** behind any open `.overlay.open` is automatic.
+- **Theming:** `JB.applySkin(app)` (call early on load — applies the saved skin), `JB.renderSkinPicker(app, el[, onChange])`
+  (renders the swatch grid into `el`, persists choice), `JB.SKINS`, `JB.getSkin(app)`, `JB.setSkin(app, id)`.
+  Skins live in `/themes.css` (`body[data-skin]`); selection persists per-app in `localStorage` (`jb_skin_<app>`).
 - **Constants:** `JB.CLIENT_ID`, `JB.SCOPES`.
 
 ## Shared styles — `joelboard.css` (link in every app's `<head>`)
@@ -56,28 +60,32 @@ Plain CSS on CSS-variable tokens (adapts per app + per Finance skin). Provides:
 
 - Aesthetic **scrollbar**, **scroll-lock** (`.jb-noscroll`), settings-modal sizing (`#setOverlay .modal`)
 - **Modal kit:** `.overlay` / `.overlay.open` / `.modal` (+ `jb-modal-in`) / `.mh` (head) / `.mt` (title) / `.x` (close)
+- **Slide-in nudge/confirm card:** `.confirm-card` (+ `.show`) — bottom-right toast-style prompt, NOT a modal. Inner: `.cc-head` / `.cc-x` / `.cc-body` / `.cc-q`(` strong` = green highlight) / `.cc-btns` / `.cc-btn`(`.yes` = affirmative green). Use for low-friction confirmations & contextual nudges (see Finance `showNudge`/salary card).
 - **Input:** `.field` (+ `:focus`)
 - **Primary button:** `.btn-primary`
 
 ## Design tokens (set in each app's `:root`, mapped to Tailwind utilities)
 
+**Shared neutral vocabulary (every app uses these exact names — domain-free):**
 `--bg --surface --surface2 --border --text --muted --radius --radius-sm`
-`--brand` (app's primary color) + `--on-brand` (text on brand) + the app accent (`--accent` or `--primary`).
-Tailwind names: `bg-bg/surface/surface2`, `text-ink/muted/accent/primary`, `border-border`, `bg-brand`, etc.
-Finance ships 8 skins by overriding these vars via `body[data-skin="…"]`.
+`--primary` (the app's accent/brand color) · `--success` (positive/affirmative green) · `--brand` (= `--primary`) + `--on-brand` (text on brand).
+**App-domain extras** (NOT shared — each app's own): Finance `--income --expense --warning --savings --shadow --font-body --font-display` (Finance aliases the shared token: `--success: var(--income)`, so it tracks every skin); Hub `--fit` (Fit's brand color for its tile); Fit `--accent2` (soft brand tint).
+Tailwind names map 1:1: `bg-bg/surface/surface2`, `text-ink(→--text)/muted/primary/success`, `border-border`, `bg-brand`. **Do NOT introduce `--accent`/`--ok`/`--income` outside Finance** — `--accent`/`--ok` were Fit's old names (now `--primary`/`--success`); `--income` is Finance-domain only.
+Theme = override these vars under `body[data-skin="…"]`. Themes stay **per-app** (skin saved in each app's own sheet/storage). Finance ships 8 skins.
 
 ---
 
 ## New app — checklist
 
 1. **Entry:** add `newapp/index.html`; register it in `vite.config.js` `rollupOptions.input`.
-   In `<head>` link `/joelboard.css`, the Google GIS script, and `/joelboard.js`; link `../src/newapp.css`.
+   In `<head>` link `/joelboard.css`, `/themes.css` (shared skins), the Google GIS script, and `/joelboard.js`; link `../src/newapp.css`.
    **Keep the app's JS in its OWN `public/newapp.js`** (classic global `<script src="/newapp.js"></script>`
    at end of `<body>`, after `/joelboard.js`) — never inline a big `<script>` in the HTML. The `.html` is markup only.
 2. **Tokens:** in `src/newapp.css` set `:root` (pick the accent → `--brand`/`--on-brand`, `--radius`, `--radius-sm`, surfaces…).
    Start the file with `@tailwind base; @tailwind components; @tailwind utilities;` then the reset block
    (copy from `src/fit.css` — preflight is off globally) then app components via `@apply` on tokens.
-3. **Reuse components:** `.overlay/.modal/.mh/.mt/.x`, `.field`, `.btn-primary`, `JB.toast`, `JB.feedback`.
+3. **Reuse components:** `.overlay/.modal/.mh/.mt/.x`, `.field`, `.btn-primary`, `.confirm-card`, `JB.toast`, `JB.feedback`.
+   **Theming:** call `JB.applySkin('newapp')` once on load, and drop `JB.renderSkinPicker('newapp', el)` into a settings "Tema" section — the 8 skins + persistence come free.
 4. **Data:** `JB.requestToken(true)` → `JB.resolveSheet({app:'newapp', namePart:'Joelboard', requiredTabs:[...]})`
    → `JB.api(...)`; persist with `JB.setSheetId('newapp', id)`. Create the per-user sheet in the user's Drive.
 5. **Shell:** dark theme + Hanken Grotesk; a `←` hub door (`location.href='/'`); tabbed settings overlay

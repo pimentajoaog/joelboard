@@ -70,7 +70,8 @@ function updateFB(row,status){
   JB.api('PUT','https://sheets.googleapis.com/v4/spreadsheets/'+FB_SHEET+'/values/'+encodeURIComponent(rng)+'?valueInputOption=RAW',{values:[[status]]}).catch(function(){ if(JB.toast)JB.toast('Erro ao salvar status'); });
 }
 function fbSetFilter(f,btn){ fbFilter=f; var c=document.querySelectorAll('#fbChips .fbchip'); for(var i=0;i<c.length;i++) c[i].classList.toggle('on',c[i]===btn); renderFB(); }
-function openHubSet(){ var em=JB.email(); var on=!!JB.cachedToken()&&!!em; document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; document.getElementById("hubSet").classList.add("open"); }
+function openHubSet(){ var em=JB.email(); var on=!!JB.cachedToken()&&!!em; document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; JB.renderSkinPicker('hub', document.getElementById("hubSkins")); document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
 function hubAuth(){ var on=!!JB.cachedToken()&&!!JB.email(); closeHubSet(); if(on) doOut(); else doIn(); }
+JB.applySkin('hub');
 setGreet();

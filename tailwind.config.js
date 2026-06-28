@@ -11,13 +11,12 @@ export default {
         surface: 'var(--surface)',
         surface2: 'var(--surface2)',
         border: 'var(--border)',
-        accent: 'var(--accent)',
         accent2: 'var(--accent2)',
         ink: 'var(--text)',
         muted: 'var(--muted)',
-        ok: 'var(--ok)',
         primary: 'var(--primary)',
         income: 'var(--income)',
+        success: 'var(--success)',
         fit: 'var(--fit)'
       },
       fontFamily: {

@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.json">
 <link rel="stylesheet" href="/joelboard.css">
+<link rel="stylesheet" href="/themes.css">
 <meta name="theme-color" content="#0d0f18">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -88,6 +89,7 @@
       <button class="set-tab active" data-st="geral" onclick="switchSet('geral')">Geral</button>
       <button class="set-tab" data-st="programa" onclick="switchSet('programa')">Programa</button>
       <button class="set-tab" data-st="volume" onclick="switchSet('volume')">Volume</button>
+      <button class="set-tab" data-st="tema" onclick="switchSet('tema')">Tema</button>
       <button class="set-tab" data-st="sobre" onclick="switchSet('sobre')">Sobre</button>
     </div>
     <div class="set-pane" data-pane="geral">
@@ -102,6 +104,9 @@
     <div class="set-pane" data-pane="volume" style="display:none">
       <div class="fg"><label class="fl">Grupos musculares</label><div id="setTags"></div><div style="display:flex;gap:8px;margin-top:10px"><input class="field" id="newTag" placeholder="Novo grupo…"><button class="btn" onclick="addTag()">Adicionar</button></div></div>
       <div class="fg"><label class="fl">Metas de volume (séries/semana)</label><div id="setVol"></div></div>
+    </div>
+    <div class="set-pane" data-pane="tema" style="display:none">
+      <div class="fg"><label class="fl">Tema do app</label><div id="setSkins"></div></div>
     </div>
     <div class="set-pane" data-pane="sobre" style="display:none">
       <div class="fg"><button class="btn ghost" style="width:100%" onclick="JB.feedback('Joelboard Fit')">💬 Enviar feedback</button></div>

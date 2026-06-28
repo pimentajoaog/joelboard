@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{ --bg:#0d0f18; --surface:#1b1f32; --surface2:#252a40; --border:#2b3147; --primary:#818cf8; --income:#34d399; --fit:#fb7185; --text:#e7eaf3; --muted:#7b85a0; --radius:18px; --radius-sm:11px; --brand:var(--primary); --on-brand:#fff; }
+:root{ --bg:#0d0f18; --surface:#1b1f32; --surface2:#252a40; --border:#2b3147; --primary:#818cf8; --income:#34d399; --fit:#fb7185; --text:#e7eaf3; --muted:#7b85a0; --radius:18px; --radius-sm:11px; --brand:var(--primary); --on-brand:#fff; --success: var(--income); }
 
 *,::before,::after{ box-sizing:border-box; margin:0; padding:0; border-width:0; border-style:solid; border-color:var(--border); }
 button,input,select,textarea{ font-family:inherit; }

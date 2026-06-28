@@ -176,12 +176,41 @@
     };
   }
 
+  // --- shared theming: skins live in /themes.css (body[data-skin]); selection persists per-app in localStorage ---
+  var SKINS = [
+    { id:'default',  name:'Default',  bg:'#0d0f18', card:'#1b1f32', accent:'#818cf8', text:'#e2e8f0' },
+    { id:'vault',    name:'Vault',    bg:'#14140f', card:'#222218', accent:'#cba86a', text:'#e9e4d6' },
+    { id:'garden',   name:'Garden',   bg:'#f3ede0', card:'#fffdf8', accent:'#7c9a6e', text:'#3b352c' },
+    { id:'aperture', name:'Aperture', bg:'#fbfbf9', card:'#f1f0ec', accent:'#e8482b', text:'#101010' },
+    { id:'arcade',   name:'Arcade',   bg:'#0a0a16', card:'#171936', accent:'#22e0e0', text:'#dfe3ff' },
+    { id:'sorbet',   name:'Sorbet',   bg:'#fdf4fb', card:'#ffffff', accent:'#c264e8', text:'#4a3a52' },
+    { id:'press',    name:'Press',    bg:'#f3efe6', card:'#fbf9f3', accent:'#1a1a1a', text:'#1c1813' },
+    { id:'mint',     name:'Mint',     bg:'#eefaf4', card:'#ffffff', accent:'#0fb981', text:'#0f3329' }
+  ];
+  function skinKey(app){ return 'jb_skin_' + app; }
+  function getSkin(app){ return lg(skinKey(app)) || 'default'; }
+  function applySkinAttr(id){ whenReady(function(){ if (id && id !== 'default') document.body.setAttribute('data-skin', id); else document.body.removeAttribute('data-skin'); }); }
+  function applySkin(app){ applySkinAttr(getSkin(app)); }
+  function setSkin(app, id){ if (id && id !== 'default') ls(skinKey(app), id); else lr(skinKey(app)); applySkinAttr(id); return id; }
+  function renderSkinPicker(app, el, onChange){
+    if (!el) return;
+    var cur = getSkin(app);
+    el.innerHTML = '<div class="jb-skins">' + SKINS.map(function (s) {
+      return '<button type="button" class="jb-skin' + (s.id===cur?' on':'') + '" data-sk="' + s.id + '" style="background:' + s.bg + ';color:' + s.text + (s.id===cur?(';border-color:'+s.accent):'') + '">'
+        + '<span class="jb-skin-dot" style="background:' + s.accent + '"></span><span>' + s.name + '</span></button>';
+    }).join('') + '</div>';
+    Array.prototype.forEach.call(el.querySelectorAll('.jb-skin'), function (b) {
+      b.addEventListener('click', function () { var id=b.getAttribute('data-sk'); setSkin(app, id); renderSkinPicker(app, el, onChange); if (onChange) onChange(id); });
+    });
+  }
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, email: email, fetchEmail: fetchEmail,
     requestToken: requestToken, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
-    feedback: feedback, toast: jbToast, whenReady: whenReady
+    feedback: feedback, toast: jbToast, whenReady: whenReady,
+    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker
   };
 })();

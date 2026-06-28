@@ -6,7 +6,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --accent:#fb7185; --accent2:#3a2530; --text:#e7eaf3; --muted:#7b85a0; --ok:#34d399; --radius:16px; }
+:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --accent:#fb7185; --accent2:#3a2530; --text:#e7eaf3; --muted:#7b85a0; --ok:#34d399; --radius:16px; --radius-sm:10px; --brand:var(--accent); --on-brand:#3a0f17; }
 
 /* Reset: extends the original with the border + form-font defaults Tailwind's (disabled)
    preflight would normally provide, so @apply border / buttons render correctly. */
@@ -50,13 +50,8 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .fab{ @apply fixed bottom-[22px] right-[18px] w-[54px] h-[54px] rounded-full bg-accent border-0 text-[30px] cursor-pointer flex items-center justify-center z-40 text-[#3a0f17]; box-shadow:0 6px 22px rgba(251,113,133,0.4); }
 .door{ @apply fixed bottom-5 left-4 z-40 w-[42px] h-[42px] rounded-xl bg-surface border border-border text-accent flex items-center justify-center cursor-pointer; box-shadow:0 3px 12px rgba(0,0,0,0.25); }
 
-.mh{ @apply flex justify-between items-center mb-4; }
-.mt{ @apply text-[17px] font-extrabold; }
-.x{ @apply bg-transparent border-0 text-muted text-lg cursor-pointer; font-family:inherit; }
 .fg{ @apply mb-3.5; }
 .fl{ @apply block text-xs text-muted mb-1.5 font-semibold; }
-.fi{ @apply w-full bg-surface2 border border-border rounded-[10px] px-3 py-[11px] text-ink text-sm; font-family:inherit; }
-.save{ @apply w-full bg-accent border-0 rounded-xl p-[13px] font-extrabold text-[15px] cursor-pointer text-[#3a0f17]; font-family:inherit; }
 .del{ @apply w-full bg-transparent border-0 text-muted text-[13px] underline cursor-pointer mt-3; font-family:inherit; }
 
 .toast{ @apply fixed left-1/2 bottom-[84px] bg-surface2 border border-border text-ink px-4 py-2.5 rounded-full text-[13px] opacity-0 pointer-events-none z-[300] whitespace-nowrap; transform:translateX(-50%); transition:opacity .2s; }

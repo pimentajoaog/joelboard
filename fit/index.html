@@ -52,10 +52,10 @@
 <div class="overlay" id="exOverlay" onclick="if(event.target===this)closeEx()">
   <div class="modal">
     <div class="mh"><div class="mt" id="exTitle">Novo exercício</div><button class="x" onclick="closeEx()">✕</button></div>
-    <div class="fg"><label class="fl">Nome</label><input class="fi" id="exName" placeholder="ex.: Supino reto"></div>
-    <div class="fg"><label class="fl">Grupo muscular</label><select class="fi" id="exGroup"></select></div>
-    <div class="fg"><label class="fl">Tipo de progressão</label><select class="fi" id="exMode"><option value="load">Carga (peso)</option><option value="bw">Peso corporal</option><option value="bwload">Carga + corporal</option></select></div>
-    <button class="save" id="exSave" onclick="saveExercise()">Salvar</button>
+    <div class="fg"><label class="fl">Nome</label><input class="field" id="exName" placeholder="ex.: Supino reto"></div>
+    <div class="fg"><label class="fl">Grupo muscular</label><select class="field" id="exGroup"></select></div>
+    <div class="fg"><label class="fl">Tipo de progressão</label><select class="field" id="exMode"><option value="load">Carga (peso)</option><option value="bw">Peso corporal</option><option value="bwload">Carga + corporal</option></select></div>
+    <button class="btn-primary" id="exSave" onclick="saveExercise()">Salvar</button>
     <button class="del" id="exDel" onclick="deleteExercise()" style="display:none;">Excluir exercício</button>
   </div>
 </div>
@@ -63,10 +63,10 @@
 <div class="overlay" id="trOverlay" onclick="if(event.target===this)closeTr()">
   <div class="modal">
     <div class="mh"><div class="mt" id="trTitle">Novo treino</div><button class="x" onclick="closeTr()">✕</button></div>
-    <div class="fg"><label class="fl">Nome do treino</label><input class="fi" id="trName" placeholder="ex.: Push, Pernas…"></div>
+    <div class="fg"><label class="fl">Nome do treino</label><input class="field" id="trName" placeholder="ex.: Push, Pernas…"></div>
     <div class="fg"><label class="fl">Exercícios do treino (arraste ☰ para reordenar)</label><div id="trSelList"></div></div>
-    <div class="fg"><label class="fl">Adicionar exercício</label><input class="fi" id="trSearch" placeholder="Buscar ou criar…" oninput="renderTrAdd()"><div id="trAddList" style="max-height:220px;overflow-y:auto;margin-top:8px;border:1px solid var(--border);border-radius:12px;padding:6px;background:var(--surface2)"></div></div>
-    <button class="save" id="trSave" onclick="saveTreino()">Salvar</button>
+    <div class="fg"><label class="fl">Adicionar exercício</label><input class="field" id="trSearch" placeholder="Buscar ou criar…" oninput="renderTrAdd()"><div id="trAddList" style="max-height:220px;overflow-y:auto;margin-top:8px;border:1px solid var(--border);border-radius:12px;padding:6px;background:var(--surface2)"></div></div>
+    <button class="btn-primary" id="trSave" onclick="saveTreino()">Salvar</button>
     <button class="del" id="trDel" onclick="deleteTreino()" style="display:none;">Excluir treino</button>
   </div>
 </div>
@@ -92,15 +92,15 @@
     </div>
     <div class="set-pane" data-pane="geral">
       <div class="fg"><label class="fl">Unidade de peso</label><div id="setUnit"></div></div>
-      <div class="fg"><label class="fl">Descanso padrão (segundos)</label><input class="fi" id="setRest" type="number" inputmode="numeric" onchange="saveDefault('rest',this.value)"></div>
-      <div class="fg"><label class="fl">Incremento de carga (kg)</label><input class="fi" id="setInc" type="number" inputmode="decimal" step="0.5" onchange="saveDefault('inc',this.value)"></div>
+      <div class="fg"><label class="fl">Descanso padrão (segundos)</label><input class="field" id="setRest" type="number" inputmode="numeric" onchange="saveDefault('rest',this.value)"></div>
+      <div class="fg"><label class="fl">Incremento de carga (kg)</label><input class="field" id="setInc" type="number" inputmode="decimal" step="0.5" onchange="saveDefault('inc',this.value)"></div>
       <div class="fg"><label class="fl">Biblioteca de exercícios</label><button class="btn ghost" style="width:100%" onclick="loadDefaults()">↻ Carregar exercícios padrão (inclui calistenia)</button></div>
     </div>
     <div class="set-pane" data-pane="programa" style="display:none">
       <div class="fg"><label class="fl">Programa semanal</label><div id="setSched"></div></div>
     </div>
     <div class="set-pane" data-pane="volume" style="display:none">
-      <div class="fg"><label class="fl">Grupos musculares</label><div id="setTags"></div><div style="display:flex;gap:8px;margin-top:10px"><input class="fi" id="newTag" placeholder="Novo grupo…"><button class="btn" onclick="addTag()">Adicionar</button></div></div>
+      <div class="fg"><label class="fl">Grupos musculares</label><div id="setTags"></div><div style="display:flex;gap:8px;margin-top:10px"><input class="field" id="newTag" placeholder="Novo grupo…"><button class="btn" onclick="addTag()">Adicionar</button></div></div>
       <div class="fg"><label class="fl">Metas de volume (séries/semana)</label><div id="setVol"></div></div>
     </div>
     <div class="set-pane" data-pane="sobre" style="display:none">
@@ -108,7 +108,7 @@
       <div class="fg"><button class="del" style="width:100%" onclick="fitSignOut()">Sair</button></div>
       <div class="rg" style="text-align:center;font-size:11px;margin-top:4px">Joelboard Fit</div>
     </div>
-    <button class="save" onclick="closeSettings()">Pronto</button>
+    <button class="btn-primary" onclick="closeSettings()">Pronto</button>
   </div>
 </div>
 <div class="overlay" id="askOverlay" onclick="if(event.target===this)closeAsk()">
@@ -162,12 +162,12 @@ function bootSheet(){
 }
 function gate(){
   loadingHtml('<div class="gate"><div class="gt">💪 Vamos treinar</div><div class="gs">Crie sua planilha de treino — ela fica no seu Google Drive.</div>'
-    + '<button class="save" onclick="createSheet()">✨ Criar meu treino</button>'
+    + '<button class="btn-primary" onclick="createSheet()">✨ Criar meu treino</button>'
     + '<div style="color:var(--muted);font-size:12px;margin:16px 0 10px">— ou já tem uma? —</div>'
-    + '<input class="fi" id="fitUrl" placeholder="Cole o link da planilha"><button class="btn ghost" style="width:100%;margin-top:10px" onclick="linkSheet()">Conectar planilha</button>'
+    + '<input class="field" id="fitUrl" placeholder="Cole o link da planilha"><button class="btn ghost" style="width:100%;margin-top:10px" onclick="linkSheet()">Conectar planilha</button>'
     + '<div id="fitErr" style="color:var(--accent);font-size:12px;margin-top:10px"></div></div>');
 }
-function offerLink(f){ loadingHtml('<div class="gate"><div class="gt">Encontramos seu treino 🎉</div><div class="gs">'+esc(f.name)+'</div><button class="save" onclick="pick(\''+f.id+'\')">Vincular e abrir</button><button class="del" onclick="gate()">usar outro / criar novo</button></div>'); }
+function offerLink(f){ loadingHtml('<div class="gate"><div class="gt">Encontramos seu treino 🎉</div><div class="gs">'+esc(f.name)+'</div><button class="btn-primary" onclick="pick(\''+f.id+'\')">Vincular e abrir</button><button class="del" onclick="gate()">usar outro / criar novo</button></div>'); }
 function pick(id){ JB.setSheetId('fit',id); bootSheet(); }
 function linkSheet(){ var u=($('fitUrl').value||'').trim(); var m=u.match(/[a-zA-Z0-9_-]{30,}/); if(!m){ $('fitErr').textContent='Link inválido.'; return; } JB.setSheetId('fit',m[0]); bootSheet(); }
 function createSheet(){
@@ -536,7 +536,7 @@ function volGoal(g){ var v=volGoals()[g]; if(v&&v.length===2&&(Number(v[0])||Num
 function volStatus(n,g){ var mm=volGoal(g); if(n<mm[0]) return 'under'; if(n>mm[1]) return 'over'; return 'in'; }
 function volPanelHtml(){ var vol=weeklyVolume(); var tags=((DATA.config&&DATA.config.tags)||DEFAULT_TAGS).slice(); Object.keys(vol).forEach(function(g){ if(tags.indexOf(g)<0) tags.push(g); }); var rows=tags.filter(function(g){ return (vol[g]||0)>0; }).sort(function(a,b){ return (vol[b]||0)-(vol[a]||0); }); if(!rows.length) return '<div class="rg" style="padding:2px 0">Nenhuma série registrada nesta semana ainda.</div>'; return rows.map(function(g){ var n=vol[g]||0; var mm=volGoal(g); var st=volStatus(n,g); var pct=Math.min(100,Math.round(n/Math.max(mm[1],1)*100)); return '<div class="volrow"><div class="volhd"><span class="volg">'+esc(g)+'</span><span class="voln '+st+'">'+n+' <span class="volt">/ '+mm[0]+'–'+mm[1]+'</span></span></div><div class="voltrack"><div class="volbar '+st+'" style="width:'+pct+'%"></div></div></div>'; }).join(''); }
 function volNudgeHtml(){ var vol=weeklyVolume(); var groups=Object.keys(vol).filter(function(g){return vol[g]>0;}); if(!groups.length) return ''; var hit=groups.filter(function(g){ return vol[g]>=volGoal(g)[0]; }).length; var under=groups.filter(function(g){ return vol[g]<volGoal(g)[0]; }).sort(function(a,b){return vol[a]-vol[b];}); var sub=under.length ? ('Faltam séries: '+under.slice(0,3).map(function(g){ return esc(g)+' '+vol[g]+'/'+volGoal(g)[0]; }).join(' · ')) : 'Todos os grupos no mínimo da meta 💪'; return '<div class="volnudge" onclick="tab(\'progresso\')"><div class="vnh"><span>Volume da semana</span><span class="vnc">'+hit+'/'+groups.length+' no alvo ›</span></div><div class="vns">'+sub+'</div></div>'; }
-function renderVolGoals(){ if(!$('setVol')) return; var tags=(DATA.config&&DATA.config.tags)||DEFAULT_TAGS; $('setVol').innerHTML='<div class="rg" style="font-size:11px;margin-bottom:8px">Padrão 10–20 séries/semana. Ajuste por grupo se quiser.</div>'+tags.map(function(g,i){ var mm=volGoal(g); return '<div class="volgrow"><span class="volgname">'+esc(g)+'</span><input class="fi vmini" type="number" inputmode="numeric" value="'+mm[0]+'" onchange="setVolGoal('+i+',0,this.value)"><span class="vdash">–</span><input class="fi vmini" type="number" inputmode="numeric" value="'+mm[1]+'" onchange="setVolGoal('+i+',1,this.value)"></div>'; }).join(''); }
+function renderVolGoals(){ if(!$('setVol')) return; var tags=(DATA.config&&DATA.config.tags)||DEFAULT_TAGS; $('setVol').innerHTML='<div class="rg" style="font-size:11px;margin-bottom:8px">Padrão 10–20 séries/semana. Ajuste por grupo se quiser.</div>'+tags.map(function(g,i){ var mm=volGoal(g); return '<div class="volgrow"><span class="volgname">'+esc(g)+'</span><input class="field vmini" type="number" inputmode="numeric" value="'+mm[0]+'" onchange="setVolGoal('+i+',0,this.value)"><span class="vdash">–</span><input class="field vmini" type="number" inputmode="numeric" value="'+mm[1]+'" onchange="setVolGoal('+i+',1,this.value)"></div>'; }).join(''); }
 function setVolGoal(i,which,val){ var tags=(DATA.config&&DATA.config.tags)||DEFAULT_TAGS; var g=tags[i]; if(g==null) return; DATA.config=DATA.config||{}; var vg=DATA.config.volgoals||{}; var cur=vg[g]||[10,20]; cur=[Number(cur[0])||10,Number(cur[1])||20]; var n=Number(val); if(!(n>=0)) n=(which?20:10); cur[which]=n; if(cur[1]<cur[0]) cur[1]=cur[0]; vg[g]=cur; DATA.config.volgoals=vg; saveConfig('volgoals', JSON.stringify(vg)); }
 function saveDefault(k,v){ DATA.config=DATA.config||{}; var n=Number(v); if(!n||n<0) n=(k==='rest'?90:2.5); DATA.config[k]=n; saveConfig(k,String(n)); }
 function setTarget(ex,f,v){ var it=(trSel||[]).find(function(i){return i.ex===ex;}); if(!it) return; if(f==='rest'){ it.rest=(v===''?null:Number(v)); } else { it[f]=Number(v)||0; } }
@@ -544,7 +544,7 @@ var WD=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 function wdName(i){ return WD[i]||''; }
 function schedFor(wd){ var s=(DATA.config&&DATA.config.schedule)||{}; return s[wd]||s[String(wd)]||''; }
 function setSchedule(wd,rid){ DATA.config=DATA.config||{}; DATA.config.schedule=DATA.config.schedule||{}; if(rid) DATA.config.schedule[wd]=rid; else delete DATA.config.schedule[wd]; saveConfig('schedule', JSON.stringify(DATA.config.schedule)); renderHoje(); }
-function renderSched(){ if(!$('setSched')) return; var sc=(DATA.config&&DATA.config.schedule)||{}; var sh=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; $('setSched').innerHTML=sh.map(function(d,i){ var cur=sc[i]||sc[String(i)]||''; var opts='<option value="">Descanso</option>'+(DATA.treinos||[]).map(function(r){ return '<option value="'+r.id+'"'+(cur===r.id?' selected':'')+'>'+esc(r.name)+'</option>'; }).join(''); return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="width:32px;color:var(--muted);font-size:13px;font-weight:700">'+d+'</span><select class="fi" style="flex:1" onchange="setSchedule('+i+',this.value)">'+opts+'</select></div>'; }).join(''); }
+function renderSched(){ if(!$('setSched')) return; var sc=(DATA.config&&DATA.config.schedule)||{}; var sh=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; $('setSched').innerHTML=sh.map(function(d,i){ var cur=sc[i]||sc[String(i)]||''; var opts='<option value="">Descanso</option>'+(DATA.treinos||[]).map(function(r){ return '<option value="'+r.id+'"'+(cur===r.id?' selected':'')+'>'+esc(r.name)+'</option>'; }).join(''); return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="width:32px;color:var(--muted);font-size:13px;font-weight:700">'+d+'</span><select class="field" style="flex:1" onchange="setSchedule('+i+',this.value)">'+opts+'</select></div>'; }).join(''); }
 var askCb=null;
 function fitConfirm(title,msg,onYes){ askCb=onYes||null; $('askTitle').textContent=title||'Confirmar'; $('askMsg').textContent=msg||''; $('askOverlay').classList.add('open'); }
 function closeAsk(){ $('askOverlay').classList.remove('open'); askCb=null; }

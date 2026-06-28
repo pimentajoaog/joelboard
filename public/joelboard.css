@@ -38,3 +38,9 @@ body.jb-noscroll { overflow: hidden; }
 .overlay.open { display: flex; }
 .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; overflow-x: hidden; animation: jb-modal-in .2s ease; }
 @keyframes jb-modal-in { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.mh { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.mt { font-size: 17px; font-weight: 800; }
+.x { background: transparent; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; font-family: inherit; }
+.field { width: 100%; padding: 10px 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; transition: border-color 0.2s; }
+.field:focus { border-color: var(--primary); }
+.btn-primary { width: 100%; padding: 12px; background: var(--brand); border: none; border-radius: var(--radius-sm); color: var(--on-brand); font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 6px; transition: opacity 0.2s; }

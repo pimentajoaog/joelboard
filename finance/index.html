@@ -192,11 +192,11 @@
   <div class="modal">
     <div class="modal-head"><div class="modal-title" id="txTitle">Add Transaction</div><button class="close-btn" onclick="closeOverlay('txOverlay')">✕</button></div>
     <div class="fg"><label class="flabel" data-i18n="f.type">Type</label><div class="type-row"><button class="type-btn exp" id="btnExp" onclick="setType('Expense')" data-i18n="type.expense">💸 Expense</button><button class="type-btn" id="btnInc" onclick="setType('Income')" data-i18n="type.income">💰 Income</button></div></div>
-    <div class="fg"><label class="flabel" data-i18n="f.date">Date</label><input type="date" class="finput" id="txDate"></div>
-    <div class="fg"><label class="flabel" data-i18n="f.description">Description</label><input type="text" class="finput" id="txDesc" placeholder="e.g. Mercado, Salário…" data-i18n-ph="ph.txDesc"></div>
+    <div class="fg"><label class="flabel" data-i18n="f.date">Date</label><input type="date" class="field" id="txDate"></div>
+    <div class="fg"><label class="flabel" data-i18n="f.description">Description</label><input type="text" class="field" id="txDesc" placeholder="e.g. Mercado, Salário…" data-i18n-ph="ph.txDesc"></div>
     <div class="fg"><label class="flabel" data-i18n="f.category">Category</label><select class="fselect" id="txCat"></select></div>
-    <div class="fg"><label class="flabel" data-i18n-html="amt.tx">Amount (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="finput" id="txAmt" placeholder="0,00" onblur="normAmount(this)"></div>
-    <div class="form-err" id="txErr"></div><button class="save-btn" id="txSave" onclick="submitTx()">Save Transaction</button>
+    <div class="fg"><label class="flabel" data-i18n-html="amt.tx">Amount (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="field" id="txAmt" placeholder="0,00" onblur="normAmount(this)"></div>
+    <div class="form-err" id="txErr"></div><button class="btn-primary" id="txSave" onclick="submitTx()">Save Transaction</button>
     <button class="del-btn" id="txDel" onclick="deleteCurrent('transactions')" style="display:none;" data-i18n="tx.delete">Delete Transaction</button>
   </div>
 </div>
@@ -205,11 +205,11 @@
 <div class="overlay" id="splitOverlay" onclick="bgClose(event,'splitOverlay')">
   <div class="modal split-modal">
     <div class="modal-head"><div class="modal-title" data-i18n="split.title">Split a bill</div><button class="close-btn" onclick="closeOverlay('splitOverlay')">✕</button></div>
-    <div class="fg"><label class="flabel" data-i18n="split.outingName">What was it?</label><input type="text" class="finput" id="spTitle" placeholder="e.g. Friday drinks" data-i18n-ph="split.outingPh"></div>
+    <div class="fg"><label class="flabel" data-i18n="split.outingName">What was it?</label><input type="text" class="field" id="spTitle" placeholder="e.g. Friday drinks" data-i18n-ph="split.outingPh"></div>
     <div class="sp-section">
       <div class="sp-label" data-i18n="split.people">People</div>
       <div class="sp-people" id="spPeople"></div>
-      <div class="sp-add-row"><input type="text" class="finput" id="spPersonName" placeholder="Name…" data-i18n-ph="split.namePh" onkeydown="if(event.key==='Enter'){event.preventDefault();addPerson();}"><button class="sp-mini" onclick="addPerson()" data-i18n="split.addPerson">+ Add</button></div>
+      <div class="sp-add-row"><input type="text" class="field" id="spPersonName" placeholder="Name…" data-i18n-ph="split.namePh" onkeydown="if(event.key==='Enter'){event.preventDefault();addPerson();}"><button class="sp-mini" onclick="addPerson()" data-i18n="split.addPerson">+ Add</button></div>
       <div class="sp-unit" style="margin-top:6px;" data-i18n="split.meHint">Tap a name to mark who you are (★).</div>
     </div>
     <div class="sp-section">
@@ -219,7 +219,7 @@
     </div>
     <div class="sp-section sp-svc">
       <label class="sp-toggle"><input type="checkbox" id="spSvc" onchange="renderSplitTotals()"> <span data-i18n="split.service">Service fee</span></label>
-      <input type="number" class="finput" id="spSvcPct" value="10" min="0" max="100" step="1" oninput="renderSplitTotals()"><span style="color:var(--muted);">%</span>
+      <input type="number" class="field" id="spSvcPct" value="10" min="0" max="100" step="1" oninput="renderSplitTotals()"><span style="color:var(--muted);">%</span>
     </div>
     <div class="sp-section">
       <div class="sp-label" data-i18n="split.perPerson">Per person</div>
@@ -229,7 +229,7 @@
     <div class="form-err" id="splitErr"></div>
     <div class="sp-actions">
       <button class="btn-ghost" onclick="copySplitSummary()" data-i18n="split.copy">Copy summary</button>
-      <button class="save-btn" id="splitSave" onclick="saveSplit()" data-i18n="split.save">Save who owes me</button>
+      <button class="btn-primary" id="splitSave" onclick="saveSplit()" data-i18n="split.save">Save who owes me</button>
     </div>
   </div>
 </div>
@@ -244,16 +244,16 @@
         <button class="type-btn" id="btnRecurNo" onclick="setBillRecur(false)" data-i18n="bill.onetime">📌 One-time</button>
       </div>
     </div>
-    <div class="fg"><label class="flabel" data-i18n="f.name">Name</label><input type="text" class="finput" id="billName" placeholder="e.g. Netflix, Rent, Air Fryer…" data-i18n-ph="ph.billName"></div>
-    <div class="fg"><label class="flabel" id="billAmtLbl" data-i18n-html="amt.monthly">Monthly Amount (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="finput" id="billAmt" placeholder="0,00" oninput="updateBillPreview()" onblur="normAmount(this)"></div>
-    <div class="fg"><label class="flabel" data-i18n="f.dueDay">Due Day</label><input type="number" class="finput" id="billDay" placeholder="1–31" min="1" max="31" data-i18n-ph="ph.dueDay"></div>
+    <div class="fg"><label class="flabel" data-i18n="f.name">Name</label><input type="text" class="field" id="billName" placeholder="e.g. Netflix, Rent, Air Fryer…" data-i18n-ph="ph.billName"></div>
+    <div class="fg"><label class="flabel" id="billAmtLbl" data-i18n-html="amt.monthly">Monthly Amount (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="field" id="billAmt" placeholder="0,00" oninput="updateBillPreview()" onblur="normAmount(this)"></div>
+    <div class="fg"><label class="flabel" data-i18n="f.dueDay">Due Day</label><input type="number" class="field" id="billDay" placeholder="1–31" min="1" max="31" data-i18n-ph="ph.dueDay"></div>
     <div class="fg"><label class="flabel" data-i18n="f.category">Category</label><select class="fselect" id="billCat"></select></div>
-    <div class="fg" id="billCountRow"><label class="flabel" data-i18n="f.installments"># of Installments (blank = ongoing bill)</label><input type="number" class="finput" id="billCount" placeholder="blank = forever" min="1" max="120" oninput="updateBillPreview()" data-i18n-ph="ph.installments"></div>
+    <div class="fg" id="billCountRow"><label class="flabel" data-i18n="f.installments"># of Installments (blank = ongoing bill)</label><input type="number" class="field" id="billCount" placeholder="blank = forever" min="1" max="120" oninput="updateBillPreview()" data-i18n-ph="ph.installments"></div>
     <div class="fg" id="billStartRow"><label class="flabel" id="billStartLbl" data-i18n="f.startsFrom">Starts from</label>
       <input type="hidden" id="billStart" oninput="updateBillPreview()">
     </div>
     <div class="preview" id="billPreview" style="display:none;"></div>
-    <div class="form-err" id="billErr"></div><button class="save-btn" id="billSave" onclick="submitBill()">Save Bill</button>
+    <div class="form-err" id="billErr"></div><button class="btn-primary" id="billSave" onclick="submitBill()">Save Bill</button>
     <button class="del-btn" id="billDel" onclick="deleteBillScoped()" style="display:none;" data-i18n="bill.delete">Delete Bill</button>
   </div>
 </div>
@@ -263,8 +263,8 @@
   <div class="modal">
     <div class="modal-head"><div class="modal-title" id="budTitle">Add Budget Category</div><button class="close-btn" onclick="closeOverlay('budOverlay')">✕</button></div>
     <div class="fg"><label class="flabel" data-i18n="f.category">Category</label><select class="fselect" id="budCat"></select></div>
-    <div class="fg"><label class="flabel" data-i18n-html="amt.budget">Monthly Budget (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="finput" id="budAmt" placeholder="0,00" onblur="normAmount(this)"></div>
-    <div class="form-err" id="budErr"></div><button class="save-btn" id="budSave" onclick="submitBudget()">Save Budget</button>
+    <div class="fg"><label class="flabel" data-i18n-html="amt.budget">Monthly Budget (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="field" id="budAmt" placeholder="0,00" onblur="normAmount(this)"></div>
+    <div class="form-err" id="budErr"></div><button class="btn-primary" id="budSave" onclick="submitBudget()">Save Budget</button>
     <button class="del-btn" id="budDel" onclick="deleteCurrent('budget')" style="display:none;" data-i18n="budget.delete">Delete Category</button>
   </div>
 </div>
@@ -273,12 +273,12 @@
 <div class="overlay" id="goalOverlay" onclick="bgClose(event,'goalOverlay')">
   <div class="modal">
     <div class="modal-head"><div class="modal-title" id="goalTitle">Add Savings Goal</div><button class="close-btn" onclick="closeOverlay('goalOverlay')">✕</button></div>
-    <div class="fg"><label class="flabel" data-i18n="f.goalName">Goal Name</label><input type="text" class="finput" id="goalName" placeholder="e.g. Emergency Fund" data-i18n-ph="ph.goalName"></div>
-    <div class="fg"><label class="flabel" data-i18n-html="amt.target">Target Amount (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="finput" id="goalTarget" placeholder="0,00" onblur="normAmount(this)"></div>
-    <div class="fg"><label class="flabel" data-i18n-html="amt.startBal">Starting Balance (<span class="cur-sym"></span> — planned savings add on top)</label><input type="text" inputmode="decimal" class="finput" id="goalCurrent" placeholder="0,00" onblur="normAmount(this)"></div>
-    <div class="fg"><label class="flabel" data-i18n="f.deadline">Deadline (optional — goal hides after it passes)</label><input type="date" class="finput" id="goalDeadline"></div>
-    <div class="fg"><label class="flabel" data-i18n="f.color">Color</label><input type="color" class="finput" id="goalColor" value="#818cf8" style="height:42px;padding:4px;cursor:pointer;"></div>
-    <div class="form-err" id="goalErr"></div><button class="save-btn" id="goalSave" onclick="submitGoal()">Save Goal</button>
+    <div class="fg"><label class="flabel" data-i18n="f.goalName">Goal Name</label><input type="text" class="field" id="goalName" placeholder="e.g. Emergency Fund" data-i18n-ph="ph.goalName"></div>
+    <div class="fg"><label class="flabel" data-i18n-html="amt.target">Target Amount (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="field" id="goalTarget" placeholder="0,00" onblur="normAmount(this)"></div>
+    <div class="fg"><label class="flabel" data-i18n-html="amt.startBal">Starting Balance (<span class="cur-sym"></span> — planned savings add on top)</label><input type="text" inputmode="decimal" class="field" id="goalCurrent" placeholder="0,00" onblur="normAmount(this)"></div>
+    <div class="fg"><label class="flabel" data-i18n="f.deadline">Deadline (optional — goal hides after it passes)</label><input type="date" class="field" id="goalDeadline"></div>
+    <div class="fg"><label class="flabel" data-i18n="f.color">Color</label><input type="color" class="field" id="goalColor" value="#818cf8" style="height:42px;padding:4px;cursor:pointer;"></div>
+    <div class="form-err" id="goalErr"></div><button class="btn-primary" id="goalSave" onclick="submitGoal()">Save Goal</button>
     <button class="del-btn" id="goalDel" onclick="deleteCurrent('goals')" style="display:none;" data-i18n="goal.delete">Delete Goal</button>
   </div>
 </div>
@@ -288,11 +288,11 @@
   <div class="modal">
     <div class="modal-head"><div class="modal-title" id="allocTitle">Plan a Saving</div><button class="close-btn" onclick="closeOverlay('allocOverlay')">✕</button></div>
     <div class="modal-sub" id="allocSub">Toward your goal</div>
-    <div class="fg"><label class="flabel" data-i18n-html="amt.perOcc">Amount per occurrence (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="finput" id="allocAmt" placeholder="0,00" onblur="normAmount(this)"></div>
+    <div class="fg"><label class="flabel" data-i18n-html="amt.perOcc">Amount per occurrence (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="field" id="allocAmt" placeholder="0,00" onblur="normAmount(this)"></div>
     <div class="fg"><label class="flabel" data-i18n="f.howOften">How often</label><select class="fselect" id="allocRec" onchange="allocRecChange()"><option value="monthly" data-i18n="alloc.opt.monthly">Every month (ongoing)</option><option value="once" data-i18n="alloc.opt.once">One-time</option><option value="fixed" data-i18n="alloc.opt.fixed">Fixed number of months</option></select></div>
-    <div class="fg" id="allocCountRow" style="display:none;"><label class="flabel" data-i18n="f.numMonths"># of Months</label><input type="number" class="finput" id="allocCount" placeholder="e.g. 6" min="1" max="120" data-i18n-ph="ph.numMonths"></div>
+    <div class="fg" id="allocCountRow" style="display:none;"><label class="flabel" data-i18n="f.numMonths"># of Months</label><input type="number" class="field" id="allocCount" placeholder="e.g. 6" min="1" max="120" data-i18n-ph="ph.numMonths"></div>
     <div class="fg"><label class="flabel" data-i18n="f.startingMonth">Starting Month</label><input type="hidden" id="allocStart"></div>
-    <div class="form-err" id="allocErr"></div><button class="save-btn" id="allocSave" onclick="submitAllocation()">Save Saving Plan</button>
+    <div class="form-err" id="allocErr"></div><button class="btn-primary" id="allocSave" onclick="submitAllocation()">Save Saving Plan</button>
     <button class="del-btn" id="allocDel" onclick="deleteCurrent('allocations')" style="display:none;" data-i18n="alloc.delete">Delete Saving Plan</button>
   </div>
 </div>
@@ -301,10 +301,10 @@
 <div class="overlay" id="bunOverlay" onclick="bgClose(event,'bunOverlay')">
   <div class="modal">
     <div class="modal-head"><div class="modal-title" id="bunTitle">Add Payment Bundle</div><button class="close-btn" onclick="closeOverlay('bunOverlay')">✕</button></div>
-    <div class="fg"><label class="flabel" data-i18n="f.bundleName">Bundle Name</label><input type="text" class="finput" id="bunName" placeholder="e.g. Owed to João" data-i18n-ph="ph.bundleName"></div>
-    <div class="fg"><label class="flabel" data-i18n="f.payee">Send To (payee)</label><input type="text" class="finput" id="bunPayee" placeholder="e.g. João, Mom…" data-i18n-ph="ph.payee"></div>
+    <div class="fg"><label class="flabel" data-i18n="f.bundleName">Bundle Name</label><input type="text" class="field" id="bunName" placeholder="e.g. Owed to João" data-i18n-ph="ph.bundleName"></div>
+    <div class="fg"><label class="flabel" data-i18n="f.payee">Send To (payee)</label><input type="text" class="field" id="bunPayee" placeholder="e.g. João, Mom…" data-i18n-ph="ph.payee"></div>
     <div class="fg"><label class="flabel" data-i18n="f.linkedItems">Linked items</label><div class="bun-checklist" id="bunItems"></div></div>
-    <div class="form-err" id="bunErr"></div><button class="save-btn" id="bunSave" onclick="submitBundle()">Save Bundle</button>
+    <div class="form-err" id="bunErr"></div><button class="btn-primary" id="bunSave" onclick="submitBundle()">Save Bundle</button>
     <button class="del-btn" id="bunDel" onclick="deleteCurrent('bundles')" style="display:none;" data-i18n="bundle.delete">Delete Bundle</button>
   </div>
 </div>
@@ -322,19 +322,19 @@
     </div>
     <div class="set-pane active" id="setPaneGeneral">
       <div class="fg"><label class="flabel" data-i18n="set.payModel">Pay model</label><div class="type-row"><button class="type-btn" id="setModeHourly" onclick="setSettingsMode('hourly')" data-i18n="set.hourly">⏱ Hourly</button><button class="type-btn" id="setModeSalaried" onclick="setSettingsMode('salaried')" data-i18n="set.salaried">📅 Salaried</button></div></div>
-      <div class="fg" id="setHourlyRow"><label class="flabel" data-i18n-html="set.hourlyRateCur">Hourly rate (<span class="cur-from-lbl">USD</span>)</label><input type="number" class="finput" id="setHourly" step="0.01"></div>
-      <div class="fg" id="setSalaryRow"><label class="flabel" data-i18n-html="set.monthlySalaryCur">Monthly salary (<span class="cur-from-lbl">USD</span>)</label><input type="number" class="finput" id="setSalary" step="0.01"></div>
-      <div class="fg"><label class="flabel" data-i18n="set.stdHours">Standard hours per day</label><input type="number" class="finput" id="setDaily" step="0.5" min="0"></div>
+      <div class="fg" id="setHourlyRow"><label class="flabel" data-i18n-html="set.hourlyRateCur">Hourly rate (<span class="cur-from-lbl">USD</span>)</label><input type="number" class="field" id="setHourly" step="0.01"></div>
+      <div class="fg" id="setSalaryRow"><label class="flabel" data-i18n-html="set.monthlySalaryCur">Monthly salary (<span class="cur-from-lbl">USD</span>)</label><input type="number" class="field" id="setSalary" step="0.01"></div>
+      <div class="fg"><label class="flabel" data-i18n="set.stdHours">Standard hours per day</label><input type="number" class="field" id="setDaily" step="0.5" min="0"></div>
       <div class="fg"><label class="flabel" data-i18n="set.overtime">Overtime</label><select class="fselect" id="setOtMode" onchange="setSettingsOtVis()"><option value="off" data-i18n="ot.off">Off — extra hours at normal pay</option><option value="automatic" data-i18n="ot.auto">Automatic — paid over monthly expected</option><option value="manual" data-i18n="ot.manual">Manual — tag overtime per day</option></select></div>
-      <div class="fg" id="setOtMultRow"><label class="flabel" data-i18n="set.otMult">Overtime multiplier (× base rate)</label><input type="number" class="finput" id="setOtMult" step="0.1" min="1" placeholder="1.5"></div>
+      <div class="fg" id="setOtMultRow"><label class="flabel" data-i18n="set.otMult">Overtime multiplier (× base rate)</label><input type="number" class="field" id="setOtMult" step="0.1" min="1" placeholder="1.5"></div>
       <div class="fg"><label class="flabel" data-i18n="set.currency">Currency</label><div class="type-row"><button class="type-btn" id="setConvOff" onclick="setSettingsConvert(false)" data-i18n="set.singleCur">Single currency</button><button class="type-btn" id="setConvOn" onclick="setSettingsConvert(true)" data-i18n="set.convert">Convert</button></div></div>
       <div class="fg" id="setFromRow"><label class="flabel" data-i18n="set.paidIn">Paid in</label><select class="fselect" id="setFrom" onchange="syncCurLabels()"></select></div>
       <div class="fg"><label class="flabel" data-i18n="set.trackIn">Track &amp; display in</label><select class="fselect" id="setTo" onchange="syncCurLabels()"></select></div>
-      <div class="fg" id="setExchRow"><label class="flabel" data-i18n-html="set.exchRateCur">Exchange rate (<span id="setExchLbl">to per from</span>)</label><input type="number" class="finput" id="setExch" step="0.0001"></div>
-      <div class="form-err" id="setErr"></div><button class="save-btn" id="setSave" onclick="submitSettings()" data-i18n="set.saveIncome">Save Income Settings</button>
+      <div class="fg" id="setExchRow"><label class="flabel" data-i18n-html="set.exchRateCur">Exchange rate (<span id="setExchLbl">to per from</span>)</label><input type="number" class="field" id="setExch" step="0.0001"></div>
+      <div class="form-err" id="setErr"></div><button class="btn-primary" id="setSave" onclick="submitSettings()" data-i18n="set.saveIncome">Save Income Settings</button>
     </div>
     <div class="set-pane" id="setPaneCats">
-      <div class="cat-add"><input type="text" class="finput" id="newCatName" placeholder="e.g. 🎸 Music" onkeydown="if(event.key==='Enter')addCat()" data-i18n-ph="ph.newCat"><button class="cat-add-btn" onclick="addCat()" data-i18n="action.addShort">Add</button></div>
+      <div class="cat-add"><input type="text" class="field" id="newCatName" placeholder="e.g. 🎸 Music" onkeydown="if(event.key==='Enter')addCat()" data-i18n-ph="ph.newCat"><button class="cat-add-btn" onclick="addCat()" data-i18n="action.addShort">Add</button></div>
       <div class="form-err" id="catErr"></div>
       <div class="cat-hint" data-i18n="set.catHint">New categories get an auto colour — tap a swatch to change it. Deleting one leaves its transactions as “Uncategorized”.</div>
       <div class="cat-list" id="catList"></div>
@@ -349,7 +349,7 @@
     </div>
     <div class="set-pane" id="setPaneData">
       <div class="cat-hint" style="margin-bottom:14px" data-i18n="export.hint">Save a full backup of all your data as a CSV in your Google Drive.</div>
-      <button class="save-btn" id="exportBtn" data-i18n="export.btn" onclick="exportBackup_()">Export backup</button>
+      <button class="btn-primary" id="exportBtn" data-i18n="export.btn" onclick="exportBackup_()">Export backup</button>
       <a id="exportLink" target="_blank" rel="noopener" class="sec-action" style="display:none;margin-top:12px;">Open file</a>
       <button class="wiz-back" onclick="openImport()" data-i18n="imp.open" style="width:100%;margin-top:12px;">Import transactions</button>
       <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
@@ -364,7 +364,7 @@
   <div class="modal" style="max-width:370px;">
     <div class="modal-head"><div class="modal-title" id="askTitle">Are you sure?</div><button class="close-btn" onclick="closeAsk()">✕</button></div>
     <div class="confirm-msg" id="askMsg"></div>
-    <button class="save-btn danger" id="askYes" onclick="confirmAsk()" data-i18n="action.confirm">Confirm</button>
+    <button class="btn-primary danger" id="askYes" onclick="confirmAsk()" data-i18n="action.confirm">Confirm</button>
     <button class="cancel-btn" onclick="closeAsk()" data-i18n="action.cancel">Cancel</button>
   </div>
 </div>
@@ -373,11 +373,11 @@
   <div class="modal" style="max-width:440px;">
     <div class="gate-lang" id="gateLang"></div>
     <div class="wiz-head"><div class="wiz-title" data-i18n="sheet.title">Set up your finance sheet</div><div class="wiz-sub" data-i18n="sheet.sub">Your data lives in your own Google Sheet.</div></div>
-    <div style="margin-top:20px;"><button class="save-btn" id="sheetCreateBtn" data-i18n="sheet.create" onclick="createMySheet()">Create my sheet</button></div>
+    <div style="margin-top:20px;"><button class="btn-primary" id="sheetCreateBtn" data-i18n="sheet.create" onclick="createMySheet()">Create my sheet</button></div>
     <button class="wiz-skip" id="sheetHaveBtn" data-i18n="sheet.haveOne" onclick="toggleSheetLink()">I already have a sheet</button>
     <div id="sheetLinkPanel" style="display:none;">
-      <div class="wiz-fg"><label class="flabel" data-i18n="sheet.linkLabel">Paste your spreadsheet link</label><input type="text" class="finput" id="sheetLinkInput" placeholder="https://docs.google.com/spreadsheets/…" data-i18n-ph="sheet.linkPh"></div>
-      <button class="save-btn" id="sheetLinkBtn" data-i18n="sheet.linkBtn" onclick="linkMySheet()">Link it</button>
+      <div class="wiz-fg"><label class="flabel" data-i18n="sheet.linkLabel">Paste your spreadsheet link</label><input type="text" class="field" id="sheetLinkInput" placeholder="https://docs.google.com/spreadsheets/…" data-i18n-ph="sheet.linkPh"></div>
+      <button class="btn-primary" id="sheetLinkBtn" data-i18n="sheet.linkBtn" onclick="linkMySheet()">Link it</button>
     </div>
     <div class="form-err" id="sheetErr" style="margin-top:12px;"></div>
   </div>
@@ -396,25 +396,25 @@
 <div class="overlay" id="fbOverlay" onclick="bgClose(event,'fbOverlay')">
   <div class="modal" style="max-width:420px;">
     <div class="modal-head"><div class="modal-title" id="fbTitle">Send feedback</div><button class="close-btn" onclick="closeOverlay('fbOverlay')">✕</button></div>
-    <div class="fg"><label class="flabel" data-i18n="fb.name">Name</label><input type="text" class="finput" id="fbName" data-i18n-ph="fb.namePh" placeholder="Your name"></div>
+    <div class="fg"><label class="flabel" data-i18n="fb.name">Name</label><input type="text" class="field" id="fbName" data-i18n-ph="fb.namePh" placeholder="Your name"></div>
     <div class="fg"><label class="flabel" data-i18n="fb.type">Type</label>
       <div class="type-row">
         <button class="type-btn" id="fbBug" onclick="setFbKind('bug')" data-i18n="fb.bug">🐛 Bug</button>
         <button class="type-btn" id="fbFeat" onclick="setFbKind('feature')" data-i18n="fb.feature">💡 Feature</button>
       </div>
     </div>
-    <div class="fg"><label class="flabel" data-i18n="fb.message">Message</label><textarea class="finput" id="fbMsg" rows="5" data-i18n-ph="fb.ph" placeholder="Describe it…" style="resize:vertical;min-height:90px;font-family:inherit;"></textarea></div>
+    <div class="fg"><label class="flabel" data-i18n="fb.message">Message</label><textarea class="field" id="fbMsg" rows="5" data-i18n-ph="fb.ph" placeholder="Describe it…" style="resize:vertical;min-height:90px;font-family:inherit;"></textarea></div>
     <div class="form-err" id="fbErr"></div>
-    <button class="save-btn" id="fbSave" onclick="submitFeedback()" data-i18n="fb.send">Send</button>
+    <button class="btn-primary" id="fbSave" onclick="submitFeedback()" data-i18n="fb.send">Send</button>
   </div>
 </div>
 
 <div class="overlay" id="billDelOverlay" onclick="bgClose(event,'billDelOverlay')">
   <div class="modal" style="max-width:360px;">
     <div class="modal-head"><div class="modal-title" data-i18n="billdel.title">Delete this recurring bill?</div><button class="close-btn" onclick="closeOverlay('billDelOverlay')">✕</button></div>
-    <button class="save-btn alt" onclick="delBillThisMonth()" data-i18n="billdel.month" style="margin-bottom:8px;">Only this month</button>
-    <button class="save-btn alt" onclick="delBillOnwards()" data-i18n="billdel.onwards" style="margin-bottom:8px;">This month onwards</button>
-    <button class="save-btn danger" onclick="delBillAll()" data-i18n="billdel.all">All months</button>
+    <button class="btn-primary alt" onclick="delBillThisMonth()" data-i18n="billdel.month" style="margin-bottom:8px;">Only this month</button>
+    <button class="btn-primary alt" onclick="delBillOnwards()" data-i18n="billdel.onwards" style="margin-bottom:8px;">This month onwards</button>
+    <button class="btn-primary danger" onclick="delBillAll()" data-i18n="billdel.all">All months</button>
     <button class="cancel-btn" onclick="closeOverlay('billDelOverlay')" data-i18n="action.cancel">Cancel</button>
   </div>
 </div>
@@ -430,18 +430,18 @@
   <div class="modal" style="max-width:460px;">
     <div class="modal-head"><div class="modal-title" data-i18n="imp.open">Import transactions</div><button class="close-btn" onclick="closeOverlay('impOverlay')">✕</button></div>
     <div class="cat-hint" data-i18n="imp.hint" style="margin-bottom:10px;">Paste rows…</div>
-    <textarea class="finput" id="impText" rows="7" data-i18n-ph="imp.ph" placeholder="2026-06-15, Mercado, 120.50" style="resize:vertical;min-height:120px;font-family:inherit;"></textarea>
+    <textarea class="field" id="impText" rows="7" data-i18n-ph="imp.ph" placeholder="2026-06-15, Mercado, 120.50" style="resize:vertical;min-height:120px;font-family:inherit;"></textarea>
     <div class="form-err" id="impErr"></div>
-    <button class="save-btn" id="impBtn" onclick="submitImport()" data-i18n="imp.btn">Import</button>
+    <button class="btn-primary" id="impBtn" onclick="submitImport()" data-i18n="imp.btn">Import</button>
   </div>
 </div>
 
 <div class="overlay" id="svOverlay" onclick="bgClose(event,'svOverlay')">
   <div class="modal" style="max-width:360px;">
     <div class="modal-head"><div class="modal-title" id="svTitle">Move money</div><button class="close-btn" onclick="closeOverlay('svOverlay')">✕</button></div>
-    <div class="fg"><label class="flabel" data-i18n-html="amt.tx">Amount (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="finput" id="svAmt" placeholder="0,00" onblur="normAmount(this)"></div>
+    <div class="fg"><label class="flabel" data-i18n-html="amt.tx">Amount (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="field" id="svAmt" placeholder="0,00" onblur="normAmount(this)"></div>
     <div class="form-err" id="svErr"></div>
-    <button class="save-btn" id="svSave" onclick="submitSavingsMove()" data-i18n="action.confirm">Confirm</button>
+    <button class="btn-primary" id="svSave" onclick="submitSavingsMove()" data-i18n="action.confirm">Confirm</button>
   </div>
 </div>
 
@@ -455,7 +455,7 @@
   <div class="tour-body" id="tourBody"></div>
   <div class="tour-foot">
     <button class="tour-skip" id="tourSkip" onclick="endTour(true)">Skip tour</button>
-    <div class="tour-nav"><button class="wiz-back" id="tourBack" onclick="tourBack()">Back</button><button class="save-btn" id="tourNext" onclick="tourNext()">Next</button></div>
+    <div class="tour-nav"><button class="wiz-back" id="tourBack" onclick="tourBack()">Back</button><button class="btn-primary" id="tourNext" onclick="tourNext()">Next</button></div>
   </div>
 </div>
 
@@ -477,7 +477,7 @@
     <div class="grp-hero" id="grpSummary"></div>
     <div class="grp-date" id="grpDateRow" style="display:none;"><div class="grp-date-lbl" data-i18n="grp.whenLeave">When did this leave your account?</div><div class="grp-date-btns"><button class="cc-date-btn on" id="grpDateToday" onclick="setGrpDate('today')" data-i18n="cc.paidToday">Paid today</button><button class="cc-date-btn" id="grpDateBack" onclick="setGrpDate('back')"><span data-i18n="grp.backIn">Back in</span> <span id="grpBackLbl"></span></button></div></div>
     <div class="grp-list" id="grpList" style="display:none;"></div>
-    <div class="grp-btns"><button class="save-btn alt" id="grpAdjust" onclick="toggleGrpAdjust()" data-i18n="grp.adjust">Adjust amounts</button><button class="save-btn" id="grpConfirm" onclick="confirmGroup()" data-i18n="action.confirm">Confirm</button></div>
+    <div class="grp-btns"><button class="btn-primary alt" id="grpAdjust" onclick="toggleGrpAdjust()" data-i18n="grp.adjust">Adjust amounts</button><button class="btn-primary" id="grpConfirm" onclick="confirmGroup()" data-i18n="action.confirm">Confirm</button></div>
   </div>
 </div>
 
@@ -1378,7 +1378,7 @@ function enhanceMonth(inp){
   if(inp._m) return; inp._m=true;
   const wrap=document.createElement('span'); wrap.className='mfield';
   inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
-  const trig=document.createElement('button'); trig.type='button'; trig.className='finput mfield-trig'; wrap.appendChild(trig);
+  const trig=document.createElement('button'); trig.type='button'; trig.className='field mfield-trig'; wrap.appendChild(trig);
   const pop=document.createElement('div'); pop.className='mfield-pop';
   let viewYear;
   const valid=()=> inp.value && /^\d{4}-\d{2}$/.test(inp.value);
@@ -1427,7 +1427,7 @@ function globalKeys(e){
     const a=document.activeElement;
     if(a && a.tagName==='INPUT' && a.type!=='date'){
       const ov=a.closest('.overlay.open');
-      if(ov){ const save=ov.querySelector('.save-btn'); if(save){ e.preventDefault(); save.click(); } }
+      if(ov){ const save=ov.querySelector('.btn-primary'); if(save){ e.preventDefault(); save.click(); } }
     }
   }
 }
@@ -2747,19 +2747,19 @@ function renderWizard() {
     let h = '<div class="wiz-fg"><label class="flabel">'+t('wizard.convertQ')+'</label><div class="type-row"><button class="type-btn'+(!wiz.convert?' set':'')+'" onclick="wizSetConvert(false)">'+t('set.singleCur')+'</button><button class="type-btn'+(wiz.convert?' set':'')+'" onclick="wizSetConvert(true)">'+t('set.convert')+'</button></div></div>';
     if (wiz.convert) h += '<div class="wiz-fg"><label class="flabel">'+t('set.paidIn')+'</label><select class="fselect" id="wizFrom">'+curOptions(wiz.from)+'</select></div>';
     h += '<div class="wiz-fg"><label class="flabel">'+t('set.trackIn')+'</label><select class="fselect" id="wizTo">'+curOptions(wiz.to)+'</select></div>';
-    if (wiz.convert) h += '<div class="wiz-fg"><label class="flabel">'+t('set.exchRate')+'</label><input type="number" class="finput" id="wizExch" step="0.0001" value="'+(wiz.exch||'')+'" placeholder="0,00"></div>';
+    if (wiz.convert) h += '<div class="wiz-fg"><label class="flabel">'+t('set.exchRate')+'</label><input type="number" class="field" id="wizExch" step="0.0001" value="'+(wiz.exch||'')+'" placeholder="0,00"></div>';
     b.innerHTML = h;
   } else {
     let h = '<div class="wiz-fg"><label class="flabel">'+t('set.payModel')+'</label><div class="type-row"><button class="type-btn'+(wiz.mode==='hourly'?' set':'')+'" onclick="wizSetMode(\'hourly\')">'+t('set.hourly')+'</button><button class="type-btn'+(wiz.mode==='salaried'?' set':'')+'" onclick="wizSetMode(\'salaried\')">'+t('set.salaried')+'</button></div></div>';
     const unit = wiz.convert ? wiz.from : wiz.to;
-    if (wiz.mode==='hourly') h += '<div class="wiz-fg"><label class="flabel">'+t('set.hourlyRate')+' ('+unit+')</label><input type="number" class="finput" id="wizHourly" step="0.01" value="'+(wiz.hourly||'')+'" placeholder="0,00"></div>';
-    else h += '<div class="wiz-fg"><label class="flabel">'+t('set.monthlySalary')+' ('+unit+')</label><input type="number" class="finput" id="wizSalary" step="0.01" value="'+(wiz.salary||'')+'" placeholder="0,00"></div>';
-    h += '<div class="wiz-fg"><label class="flabel">'+t('set.stdHours')+'</label><input type="number" class="finput" id="wizDaily" step="0.5" min="0" value="'+(wiz.daily||8)+'"></div>';
+    if (wiz.mode==='hourly') h += '<div class="wiz-fg"><label class="flabel">'+t('set.hourlyRate')+' ('+unit+')</label><input type="number" class="field" id="wizHourly" step="0.01" value="'+(wiz.hourly||'')+'" placeholder="0,00"></div>';
+    else h += '<div class="wiz-fg"><label class="flabel">'+t('set.monthlySalary')+' ('+unit+')</label><input type="number" class="field" id="wizSalary" step="0.01" value="'+(wiz.salary||'')+'" placeholder="0,00"></div>';
+    h += '<div class="wiz-fg"><label class="flabel">'+t('set.stdHours')+'</label><input type="number" class="field" id="wizDaily" step="0.5" min="0" value="'+(wiz.daily||8)+'"></div>';
     b.innerHTML = h;
   }
   document.getElementById('wizFoot').innerHTML =
     (wizStep>1 ? '<button class="wiz-back" onclick="wizBack()">'+t('wizard.back')+'</button>' : '')
-    + '<button class="save-btn" onclick="wizNext()">'+(wizStep<3 ? t('wizard.next') : t('wizard.finish'))+'</button>';
+    + '<button class="btn-primary" onclick="wizNext()">'+(wizStep<3 ? t('wizard.next') : t('wizard.finish'))+'</button>';
   document.getElementById('wizSkip').textContent = t('wizard.skip');
   document.querySelectorAll('#wizBody select').forEach(enhanceSelect);
 }
@@ -3205,9 +3205,9 @@ function renderSplitItems(){
     }).join('');
     return '<div class="sp-item">'
       + '<div class="sp-item-head">'
-        + '<input class="finput si-name" placeholder="'+escAttr(t('split.itemName'))+'" value="'+escAttr(it.name)+'" onchange="setItemField(\''+it.id+'\',\'name\',this.value)">'
-        + '<input class="finput si-qty" type="number" min="0" step="1" placeholder="'+escAttr(t('split.qty'))+'" value="'+(it.qty||'')+'" onchange="setItemField(\''+it.id+'\',\'qty\',this.value)">'
-        + '<input class="finput si-total" inputmode="decimal" placeholder="'+escAttr(t(it.priceMode==='unit'?'split.eachPh':'split.totalPh'))+'" value="'+(it.price||'')+'" onchange="setItemField(\''+it.id+'\',\'price\',this.value)">'
+        + '<input class="field si-name" placeholder="'+escAttr(t('split.itemName'))+'" value="'+escAttr(it.name)+'" onchange="setItemField(\''+it.id+'\',\'name\',this.value)">'
+        + '<input class="field si-qty" type="number" min="0" step="1" placeholder="'+escAttr(t('split.qty'))+'" value="'+(it.qty||'')+'" onchange="setItemField(\''+it.id+'\',\'qty\',this.value)">'
+        + '<input class="field si-total" inputmode="decimal" placeholder="'+escAttr(t(it.priceMode==='unit'?'split.eachPh':'split.totalPh'))+'" value="'+(it.price||'')+'" onchange="setItemField(\''+it.id+'\',\'price\',this.value)">'
         + '<button class="si-del" onclick="removeItem(\''+it.id+'\')" aria-label="remove">🗑</button>'
       + '</div>'
       + '<div class="sp-unit"><span class="sp-seg"><button class="'+(it.priceMode!=='unit'?'on':'')+'" onclick="setItemMode(\''+it.id+'\',\'total\')">'+t('split.modeTotal')+'</button><button class="'+(it.priceMode==='unit'?'on':'')+'" onclick="setItemMode(\''+it.id+'\',\'unit\')">'+t('split.modeEach')+'</button></span> '+fmtMoney(unit)+' '+t('split.unit')+' = '+fmtMoney(total)+' · '+t('split.assigned')+' <span class="sp-assigned'+(over?' over':'')+'">'+fmtUnit(assigned)+'/'+fmtUnit(it.qty)+'</span></div>'

@@ -248,7 +248,7 @@ function stopRest(){ if(rest.id){ clearInterval(rest.id); rest.id=null; } rest.s
 function rAdd30(){ if(rest.id){ rest.secs+=30; rest.tot+=30; renderRun(); } }
 function rSkip(){ stopRest(); rNextSet(); }
 function firstPending(it){ for(var i=0;i<it.sets.length;i++){ if(!it.sets[i].done) return i; } return -1; }
-function ringSvg(pct,color){ var C=2*Math.PI*112; return '<svg viewBox="0 0 240 240"><circle cx="120" cy="120" r="112" fill="none" stroke="#232838" stroke-width="8"/>'+(pct>0?('<circle cx="120" cy="120" r="112" fill="none" stroke="'+color+'" stroke-width="8" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+(C*(1-pct))+'"/>'):'')+'</svg>'; }
+function ringSvg(pct,color){ var C=2*Math.PI*112; return '<svg viewBox="0 0 240 240"><circle cx="120" cy="120" r="112" fill="none" style="stroke:var(--surface2)" stroke-width="8"/>'+(pct>0?('<circle cx="120" cy="120" r="112" fill="none" style="stroke:'+color+'" stroke-width="8" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+(C*(1-pct))+'"/>'):'')+'</svg>'; }
 function fmtT(s){ var m=Math.floor(s/60),x=s%60; return m+':'+(x<10?'0':'')+x; }
 function renderRun(){
   if(!sess) return;
@@ -260,14 +260,14 @@ function renderRun(){
   var it=sess.items[sess.cur]; var bw=(it.mode==='bw'); var fp=firstPending(it); var setNo=(fp<0?it.sets.length:fp+1);
   if(runPhase==='rest'){
     var pct=rest.tot?rest.secs/rest.tot:0; var nextTxt=(fp<0)?(sess.cur<total-1?'novo exercício':'fim do treino'):('série '+(fp+1));
-    stage.innerHTML='<div class="rkick">Descanso</div><div class="rname">'+esc(it.name)+'</div><div class="disc2">'+ringSvg(pct,'#fb7185')+'<div class="face"><div class="big">'+fmtT(rest.secs)+'</div><div class="small">próxima: '+nextTxt+'</div></div></div>';
+    stage.innerHTML='<div class="rkick">Descanso</div><div class="rname">'+esc(it.name)+'</div><div class="disc2">'+ringSvg(pct,'var(--primary)')+'<div class="face"><div class="big">'+fmtT(rest.secs)+'</div><div class="small">próxima: '+nextTxt+'</div></div></div>';
     btm.innerHTML='<button class="rcta ghost" onclick="rAdd30()">+30s descanso</button><button class="rsub" onclick="rSkip()">Estou pronto →</button>';
     return;
   }
   if(runPhase==='log'){
     var st=it.sets[fp]||{}; var pct=rest.tot?rest.secs/rest.tot:0;
     var loadBox=bw?'':'<div class="sbox"><div class="lbl">Carga kg</div><div class="sctl"><button onclick="rBump(\'load\',-2.5)">−</button><span class="v" id="vLoad">'+(st.peso||0)+'</span><button onclick="rBump(\'load\',2.5)">+</button></div></div>';
-    stage.innerHTML='<div class="rkick">Registrar · ⏱ '+fmtT(rest.secs)+'</div><div class="rname">'+esc(it.name)+'</div><div class="disc2" style="width:148px;height:148px;margin:14px 0">'+ringSvg(pct,'#fb7185')+'<div class="face"><div class="big" style="font-size:32px">'+fmtT(rest.secs)+'</div></div></div><div class="small" style="color:var(--muted);margin-bottom:12px">Série '+setNo+' — quanto fez?</div><div class="rsteps"><div class="sbox"><div class="lbl">Reps</div><div class="sctl"><button onclick="rBump(\'reps\',-1)">−</button><span class="v" id="vReps">'+(st.reps||0)+'</span><button onclick="rBump(\'reps\',1)">+</button></div></div>'+loadBox+'</div>';
+    stage.innerHTML='<div class="rkick">Registrar · ⏱ '+fmtT(rest.secs)+'</div><div class="rname">'+esc(it.name)+'</div><div class="disc2" style="width:148px;height:148px;margin:14px 0">'+ringSvg(pct,'var(--primary)')+'<div class="face"><div class="big" style="font-size:32px">'+fmtT(rest.secs)+'</div></div></div><div class="small" style="color:var(--muted);margin-bottom:12px">Série '+setNo+' — quanto fez?</div><div class="rsteps"><div class="sbox"><div class="lbl">Reps</div><div class="sctl"><button onclick="rBump(\'reps\',-1)">−</button><span class="v" id="vReps">'+(st.reps||0)+'</span><button onclick="rBump(\'reps\',1)">+</button></div></div>'+loadBox+'</div>';
     btm.innerHTML='<button class="rcta save" onclick="rSalvar()">Salvar ✓</button>';
     return;
   }
@@ -278,7 +278,7 @@ function renderRun(){
   }
   var st0=it.sets[fp>=0?fp:0]||{}; var loadStr=(!bw&&st0.peso!==''&&st0.peso!=null)?(' · '+st0.peso+' kg'):''; var hint=progHint(it.sg||{}, it.rmax);
   var dots=''; for(var i=0;i<it.sets.length;i++){ dots+='<div class="rdot'+(it.sets[i].done?' done':(i===fp?' cur':''))+'"></div>'; }
-  stage.innerHTML='<div class="rkick">Série '+setNo+' / '+it.sets.length+'</div><div class="rname">'+esc(it.name)+'</div>'+(bw?'<div class="rbwt">peso corporal</div>':'')+'<div class="rdots">'+dots+'</div><div class="disc2">'+ringSvg(0,'#fb7185')+'<div class="face"><div class="big" style="font-size:38px">'+it.rmin+'–'+it.rmax+'</div><div class="small">reps'+loadStr+'</div></div></div>'+(hint?('<div class="rhint">'+hint+'</div>'):'');
+  stage.innerHTML='<div class="rkick">Série '+setNo+' / '+it.sets.length+'</div><div class="rname">'+esc(it.name)+'</div>'+(bw?'<div class="rbwt">peso corporal</div>':'')+'<div class="rdots">'+dots+'</div><div class="disc2">'+ringSvg(0,'var(--primary)')+'<div class="face"><div class="big" style="font-size:38px">'+it.rmin+'–'+it.rmax+'</div><div class="small">reps'+loadStr+'</div></div></div>'+(hint?('<div class="rhint">'+hint+'</div>'):'');
   btm.innerHTML='<button class="rcta start" onclick="rIniciar()">Iniciar série ▶</button><button class="rsub" onclick="openSessPick()">＋ exercício avulso</button>';
 }
 function rIniciar(){ runPhase='active'; renderRun(); }
@@ -327,8 +327,8 @@ function progChart(d){
   var step=(W-2*pad)/(pts.length-1);
   var co=pts.map(function(p,i){ return [pad+i*step, H-pad-((p.top-mn)/(mx-mn))*(H-2*pad)]; });
   var line=co.map(function(c,i){return (i?'L':'M')+c[0].toFixed(1)+' '+c[1].toFixed(1);}).join(' ');
-  var dots=co.map(function(c){return '<circle cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="3" fill="#fb7185"/>';}).join('');
-  return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:6px"><div class="rg" style="margin-bottom:8px">Carga máx. por sessão ('+unit()+')</div><svg viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="none" style="height:118px;display:block"><path d="'+line+'" fill="none" stroke="#fb7185" stroke-width="2" stroke-linejoin="round"/>'+dots+'</svg></div>';
+  var dots=co.map(function(c){return '<circle cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="3" style="fill:var(--primary)"/>';}).join('');
+  return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:6px"><div class="rg" style="margin-bottom:8px">Carga máx. por sessão ('+unit()+')</div><svg viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="none" style="height:118px;display:block"><path d="'+line+'" fill="none" style="stroke:var(--primary)" stroke-width="2" stroke-linejoin="round"/>'+dots+'</svg></div>';
 }
 function progHdr(name){ return '<div class="secbar"><div style="display:flex;align-items:center;gap:8px"><button class="lnk" onclick="backProg()">‹ Voltar</button><div class="rn">'+esc(name)+'</div></div></div>'; }
 function openProg(id){ progEx=id; renderProgresso(); window.scrollTo(0,0); }

@@ -47,7 +47,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .soon{ @apply text-muted text-center py-[60px] px-4; }
 .soon .big{ @apply text-lg font-bold text-ink mb-1.5; }
 
-.fab{ @apply fixed bottom-[22px] right-[18px] w-[54px] h-[54px] rounded-full bg-primary border-0 text-[30px] cursor-pointer flex items-center justify-center z-40 text-[color:var(--on-brand)]; box-shadow:0 6px 22px rgba(251,113,133,0.4); }
+.fab{ @apply fixed bottom-[22px] right-[18px] w-[54px] h-[54px] rounded-full bg-primary border-0 text-[30px] cursor-pointer flex items-center justify-center z-40 text-[color:var(--on-brand)]; box-shadow:0 6px 22px color-mix(in srgb, var(--primary) 38%, transparent); }
 .door{ @apply fixed bottom-5 left-4 z-40 w-[42px] h-[42px] rounded-xl bg-surface border border-border text-primary flex items-center justify-center cursor-pointer; box-shadow:0 3px 12px rgba(0,0,0,0.25); }
 
 .fg{ @apply mb-3.5; }
@@ -110,7 +110,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .runnav .btn{ @apply flex-1; }
 .runnav .btn:disabled{ @apply opacity-40; }
 
-.restbar{ @apply fixed left-1/2 bottom-[78px] flex items-center gap-3 bg-primary px-[18px] py-[11px] rounded-full z-[60] font-extrabold text-[color:var(--on-brand)]; transform:translateX(-50%); box-shadow:0 6px 22px rgba(251,113,133,0.45); }
+.restbar{ @apply fixed left-1/2 bottom-[78px] flex items-center gap-3 bg-primary px-[18px] py-[11px] rounded-full z-[60] font-extrabold text-[color:var(--on-brand)]; transform:translateX(-50%); box-shadow:0 6px 22px color-mix(in srgb, var(--primary) 42%, transparent); }
 .restbar .rt{ @apply text-base; }
 .rbtn{ @apply border-0 rounded-full px-[11px] py-[5px] font-extrabold cursor-pointer text-xs text-[color:var(--on-brand)]; background:rgba(0,0,0,0.18); font-family:inherit; }
 
@@ -176,30 +176,30 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .setrow.pend{ @apply opacity-[0.65]; }
 .swlink{ @apply block mx-auto mb-4; margin-top:-4px; }
 
-.runover{ @apply fixed inset-0 z-[300] hidden flex-col; --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --primary:#fb7185; --success:#34d399; --text:#e7eaf3; --muted:#7b85a0; --on-brand:#3a0f17; background:radial-gradient(120% 80% at 50% 0%, #1a1320 0%, var(--bg) 55%); }
+.runover{ @apply fixed inset-0 z-[300] hidden flex-col; background:var(--bg); background:radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--primary) 16%, var(--bg)) 0%, var(--bg) 58%); }
 .runover.open{ @apply flex; }
 .runtop2{ @apply flex items-center justify-between px-[18px] pt-[18px] pb-1; }
-.runtop2 .rx{ @apply border-0 text-muted w-9 h-9 rounded-full text-base cursor-pointer; background:rgba(255,255,255,0.06); font-family:inherit; }
+.runtop2 .rx{ @apply border-0 text-muted w-9 h-9 rounded-full text-base cursor-pointer; background:var(--surface2); font-family:inherit; }
 .runtop2 .rc{ @apply text-[13px] font-extrabold text-muted overflow-hidden text-ellipsis whitespace-nowrap max-w-[60%]; }
 .runtop2 .rfin{ @apply bg-transparent border-0 text-primary font-extrabold text-[13px] cursor-pointer; font-family:inherit; }
 .runstage{ @apply flex-1 flex flex-col items-center justify-center px-6 pt-1.5 text-center overflow-y-auto; }
 .rkick{ @apply text-xs font-extrabold tracking-[1.4px] uppercase text-muted; }
 .rname{ @apply text-2xl font-extrabold tracking-[-.6px] mt-1.5; line-height:1.1; }
-.rbwt{ @apply inline-block mt-2 text-[11px] font-bold text-primary rounded-full px-[11px] py-1; background:rgba(251,113,133,0.14); }
+.rbwt{ @apply inline-block mt-2 text-[11px] font-bold text-primary rounded-full px-[11px] py-1; background:var(--surface2); background:color-mix(in srgb, var(--primary) 18%, var(--bg)); }
 .rdots{ @apply flex gap-2 justify-center mt-4; }
 .rdot{ @apply w-3 h-3 rounded-full border-2 border-border; }
 .rdot.done{ @apply bg-success; border-color:var(--success); }
-.rdot.cur{ @apply border-primary; box-shadow:0 0 0 4px rgba(251,113,133,0.16); }
+.rdot.cur{ @apply border-primary; box-shadow:0 0 0 4px color-mix(in srgb, var(--primary) 22%, transparent); }
 .disc2{ @apply w-[240px] h-[240px] rounded-full relative flex items-center justify-center my-[22px]; }
 .disc2 svg{ @apply absolute inset-0; transform:rotate(-90deg); }
 .disc2 .face{ @apply flex flex-col items-center; }
 .disc2 .big{ @apply text-[56px] font-black tracking-[-2px]; line-height:1; font-variant-numeric:tabular-nums; }
 .disc2 .small{ @apply text-[13px] text-muted mt-1.5 font-semibold; }
 .pulse2{ @apply w-[240px] h-[240px] rounded-full border-[3px] border-primary flex items-center justify-center flex-col my-[22px]; animation:pulse2 1.6s ease-in-out infinite; }
-@keyframes pulse2{ 0%,100%{ box-shadow:0 0 0 0 rgba(251,113,133,0); } 50%{ box-shadow:0 0 0 16px rgba(251,113,133,0.08); } }
+@keyframes pulse2{ 0%,100%{ box-shadow:0 0 0 0 transparent; } 50%{ box-shadow:0 0 0 16px color-mix(in srgb, var(--primary) 10%, transparent); } }
 .rgo{ @apply text-[30px] font-black; }
 .rsteps{ @apply flex gap-3.5; }
-.sbox{ @apply border border-border rounded-[20px] px-4 py-3.5 min-w-[120px]; background:rgba(255,255,255,0.04); }
+.sbox{ @apply border border-border rounded-[20px] px-4 py-3.5 min-w-[120px]; background:var(--surface2); }
 .sbox .lbl{ @apply text-[11px] font-extrabold tracking-[.5px] uppercase text-muted; }
 .sctl{ @apply flex items-center justify-between gap-2 mt-2; }
 .sctl button{ @apply w-10 h-10 rounded-full border-0 bg-surface2 text-ink text-2xl font-bold cursor-pointer; font-family:inherit; }
@@ -209,7 +209,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .rcta:active{ transform:scale(.97); }
 .rcta.start{ @apply bg-primary text-[color:var(--on-brand)]; }
 .rcta.finish{ @apply bg-success text-[#05281c]; }
-.rcta.save{ @apply text-[#1f2430]; background:#fff; }
+.rcta.save{ @apply bg-success text-[#05281c]; }
 .rcta.ghost{ @apply bg-surface2 text-ink; }
 .rsub{ @apply w-full bg-transparent border-0 text-muted text-[13px] font-bold mt-3 cursor-pointer; font-family:inherit; }
 .rhint{ @apply mt-3.5 max-w-[300px]; }

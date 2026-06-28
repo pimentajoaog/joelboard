@@ -5,6 +5,7 @@
    skin green so any app gets a coherent positive color. Per-skin COMPONENT tweaks stay in finance.css. */
 
 body[data-skin="vault"] {
+  --on-brand:#2a2012;
   --bg:#14140f; --surface:#1b1b15; --surface2:#222218; --border:#2e2d24;
   --primary:#cba86a; --income:#9bbf86; --expense:#d98b6e; --warning:#cba86a; --savings:#a9b58a;
   --text:#e9e4d6; --muted:#8f897a; --radius:13px; --radius-sm:9px; --shadow:none;
@@ -12,6 +13,7 @@ body[data-skin="vault"] {
   --success: var(--income);
 }
 body[data-skin="garden"] {
+  --on-brand:#ffffff;
   --bg:#f3ede0; --surface:#fffdf8; --surface2:#f0e8d6; --border:#e7ddc8;
   --primary:#7c9a6e; --income:#5f7d54; --expense:#c97b5a; --warning:#b9893f; --savings:#7b9bb0;
   --text:#3b352c; --muted:#9a9082; --radius:22px; --radius-sm:14px; --shadow:0 4px 18px rgba(59,53,44,.07);
@@ -19,6 +21,7 @@ body[data-skin="garden"] {
   --success: var(--income);
 }
 body[data-skin="aperture"] {
+  --on-brand:#ffffff;
   --bg:#fbfbf9; --surface:#ffffff; --surface2:#f1f0ec; --border:#e7e6e1;
   --primary:#e8482b; --income:#3f7d4f; --expense:#e8482b; --warning:#b9700f; --savings:#3a6ea5;
   --text:#101010; --muted:#a3a29c; --radius:14px; --radius-sm:10px; --shadow:none;
@@ -26,6 +29,7 @@ body[data-skin="aperture"] {
   --success: var(--income);
 }
 body[data-skin="arcade"] {
+  --on-brand:#06222b;
   --bg:#0a0a16; --surface:#11122a; --surface2:#171936; --border:#26285a;
   --primary:#22e0e0; --income:#b6ff3a; --expense:#ff2fb0; --warning:#ffcc33; --savings:#22e0e0;
   --text:#dfe3ff; --muted:#7b7fb8; --radius:8px; --radius-sm:6px; --shadow:0 0 24px rgba(34,224,224,.10);
@@ -34,6 +38,7 @@ body[data-skin="arcade"] {
 }
 
 body[data-skin="sorbet"] {
+  --on-brand:#ffffff;
   --bg:#fdf4fb; --surface:#ffffff; --surface2:#fbeef9; --border:#f3dcef;
   --primary:#c264e8; --income:#2bb673; --expense:#f76b8a; --warning:#f5a524; --savings:#22b8c4;
   --text:#4a3a52; --muted:#9c8aa6; --radius:20px; --radius-sm:14px; --shadow:0 6px 20px rgba(194,100,232,.08);
@@ -41,6 +46,7 @@ body[data-skin="sorbet"] {
   --success: var(--income);
 }
 body[data-skin="press"] {
+  --on-brand:#ffffff;
   --bg:#f3efe6; --surface:#fbf9f3; --surface2:#efeadd; --border:#ccc2ad;
   --primary:#1a1a1a; --income:#2f6b4f; --expense:#b03a2e; --warning:#9a7b2e; --savings:#3a5a78;
   --text:#1c1813; --muted:#7c715c; --radius:5px; --radius-sm:4px; --shadow:none;
@@ -48,6 +54,7 @@ body[data-skin="press"] {
   --success: var(--income);
 }
 body[data-skin="mint"] {
+  --on-brand:#ffffff;
   --bg:#eefaf4; --surface:#ffffff; --surface2:#e2f5ec; --border:#c7eadb;
   --primary:#0fb981; --income:#0ea5a0; --expense:#f43f5e; --warning:#f59e0b; --savings:#0d9488;
   --text:#0f3329; --muted:#5f9080; --radius:16px; --radius-sm:11px; --shadow:0 4px 16px rgba(16,185,129,.07);

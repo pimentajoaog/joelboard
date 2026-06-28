@@ -4,6 +4,7 @@
 
 /* Scroll-lock behind any open modal (toggled by joelboard.js via .jb-noscroll) */
 html.jb-noscroll,
+body { font-family: var(--font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif); }  /* baseline: apps' own body rule overrides; themes set --font-body */
 body.jb-noscroll { overflow: hidden; }
 
 .overlay,

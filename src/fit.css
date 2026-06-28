@@ -6,14 +6,14 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --primary:#fb7185; --accent2:#3a2530; --text:#e7eaf3; --muted:#7b85a0; --success:#34d399; --radius:16px; --radius-sm:10px; --brand:var(--primary); --on-brand:#3a0f17; }
+:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --primary:#fb7185; --accent2:color-mix(in srgb, var(--primary) 18%, var(--surface)); --text:#e7eaf3; --muted:#7b85a0; --success:#34d399; --radius:16px; --radius-sm:10px; --brand:var(--primary); --on-brand:#3a0f17; --font-body:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; --font-display:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
 
 /* Reset: extends the original with the border + form-font defaults Tailwind's (disabled)
    preflight would normally provide, so @apply border / buttons render correctly. */
 *,::before,::after{ box-sizing:border-box; margin:0; padding:0; border-width:0; border-style:solid; border-color:var(--border); }
 button,input,select,textarea{ font-family:inherit; }
 html,body{ overflow-x:hidden; }
-body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg); font-family:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:26px 18px 90px; }
+body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg); font-family:var(--font-body); padding:26px 18px 90px; }
 
 #loading{ @apply max-w-[480px] mx-auto; }
 #app{ @apply hidden max-w-[760px] mx-auto; }
@@ -36,7 +36,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .secbar{ @apply flex items-center justify-between gap-2.5 mb-3.5 flex-wrap; }
 .sect{ @apply text-[11px] font-bold tracking-[.8px] uppercase text-muted; }
 
-.btn{ @apply bg-primary border-0 rounded-full px-[15px] py-2 font-extrabold text-[13px] cursor-pointer text-[#3a0f17]; font-family:inherit; }
+.btn{ @apply bg-primary border-0 rounded-full px-[15px] py-2 font-extrabold text-[13px] cursor-pointer text-[color:var(--on-brand)]; font-family:inherit; }
 .btn.ghost{ @apply bg-surface2 text-ink border border-border font-bold; }
 
 .row{ @apply flex items-center justify-between gap-2.5 bg-surface border border-border rounded-[16px] px-4 py-3.5 mb-2 cursor-pointer; }
@@ -47,7 +47,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .soon{ @apply text-muted text-center py-[60px] px-4; }
 .soon .big{ @apply text-lg font-bold text-ink mb-1.5; }
 
-.fab{ @apply fixed bottom-[22px] right-[18px] w-[54px] h-[54px] rounded-full bg-primary border-0 text-[30px] cursor-pointer flex items-center justify-center z-40 text-[#3a0f17]; box-shadow:0 6px 22px rgba(251,113,133,0.4); }
+.fab{ @apply fixed bottom-[22px] right-[18px] w-[54px] h-[54px] rounded-full bg-primary border-0 text-[30px] cursor-pointer flex items-center justify-center z-40 text-[color:var(--on-brand)]; box-shadow:0 6px 22px rgba(251,113,133,0.4); }
 .door{ @apply fixed bottom-5 left-4 z-40 w-[42px] h-[42px] rounded-xl bg-surface border border-border text-primary flex items-center justify-center cursor-pointer; box-shadow:0 3px 12px rgba(0,0,0,0.25); }
 
 .fg{ @apply mb-3.5; }
@@ -105,14 +105,14 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .runtop{ @apply flex items-center justify-between gap-2.5 mb-4; }
 .runset.active{ @apply bg-accent2 border border-primary rounded-[10px] px-2 py-1.5; }
 .runset.done .si{ @apply opacity-[0.55]; }
-.setok{ @apply ml-auto bg-primary border-0 rounded-lg px-3.5 py-[7px] font-extrabold cursor-pointer text-sm text-[#3a0f17]; font-family:inherit; }
+.setok{ @apply ml-auto bg-primary border-0 rounded-lg px-3.5 py-[7px] font-extrabold cursor-pointer text-sm text-[color:var(--on-brand)]; font-family:inherit; }
 .runnav{ @apply flex gap-2.5 mt-3.5; }
 .runnav .btn{ @apply flex-1; }
 .runnav .btn:disabled{ @apply opacity-40; }
 
-.restbar{ @apply fixed left-1/2 bottom-[78px] flex items-center gap-3 bg-primary px-[18px] py-[11px] rounded-full z-[60] font-extrabold text-[#3a0f17]; transform:translateX(-50%); box-shadow:0 6px 22px rgba(251,113,133,0.45); }
+.restbar{ @apply fixed left-1/2 bottom-[78px] flex items-center gap-3 bg-primary px-[18px] py-[11px] rounded-full z-[60] font-extrabold text-[color:var(--on-brand)]; transform:translateX(-50%); box-shadow:0 6px 22px rgba(251,113,133,0.45); }
 .restbar .rt{ @apply text-base; }
-.rbtn{ @apply border-0 rounded-full px-[11px] py-[5px] font-extrabold cursor-pointer text-xs text-[#3a0f17]; background:rgba(0,0,0,0.18); font-family:inherit; }
+.rbtn{ @apply border-0 rounded-full px-[11px] py-[5px] font-extrabold cursor-pointer text-xs text-[color:var(--on-brand)]; background:rgba(0,0,0,0.18); font-family:inherit; }
 
 .pghint{ @apply text-xs font-bold rounded-[9px] px-[11px] py-[7px] my-[9px] mb-0.5; line-height:1.35; }
 .pghint.up{ @apply text-success; background:rgba(52,211,153,0.14); }
@@ -156,7 +156,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .ppvstat{ @apply text-xs text-muted mt-1.5; }
 .ppvlad{ @apply flex gap-1.5 mt-3 flex-wrap; }
 .ppvstep{ @apply text-[11px] font-bold text-muted bg-surface2 border border-border rounded-full px-2.5 py-[5px]; }
-.ppvstep.on{ @apply bg-primary border-primary text-[#3a0f17]; }
+.ppvstep.on{ @apply bg-primary border-primary text-[color:var(--on-brand)]; }
 .ppvstep.done{ @apply text-success; border-color:rgba(52,211,153,0.4); }
 .ppvnextlbl{ @apply text-[11px] font-bold uppercase tracking-[.5px] text-muted mt-3.5 mb-[5px]; }
 .ppvnext{ @apply text-[13.5px]; line-height:1.5; }
@@ -169,7 +169,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .heroname{ @apply text-2xl font-extrabold tracking-[-.5px] mt-1; line-height:1.15; }
 .herometa{ @apply text-xs text-muted mt-[3px]; }
 .heroprev{ @apply text-[13px] text-muted mt-[11px]; line-height:1.45; }
-.herobtn{ @apply w-full mt-4 bg-primary border-0 rounded-xl p-3.5 text-base font-extrabold cursor-pointer text-[#3a0f17]; font-family:inherit; }
+.herobtn{ @apply w-full mt-4 bg-primary border-0 rounded-xl p-3.5 text-base font-extrabold cursor-pointer text-[color:var(--on-brand)]; font-family:inherit; }
 
 .acttarget{ @apply flex-1 text-[13px] text-ink; }
 .acttarget.dim{ @apply text-muted opacity-70; }
@@ -207,9 +207,12 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .runbtm{ @apply px-6; padding-top:14px; padding-bottom:calc(22px + env(safe-area-inset-bottom)); }
 .rcta{ @apply w-full border-0 rounded-full p-5 text-lg font-black tracking-[.2px] cursor-pointer; transition:transform .08s; font-family:inherit; }
 .rcta:active{ transform:scale(.97); }
-.rcta.start{ @apply bg-primary text-[#3a0f17]; }
+.rcta.start{ @apply bg-primary text-[color:var(--on-brand)]; }
 .rcta.finish{ @apply bg-success text-[#05281c]; }
 .rcta.save{ @apply text-[#1f2430]; background:#fff; }
 .rcta.ghost{ @apply bg-surface2 text-ink; }
 .rsub{ @apply w-full bg-transparent border-0 text-muted text-[13px] font-bold mt-3 cursor-pointer; font-family:inherit; }
 .rhint{ @apply mt-3.5 max-w-[300px]; }
+
+/* skin display font on headings/big text */
+.hl h1, .tdname, .gate .gt, .prv { font-family: var(--font-display); }

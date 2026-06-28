@@ -94,7 +94,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .mp-month { padding: 9px 0; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.12s; }
 .mp-month:hover { border-color: var(--primary); }
 .mp-month.cur { border-color: var(--primary); color: var(--primary); }
-.mp-month.sel, .mp-month.sel.cur { background: var(--primary); border-color: var(--primary); color: #fff; }
+.mp-month.sel, .mp-month.sel.cur { background: var(--primary); border-color: var(--primary); color: var(--on-brand); }
 .gear-btn.eye-btn.active { border-color: var(--primary); color: var(--primary); }
 #app.past-dim .tab-page { opacity: 0.48; filter: grayscale(0.55); transition: opacity 0.25s ease, filter 0.25s ease; }
 .tab-page { transition: opacity 0.25s ease, filter 0.25s ease; }
@@ -450,7 +450,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .fab-menu.open { opacity: 1; pointer-events: all; transform: translateY(0); }
 .fab-option { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,0.3); transition: border-color 0.15s; }
 .fab-option:hover { border-color: var(--primary); }
-.fab { width: 54px; height: 54px; align-self: flex-end; background: var(--primary); border: none; border-radius: 50%; cursor: pointer; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 24px rgba(129,140,248,0.45); transition: transform 0.2s; pointer-events: auto; }
+.fab { width: 54px; height: 54px; align-self: flex-end; background: var(--primary); border: none; border-radius: 50%; cursor: pointer; color: var(--on-brand); font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 24px rgba(129,140,248,0.45); transition: transform 0.2s; pointer-events: auto; }
 .fab:hover { transform: scale(1.08); }
 .fab.open { transform: rotate(45deg); }
 
@@ -468,7 +468,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .set-pane.active { display: block; animation: fade 0.18s ease; }
 .cat-add { display: flex; gap: 8px; margin-bottom: 10px; }
 .cat-add .field { flex: 1; }
-.cat-add-btn { padding: 0 18px; background: var(--primary); border: none; border-radius: var(--radius-sm); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+.cat-add-btn { padding: 0 18px; background: var(--primary); border: none; border-radius: var(--radius-sm); color: var(--on-brand); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
 .cat-add-btn:hover { opacity: 0.88; }
 .cat-hint { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
 .cat-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
@@ -627,7 +627,7 @@ select.cs-native { position: absolute; width: 1px; height: 1px; padding: 0; marg
 .sp-mini:hover { border-color:var(--primary); }
 .sp-seg { display:inline-flex; border:1px solid var(--border); border-radius:99px; overflow:hidden; vertical-align:middle; margin-right:4px; }
 .sp-seg button { border:none; background:var(--surface); color:var(--muted); font-size:10px; font-weight:700; padding:3px 9px; cursor:pointer; font-family:inherit; }
-.sp-seg button.on { background:var(--primary); color:#fff; }
+.sp-seg button.on { background:var(--primary); color:var(--on-brand); }
 .sp-assigned.over { color:var(--expense); font-weight:700; }
 .sp-svc { display:flex; align-items:center; gap:8px; }
 .sp-toggle { display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; }

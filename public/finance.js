@@ -732,7 +732,7 @@ function jbShowLink(){
   jbLoadingHtml('<div style="max-width:430px;margin:0 auto;padding:42px 20px;text-align:center">'
     + '<div style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px">💰 Joelboard</div>'
     + '<div style="color:var(--muted);font-size:13px;margin-bottom:24px">Vamos configurar suas finanças.</div>'
-    + '<button onclick="jbCreateSheet()" style="background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px 18px;font-weight:700;cursor:pointer;width:100%;font-family:inherit;font-size:15px">✨ Criar nova planilha</button>'
+    + '<button onclick="jbCreateSheet()" style="background:var(--primary);color:var(--on-brand);border:none;border-radius:12px;padding:13px 18px;font-weight:700;cursor:pointer;width:100%;font-family:inherit;font-size:15px">✨ Criar nova planilha</button>'
     + '<div style="color:var(--muted);font-size:12px;margin:18px 0 12px">— ou já tem uma? —</div>'
     + '<input id="jbSheetUrl" placeholder="Cole o link da planilha" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-size:14px;margin-bottom:10px;font-family:inherit">'
     + '<button onclick="jbLink()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer;width:100%;font-family:inherit">Conectar planilha existente</button>'

@@ -207,7 +207,7 @@
   // --- shared confirm dialog: styled + theme-adaptive, builds its own DOM (no per-app markup). opts:{yes,no,danger,onNo,html} ---
   function confirm(title, msg, onYes, opts){
     opts = opts || {};
-    var ov = document.createElement('div'); ov.className = 'overlay';
+    var ov = document.createElement('div'); ov.className = 'overlay'; ov.style.zIndex = '100000';
     var yesBg = opts.danger ? 'var(--expense, #ef4444)' : 'var(--brand)';
     var yesFg = opts.danger ? '#fff' : 'var(--on-brand)';
     ov.innerHTML = '<div class="modal" style="max-width:360px">'

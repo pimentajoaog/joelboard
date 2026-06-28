@@ -286,7 +286,9 @@ function rConcluir(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(f
 function rBump(f,d){ var it=sess.items[sess.cur]; var fp=firstPending(it); var st=it.sets[fp]; if(!st) return; if(f==='reps'){ st.reps=Math.max(0,(Number(st.reps)||0)+d); var v=$('vReps'); if(v) v.textContent=st.reps; } else { st.peso=Math.max(0,Math.round(((Number(st.peso)||0)+d)*10)/10); var v2=$('vLoad'); if(v2) v2.textContent=st.peso; } }
 function rSalvar(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; it.sets[fp].done=true; if(rest.id&&rest.secs>0){ runPhase='rest'; renderRun(); } else { rNextSet(); } }
 function rNextSet(){ stopRest(); var it=sess.items[sess.cur]; if(firstPending(it)<0){ if(sess.cur<sess.items.length-1){ sess.cur++; runPhase='ready'; renderRun(); } else { rFinish(); } } else { runPhase='ready'; renderRun(); } }
-function rDiscard(){ fitConfirm('Sair do treino?','O que você registrou agora será perdido.', function(){ stopRest(); sess=null; $('runOverlay').classList.remove('open'); renderHoje(); }); }
+function rClose(){ stopRest(); sess=null; $('runOverlay').classList.remove('open'); renderHoje(); }
+function rCapturedCount(){ var n=0; if(sess) sess.items.forEach(function(it){ it.sets.forEach(function(st){ if(st.done&&((Number(st.reps)||0)>0||(Number(st.peso)||0)>0)) n++; }); }); return n; }
+function rDiscard(){ if(!sess) return; if(rCapturedCount()===0){ rClose(); return; } JB.confirm('Descartar treino?','O que você registrou não será salvo.', rClose, { yes:'Descartar', no:'Continuar', danger:true }); }
 function beep(){ try{ if(navigator.vibrate) navigator.vibrate([200,80,200]); }catch(e){} try{ var A=window.AudioContext||window.webkitAudioContext; if(!A) return; var a=new A(); var o=a.createOscillator(), g=a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value=880; g.gain.value=0.08; o.start(); setTimeout(function(){ try{o.stop();a.close();}catch(e){} },300); }catch(e){} }
 function openSwitch(){ var rows=(DATA.treinos||[]).map(function(r){ return '<div class="row" onclick="startFromSwitch(\''+r.id+'\')"><div><div class="rn">'+esc(r.name)+'</div><div class="rg">'+((r.items||[]).length)+' exercícios</div></div><span style="color:var(--primary)">▶</span></div>'; }).join(''); rows+='<div class="row" style="border-style:dashed" onclick="startFromSwitch(\'\')"><div class="rn">Treino avulso</div><span style="color:var(--primary)">▶</span></div>'; $('switchList').innerHTML=rows||'<div class="empty">Nenhum treino. Crie um na aba Treinos.</div>'; $('switchOverlay').classList.add('open'); }
 function closeSwitch(){ $('switchOverlay').classList.remove('open'); }
@@ -295,13 +297,19 @@ function openSessPick(){ $('sessPickList').innerHTML=(DATA.exercicios||[]).slice
 function addSessEx(id){ sess.items.push(buildRunItem(id,3,8,12,null)); sess.cur=sess.items.length-1; runPhase='ready'; $('sessPickOverlay').classList.remove('open'); renderRun(); }
 function rFinish(){
   if(!sess) return;
+  var c=rCapturedCount();
+  if(c===0){ JB.confirm('Finalizar treino?','Nada foi registrado ainda. Sair sem salvar?', rClose, { yes:'Sair', no:'Continuar' }); return; }
+  JB.confirm('Finalizar treino?','Salvar '+c+' série'+(c>1?'s':'')+' e encerrar o treino?', rSave, { yes:'Salvar', no:'Continuar' });
+}
+function rSave(){
+  if(!sess) return;
   var sid=uuid(); var rows=[];
   sess.items.forEach(function(it){ var n=0; it.sets.forEach(function(st){ var reps=Number(st.reps)||0, peso=Number(st.peso)||0; if(st.done&&(reps>0||peso>0)){ n++; rows.push([sid, it.ex, n, reps, peso, uuid()]); } }); });
-  if(!rows.length){ fitConfirm('Nada registrado','Sair sem salvar este treino?', function(){ stopRest(); sess=null; $('runOverlay').classList.remove('open'); renderHoje(); }); return; }
+  if(!rows.length){ rClose(); return; }
   var date=sess.date, tname=sess.treinoName;
   DATA.sessoes.push({ id:sid, date:date, treino:tname, notas:'' });
   rows.forEach(function(r){ DATA.series.push({ id:r[5], sessaoId:sid, exId:r[1], serie:r[2], reps:r[3], peso:r[4] }); });
-  stopRest(); sess=null; $('runOverlay').classList.remove('open'); renderHoje(); toast('✓ Treino salvo!');
+  rClose(); toast('✓ Treino salvo!');
   JB.api('POST', ssUrl('/values/Sessoes:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[[date,tname,'',sid]] })
     .then(function(){ return JB.api('POST', ssUrl('/values/Series:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:rows }); })
     .catch(function(){ toast('Erro ao salvar — recarregue'); });

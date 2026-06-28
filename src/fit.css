@@ -146,8 +146,8 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .set-tab{ @apply bg-transparent border-0 border-b-2 border-b-transparent text-muted text-[13px] font-bold px-3 py-2 cursor-pointer -mb-px whitespace-nowrap flex-[0_0_auto]; font-family:inherit; }
 .set-tab.active{ @apply text-primary; border-bottom-color:var(--primary); }
 
-.modebadge{ @apply text-[10px] font-bold bg-accent2 text-primary rounded-md px-1.5 py-0.5 align-middle ml-1; }
-.bwtag{ @apply text-[10px] font-bold bg-accent2 text-primary rounded-md px-[7px] py-0.5 align-middle ml-1; }
+.modebadge{ @apply text-[10px] font-bold text-primary rounded-md px-1.5 py-0.5 align-middle ml-1; background:var(--surface2); background:color-mix(in srgb, var(--primary) 15%, var(--surface)); }
+.bwtag{ @apply text-[10px] font-bold text-primary rounded-md px-[7px] py-0.5 align-middle ml-1; background:var(--surface2); background:color-mix(in srgb, var(--primary) 15%, var(--surface)); }
 
 .ppv{ @apply bg-surface border border-border rounded-[16px] p-4 mb-3.5; }
 .ppvh{ @apply flex items-center justify-between mb-2; }

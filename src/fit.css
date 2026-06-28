@@ -162,8 +162,8 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .ppvnext{ @apply text-[13.5px]; line-height:1.5; }
 .ppvnext b{ @apply text-ink; }
 
-.herocard{ @apply border border-primary rounded-[18px] p-5 mb-4; background:linear-gradient(140deg, var(--accent2), var(--surface) 70%); }
-.herocard.rest{ @apply bg-surface border-border; }
+.herocard{ @apply border border-primary rounded-[18px] p-5 mb-4; background:var(--surface); background:linear-gradient(135deg, color-mix(in srgb, var(--primary) 14%, var(--surface)), var(--surface) 60%); }
+.herocard.rest{ @apply border-border; background:var(--surface); background:linear-gradient(135deg, color-mix(in srgb, var(--muted) 9%, var(--surface)), var(--surface) 60%); }
 .herolbl{ @apply text-[11px] font-extrabold text-primary uppercase tracking-[.6px]; }
 .herocard.rest .herolbl{ @apply text-muted; }
 .heroname{ @apply text-2xl font-extrabold tracking-[-.5px] mt-1; line-height:1.15; }

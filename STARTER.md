@@ -10,12 +10,13 @@ the whole suite feels like one product. **Read this before building a new app or
 
 ```
 joelboard/
-  index.html            # Hub (entry)
-  finance/index.html    # Finance (entry)
-  fit/index.html        # Fit (entry)
+  index.html            # Hub (entry)        — markup only
+  finance/index.html    # Finance (entry)    — markup only
+  fit/index.html        # Fit (entry)        — markup only
   src/<app>.css         # each app's Tailwind stylesheet (@tailwind + :root tokens + @apply components)
   public/
     joelboard.js        # shared core logic  -> window.JB   (served at /joelboard.js)
+    finance.js / fit.js / hub.js   # each app's OWN logic   (served at /<app>.js)
     joelboard.css       # shared styles + components         (served at /joelboard.css)
     manifest.json, sw.js, icons
   tailwind.config.js    # tokens map to CSS vars; corePlugins.preflight = false
@@ -71,6 +72,8 @@ Finance ships 8 skins by overriding these vars via `body[data-skin="…"]`.
 
 1. **Entry:** add `newapp/index.html`; register it in `vite.config.js` `rollupOptions.input`.
    In `<head>` link `/joelboard.css`, the Google GIS script, and `/joelboard.js`; link `../src/newapp.css`.
+   **Keep the app's JS in its OWN `public/newapp.js`** (classic global `<script src="/newapp.js"></script>`
+   at end of `<body>`, after `/joelboard.js`) — never inline a big `<script>` in the HTML. The `.html` is markup only.
 2. **Tokens:** in `src/newapp.css` set `:root` (pick the accent → `--brand`/`--on-brand`, `--radius`, `--radius-sm`, surfaces…).
    Start the file with `@tailwind base; @tailwind components; @tailwind utilities;` then the reset block
    (copy from `src/fit.css` — preflight is off globally) then app components via `@apply` on tokens.
@@ -83,6 +86,7 @@ Finance ships 8 skins by overriding these vars via `body[data-skin="…"]`.
 
 ## Conventions (always)
 
+- **Each app's JS lives in its own `public/<app>.js`** (classic global script, after `/joelboard.js`); HTML is markup only. Validate with `node --check public/<app>.js`.
 - **No** browser `alert/confirm/prompt` — styled in-app modals + `JB.toast` only.
 - **No** `!important` — fix with specificity/order.
 - Reuse the shared core/tokens/components before writing new ones; if something common diverges, unify it.

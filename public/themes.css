@@ -7,7 +7,7 @@
 body[data-skin="vault"] {
   --on-brand:#2a2012;
   --bg:#14140f; --surface:#1b1b15; --surface2:#222218; --border:#2e2d24;
-  --primary:#cba86a; --income:#9bbf86; --expense:#d98b6e; --warning:#cba86a; --savings:#a9b58a;
+  --primary:#cba86a; --income:#9bbf86; --on-income:#21301a; --expense:#d98b6e; --warning:#cba86a; --savings:#a9b58a;
   --text:#e9e4d6; --muted:#8f897a; --radius:13px; --radius-sm:9px; --shadow:none;
   --font-body:'Jost',sans-serif; --font-display:'Cormorant Garamond',serif;
   --success: var(--income);
@@ -31,7 +31,7 @@ body[data-skin="aperture"] {
 body[data-skin="arcade"] {
   --on-brand:#06222b;
   --bg:#0a0a16; --surface:#11122a; --surface2:#171936; --border:#26285a;
-  --primary:#22e0e0; --income:#b6ff3a; --expense:#ff2fb0; --warning:#ffcc33; --savings:#22e0e0;
+  --primary:#22e0e0; --income:#b6ff3a; --on-income:#0a2912; --expense:#ff2fb0; --warning:#ffcc33; --savings:#22e0e0;
   --text:#dfe3ff; --muted:#7b7fb8; --radius:8px; --radius-sm:6px; --shadow:0 0 24px rgba(34,224,224,.10);
   --font-body:'IBM Plex Mono',monospace; --font-display:'Chakra Petch',sans-serif;
   --success: var(--income);

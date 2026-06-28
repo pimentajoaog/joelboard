@@ -368,7 +368,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 
 .check { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--border); background: var(--surface); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; color: var(--income); font-size: 13px; font-weight: 700; transition: all 0.15s; }
 .check:hover { border-color: var(--income); }
-.check.on { background: var(--income); border-color: var(--income); color: #fff; }
+.check.on { background: var(--income); border-color: var(--income); color: var(--on-income, #fff); }
 .check.sm { width: 18px; height: 18px; border-radius: 6px; font-size: 11px; }
 
 .goals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px,1fr)); gap: 14px; }

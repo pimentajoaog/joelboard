@@ -48,7 +48,9 @@ Load with `<script src="https://accounts.google.com/gsi/client" async></script>`
   stale/wrong id; rejects `Error('JB_NEED_SHEET')` with `.files` when the app must show a gate/picker),
   `JB.sheetTabs(id)`, `JB.getSheetId(app)/setSheetId(app,id)/clearSheetId(app)` (namespaced `jb_sheet_<app>`).
 - **UI helpers:** `JB.feedback(appName)` (styled bug/idea modal → owner's Google Form),
-  `JB.toast(msg)`. Background **scroll-lock** behind any open `.overlay.open` is automatic.
+  `JB.toast(msg)`, `JB.confirm(title, msg, onYes[, {yes, no, danger, onNo, html}])` (styled, theme-adaptive
+  yes/no dialog that builds its own DOM — no per-app markup; `danger:true` = red confirm). Background
+  **scroll-lock** behind any open `.overlay.open` is automatic.
 - **Theming:** `JB.applySkin(app)` (call early on load — applies the saved skin), `JB.renderSkinPicker(app, el[, onChange])`
   (renders the swatch grid into `el`, persists choice), `JB.SKINS`, `JB.getSkin(app)`, `JB.setSkin(app, id)`.
   Skins live in `/themes.css` (`body[data-skin]`); selection persists per-app in `localStorage` (`jb_skin_<app>`).
@@ -84,7 +86,7 @@ Theme = override these vars under `body[data-skin="…"]`. Themes stay **per-app
 2. **Tokens:** in `src/newapp.css` set `:root` (pick the accent → `--brand`/`--on-brand`, `--radius`, `--radius-sm`, surfaces…).
    Start the file with `@tailwind base; @tailwind components; @tailwind utilities;` then the reset block
    (copy from `src/fit.css` — preflight is off globally) then app components via `@apply` on tokens.
-3. **Reuse components:** `.overlay/.modal/.mh/.mt/.x`, `.field`, `.btn-primary`, `.confirm-card`, `JB.toast`, `JB.feedback`.
+3. **Reuse components:** `.overlay/.modal/.mh/.mt/.x`, `.field`, `.btn-primary`, `.confirm-card`, `JB.toast`, `JB.feedback`, `JB.confirm`.
    **Theming:** call `JB.applySkin('newapp')` once on load, and drop `JB.renderSkinPicker('newapp', el)` into a settings "Tema" section — the 8 skins + persistence come free.
 4. **Data:** `JB.requestToken(true)` → `JB.resolveSheet({app:'newapp', namePart:'Joelboard', requiredTabs:[...]})`
    → `JB.api(...)`; persist with `JB.setSheetId('newapp', id)`. Create the per-user sheet in the user's Drive.

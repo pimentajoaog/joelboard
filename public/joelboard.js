@@ -204,13 +204,40 @@
     });
   }
 
+  // --- shared confirm dialog: styled + theme-adaptive, builds its own DOM (no per-app markup). opts:{yes,no,danger,onNo,html} ---
+  function confirm(title, msg, onYes, opts){
+    opts = opts || {};
+    var ov = document.createElement('div'); ov.className = 'overlay';
+    var yesBg = opts.danger ? 'var(--expense, #ef4444)' : 'var(--brand)';
+    var yesFg = opts.danger ? '#fff' : 'var(--on-brand)';
+    ov.innerHTML = '<div class="modal" style="max-width:360px">'
+      + '<div class="mt" data-jbc="t" style="margin-bottom:8px"></div>'
+      + '<div data-jbc="m" style="color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:18px"></div>'
+      + '<div style="display:flex;gap:10px">'
+      +   '<button data-jbc="no" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit"></button>'
+      +   '<button data-jbc="y" style="flex:1;background:' + yesBg + ';color:' + yesFg + ';border:none;border-radius:var(--radius-sm);padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit"></button>'
+      + '</div></div>';
+    ov.querySelector('[data-jbc=t]').textContent = title || '';
+    var m = ov.querySelector('[data-jbc=m]'); if (opts.html) m.innerHTML = msg || ''; else m.textContent = msg || '';
+    ov.querySelector('[data-jbc=no]').textContent = opts.no || 'Cancelar';
+    ov.querySelector('[data-jbc=y]').textContent = opts.yes || 'Confirmar';
+    document.body.appendChild(ov);
+    requestAnimationFrame(function(){ ov.classList.add('open'); });
+    function close(){ ov.classList.remove('open'); setTimeout(function(){ if (ov.parentNode) ov.parentNode.removeChild(ov); }, 200); }
+    function no(){ close(); if (opts.onNo) opts.onNo(); }
+    ov.querySelector('[data-jbc=no]').onclick = no;
+    ov.querySelector('[data-jbc=y]').onclick = function(){ close(); if (onYes) onYes(); };
+    ov.addEventListener('click', function(e){ if (e.target === ov) no(); });
+    return close;
+  }
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, email: email, fetchEmail: fetchEmail,
     requestToken: requestToken, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
-    feedback: feedback, toast: jbToast, whenReady: whenReady,
+    feedback: feedback, toast: jbToast, confirm: confirm, whenReady: whenReady,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker
   };
 })();

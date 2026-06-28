@@ -418,9 +418,6 @@ function wdName(i){ return WD[i]||''; }
 function schedFor(wd){ var s=(DATA.config&&DATA.config.schedule)||{}; return s[wd]||s[String(wd)]||''; }
 function setSchedule(wd,rid){ DATA.config=DATA.config||{}; DATA.config.schedule=DATA.config.schedule||{}; if(rid) DATA.config.schedule[wd]=rid; else delete DATA.config.schedule[wd]; saveConfig('schedule', JSON.stringify(DATA.config.schedule)); renderHoje(); }
 function renderSched(){ if(!$('setSched')) return; var sc=(DATA.config&&DATA.config.schedule)||{}; var sh=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; $('setSched').innerHTML=sh.map(function(d,i){ var cur=sc[i]||sc[String(i)]||''; var opts='<option value="">Descanso</option>'+(DATA.treinos||[]).map(function(r){ return '<option value="'+r.id+'"'+(cur===r.id?' selected':'')+'>'+esc(r.name)+'</option>'; }).join(''); return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="width:32px;color:var(--muted);font-size:13px;font-weight:700">'+d+'</span><select class="field" style="flex:1" onchange="setSchedule('+i+',this.value)">'+opts+'</select></div>'; }).join(''); }
-var askCb=null;
-function fitConfirm(title,msg,onYes){ askCb=onYes||null; $('askTitle').textContent=title||'Confirmar'; $('askMsg').textContent=msg||''; $('askOverlay').classList.add('open'); }
-function closeAsk(){ $('askOverlay').classList.remove('open'); askCb=null; }
-function confirmYes(){ var cb=askCb; closeAsk(); if(cb) cb(); }
+function fitConfirm(title,msg,onYes){ JB.confirm(title, msg, onYes); }
 JB.applySkin('fit');
 startAuth();

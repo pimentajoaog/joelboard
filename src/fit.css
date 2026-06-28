@@ -176,7 +176,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .setrow.pend{ @apply opacity-[0.65]; }
 .swlink{ @apply block mx-auto mb-4; margin-top:-4px; }
 
-.runover{ @apply fixed inset-0 z-[300] hidden flex-col; background:radial-gradient(120% 80% at 50% 0%, #1a1320 0%, var(--bg) 55%); }
+.runover{ @apply fixed inset-0 z-[300] hidden flex-col; --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --primary:#fb7185; --success:#34d399; --text:#e7eaf3; --muted:#7b85a0; --on-brand:#3a0f17; background:radial-gradient(120% 80% at 50% 0%, #1a1320 0%, var(--bg) 55%); }
 .runover.open{ @apply flex; }
 .runtop2{ @apply flex items-center justify-between px-[18px] pt-[18px] pb-1; }
 .runtop2 .rx{ @apply border-0 text-muted w-9 h-9 rounded-full text-base cursor-pointer; background:rgba(255,255,255,0.06); font-family:inherit; }
@@ -188,7 +188,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .rbwt{ @apply inline-block mt-2 text-[11px] font-bold text-primary rounded-full px-[11px] py-1; background:rgba(251,113,133,0.14); }
 .rdots{ @apply flex gap-2 justify-center mt-4; }
 .rdot{ @apply w-3 h-3 rounded-full border-2 border-border; }
-.rdot.done{ @apply bg-success; border-color:#34d399; }
+.rdot.done{ @apply bg-success; border-color:var(--success); }
 .rdot.cur{ @apply border-primary; box-shadow:0 0 0 4px rgba(251,113,133,0.16); }
 .disc2{ @apply w-[240px] h-[240px] rounded-full relative flex items-center justify-center my-[22px]; }
 .disc2 svg{ @apply absolute inset-0; transform:rotate(-90deg); }

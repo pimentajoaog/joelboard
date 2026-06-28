@@ -2884,11 +2884,4 @@ function applyWizSalary(){
   renderAll(); showToast('Salário aplicado ✓');
   if(!tourIsDone()) setTimeout(startTour,300);
 }
-function showConfirm(title, msg, onYes) {
-  askCb = onYes || null;
-  document.getElementById('askTitle').textContent = title || t('ask.title');
-  document.getElementById('askMsg').textContent = msg || '';
-  document.getElementById('askOverlay').classList.add('open');
-}
-function closeAsk() { document.getElementById('askOverlay').classList.remove('open'); askCb = null; }
-function confirmAsk() { const cb = askCb; closeAsk(); if (cb) cb(); }
+function showConfirm(title, msg, onYes) { JB.confirm(title, msg, onYes, { yes: t('action.confirm'), no: t('action.cancel'), danger: true }); }

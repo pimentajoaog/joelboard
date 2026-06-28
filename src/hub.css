@@ -50,7 +50,7 @@ a.tile:hover{ @apply border-primary; transform:translateY(-3px); }
 .fbstat span{ font-size:12px; color:var(--muted); }
 .fbchips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
 .fbchip{ background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:99px; padding:7px 13px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
-.fbchip.on{ background:var(--primary); color:#fff; border-color:var(--primary); }
+.fbchip.on{ background:var(--primary); color:var(--on-brand); border-color:var(--primary); }
 .fblist{ display:flex; flex-direction:column; gap:12px; }
 .fbcard{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; }
 .fbtop{ display:flex; gap:12px; margin-bottom:10px; }

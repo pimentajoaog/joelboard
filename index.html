@@ -91,7 +91,7 @@
 var greetEl=document.getElementById("greet"), btnEl=document.getElementById("authbtn");
 function setGreet(){ var em=JB.email(); var on=!!JB.cachedToken()&&!!em; greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); }
 function doIn(){ JB.requestToken(true).then(function(t){ return JB.fetchEmail(t); }).then(setGreet).catch(function(){}); }
-function doOut(){ JB.signOut(); 
+function doOut(){ JB.signOut(); setGreet(); }
 /* ---- Feedback viewer (owner-only; reads the form-response sheet via Sheets API) ---- */
 var FB_SHEET='1vgpn1qRuKys8TYQD-Dx49cDjcOqJDZyqS0fZAvfxchs', FB_GID=749060366, FB_OWNER='joaogabrielpabarbosa@gmail.com';
 var FB_STATUS=['New','Acknowledged','Fixed',"Won't fix"];
@@ -158,8 +158,6 @@ function updateFB(row,status){
   JB.api('PUT','https://sheets.googleapis.com/v4/spreadsheets/'+FB_SHEET+'/values/'+encodeURIComponent(rng)+'?valueInputOption=RAW',{values:[[status]]}).catch(function(){ if(JB.toast)JB.toast('Erro ao salvar status'); });
 }
 function fbSetFilter(f,btn){ fbFilter=f; var c=document.querySelectorAll('#fbChips .fbchip'); for(var i=0;i<c.length;i++) c[i].classList.toggle('on',c[i]===btn); renderFB(); }
-
-setGreet(); }
 function openHubSet(){ var em=JB.email(); var on=!!JB.cachedToken()&&!!em; document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
 function hubAuth(){ var on=!!JB.cachedToken()&&!!JB.email(); closeHubSet(); if(on) doOut(); else doIn(); }

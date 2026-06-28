@@ -369,6 +369,15 @@
   </div>
 </div>
 
+<div class="overlay" id="salaryWizOverlay" onclick="bgClose(event,'salaryWizOverlay')">
+  <div class="modal" style="max-width:370px;">
+    <div class="modal-head"><div class="modal-title">Aplicar salário</div><button class="close-btn" onclick="closeSalaryWiz()">✕</button></div>
+    <div class="confirm-msg" id="salaryWizMsg"></div>
+    <div class="fg"><label class="flabel">A partir de</label><select class="fselect" id="salaryWizMonth"></select></div>
+    <button class="btn-primary" onclick="applyWizSalary()">Aplicar a todos os meses</button>
+    <button class="cancel-btn" onclick="closeSalaryWiz()">Agora não</button>
+  </div>
+</div>
 <div class="overlay" id="sheetOverlay">
   <div class="modal" style="max-width:440px;">
     <div class="gate-lang" id="gateLang"></div>
@@ -1107,6 +1116,7 @@ function catColor(c) {
 const now = new Date();
 let DATA = null, selY = now.getFullYear(), selM = now.getMonth(), txType = 'Expense', fabOpen = false, billRecur = true;
 let editing = { type: null, id: null }, editingHoursDate = null, allocGoalId = null, SUGG = [], confirmCtx = null, currentTab = 'overview', editingCatId = null, askCb = null, pickYear = now.getFullYear(), revealedMonths = jbLoadSet('jb_fin_reveal'), hiddenMonths = jbLoadSet('jb_fin_hide');
+var worklogDirty=false, wizSalaryAmt=0;
 
 <!-- JB-DATA-LAYER -->
 /* ===================== Joelboard web data layer (Sheets API) ===================== */
@@ -1819,6 +1829,7 @@ function updateResult() {
   if (bd) bd.textContent = inc.otPay>0 ? t('cal.baseOt',{base:brl(inc.basePay),ot:brl(inc.otPay)}) : '';
 }
 function commitDay(ds, worked, hours, ot) {
+  worklogDirty=true;
   worked = !!worked; hours = worked ? Math.max(Number(hours)||0, 0) : 0;
   if (worked && hours === 0) worked = false;
   ot = worked ? Math.max(Number(ot)||0, 0) : 0;
@@ -1853,6 +1864,7 @@ function maybePromptOT(ds, hours) {
   document.getElementById('confirmCard').classList.add('show');
 }
 function toggleWeekday(i) {
+  worklogDirty=true;
   let off = offWeekdays().slice(); const idx = off.indexOf(i);
   if (idx>-1) off.splice(idx,1); else off.push(i);
   off.sort((a,b)=>a-b);
@@ -1869,7 +1881,7 @@ function logIncome() {
   const date = payYM + '-01';
   const payName = pay.toLocaleString(L(),{month:'long', year:'numeric'});
   google.script.run
-    .withSuccessHandler(() => { btn.disabled=false; showToast(t('toast.loggedTo',{month:payName,amt:brl(inc.total)})); reload(); })
+    .withSuccessHandler(() => { btn.disabled=false; worklogDirty=false; showToast(t('toast.loggedTo',{month:payName,amt:brl(inc.total)})); reload(); })
     .withFailureHandler(e => { btn.disabled=false; showToast(t('err.prefix')+e.message,'error'); })
     .logMonthlySalary(payYM, { date, description:t('tx.salaryDesc',{month:worked,year:selY}), category:t('cat.salary'), amount:inc.total, type:'Income' });
 }
@@ -2456,6 +2468,15 @@ function momCard(label, cur, prev, goodDir) {
 
 /* ---------- Tabs & theme ---------- */
 function switchTab(name) {
+  if (currentTab==='worklog' && name!=='worklog' && worklogDirty) {
+    worklogDirty=false;
+    var _inc=computeIncome();
+    if (_inc.total>0) {
+      var _p=new Date(selY,selM+1,1), _pn=_p.toLocaleString(L(),{month:'long',year:'numeric'});
+      showConfirm('Jornada alterada', 'Você ajustou a Jornada mas não lançou. Lançar '+brl(_inc.total)+' em '+_pn+'?', function(){ logIncome(); });
+    }
+  }
+  if (name==='worklog') worklogDirty=false;
   currentTab = name;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
   document.querySelectorAll('.tab-page').forEach(p=>p.classList.toggle('active', p.id==='tab-'+name));
@@ -2792,7 +2813,8 @@ function finishWizard() {
   Object.assign(DATA.settings, profile);
   google.script.run.withFailureHandler(e=>showToast(t('err.prefix')+e.message,'error')).saveProfile(profile);
   closeWizard(); applyStaticI18n(); renderAll(); showToast(t('wizard.done'));
-  if (!tourIsDone()) setTimeout(startTour, 450);
+  if (wiz.mode==='salaried' && Number(wiz.salary)>0) { promptApplySalary(Number(wiz.salary)); }
+  else if (!tourIsDone()) setTimeout(startTour, 450);
 }
 function skipWizard() { if(!DATA.settings)DATA.settings={}; DATA.settings.profile_set='true'; google.script.run.withFailureHandler(()=>{}).saveSetting('profile_set','true'); closeWizard(); }
 
@@ -3324,6 +3346,24 @@ function escAttr(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(
 // Inline form errors — shown below the form, cleared on the next submit attempt.
 function setFormError(errId, msg) { const el=document.getElementById(errId); if(!el) return; el.textContent=msg||''; el.classList.toggle('show', !!msg); }
 // Styled confirm modal replacing native confirm(). Runs onYes() when confirmed.
+function promptApplySalary(amt){
+  wizSalaryAmt=amt;
+  var y=now.getFullYear(), sel=document.getElementById('salaryWizMonth'), opts='';
+  for(var mo=0;mo<12;mo++){ var ym=ymStr(y,mo); var lbl=new Date(y,mo,1).toLocaleString(L(),{month:'long',year:'numeric'}); opts+='<option value="'+ym+'"'+(mo===now.getMonth()?' selected':'')+'>'+lbl+'</option>'; }
+  sel.innerHTML=opts;
+  document.getElementById('salaryWizMsg').textContent='Você definiu um salário de '+brl(amt)+'. Aplicar como receita recorrente? Ela aparece automaticamente em todo mês a partir do escolhido.';
+  document.getElementById('salaryWizOverlay').classList.add('open');
+}
+function closeSalaryWiz(){ document.getElementById('salaryWizOverlay').classList.remove('open'); if(!tourIsDone()) setTimeout(startTour,300); }
+function applyWizSalary(){
+  var ym=document.getElementById('salaryWizMonth').value;
+  if(!DATA.settings)DATA.settings={};
+  DATA.settings.salary_amount=wizSalaryAmt; DATA.settings.salary_start='m'+ym; DATA.settings.salary_end='';
+  google.script.run.withFailureHandler(function(e){showToast(t('err.prefix')+e.message,'error');}).saveProfile({salary_amount:wizSalaryAmt, salary_start:'m'+ym, salary_end:''});
+  document.getElementById('salaryWizOverlay').classList.remove('open');
+  renderAll(); showToast('Salário aplicado ✓');
+  if(!tourIsDone()) setTimeout(startTour,300);
+}
 function showConfirm(title, msg, onYes) {
   askCb = onYes || null;
   document.getElementById('askTitle').textContent = title || t('ask.title');

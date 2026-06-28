@@ -52,6 +52,8 @@
   // interactive=false => silent; true => shows the pre-consent explainer (first login / when scopes change), then Google
   function requestToken(interactive){
     return new Promise(function (res, rej) {
+      if (interactive) { lr('jb_signedout'); }                 // explicit sign-in clears the signed-out lock
+      else if (lg('jb_signedout')) { rej(new Error('signed_out')); return; }  // after an explicit logout, refuse silent re-auth
       function go(){ ensureClient(function () {
         pendingRes = res; pendingRej = rej;
         if (!interactive) setTimeout(function () { if (pendingRej === rej) { pendingRes = pendingRej = null; rej(new Error('silent_timeout')); } }, 4500);
@@ -124,7 +126,7 @@
     return tryId(cached).then(function (ctx) { if (ctx) return ctx; clearSheetId(app); return fromSearch(); });
   }
 
-  function signOut(){ var t = lg(TOK); try { if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function () {}); } catch (_) {} lr(TOK); lr(EXP); lr(EML); }
+  function signOut(){ var t = lg(TOK); try { if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function () {}); } catch (_) {} lr(TOK); lr(EXP); lr(EML); ls('jb_signedout', '1'); }
 
   // --- shared mobile scroll-lock: toggle .jb-noscroll on <html>/<body> behind any open .overlay modal.
   // The styling (scrollbar, scroll-lock, modal sizing) lives in the shared joelboard.css linked by every app. ---
@@ -176,9 +178,9 @@
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, email: email, fetchEmail: fetchEmail,
-    requestToken: requestToken, api: api, signOut: signOut,
+    requestToken: requestToken, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
-    resolveSheet: resolveSheet, sheetTabs: sheetTabs,
-    feedback: feedback, toast: jbToast
+    sheetTabs: sheetTabs, resolveSheet: resolveSheet,
+    feedback: feedback, toast: jbToast, whenReady: whenReady
   };
 })();

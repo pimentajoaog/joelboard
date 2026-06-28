@@ -369,13 +369,12 @@
   </div>
 </div>
 
-<div class="overlay" id="salaryWizOverlay" onclick="bgClose(event,'salaryWizOverlay')">
-  <div class="modal" style="max-width:370px;">
-    <div class="modal-head"><div class="modal-title">Aplicar salário</div><button class="close-btn" onclick="closeSalaryWiz()">✕</button></div>
-    <div class="confirm-msg" id="salaryWizMsg"></div>
-    <div class="fg"><label class="flabel">A partir de</label><select class="fselect" id="salaryWizMonth"></select></div>
-    <button class="btn-primary" onclick="applyWizSalary()">Aplicar a todos os meses</button>
-    <button class="cancel-btn" onclick="closeSalaryWiz()">Agora não</button>
+<div class="confirm-card" id="salaryCard">
+  <div class="cc-head"><span>💼 Aplicar salário</span><button class="cc-x" onclick="closeSalaryWiz()">✕</button></div>
+  <div class="cc-body">
+    <div class="cc-q" id="salaryWizMsg"></div>
+    <div class="fg" style="margin:10px 0 12px"><label class="flabel">A partir de</label><select class="fselect" id="salaryWizMonth"></select></div>
+    <div class="cc-btns"><button class="cc-btn yes" onclick="applyWizSalary()">Aplicar a todos os meses</button></div>
   </div>
 </div>
 <div class="overlay" id="sheetOverlay">
@@ -3351,16 +3350,16 @@ function promptApplySalary(amt){
   var y=now.getFullYear(), sel=document.getElementById('salaryWizMonth'), opts='';
   for(var mo=0;mo<12;mo++){ var ym=ymStr(y,mo); var lbl=new Date(y,mo,1).toLocaleString(L(),{month:'long',year:'numeric'}); opts+='<option value="'+ym+'"'+(mo===now.getMonth()?' selected':'')+'>'+lbl+'</option>'; }
   sel.innerHTML=opts;
-  document.getElementById('salaryWizMsg').textContent='Você definiu um salário de '+brl(amt)+'. Aplicar como receita recorrente? Ela aparece automaticamente em todo mês a partir do escolhido.';
-  document.getElementById('salaryWizOverlay').classList.add('open');
+  document.getElementById('salaryWizMsg').innerHTML='Você definiu um salário de <strong>'+brl(amt)+'</strong>. Aplicar como receita recorrente em todo mês a partir do escolhido?';
+  document.getElementById('salaryCard').classList.add('show');
 }
-function closeSalaryWiz(){ document.getElementById('salaryWizOverlay').classList.remove('open'); if(!tourIsDone()) setTimeout(startTour,300); }
+function closeSalaryWiz(){ document.getElementById('salaryCard').classList.remove('show'); if(!tourIsDone()) setTimeout(startTour,300); }
 function applyWizSalary(){
   var ym=document.getElementById('salaryWizMonth').value;
   if(!DATA.settings)DATA.settings={};
   DATA.settings.salary_amount=wizSalaryAmt; DATA.settings.salary_start='m'+ym; DATA.settings.salary_end='';
   google.script.run.withFailureHandler(function(e){showToast(t('err.prefix')+e.message,'error');}).saveProfile({salary_amount:wizSalaryAmt, salary_start:'m'+ym, salary_end:''});
-  document.getElementById('salaryWizOverlay').classList.remove('open');
+  document.getElementById('salaryCard').classList.remove('show');
   renderAll(); showToast('Salário aplicado ✓');
   if(!tourIsDone()) setTimeout(startTour,300);
 }

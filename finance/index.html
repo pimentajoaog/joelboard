@@ -369,6 +369,14 @@
   </div>
 </div>
 
+<div class="confirm-card" id="nudgeCard">
+  <div class="cc-head"><span id="nudgeTitle"></span><button class="cc-x" onclick="closeNudge()">✕</button></div>
+  <div class="cc-body">
+    <div class="cc-q" id="nudgeMsg"></div>
+    <div class="cc-btns"><button class="cc-btn yes" id="nudgeYes">Confirmar</button><button class="cc-btn" onclick="closeNudge()">Agora não</button></div>
+  </div>
+</div>
+
 <div class="confirm-card" id="salaryCard">
   <div class="cc-head"><span>💼 Aplicar salário</span><button class="cc-x" onclick="closeSalaryWiz()">✕</button></div>
   <div class="cc-body">
@@ -2472,7 +2480,7 @@ function switchTab(name) {
     var _inc=computeIncome();
     if (_inc.total>0) {
       var _p=new Date(selY,selM+1,1), _pn=_p.toLocaleString(L(),{month:'long',year:'numeric'});
-      showConfirm('Jornada alterada', 'Você ajustou a Jornada mas não lançou. Lançar '+brl(_inc.total)+' em '+_pn+'?', function(){ logIncome(); });
+      showNudge('⏱ Jornada alterada', 'Você ajustou a Jornada mas não lançou. Lançar <strong>'+brl(_inc.total)+'</strong> em '+_pn+'?', 'Lançar', function(){ logIncome(); });
     }
   }
   if (name==='worklog') worklogDirty=false;
@@ -3345,6 +3353,16 @@ function escAttr(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(
 // Inline form errors — shown below the form, cleared on the next submit attempt.
 function setFormError(errId, msg) { const el=document.getElementById(errId); if(!el) return; el.textContent=msg||''; el.classList.toggle('show', !!msg); }
 // Styled confirm modal replacing native confirm(). Runs onYes() when confirmed.
+var nudgeCb=null;
+function showNudge(title, msg, yesLabel, onYes){
+  document.getElementById('nudgeTitle').textContent=title;
+  document.getElementById('nudgeMsg').innerHTML=msg;
+  var y=document.getElementById('nudgeYes'); y.textContent=yesLabel||'Confirmar';
+  nudgeCb=onYes;
+  y.onclick=function(){ closeNudge(); if(nudgeCb) nudgeCb(); };
+  document.getElementById('nudgeCard').classList.add('show');
+}
+function closeNudge(){ document.getElementById('nudgeCard').classList.remove('show'); nudgeCb=null; }
 function promptApplySalary(amt){
   wizSalaryAmt=amt;
   var y=now.getFullYear(), sel=document.getElementById('salaryWizMonth'), opts='';

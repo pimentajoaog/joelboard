@@ -112,7 +112,8 @@
     var app = opts.app, namePart = opts.namePart, need = opts.requiredTabs || [];
     function valid(grid){ return need.length ? need.some(function (t) { return grid[t] != null; }) : true; }
     // returns {id,grid} if this sheet matches; null to skip (wrong tabs / 403 / 404); rethrows auth errors so the app can re-login
-    function tryId(id){ return sheetTabs(id).then(function (grid) { return valid(grid) ? { id: id, grid: grid } : null; }, function (err) { if (isAuthErr(err)) throw err; return null; }); }
+    // {id,grid} if matches; null to skip (wrong tabs / sheet truly gone = 404|403); auth errors rethrow (re-login); transient errors (network/5xx/429) rethrow so we DON'T wipe a valid cached id
+    function tryId(id){ return sheetTabs(id).then(function (grid) { return valid(grid) ? { id: id, grid: grid } : null; }, function (err) { if (isAuthErr(err)) throw err; var hm = String((err && err.message) || '').match(/HTTP (\d+)/); var st = hm ? +hm[1] : 0; if (st === 404 || st === 403) return null; throw err; }); }
     function needErr(files){ var e = new Error('JB_NEED_SHEET'); e.files = files || []; return e; }
     function fromSearch(){
       return searchSheets(namePart).then(function (files) {

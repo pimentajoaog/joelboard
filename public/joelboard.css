@@ -83,3 +83,18 @@ body.jb-noscroll { overflow: hidden; }
 .jb-dd-opt { padding: 10px 12px; border-radius: 9px; cursor: pointer; font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; }
 .jb-dd-opt:hover { background: var(--surface2); }
 .jb-dd-opt.is-sel { background: color-mix(in srgb, var(--primary) 16%, var(--surface)); color: var(--primary); font-weight: 800; }
+
+
+/* Shared guided tour (coach-marks) — driven by JB.tour(app, steps). Theme-adaptive. */
+#jbTour{ display:none; }
+.jbt-block{ position:fixed; inset:0; z-index:4000; }
+.jbt-hole{ position:fixed; z-index:4001; border-radius:12px; box-shadow:0 0 0 9999px rgba(0,0,0,0.66); pointer-events:none; transition:all 0.25s ease; }
+.jbt-pop{ position:fixed; z-index:4002; width:300px; max-width:calc(100vw - 24px); background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:0 14px 46px rgba(0,0,0,0.5); }
+.jbt-step{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:6px; }
+.jbt-title{ font-size:16px; font-weight:800; margin-bottom:6px; color:var(--text); }
+.jbt-body{ font-size:13px; color:var(--muted); line-height:1.5; }
+.jbt-foot{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:18px; }
+.jbt-nav{ display:flex; gap:8px; }
+.jbt-skip{ background:transparent; border:0; color:var(--muted); font-size:13px; cursor:pointer; font-family:inherit; }
+.jbt-back{ background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+.jbt-next{ background:var(--brand); border:0; color:var(--on-brand); border-radius:10px; padding:9px 16px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; }

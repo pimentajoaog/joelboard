@@ -2349,53 +2349,20 @@ function exportBackup_() {
     .exportBackup();
 }
 
-/* ---------- Guided tour (coach-marks) ---------- */
-const TOUR = [
-  { title:'tour.welcomeT', body:'tour.welcomeB' },
-  { sel:'[data-tab="overview"]', title:'tour.overviewT', body:'tour.overviewB' },
-  { sel:'[data-tab="worklog"]',  title:'tour.worklogT',  body:'tour.worklogB' },
-  { sel:'[data-tab="money"]',    title:'tour.moneyT',    body:'tour.moneyB' },
-  { sel:'[data-tab="bills"]',    title:'tour.billsT',    body:'tour.billsB' },
-  { sel:'[data-tab="budget"]',   title:'tour.budgetT',   body:'tour.budgetB' },
-  { sel:'#fab',                  title:'tour.addT',      body:'tour.addB' },
-  { sel:'#settingsBtn',          title:'tour.settingsT', body:'tour.settingsB' }
+/* ---------- Guided tour (core JB.tour) ---------- */
+var FIN_TOUR=[
+  { title:'Bem-vindo ao Finance 💰', body:'Um tour rápido pelas principais funções.' },
+  { go:function(){ switchTab('overview'); }, sel:'.summary-grid', title:'Visão geral', body:'Receitas, despesas, saldo e taxa de poupança do mês — tudo no topo.' },
+  { go:function(){ switchTab('worklog'); }, sel:'.cal-grid', title:'Jornada', body:'Marque os dias que trabalhou; o app estima sua renda e você a lança no mês.' },
+  { go:function(){ switchTab('money'); }, sel:'#tab-money .card', title:'Dinheiro', body:'Lance transações, veja o histórico e busque por descrição.' },
+  { go:function(){ switchTab('bills'); }, sel:'#tab-bills .card', title:'Contas & Poupança', body:'Contas recorrentes e metas de poupança num lugar só.' },
+  { go:function(){ switchTab('budget'); }, sel:'#tab-budget .card', title:'Orçamento', body:'Defina limites por categoria e acompanhe os gastos do mês.' },
+  { go:function(){ switchTab('overview'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para lançar uma transação rapidamente.' },
+  { sel:'#settingsBtn', title:'Ajustes', body:'Temas, idioma, backup e este tutorial ficam aqui. ✨' }
 ];
-let tourIdx = 0;
-function tourIsDone() { const v = P().tour_done; return v === true || v === 1 || v === '1' || String(v).toLowerCase() === 'true'; }
-function startTour() { tourIdx = 0; document.getElementById('tourBlocker').style.display = 'block'; renderTourStep(); }
-function replayTour() { closeOverlay('setOverlay'); setTimeout(startTour, 250); }
-function renderTourStep() {
-  const step = TOUR[tourIdx];
-  const hole = document.getElementById('tourHole'), pop = document.getElementById('tourPop');
-  let rect = null;
-  if (step.sel) { const el = document.querySelector(step.sel); if (el) rect = el.getBoundingClientRect(); }
-  if (rect && rect.width) {
-    const pad = 6;
-    hole.style.display = 'block';
-    hole.style.left = (rect.left - pad) + 'px'; hole.style.top = (rect.top - pad) + 'px';
-    hole.style.width = (rect.width + pad * 2) + 'px'; hole.style.height = (rect.height + pad * 2) + 'px';
-  } else { hole.style.display = 'none'; }
-  document.getElementById('tourStepLbl').textContent = t('tour.step', { n: tourIdx + 1, total: TOUR.length });
-  document.getElementById('tourTitle').textContent = t(step.title);
-  document.getElementById('tourBody').textContent = t(step.body);
-  document.getElementById('tourBack').style.visibility = tourIdx > 0 ? 'visible' : 'hidden';
-  document.getElementById('tourBack').textContent = t('tour.back');
-  document.getElementById('tourNext').textContent = tourIdx < TOUR.length - 1 ? t('tour.next') : t('tour.done');
-  document.getElementById('tourSkip').textContent = t('tour.skip');
-  pop.style.display = 'block';
-  if (rect && rect.width) {
-    const popH = pop.offsetHeight || 170, popW = pop.offsetWidth || 300;
-    let top = rect.bottom + 12; if (top + popH > window.innerHeight - 8) top = Math.max(8, rect.top - popH - 12);
-    let left = Math.min(Math.max(8, rect.left), window.innerWidth - popW - 8);
-    pop.style.top = top + 'px'; pop.style.left = left + 'px'; pop.style.transform = 'none';
-  } else { pop.style.top = '50%'; pop.style.left = '50%'; pop.style.transform = 'translate(-50%,-50%)'; }
-}
-function tourNext() { if (tourIdx < TOUR.length - 1) { tourIdx++; renderTourStep(); } else endTour(true); }
-function tourBack() { if (tourIdx > 0) { tourIdx--; renderTourStep(); } }
-function endTour(markDone) {
-  ['tourBlocker','tourHole','tourPop'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
-  if (markDone) { if (!DATA.settings) DATA.settings = {}; DATA.settings.tour_done = true; google.script.run.withFailureHandler(()=>{}).saveSetting('tour_done', 'true'); }
-}
+function tourIsDone(){ return JB.tourDone('finance'); }
+function startTour(){ JB.tour('finance', FIN_TOUR); }
+function replayTour(){ closeOverlay('setOverlay'); setTimeout(startTour, 250); }
 
 /* ---------- Savings: overall balance = editable base + ticked general contributions ---------- */
 function generalSaved() {

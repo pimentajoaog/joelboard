@@ -92,7 +92,7 @@ function buildStudy(t){
     config: config
   };
 }
-function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); render(); }
+function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); render(); if(!_sbooted){ _sbooted=true; if(!JB.tourDone('study')) setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 600); } }
 function render(){ renderCal(); renderMaterias(); }
 function tab(name){ ['calendario','materias'].forEach(function(t){ var p=$('p-'+t); if(p) p.classList.toggle('on',t===name); }); var bs=document.querySelectorAll('.tabb'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on',bs[i].getAttribute('data-tab')===name); $('fab').style.display = (name==='calendario')?'flex':'none'; }
 function mat(id){ return (DATA.materias||[]).find(function(m){return m.id===id;}); }
@@ -116,7 +116,7 @@ function renderCal(){
   }
   var head=WD.map(function(w){return '<div class="cwd">'+w[0]+'</div>';}).join('');
   el.innerHTML='<div class="calhead"><button class="navb" onclick="calNav(-1)">‹</button><button class="calmonth" onclick="calToday()">'+MOFULL[calM]+' '+calY+'</button><button class="navb" onclick="calNav(1)">›</button></div>'
-    +'<div class="calgrid calwd">'+head+'</div><div class="calgrid">'+cells+'</div>'
+    +'<div class="calgrid calwd">'+head+'</div><div class="calgrid" id="calCells">'+cells+'</div>'
     +'<button class="focuslaunch" onclick="openFoco()">🍅 Modo foco</button>'
     + dayPanelHtml() + proximosHtml();
 }
@@ -322,5 +322,15 @@ function renderFoco(){
   btm.innerHTML='<button class="focbtn" onclick="pauseFoco()">'+(focState.running?'⏸ Pausar':'▶ Retomar')+'</button><button class="focsub" onclick="skipFoco()">Pular fase →</button>';
 }
 
+var _sbooted=false;
+var STUDY_TOUR=[
+  { title:'Bem-vindo ao Study 📚', body:'Organize provas, trabalhos e matérias.' },
+  { go:function(){ tab('calendario'); }, sel:'#calCells', title:'Calendário', body:'Toque num dia para agendar provas e trabalhos; os pontos mostram os itens.' },
+  { go:function(){ tab('calendario'); }, sel:'.focuslaunch', title:'Modo foco', body:'Inicie um Pomodoro e registre seu tempo de estudo por matéria.' },
+  { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias, acompanhe aulas e anexe materiais (PDFs, Docs).' },
+  { go:function(){ tab('calendario'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para agendar um item.' },
+  { sel:'.acct .lnk', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
+];
+function studyVerTutorial(){ closeSettings(); setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 250); }
 JB.applySkin('study');
 startAuth();

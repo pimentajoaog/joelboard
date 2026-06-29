@@ -93,7 +93,7 @@ function buildFit(t){
 }
 
 /* ---- render ---- */
-function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); }
+function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(!_fbooted){ _fbooted=true; if(!JB.tourDone('fit')) setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 600); } }
 function tab(name){
   ['hoje','treinos','exercicios','progresso'].forEach(function(n){ $('p-'+n).classList.toggle('on', n===name); });
   document.querySelectorAll('.tabb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===name); });
@@ -505,5 +505,15 @@ function schedFor(wd){ var s=(DATA.config&&DATA.config.schedule)||{}; return s[w
 function setSchedule(wd,rid){ DATA.config=DATA.config||{}; DATA.config.schedule=DATA.config.schedule||{}; if(rid) DATA.config.schedule[wd]=rid; else delete DATA.config.schedule[wd]; saveConfig('schedule', JSON.stringify(DATA.config.schedule)); renderHoje(); }
 function renderSched(){ if(!$('setSched')) return; var sc=(DATA.config&&DATA.config.schedule)||{}; var sh=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; $('setSched').innerHTML=sh.map(function(d,i){ var cur=sc[i]||sc[String(i)]||''; var opts='<option value="">Descanso</option>'+(DATA.treinos||[]).map(function(r){ return '<option value="'+r.id+'"'+(cur===r.id?' selected':'')+'>'+esc(r.name)+'</option>'; }).join(''); return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="width:32px;color:var(--muted);font-size:13px;font-weight:700">'+d+'</span><select class="field" style="flex:1" onchange="setSchedule('+i+',this.value)">'+opts+'</select></div>'; }).join(''); }
 function fitConfirm(title,msg,onYes){ JB.confirm(title, msg, onYes); }
+var _fbooted=false;
+var FIT_TOUR=[
+  { title:'Bem-vindo ao Fit 💪', body:'Um tour rápido pelas funções.' },
+  { go:function(){ tab('hoje'); }, sel:'#hoje', title:'Hoje', body:'Seu treino do dia — comece o treino e registre as séries por aqui.' },
+  { go:function(){ tab('treinos'); }, sel:'#p-treinos .btn', title:'Treinos', body:'Monte seus treinos (splits) com exercícios, séries e descanso.' },
+  { go:function(){ tab('exercicios'); }, sel:'#p-exercicios .btn', title:'Exercícios', body:'Sua biblioteca — carga, peso corporal ou por tempo (ex.: prancha).' },
+  { go:function(){ tab('progresso'); }, sel:'#p-progresso', title:'Progresso', body:'Evolução de carga, peso corporal e tempo por exercício.' },
+  { sel:'.acct .lnk', title:'Ajustes', body:'Tema, programa e este tutorial ficam aqui.' }
+];
+function verTutorial(){ closeSettings(); setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 250); }
 JB.applySkin('fit');
 startAuth();

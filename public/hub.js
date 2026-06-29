@@ -1,7 +1,14 @@
 /* Joelboard Hub — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
 var greetEl=document.getElementById("greet"), btnEl=document.getElementById("authbtn");
-function setGreet(){ var em=JB.email(); var on=!!JB.cachedToken()&&!!em; greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); }
+var _hbooted=false;
+var HUB_TOUR=[
+  { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só.' },
+  { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit ou Study.' },
+  { sel:'.gear', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
+];
+function hubVerTutorial(){ closeHubSet(); setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 250); }
+function setGreet(){ var em=JB.email(); var on=!!JB.cachedToken()&&!!em; greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); if(on && !_hbooted){ _hbooted=true; if(!JB.tourDone('hub')) setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 700); } }
 function doIn(){ JB.requestToken(true).then(function(t){ return JB.fetchEmail(t); }).then(setGreet).catch(function(){}); }
 function doOut(){ JB.signOut(); setGreet(); }
 /* ---- Feedback viewer (owner-only; reads the form-response sheet via Sheets API) ---- */

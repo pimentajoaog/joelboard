@@ -52,6 +52,7 @@ Load with `<script src="https://accounts.google.com/gsi/client" async></script>`
   yes/no dialog that builds its own DOM — no per-app markup; `danger:true` = red confirm). Background
   **scroll-lock** behind any open `.overlay.open` is automatic.
 - **Custom dropdown:** `JB.ddToggle(btn)` / `JB.ddClose()` — drive the `.jb-dd` component (see Shared styles); core auto-closes on outside-click.
+- **Guided tour:** `JB.tour(app, steps[, {onDone}])` + `JB.tourDone(app)`. Coach-mark onboarding that builds its own DOM (spotlight + tooltip). Each step `{ sel, title, body, go }` — `go` is an optional fn run before the step (switch tabs / open things) and `sel` spotlights a functional element (no `sel` = centered card). Completion persists in `localStorage` (`jb_tour_<app>`). Run on first launch (`if(!JB.tourDone('x')) JB.tour('x', STEPS)`) + a "Ver tutorial" replay button in settings.
 - **Theming:** `JB.applySkin(app)` (call early on load — applies the saved skin), `JB.renderSkinPicker(app, el[, onChange])`
   (renders the swatch grid into `el`, persists choice), `JB.SKINS`, `JB.getSkin(app)`, `JB.setSkin(app, id)`.
   Skins live in `/themes.css` (`body[data-skin]`); selection persists per-app in `localStorage` (`jb_skin_<app>`).

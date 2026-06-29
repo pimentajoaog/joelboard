@@ -236,6 +236,46 @@
   function ddToggle(btn){ var dd = (btn && btn.closest) ? btn.closest('.jb-dd') : null; if (!dd) return; var wasOpen = dd.classList.contains('open'); ddClose(); if (!wasOpen) { dd.classList.add('open'); var sel = dd.querySelector('.jb-dd-opt.is-sel'); if (sel && sel.scrollIntoView) { try { sel.scrollIntoView({ block: 'nearest' }); } catch (_) {} } } }
   whenReady(function(){ document.addEventListener('click', function (e) { if (!(e.target && e.target.closest && e.target.closest('.jb-dd'))) ddClose(); }); });
 
+  // --- shared guided tour (coach-marks). Self-contained DOM. steps:[{sel,title,body,go}] (go runs before the step → switch tabs etc.; no sel = centered card). ---
+  var _tSteps=null, _tI=0, _tApp='', _tDone=null;
+  function tourDone(app){ return lg('jb_tour_'+app)==='1'; }
+  function tour(app, steps, opts){
+    opts=opts||{}; _tApp=app; _tSteps=steps||[]; _tI=0; _tDone=opts.onDone||null;
+    if(!_tSteps.length) return;
+    var ov=document.getElementById('jbTour');
+    if(!ov){
+      ov=document.createElement('div'); ov.id='jbTour';
+      ov.innerHTML='<div class="jbt-block"></div><div class="jbt-hole"></div><div class="jbt-pop"><div class="jbt-step"></div><div class="jbt-title"></div><div class="jbt-body"></div><div class="jbt-foot"><button class="jbt-skip">Pular</button><div class="jbt-nav"><button class="jbt-back">Voltar</button><button class="jbt-next">Próximo</button></div></div></div>';
+      document.body.appendChild(ov);
+      ov.querySelector('.jbt-skip').onclick=function(){ tourEnd(true); };
+      ov.querySelector('.jbt-back').onclick=function(){ if(_tI>0){ _tI--; tourRender(); } };
+      ov.querySelector('.jbt-next').onclick=function(){ if(_tI<_tSteps.length-1){ _tI++; tourRender(); } else tourEnd(true); };
+      window.addEventListener('resize', function(){ var o=document.getElementById('jbTour'); if(o && o.style.display==='block') tourPosition(); });
+    }
+    ov.style.display='block'; tourRender();
+  }
+  function tourRender(){
+    var step=_tSteps[_tI], ov=document.getElementById('jbTour'); if(!ov) return;
+    if(step.go){ try{ step.go(); }catch(_){} }
+    ov.querySelector('.jbt-step').textContent='Passo '+(_tI+1)+' de '+_tSteps.length;
+    ov.querySelector('.jbt-title').textContent=step.title||'';
+    ov.querySelector('.jbt-body').textContent=step.body||'';
+    ov.querySelector('.jbt-back').style.visibility=_tI>0?'visible':'hidden';
+    ov.querySelector('.jbt-next').textContent=(_tI<_tSteps.length-1)?'Próximo':'Concluir';
+    setTimeout(tourPosition, step.go?200:20);
+  }
+  function tourPosition(){
+    var step=_tSteps[_tI], ov=document.getElementById('jbTour'); if(!ov) return;
+    var block=ov.querySelector('.jbt-block'), hole=ov.querySelector('.jbt-hole'), pop=ov.querySelector('.jbt-pop');
+    var rect=null; if(step.sel){ var el=document.querySelector(step.sel); if(el){ try{ el.scrollIntoView({block:'center'}); }catch(_){} rect=el.getBoundingClientRect(); } }
+    if(rect && rect.width){ var pad=6; hole.style.display='block'; block.style.background='transparent'; hole.style.left=(rect.left-pad)+'px'; hole.style.top=(rect.top-pad)+'px'; hole.style.width=(rect.width+pad*2)+'px'; hole.style.height=(rect.height+pad*2)+'px'; }
+    else { hole.style.display='none'; block.style.background='rgba(0,0,0,0.66)'; }
+    pop.style.display='block';
+    if(rect && rect.width){ var ph=pop.offsetHeight||180, pw=pop.offsetWidth||300; var top=rect.bottom+12; if(top+ph>window.innerHeight-8) top=Math.max(8, rect.top-ph-12); var left=Math.min(Math.max(8,rect.left), window.innerWidth-pw-8); pop.style.top=top+'px'; pop.style.left=left+'px'; pop.style.transform='none'; }
+    else { pop.style.top='50%'; pop.style.left='50%'; pop.style.transform='translate(-50%,-50%)'; }
+  }
+  function tourEnd(markDone){ var ov=document.getElementById('jbTour'); if(ov) ov.style.display='none'; if(markDone) ls('jb_tour_'+_tApp,'1'); if(_tDone) _tDone(); }
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, email: email, fetchEmail: fetchEmail,
@@ -243,6 +283,6 @@
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, toast: jbToast, confirm: confirm, whenReady: whenReady,
-    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose
+    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone
   };
 })();

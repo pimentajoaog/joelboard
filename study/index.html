@@ -25,7 +25,7 @@
 <div id="app">
   <div class="header">
     <div class="hl"><img src="/icon-192.png" alt="Joelboard"><h1>Study</h1></div>
-    <div class="acct"><span id="acctEmail"></span><button class="lnk" onclick="openSettings()" title="Ajustes">⚙</button><button class="lnk" onclick="studySignOut()">Sair</button></div>
+    <div class="acct"><span id="acctEmail"></span><button class="lnk" onclick="openFoco()" title="Modo foco">🍅</button><button class="lnk" onclick="openSettings()" title="Ajustes">⚙</button><button class="lnk" onclick="studySignOut()">Sair</button></div>
   </div>
   <div class="tabbar">
     <button class="tabb on" data-tab="calendario" onclick="tab('calendario')">Calendário</button>
@@ -58,6 +58,7 @@
     </div>
     <div class="fg"><label class="fl">Notas</label><textarea class="field" id="evtNotas" placeholder="Conteúdo, capítulos, link…"></textarea></div>
     <div class="fg"><button class="tg" id="evtConcluido" onclick="toggleEvtDone()">Concluído / entregue</button></div>
+    <div class="fg" id="evtAnexosWrap" style="display:none"><label class="fl">Anexos</label><div id="evtAnexos"></div></div>
     <button class="btn-primary" onclick="saveEvt()">Salvar</button>
     <button class="del" id="evtDel" onclick="deleteEvt()" style="display:none;">Excluir item</button>
   </div>
@@ -72,6 +73,7 @@
       <div class="fg" style="flex:1"><label class="fl">Total de aulas</label><input class="field" id="matTotal" type="number" inputmode="numeric" placeholder="ex.: 40"></div>
       <div class="fg" style="flex:1"><label class="fl">Aulas feitas</label><input class="field" id="matFeitas" type="number" inputmode="numeric" value="0"></div>
     </div>
+    <div class="fg" id="matAnexosWrap" style="display:none"><label class="fl">Materiais</label><div id="matAnexos"></div></div>
     <button class="btn-primary" onclick="saveMat()">Salvar</button>
     <button class="del" id="matDel" onclick="deleteMat()" style="display:none;">Excluir matéria</button>
   </div>
@@ -82,10 +84,20 @@
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>
     <div class="set-tabs">
       <button class="set-tab active" data-st="tema" onclick="switchSet('tema')">Tema</button>
-      <button class="set-tab" data-st="sobre" onclick="switchSet('sobre')">Sobre</button>
+      <button class="set-tab" data-st="foco" onclick="switchSet('foco')">Foco</button><button class="set-tab" data-st="sobre" onclick="switchSet('sobre')">Sobre</button>
     </div>
     <div class="set-pane" data-pane="tema">
       <div class="fg"><label class="fl">Tema do app</label><div id="setSkins"></div></div>
+    </div>
+    <div class="set-pane" data-pane="foco" style="display:none">
+      <div style="display:flex;gap:10px">
+        <div class="fg" style="flex:1"><label class="fl">Foco (min)</label><input class="field" id="focoMin" type="number" inputmode="numeric" onchange="saveFocoCfg()"></div>
+        <div class="fg" style="flex:1"><label class="fl">Pausa (min)</label><input class="field" id="pausaMin" type="number" inputmode="numeric" onchange="saveFocoCfg()"></div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="fg" style="flex:1"><label class="fl">Pausa longa (min)</label><input class="field" id="longMin" type="number" inputmode="numeric" onchange="saveFocoCfg()"></div>
+        <div class="fg" style="flex:1"><label class="fl">Ciclos p/ longa</label><input class="field" id="cycLong" type="number" inputmode="numeric" onchange="saveFocoCfg()"></div>
+      </div>
     </div>
     <div class="set-pane" data-pane="sobre" style="display:none">
       <div class="fg"><button class="btn ghost" style="width:100%" onclick="JB.feedback('Joelboard Study')">💬 Enviar feedback</button></div>
@@ -96,6 +108,12 @@
   </div>
 </div>
 
+<div class="focover" id="focoOverlay">
+  <div class="foctop" id="focTop"></div>
+  <div class="focstage" id="focStage"></div>
+  <div class="focbtm" id="focBtm"></div>
+</div>
+<input type="file" id="fileInput" style="display:none" onchange="onFilePicked()">
 <div class="toast" id="toast"></div>
 
 <script src="https://accounts.google.com/gsi/client" async></script>

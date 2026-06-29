@@ -1,7 +1,7 @@
 /* Joelboard Study — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
 var DATA=null, studyGrid={}, authDone=false;
-var STUDY_TABS=[['Materias',['Nome','Cor','Total','Feitas','ID']],['Eventos',['Titulo','Tipo','Data','Hora','MateriaID','Concluido','Notas','ID']],['Config',['Chave','Valor']]];
+var STUDY_TABS=[['Materias',['Nome','Cor','Total','Feitas','ID']],['Eventos',['Titulo','Tipo','Data','Hora','MateriaID','Concluido','Notas','ID']],['Anexos',['MateriaID','EventoID','Nome','URL','FileID','ID']],['Foco',['Data','MateriaID','Minutos','ID']],['Config',['Chave','Valor']]];
 var EVENT_TYPES=['Prova','Trabalho','Atividade','Outro'];
 var SUBJECT_COLORS=['#a78bfa','#60a5fa','#22d3ee','#34d399','#a3e635','#fbbf24','#fb923c','#fb7185','#f472b6','#94a3b8'];
 var WD=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'], MO=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -87,6 +87,8 @@ function buildStudy(t){
   return {
     materias: body(t.Materias).filter(function(r){return r[0];}).map(function(r){ return { id:r[4], nome:String(r[0]), cor:r[1]||SUBJECT_COLORS[0], total:Number(r[2])||0, feitas:Number(r[3])||0 }; }),
     eventos: body(t.Eventos).filter(function(r){return r[0]||r[2];}).map(function(r){ return { id:r[7], titulo:String(r[0]||''), tipo:r[1]||'Outro', data:String(r[2]||''), hora:String(r[3]||''), materiaId:String(r[4]||''), concluido:!!r[5], notas:String(r[6]||'') }; }),
+    anexos: body(t.Anexos||[]).filter(function(r){return r[3];}).map(function(r){ return { materiaId:String(r[0]||''), eventoId:String(r[1]||''), nome:String(r[2]||''), url:String(r[3]||''), fileId:String(r[4]||''), id:r[5] }; }),
+    focos: body(t.Foco||[]).filter(function(r){return r[2];}).map(function(r){ return { data:String(r[0]||''), materiaId:String(r[1]||''), min:Number(r[2])||0, id:r[3] }; }),
     config: config
   };
 }
@@ -129,7 +131,7 @@ function proximosHtml(){
 }
 function evtRow(e,showDate){
   var m=mat(e.materiaId), col=m?m.cor:'var(--muted)', nc=nearClass(e.data,e.concluido);
-  var meta=(m?esc(m.nome)+' · ':'')+'<span class="etype">'+esc(e.tipo)+'</span>'+(e.hora?(' · '+esc(e.hora)):'');
+  var meta=(m?esc(m.nome)+' · ':'')+'<span class="etype">'+esc(e.tipo)+'</span>'+(e.hora?(' · '+esc(e.hora)):'')+(evtAnexos(e.id).length?' · 📎':'');
   var flag = showDate ? ('<span class="eflag '+nc+'">'+esc(relLabel(e.data))+'</span>') : '';
   return '<div class="erow'+(e.concluido?' done':'')+'" onclick="openEvt(\''+e.id+'\')"><span class="ebar" style="background:'+col+'"></span>'
     +'<div class="einfo"><div class="etitle">'+esc(e.titulo||'(sem título)')+'</div><div class="emeta">'+meta+(showDate?(' · '+esc(fmtBR(e.data))):'')+'</div></div>'
@@ -151,6 +153,7 @@ function openEvt(id){
   $('evtConcluido').classList.toggle('on', !!(e&&e.concluido));
   $('evtDel').style.display = e?'block':'none';
   renderEvtTipo(); renderEvtMateria();
+  $('evtAnexosWrap').style.display = id?'block':'none'; if(id) renderEvtAnexos(id);
   $('evtOverlay').classList.add('open');
 }
 function closeEvt(){ $('evtOverlay').classList.remove('open'); }
@@ -189,10 +192,10 @@ function renderMaterias(){
   if(!ms.length){ el.innerHTML='<div class="empty" style="padding:30px 14px">Nenhuma matéria ainda. Toque em "+ Adicionar" para criar uma.</div>'; return; }
   el.innerHTML=ms.map(function(m){
     var pct=m.total>0?Math.min(100,Math.round(m.feitas/m.total*100)):0;
-    var cnt=(DATA.eventos||[]).filter(function(e){return e.materiaId===m.id && !e.concluido && daysUntil(e.data)>=0;}).length;
+    var cnt=(DATA.eventos||[]).filter(function(e){return e.materiaId===m.id && !e.concluido && daysUntil(e.data)>=0;}).length; var anx=subjAnexos(m.id).length;
     return '<div class="matc" onclick="openMat(\''+m.id+'\')"><div class="matrow"><span class="dotc lg" style="background:'+m.cor+'"></span><div class="matname">'+esc(m.nome)+'</div>'
       +'<button class="aulabtn" onclick="event.stopPropagation();addAula(\''+m.id+'\')">+1 aula</button></div>'
-      +'<div class="matsub">'+m.feitas+' / '+(m.total||'—')+' aulas'+(cnt?(' · '+cnt+' próximo'+(cnt>1?'s':'')):'')+'</div>'
+      +'<div class="matsub">'+m.feitas+' / '+(m.total||'—')+' aulas'+(cnt?(' · '+cnt+' próximo'+(cnt>1?'s':'')):'')+(anx?(' · 📎 '+anx):'')+studyTimeStr(m.id)+'</div>'
       +'<div class="pbar"><span style="width:'+pct+'%;background:'+m.cor+'"></span></div></div>';
   }).join('');
 }
@@ -207,6 +210,7 @@ function openMat(id){
   matCor = m?m.cor:SUBJECT_COLORS[0];
   $('matDel').style.display = m?'block':'none';
   renderMatColors();
+  $('matAnexosWrap').style.display = id?'block':'none'; if(id) renderMatAnexos(id);
   $('matOverlay').classList.add('open');
 }
 function closeMat(){ $('matOverlay').classList.remove('open'); }
@@ -219,7 +223,7 @@ function saveMat(){
   if(editingMat){ m=mat(editingMat); if(!m) return; } else { m={id:uuid()}; DATA.materias.push(m); }
   m.nome=nome; m.cor=matCor; m.total=total; m.feitas=feitas;
   closeMat(); render(); toast('✓ Salvo');
-  if(editingMat){ saveMatRow(m); } else {
+  if(editingMat){ var sf=studyFolders(); if(sf.subs&&sf.subs[m.id]){ JB.api('PATCH','https://www.googleapis.com/drive/v3/files/'+sf.subs[m.id],{ name:m.nome }).catch(function(){}); } saveMatRow(m); } else {
     JB.api('POST', ssUrl('/values/Materias:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[matRowVals(m)] }).catch(function(){ toast('Erro ao salvar'); });
   }
 }
@@ -235,9 +239,83 @@ function deleteMat(){ if(!editingMat) return; var id=editingMat; JB.confirm('Exc
 /* ---- helpers / settings ---- */
 function findRow(tab,idCol,id){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; for(var i=1;i<v.length;i++){ if(String((v[i]||[])[idCol])===String(id)) return i+1; } return -1; }); }
 function fab(){ openEvt(null); }
-function openSettings(){ switchSet('tema'); JB.renderSkinPicker('study', $('setSkins')); $('setOverlay').classList.add('open'); }
+function openSettings(){ switchSet('tema'); JB.renderSkinPicker('study', $('setSkins')); var c=focCfg(); $('focoMin').value=c.foco; $('pausaMin').value=c.pausa; $('longMin').value=c.long; $('cycLong').value=c.cyc; $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++) ps[j].style.display=(ps[j].getAttribute('data-pane')===name)?'':'none'; }
+
+/* ---- config + Drive folders + attachments ---- */
+function saveConfig(k,v){ DATA.config=DATA.config||{}; DATA.config[k]=v; JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var vals=res.values||[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]}); } return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]}); }).catch(function(){}); }
+function studyFolders(){ try{ var v=JSON.parse((DATA.config&&DATA.config.studyFolders)||'{}'); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } }
+function saveFolders(sf){ saveConfig('studyFolders', JSON.stringify(sf)); }
+function ensureRoot(){ var sf=studyFolders(); if(sf.root) return Promise.resolve(sf.root); return JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:'Joelboard Study — Anexos', mimeType:'application/vnd.google-apps.folder' }).then(function(f){ sf.root=f.id; saveFolders(sf); return f.id; }); }
+function ensureSub(matId){ return ensureRoot().then(function(root){ if(!matId) return root; var sf=studyFolders(); sf.subs=sf.subs||{}; if(sf.subs[matId]) return sf.subs[matId]; var m=mat(matId); return JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:(m?m.nome:'Matéria'), mimeType:'application/vnd.google-apps.folder', parents:[root] }).then(function(f){ sf.subs[matId]=f.id; saveFolders(sf); return f.id; }); }); }
+function uploadFile(file, folderId){
+  var boundary='jbs'+Date.now()+Math.floor(Math.random()*1e6);
+  var meta={ name:file.name }; if(folderId) meta.parents=[folderId];
+  var pre='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+'\r\n--'+boundary+'\r\nContent-Type: '+(file.type||'application/octet-stream')+'\r\n\r\n';
+  var post='\r\n--'+boundary+'--';
+  var blob=new Blob([pre, file, post], { type:'multipart/related; boundary='+boundary });
+  var url='https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink';
+  function attempt(tok, retry){ return fetch(url, { method:'POST', headers:{ Authorization:'Bearer '+tok }, body:blob }).then(function(r){ if(r.status===401 && retry){ return JB.requestToken(false).then(function(nt){ return attempt(nt,false); }); } if(!r.ok) return r.text().then(function(t){ throw new Error('HTTP '+r.status); }); return r.json(); }); }
+  var t=JB.cachedToken();
+  return (t?Promise.resolve(t):JB.requestToken(false)).then(function(tok){ return attempt(tok,true); });
+}
+function subjAnexos(matId){ return (DATA.anexos||[]).filter(function(a){return a.materiaId===matId && !a.eventoId;}); }
+function evtAnexos(evtId){ return (DATA.anexos||[]).filter(function(a){return a.eventoId===evtId;}); }
+function anexoRowVals(a){ return [a.materiaId,a.eventoId,a.nome,a.url,a.fileId,a.id]; }
+var uploadCtx=null;
+function pickFileFor(kind,id){ uploadCtx={kind:kind,id:id}; var fi=$('fileInput'); fi.value=''; fi.click(); }
+function onFilePicked(){ var fi=$('fileInput'); var file=fi.files&&fi.files[0]; if(file) doUpload(file); }
+function doUpload(file){
+  if(!uploadCtx) return; var ctx=uploadCtx;
+  var matId = ctx.kind==='mat' ? ctx.id : (function(){ var e=(DATA.eventos||[]).find(function(x){return x.id===ctx.id;}); return e?e.materiaId:''; })();
+  toast('Enviando '+file.name+'…');
+  ensureSub(matId).then(function(folderId){ return uploadFile(file, folderId); }).then(function(f){
+    var a={ id:uuid(), materiaId:matId, eventoId:(ctx.kind==='evt'?ctx.id:''), nome:(f.name||file.name), url:(f.webViewLink||''), fileId:(f.id||'') };
+    DATA.anexos=DATA.anexos||[]; DATA.anexos.push(a);
+    JB.api('POST', ssUrl('/values/Anexos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[anexoRowVals(a)] }).catch(function(){ toast('Anexado, mas erro ao salvar o link'); });
+    if(ctx.kind==='mat') renderMatAnexos(ctx.id); else renderEvtAnexos(ctx.id);
+    renderMaterias(); renderCal(); toast('✓ Anexado');
+  }).catch(function(e){ toast('Erro ao enviar arquivo'); });
+}
+function anexoRow(a,kind,ctxId){ return '<div class="anexrow"><a class="anexlink" href="'+esc(a.url)+'" target="_blank" rel="noopener">📄 '+esc(a.nome)+'</a><button class="anexx" onclick="removeAnexo(\''+a.id+'\',\''+kind+'\',\''+ctxId+'\')" title="Remover">✕</button></div>'; }
+function renderMatAnexos(matId){ var el=$('matAnexos'); if(!el) return; var list=subjAnexos(matId); el.innerHTML=(list.length?list.map(function(a){return anexoRow(a,'mat',matId);}).join(''):'<div class="rg">Nenhum material ainda.</div>')+'<button class="btn ghost anexbtn" onclick="pickFileFor(\'mat\',\''+matId+'\')">📎 Anexar arquivo</button>'; }
+function renderEvtAnexos(evtId){ var el=$('evtAnexos'); if(!el) return; var list=evtAnexos(evtId); var e=(DATA.eventos||[]).find(function(x){return x.id===evtId;}); var m=e?mat(e.materiaId):null; var matLink=m?('<div class="rg" style="margin-top:7px">📚 <a class="anexlink" style="display:inline" onclick="closeEvt();tab(\'materias\');openMat(\''+m.id+'\')">Materiais de '+esc(m.nome)+'</a></div>'):''; el.innerHTML=(list.length?list.map(function(a){return anexoRow(a,'evt',evtId);}).join(''):'<div class="rg">Nenhum anexo neste item.</div>')+'<button class="btn ghost anexbtn" onclick="pickFileFor(\'evt\',\''+evtId+'\')">📎 Anexar arquivo</button>'+matLink; }
+function removeAnexo(id,kind,ctxId){ JB.confirm('Remover anexo?','O arquivo continua no seu Google Drive.', function(){ DATA.anexos=(DATA.anexos||[]).filter(function(a){return a.id!==id;}); if(kind==='mat') renderMatAnexos(ctxId); else renderEvtAnexos(ctxId); renderMaterias(); renderCal(); findRow('Anexos',5,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Anexos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){}); }, { yes:'Remover', no:'Cancelar', danger:true }); }
+function fmtT(x){ var m=Math.floor(x/60),s=x%60; return m+':'+(s<10?'0':'')+s; }
+function studyMin(matId){ return (DATA.focos||[]).filter(function(f){return f.materiaId===matId;}).reduce(function(a,f){return a+(f.min||0);},0); }
+function studyTimeStr(matId){ var m=studyMin(matId); if(!m) return ''; var h=Math.floor(m/60), mm=m%60; var s=h?(h+'h'):''; if(mm||!h) s+=(s?' ':'')+mm+'m'; return ' · ⏱ '+s; }
+function ping(){ try{ if(navigator.vibrate) navigator.vibrate([180,70,180]); }catch(e){} try{ var A=window.AudioContext||window.webkitAudioContext; if(!A) return; var a=new A(); var o=a.createOscillator(), g=a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value=760; g.gain.value=0.07; o.start(); setTimeout(function(){ try{o.stop();a.close();}catch(e){} },340); }catch(e){} }
+
+/* ---- focus mode (Pomodoro) ---- */
+function focCfg(){ var c=DATA.config||{}; return { foco:Number(c.focoMin)||25, pausa:Number(c.pausaMin)||5, long:Number(c.longMin)||15, cyc:Number(c.cycLong)||4 }; }
+function saveFocoCfg(){ saveConfig('focoMin', String(Math.max(1,Number($('focoMin').value)||25))); saveConfig('pausaMin', String(Math.max(1,Number($('pausaMin').value)||5))); saveConfig('longMin', String(Math.max(1,Number($('longMin').value)||15))); saveConfig('cycLong', String(Math.max(1,Number($('cycLong').value)||4))); }
+var focState={active:false,running:false,phase:'foco',secs:0,tot:0,cycle:1,longb:false,matId:''}, focMat='', focInt=null;
+function openFoco(){ if(focState.active){ $('focoOverlay').classList.add('open'); renderFoco(); return; } focMat=(DATA.materias&&DATA.materias[0])?DATA.materias[0].id:''; focState={active:false,running:false,phase:'foco',secs:0,tot:0,cycle:1,longb:false,matId:''}; renderFoco(); $('focoOverlay').classList.add('open'); }
+function closeFoco(){ $('focoOverlay').classList.remove('open'); }
+function renderFocMat(){ var el=$('focMatWrap'); if(!el) return; var cur=mat(focMat); var btn=cur?('<span class="dotc" style="background:'+cur.cor+'"></span>'+esc(cur.nome)):'— sem matéria —'; var opts='<div class="jb-dd-opt'+(focMat===''?' is-sel':'')+'" onclick="pickFocMat(\'\')">— sem matéria —</div>'+(DATA.materias||[]).map(function(m){return '<div class="jb-dd-opt'+(m.id===focMat?' is-sel':'')+'" onclick="pickFocMat(\''+m.id+'\')"><span class="dotc" style="background:'+m.cor+'"></span>'+esc(m.nome)+'</div>';}).join(''); el.innerHTML='<div class="jb-dd"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>'+btn+'</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">'+opts+'</div></div>'; }
+function pickFocMat(id){ focMat=id; if(window.JB&&JB.ddClose)JB.ddClose(); renderFocMat(); }
+function startFocoRun(){ var c=focCfg(); focState={active:true,running:true,phase:'foco',tot:c.foco*60,secs:c.foco*60,cycle:1,longb:false,matId:focMat}; clearInterval(focInt); focInt=setInterval(focTick,1000); renderFoco(); }
+function focTick(){ if(!focState.running) return; focState.secs--; if(focState.secs<=0){ ping(); if(focState.phase==='foco') logFocoBlock(); advanceFoc(); return; } var el=$('focSecs'); if(el) el.textContent=fmtT(focState.secs); }
+function advanceFoc(){ var c=focCfg(); if(focState.phase==='foco'){ var long=(focState.cycle % c.cyc===0); focState.phase='pausa'; focState.longb=long; focState.tot=(long?c.long:c.pausa)*60; focState.secs=focState.tot; } else { focState.cycle++; focState.phase='foco'; focState.tot=c.foco*60; focState.secs=focState.tot; } renderFoco(); }
+function pauseFoco(){ focState.running=!focState.running; renderFoco(); }
+function skipFoco(){ if(focState.phase==='foco') logFocoBlock(); advanceFoc(); }
+function endFoco(){ if(focState.active && focState.phase==='foco') logFocoBlock(); clearInterval(focInt); focState.active=false; $('focoOverlay').classList.remove('open'); render(); }
+function logFocoBlock(){ var mins=Math.round((focState.tot-focState.secs)/60); if(mins>=1 && focState.matId) logFoco(focState.matId, mins); }
+function logFoco(matId,mins){ var f={id:uuid(),data:todayISO(),materiaId:matId,min:mins}; DATA.focos=DATA.focos||[]; DATA.focos.push(f); JB.api('POST', ssUrl('/values/Foco:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[[f.data,f.materiaId,f.min,f.id]] }).catch(function(){}); }
+function renderFoco(){
+  var top=$('focTop'), stage=$('focStage'), btm=$('focBtm'); if(!stage) return;
+  if(!focState.active){
+    top.innerHTML='<button class="focx" onclick="closeFoco()">✕</button><span class="foctitle">Modo foco</span><span style="width:36px"></span>';
+    stage.innerHTML='<div class="fockick">🍅 Pomodoro</div><div class="focpick"><label class="fl" style="text-align:left">O que vai estudar?</label><div id="focMatWrap"></div></div><div class="focdur">'+focCfg().foco+' min foco · '+focCfg().pausa+' min pausa</div>';
+    btm.innerHTML='<button class="focbtn" onclick="startFocoRun()">Iniciar ▶</button>';
+    renderFocMat(); return;
+  }
+  var m=mat(focState.matId), mname=m?m.nome:'', isFoco=focState.phase==='foco';
+  top.innerHTML='<button class="focx" onclick="endFoco()">✕</button><span class="foctitle">'+esc(mname||'Foco')+'</span><span style="width:36px"></span>';
+  stage.innerHTML='<div class="fockick">'+(isFoco?'🍅 Foco':(focState.longb?'☕ Pausa longa':'☕ Pausa'))+' · ciclo '+focState.cycle+'</div>'+(mname?'<div class="focname">'+esc(mname)+'</div>':'')+'<div class="focdisc '+(isFoco?'work':'rest')+'"><div class="focsecs" id="focSecs">'+fmtT(focState.secs)+'</div></div>';
+  btm.innerHTML='<button class="focbtn" onclick="pauseFoco()">'+(focState.running?'⏸ Pausar':'▶ Retomar')+'</button><button class="focsub" onclick="skipFoco()">Pular fase →</button>';
+}
 
 JB.applySkin('study');
 startAuth();

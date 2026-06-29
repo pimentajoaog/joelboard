@@ -51,7 +51,7 @@ function fbMailto(e){
   var sub='Re: seu feedback no Joelboard'+(appName?(' ('+appName+')'):'');
   var first=(e.name&&e.name!=='Anônimo')?(' '+e.name.split(/\s+/)[0]):'';
   var body='Oi'+first+',\n\nObrigado pelo feedback'+(e.type?(' ('+e.type.toLowerCase()+')'):'')+':\n\u201c'+e.msg+'\u201d\n\n';
-  return 'mailto:'+e.email+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body);
+  return 'https://mail.google.com/mail/?view=cm&fs=1&tf=1&to='+encodeURIComponent(e.email)+'&su='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body);
 }
 function renderFB(){
   document.getElementById('fbStatNew').textContent=fbEntries.filter(function(e){return e.status==='New';}).length;
@@ -66,7 +66,7 @@ function renderFB(){
   var canStatus=fbStatusCol>-1;
   el.innerHTML=vis.map(function(e){
     var ini=(e.name||'?').trim().split(/\s+/).slice(0,2).map(function(p){return (p[0]||'').toUpperCase();}).join('')||'?';
-    var reply=e.email?('<a class="fbreply" href="'+fbMailto(e)+'">✉ Responder</a>'):'';
+    var reply=e.email?('<a class="fbreply" href="'+fbMailto(e)+'" target="_blank" rel="noopener">✉ Responder</a>'):'';
     var statusSel=canStatus?('<select class="field fbsel" onchange="updateFB('+e.row+',this.value)">'+FB_STATUS.map(function(s){return '<option'+(s===e.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'):'';
     var sel=(reply||statusSel)?('<div class="fbfoot">'+reply+statusSel+'</div>'):'';
     return '<div class="fbcard"><div class="fbtop"><div class="fbav">'+esc(ini)+'</div><div><div class="fbname">'+esc(e.name)+'</div><div class="fbwhen">'+esc(e.ts)+'</div></div></div><div class="fbbadges"><span class="fbbadge '+(e.isBug?'bug':'feat')+'">'+esc(e.type||'—')+'</span><span class="fbbadge '+fbAppCls(e.app)+'">'+esc(String(e.app||'—').replace(/^Joelboard\s+/i,''))+'</span></div><div class="fbmsg">'+esc(e.msg)+'</div>'+sel+'</div>';

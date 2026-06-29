@@ -216,3 +216,11 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 
 /* skin display font on headings/big text */
 .hl h1, .tdname, .gate .gt, .prv { font-family: var(--font-display); }
+
+/* bodyweight tracker card (Hoje) */
+.wcard{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:18px; }
+.wlbl{ display:flex; align-items:center; justify-content:space-between; font-size:13px; font-weight:800; margin-bottom:10px; }
+.wgoal{ background:transparent; border:0; color:var(--primary); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+.wrow{ display:flex; gap:8px; }
+.wfield{ flex:1; }
+.wsub{ font-size:12px; color:var(--muted); margin-top:9px; }

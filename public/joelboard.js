@@ -57,7 +57,7 @@
       function go(){ ensureClient(function () {
         pendingRes = res; pendingRej = rej;
         if (!interactive) setTimeout(function () { if (pendingRej === rej) { pendingRes = pendingRej = null; rej(new Error('silent_timeout')); } }, 4500);
-        try { tokenClient.requestAccessToken(interactive ? {} : { prompt: '' }); }
+        try { tokenClient.requestAccessToken(interactive ? {} : { prompt: 'none' }); }
         catch (e) { if (pendingRej === rej) { pendingRes = pendingRej = null; } rej(e); }
       }); }
       if (interactive && needConsent()) showConsent(function(){ ackConsent(); go(); }, function(){ rej(new Error('cancelled')); });

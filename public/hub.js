@@ -30,11 +30,11 @@ function parseFB(rows){
   for(var r=1;r<rows.length;r++){
     var row=rows[r]||[]; var msg=String((ci.msg>-1?row[ci.msg]:'')||'');
     var tag=msg.match(/^\[([^\]]+)\]\s*/); var app=(ci.app>-1&&row[ci.app])?String(row[ci.app]):(tag?tag[1]:'');
-    var text=tag?msg.slice(tag[0].length):msg; text=text.replace(/\s*—\s*[\w.+-]+@[\w.-]+\s*$/,'').trim();
+    var text=tag?msg.slice(tag[0].length):msg; var em=text.match(/—\s*([\w.+-]+@[\w.-]+)\s*$/); var email=em?em[1]:''; text=text.replace(/\s*—\s*[\w.+-]+@[\w.-]+\s*$/,'').trim();
     var ts=String((ci.ts>-1?row[ci.ts]:'')||'');
     if(!text && !ts) continue;
     var type=String((ci.type>-1?row[ci.type]:'')||'');
-    out.push({ row:r+1, ts:ts, name:String((ci.name>-1?row[ci.name]:'')||'Anônimo'), type:type, app:app, msg:text, status:String((ci.status>-1&&row[ci.status])||'New'), isBug:/bug/i.test(type), isFeature:/feature|ideia|recurso/i.test(type) });
+    out.push({ row:r+1, ts:ts, name:String((ci.name>-1?row[ci.name]:'')||'Anônimo'), type:type, app:app, msg:text, email:email, status:String((ci.status>-1&&row[ci.status])||'New'), isBug:/bug/i.test(type), isFeature:/feature|ideia|recurso/i.test(type) });
   }
   return out.reverse();
 }
@@ -46,6 +46,13 @@ function fbOnSearch(v){ fbSearchStr=v; renderFB(); }
 function fbToggleOpen(btn){ fbOpenOnly=!fbOpenOnly; btn.classList.toggle('on',fbOpenOnly); renderFB(); }
 function fbAppCls(a){ a=String(a||'').toLowerCase(); if(a.indexOf('fit')>-1)return 'fit'; if(a.indexOf('finance')>-1)return 'finance'; return 'hub'; }
 function fbColL(n){ var s=''; while(n>0){ var m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
+function fbMailto(e){
+  var appName=String(e.app||'').replace(/^Joelboard\s+/i,'');
+  var sub='Re: seu feedback no Joelboard'+(appName?(' ('+appName+')'):'');
+  var first=(e.name&&e.name!=='Anônimo')?(' '+e.name.split(/\s+/)[0]):'';
+  var body='Oi'+first+',\n\nObrigado pelo feedback'+(e.type?(' ('+e.type.toLowerCase()+')'):'')+':\n\u201c'+e.msg+'\u201d\n\n';
+  return 'mailto:'+e.email+'?subject='+encodeURIComponent(sub)+'&body='+encodeURIComponent(body);
+}
 function renderFB(){
   document.getElementById('fbStatNew').textContent=fbEntries.filter(function(e){return e.status==='New';}).length;
   document.getElementById('fbStatBug').textContent=fbEntries.filter(function(e){return e.isBug;}).length;
@@ -59,7 +66,9 @@ function renderFB(){
   var canStatus=fbStatusCol>-1;
   el.innerHTML=vis.map(function(e){
     var ini=(e.name||'?').trim().split(/\s+/).slice(0,2).map(function(p){return (p[0]||'').toUpperCase();}).join('')||'?';
-    var sel=canStatus?('<div class="fbfoot"><select class="field fbsel" onchange="updateFB('+e.row+',this.value)">'+FB_STATUS.map(function(s){return '<option'+(s===e.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div>'):'';
+    var reply=e.email?('<a class="fbreply" href="'+fbMailto(e)+'">✉ Responder</a>'):'';
+    var statusSel=canStatus?('<select class="field fbsel" onchange="updateFB('+e.row+',this.value)">'+FB_STATUS.map(function(s){return '<option'+(s===e.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select>'):'';
+    var sel=(reply||statusSel)?('<div class="fbfoot">'+reply+statusSel+'</div>'):'';
     return '<div class="fbcard"><div class="fbtop"><div class="fbav">'+esc(ini)+'</div><div><div class="fbname">'+esc(e.name)+'</div><div class="fbwhen">'+esc(e.ts)+'</div></div></div><div class="fbbadges"><span class="fbbadge '+(e.isBug?'bug':'feat')+'">'+esc(e.type||'—')+'</span><span class="fbbadge '+fbAppCls(e.app)+'">'+esc(String(e.app||'—').replace(/^Joelboard\s+/i,''))+'</span></div><div class="fbmsg">'+esc(e.msg)+'</div>'+sel+'</div>';
   }).join('');
 }

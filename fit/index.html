@@ -55,7 +55,7 @@
     <div class="mh"><div class="mt" id="exTitle">Novo exercício</div><button class="x" onclick="closeEx()">✕</button></div>
     <div class="fg"><label class="fl">Nome</label><input class="field" id="exName" placeholder="ex.: Supino reto"></div>
     <div class="fg"><label class="fl">Grupo muscular</label><select class="field" id="exGroup"></select></div>
-    <div class="fg"><label class="fl">Tipo de progressão</label><select class="field" id="exMode"><option value="load">Carga (peso)</option><option value="bw">Peso corporal</option><option value="bwload">Carga + corporal</option></select></div>
+    <div class="fg"><label class="fl">Tipo de progressão</label><select class="field" id="exMode"><option value="load">Carga (peso)</option><option value="bw">Peso corporal</option><option value="bwload">Carga + corporal</option><option value="time">Por tempo (segundos)</option></select></div>
     <button class="btn-primary" id="exSave" onclick="saveExercise()">Salvar</button>
     <button class="del" id="exDel" onclick="deleteExercise()" style="display:none;">Excluir exercício</button>
   </div>
@@ -78,6 +78,13 @@
   <div class="runtop2" id="runTop"></div>
   <div class="runstage" id="runStage"></div>
   <div class="runbtm" id="runBtm"></div>
+</div>
+<div class="overlay" id="wGoalOverlay" onclick="if(event.target===this)closeWGoal()">
+  <div class="modal" style="max-width:340px">
+    <div class="mh"><div class="mt">Meta de peso</div><button class="x" onclick="closeWGoal()">✕</button></div>
+    <div class="fg"><label class="fl">Peso desejado (kg)</label><input class="field" id="wGoalInput" type="number" inputmode="decimal" step="0.1" placeholder="ex.: 65"></div>
+    <button class="btn-primary" onclick="saveWGoal()">Salvar meta</button>
+  </div>
 </div>
 <div class="overlay" id="switchOverlay" onclick="if(event.target===this)closeSwitch()">
   <div class="modal"><div class="mh"><div class="mt">Escolher treino</div><button class="x" onclick="closeSwitch()">✕</button></div><div id="switchList" style="max-height:380px;overflow-y:auto"></div></div>

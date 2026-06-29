@@ -85,14 +85,7 @@
       <input class="field fbsearch" id="fbSearch" placeholder="Buscar feedback…" oninput="fbOnSearch(this.value)">
       <button class="fbchip on" id="fbOpenToggle" onclick="fbToggleOpen(this)">Só abertos</button>
     </div>
-    <div class="fbchips" id="fbChips">
-      <button class="fbchip on" data-f="all" onclick="fbSetFilter('all',this)">Tudo</button>
-      <button class="fbchip" data-f="fit" onclick="fbSetFilter('fit',this)">Fit</button>
-      <button class="fbchip" data-f="hub" onclick="fbSetFilter('hub',this)">Hub</button>
-      <button class="fbchip" data-f="finance" onclick="fbSetFilter('finance',this)">Finance</button>
-      <button class="fbchip" data-f="bugs" onclick="fbSetFilter('bugs',this)">Bugs</button>
-      <button class="fbchip" data-f="features" onclick="fbSetFilter('features',this)">Ideias</button>
-    </div>
+    <div class="fbchips" id="fbChips"><!-- chips rendered dynamically by renderFbChips() --></div>
     <div class="fblist" id="fbList"><div class="empty">Carregando…</div></div>
   </div>
 </div>

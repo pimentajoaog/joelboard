@@ -45,13 +45,23 @@ function parseFB(rows){
   }
   return out.reverse();
 }
-var FB_LABEL={all:'Tudo',fit:'Fit',hub:'Hub',finance:'Finance',bugs:'Bugs',features:'Ideias'};
-function fbInChip(e,f){ switch(f){ case 'fit':return /fit/i.test(e.app); case 'hub':return /hub/i.test(e.app); case 'finance':return /finance/i.test(e.app); case 'bugs':return e.isBug; case 'features':return e.isFeature; default:return true; } }
+var FB_APP_ORDER=['finance','fit','study','hub'];                 // known apps: always shown (even at 0)
+var FB_KNOWN_LABEL={finance:'Finance',fit:'Fit',study:'Study',hub:'Hub',bugs:'Bugs',features:'Ideias',all:'Tudo'};
+function fbAppKey(a){ return String(a||'').toLowerCase().replace(/^joelboard\s+/,'').trim(); }   // "Joelboard Study" -> "study"
+function fbLabelFor(k){ return FB_KNOWN_LABEL[k] || (k.charAt(0).toUpperCase()+k.slice(1)); }
+function fbAppKeys(){ // union of known apps + any app that appears in the feedback (auto-adds new apps)
+  var set={}; FB_APP_ORDER.forEach(function(k){ set[k]=true; });
+  fbEntries.forEach(function(e){ var k=fbAppKey(e.app); if(k) set[k]=true; });
+  var known=FB_APP_ORDER.filter(function(k){ return set[k]; });
+  var extra=Object.keys(set).filter(function(k){ return FB_APP_ORDER.indexOf(k)<0; }).sort();
+  return known.concat(extra);
+}
+function fbInChip(e,f){ if(f==='all')return true; if(f==='bugs')return e.isBug; if(f==='features')return e.isFeature; return fbAppKey(e.app)===f; }
 function fbInOpen(e){ return e.status==='New'||e.status==='Acknowledged'; }
 function fbInSearch(e){ if(!fbSearchStr) return true; var q=fbSearchStr.toLowerCase(); return (e.name+' '+e.msg+' '+e.app+' '+e.type).toLowerCase().indexOf(q)>-1; }
 function fbOnSearch(v){ fbSearchStr=v; renderFB(); }
 function fbToggleOpen(btn){ fbOpenOnly=!fbOpenOnly; btn.classList.toggle('on',fbOpenOnly); renderFB(); }
-function fbAppCls(a){ a=String(a||'').toLowerCase(); if(a.indexOf('fit')>-1)return 'fit'; if(a.indexOf('finance')>-1)return 'finance'; return 'hub'; }
+function fbAppCls(a){ var k=fbAppKey(a); if(k==='fit')return 'fit'; if(k==='finance')return 'finance'; if(k==='study')return 'study'; return 'hub'; }
 function fbColL(n){ var s=''; while(n>0){ var m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
 function fbMailto(e){
   var appName=String(e.app||'').replace(/^Joelboard\s+/i,'');
@@ -65,9 +75,7 @@ function renderFB(){
   document.getElementById('fbStatBug').textContent=fbEntries.filter(function(e){return e.isBug;}).length;
   document.getElementById('fbStatFeat').textContent=fbEntries.filter(function(e){return e.isFeature;}).length;
   var base=fbEntries.filter(function(e){ return (!fbOpenOnly||fbInOpen(e)) && fbInSearch(e); });
-  var cats=['all','fit','hub','finance','bugs','features'], counts={};
-  cats.forEach(function(c){ counts[c]=base.filter(function(e){return fbInChip(e,c);}).length; });
-  var chips=document.querySelectorAll('#fbChips .fbchip'); for(var k=0;k<chips.length;k++){ var cf=chips[k].getAttribute('data-f'); chips[k].textContent=FB_LABEL[cf]+' '+counts[cf]; }
+  renderFbChips(base);
   var vis=base.filter(function(e){return fbInChip(e,fbFilter);}), el=document.getElementById('fbList');
   if(!vis.length){ el.innerHTML='<div class="empty">Nada por aqui ainda.</div>'; return; }
   var canStatus=fbStatusCol>-1;
@@ -85,7 +93,15 @@ function updateFB(row,status){
   var rng=fbTitle+'!'+fbColL(fbStatusCol+1)+row;
   JB.api('PUT','https://sheets.googleapis.com/v4/spreadsheets/'+FB_SHEET+'/values/'+encodeURIComponent(rng)+'?valueInputOption=RAW',{values:[[status]]}).catch(function(){ if(JB.toast)JB.toast('Erro ao salvar status'); });
 }
-function fbSetFilter(f,btn){ fbFilter=f; var c=document.querySelectorAll('#fbChips .fbchip'); for(var i=0;i<c.length;i++) c[i].classList.toggle('on',c[i]===btn); renderFB(); }
+function renderFbChips(base){ // chips = Tudo + one per app present (known apps always) + Bugs + Ideias, with live counts
+  var defs=[{f:'all'}].concat(fbAppKeys().map(function(k){return {f:k};})).concat([{f:'bugs'},{f:'features'}]);
+  if(defs.map(function(d){return d.f;}).indexOf(fbFilter)<0) fbFilter='all';
+  document.getElementById('fbChips').innerHTML=defs.map(function(d){
+    var n=base.filter(function(e){return fbInChip(e,d.f);}).length;
+    return '<button class="fbchip'+(d.f===fbFilter?' on':'')+'" data-f="'+d.f+'" onclick="fbSetFilter(\''+d.f+'\')">'+esc(fbLabelFor(d.f))+' '+n+'</button>';
+  }).join('');
+}
+function fbSetFilter(f){ fbFilter=f; renderFB(); }
 function openHubSet(){ var em=JB.email(); var on=!!JB.cachedToken()&&!!em; document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; JB.renderSkinPicker('hub', document.getElementById("hubSkins")); document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
 function hubAuth(){ var on=!!JB.cachedToken()&&!!JB.email(); closeHubSet(); if(on) doOut(); else doIn(); }

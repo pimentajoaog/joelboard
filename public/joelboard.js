@@ -231,6 +231,11 @@
     return close;
   }
 
+  // --- shared custom dropdown: app renders .jb-dd markup (button + .jb-dd-menu of .jb-dd-opt); core toggles open + closes on outside-click ---
+  function ddClose(){ var o = document.querySelectorAll('.jb-dd.open'); for (var i = 0; i < o.length; i++) o[i].classList.remove('open'); }
+  function ddToggle(btn){ var dd = (btn && btn.closest) ? btn.closest('.jb-dd') : null; if (!dd) return; var wasOpen = dd.classList.contains('open'); ddClose(); if (!wasOpen) { dd.classList.add('open'); var sel = dd.querySelector('.jb-dd-opt.is-sel'); if (sel && sel.scrollIntoView) { try { sel.scrollIntoView({ block: 'nearest' }); } catch (_) {} } } }
+  whenReady(function(){ document.addEventListener('click', function (e) { if (!(e.target && e.target.closest && e.target.closest('.jb-dd'))) ddClose(); }); });
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, email: email, fetchEmail: fetchEmail,
@@ -238,6 +243,6 @@
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, toast: jbToast, confirm: confirm, whenReady: whenReady,
-    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker
+    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose
   };
 })();

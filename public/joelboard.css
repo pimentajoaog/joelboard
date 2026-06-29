@@ -67,3 +67,19 @@ body.jb-noscroll { overflow: hidden; }
 .jb-skin { display: flex; align-items: center; gap: 7px; padding: 11px 12px; border-radius: 12px; border: 2px solid transparent; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700; text-align: left; transition: transform 0.12s; }
 .jb-skin:hover { transform: translateY(-1px); }
 .jb-skin-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 2px rgba(0,0,0,0.12); }
+
+
+/* Shared custom dropdown — app renders the markup, toggle via JB.ddToggle(this).
+   <div class="jb-dd"><button class="jb-dd-btn" onclick="JB.ddToggle(this)">label <span class="jb-dd-caret">▾</span></button>
+     <div class="jb-dd-menu"><div class="jb-dd-opt is-sel" onclick="pick(v)">opt</div>…</div></div>
+   Add .up on .jb-dd to open upward. */
+.jb-dd { position: relative; }
+.jb-dd-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); padding: 11px 13px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; }
+.jb-dd-caret { color: var(--muted); font-size: 11px; transition: transform 0.15s; }
+.jb-dd.open .jb-dd-caret { transform: rotate(180deg); }
+.jb-dd-menu { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 5px); max-height: 240px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 12px 34px rgba(0,0,0,0.42); z-index: 500; padding: 5px; }
+.jb-dd.up .jb-dd-menu { top: auto; bottom: calc(100% + 5px); }
+.jb-dd.open .jb-dd-menu { display: block; }
+.jb-dd-opt { padding: 10px 12px; border-radius: 9px; cursor: pointer; font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.jb-dd-opt:hover { background: var(--surface2); }
+.jb-dd-opt.is-sel { background: color-mix(in srgb, var(--primary) 16%, var(--surface)); color: var(--primary); font-weight: 800; }

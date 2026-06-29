@@ -226,9 +226,9 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .wsub{ font-size:12px; color:var(--muted); margin-top:9px; }
 
 /* runner: carga as dropdown + manual-input pencil */
-.sbox.grow{ flex:1; min-width:140px; }
+.sbox.grow{ flex:1; min-width:150px; }
 .loadpick{ display:flex; align-items:center; gap:8px; margin-top:8px; }
-.wsel{ flex:1; min-width:0; padding:10px 12px; font-size:17px; font-weight:800; cursor:pointer; }
-.loadpen{ flex:0 0 auto; width:40px; height:40px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--primary); cursor:pointer; font-size:15px; font-family:inherit; }
-.loadpen:active{ background:var(--surface2); }
-.wload{ margin-top:8px; width:100%; font-size:20px; font-weight:800; text-align:center; }
+.loadpen{ flex:0 0 auto; width:42px; height:42px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--primary); cursor:pointer; font-size:15px; font-family:inherit; }
+.loadpen.ok{ background:var(--success); color:#05281c; border-color:var(--success); font-weight:800; }
+.loadpen:active{ opacity:.85; }
+.wload{ flex:1; min-width:0; font-size:18px; font-weight:800; text-align:center; }

@@ -51,6 +51,7 @@ Load with `<script src="https://accounts.google.com/gsi/client" async></script>`
   `JB.toast(msg)`, `JB.confirm(title, msg, onYes[, {yes, no, danger, onNo, html}])` (styled, theme-adaptive
   yes/no dialog that builds its own DOM — no per-app markup; `danger:true` = red confirm). Background
   **scroll-lock** behind any open `.overlay.open` is automatic.
+- **Custom dropdown:** `JB.ddToggle(btn)` / `JB.ddClose()` — drive the `.jb-dd` component (see Shared styles); core auto-closes on outside-click.
 - **Theming:** `JB.applySkin(app)` (call early on load — applies the saved skin), `JB.renderSkinPicker(app, el[, onChange])`
   (renders the swatch grid into `el`, persists choice), `JB.SKINS`, `JB.getSkin(app)`, `JB.setSkin(app, id)`.
   Skins live in `/themes.css` (`body[data-skin]`); selection persists per-app in `localStorage` (`jb_skin_<app>`).
@@ -62,6 +63,7 @@ Plain CSS on CSS-variable tokens (adapts per app + per Finance skin). Provides:
 
 - Aesthetic **scrollbar**, **scroll-lock** (`.jb-noscroll`), settings-modal sizing (`#setOverlay .modal`)
 - **Modal kit:** `.overlay` / `.overlay.open` / `.modal` (+ `jb-modal-in`) / `.mh` (head) / `.mt` (title) / `.x` (close)
+- **Custom dropdown:** `.jb-dd` (markup: `.jb-dd-btn` toggled by `JB.ddToggle(this)` + `.jb-dd-menu` of `.jb-dd-opt`, mark current `.is-sel`). Add `.up` to open upward. Core handles open/close + outside-click. Theme-adaptive, scrollable — use instead of native `<select>` for a consistent in-app look.
 - **Slide-in nudge/confirm card:** `.confirm-card` (+ `.show`) — bottom-right toast-style prompt, NOT a modal. Inner: `.cc-head` / `.cc-x` / `.cc-body` / `.cc-q`(` strong` = green highlight) / `.cc-btns` / `.cc-btn`(`.yes` = affirmative green). Use for low-friction confirmations & contextual nudges (see Finance `showNudge`/salary card).
 - **Input:** `.field` (+ `:focus`)
 - **Primary button:** `.btn-primary`

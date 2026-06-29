@@ -300,7 +300,7 @@ function startSession(tid){ var date=new Date().toISOString().slice(0,10); var n
 var runPhase='ready';
 function restFor(it){ return (it&&it.rest!=null)?it.rest:restDefault(); }
 var rest={id:null,secs:0,tot:0};
-function startRest(secs){ stopRest(); rest.secs=Number(secs)||0; rest.tot=rest.secs; if(rest.secs<=0) return; rest.id=setInterval(function(){ rest.secs--; if(rest.secs<=0){ rest.secs=0; clearInterval(rest.id); rest.id=null; beep(); if(runPhase==='rest'){ rNextSet(); return; } } renderRun(); },1000); }
+function startRest(secs){ stopRest(); rest.secs=Number(secs)||0; rest.tot=rest.secs; if(rest.secs<=0) return; rest.id=setInterval(function(){ rest.secs--; if(rest.secs<=0){ rest.secs=0; clearInterval(rest.id); rest.id=null; beep(); if(runPhase==='rest'){ rNextSet(); return; } } if(runPhase==='log'){ var lt=$('logTimer'); if(lt) lt.textContent=(rest.secs>0?('Descanso · ⏱ '+fmtT(rest.secs)):'Registrar série'); } else { renderRun(); } },1000); }
 function stopRest(){ if(rest.id){ clearInterval(rest.id); rest.id=null; } rest.secs=0; rest.tot=0; }
 var work={id:null,secs:0,tot:0};
 var loadEdit=false;
@@ -326,10 +326,10 @@ function renderRun(){
     return;
   }
   if(runPhase==='log'){
-    var st=it.sets[fp]||{}; var resting=(rest.id&&rest.secs>0); var pct=rest.tot?rest.secs/rest.tot:0;
-    var loadBox=(bw||timed)?'':'<div class="sbox grow"><div class="lbl">Carga kg</div>'+(loadEdit?'<input class="field wload" id="vLoadInput" type="text" inputmode="decimal" value="'+(st.peso||0)+'" onchange="rSetLoadStr(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()">':'<div class="loadpick"><select class="field wsel" onchange="rSetLoad(this.value)">'+loadOpts(st.peso)+'</select><button class="loadpen" onclick="rLoadPencil()" title="Digitar valor">✎</button></div>')+'</div>';
-    var timer=resting?('<div class="disc2" style="width:148px;height:148px;margin:14px 0">'+ringSvg(pct,'var(--primary)')+'<div class="face"><div class="big" style="font-size:32px">'+fmtT(rest.secs)+'</div></div></div>'):'';
-    stage.innerHTML='<div class="rkick">'+(resting?('Registrar · ⏱ '+fmtT(rest.secs)):'Registrar série')+'</div><div class="rname">'+esc(it.name)+'</div>'+timer+'<div class="small" style="color:var(--muted);margin:'+(resting?'0 0 12px':'16px 0 12px')+'">Série '+setNo+' — quanto fez?</div><div class="rsteps"><div class="sbox"><div class="lbl">'+(timed?'Segundos':'Reps')+'</div><div class="sctl"><button onclick="rBump(\'reps\',-1)">−</button><span class="v" id="vReps">'+(st.reps||0)+'</span><button onclick="rBump(\'reps\',1)">+</button></div></div>'+loadBox+'</div>';
+    var st=it.sets[fp]||{}; var resting=(rest.id&&rest.secs>0);
+    var loadBox=(bw||timed)?'':'<div class="sbox grow" id="loadWrap">'+loadBoxInner()+'</div>';
+    var repBox='<div class="sbox"><div class="lbl">'+(timed?'Segundos':'Reps')+'</div><div class="sctl"><button onclick="rBump(\'reps\',-1)">−</button><span class="v" id="vReps">'+(st.reps||0)+'</span><button onclick="rBump(\'reps\',1)">+</button></div></div>';
+    stage.innerHTML='<div class="rkick" id="logTimer">'+(resting?('Descanso · ⏱ '+fmtT(rest.secs)):'Registrar série')+'</div><div class="rname">'+esc(it.name)+'</div><div class="small" style="color:var(--muted);margin:16px 0 12px">Série '+setNo+' — quanto fez?</div><div class="rsteps">'+repBox+loadBox+'</div>';
     btm.innerHTML='<button class="rcta save" onclick="rSalvar()">Salvar ✓</button>';
     return;
   }
@@ -356,10 +356,12 @@ function rConcluir(){ loadEdit=false; var it=sess.items[sess.cur]; var fp=firstP
 function rBump(f,d){ var it=sess.items[sess.cur]; var fp=firstPending(it); var st=it.sets[fp]; if(!st) return; if(f==='reps'){ st.reps=Math.max(0,(Number(st.reps)||0)+d); var v=$('vReps'); if(v) v.textContent=st.reps; } else { st.peso=Math.max(0,Math.round(((Number(st.peso)||0)+d)*10)/10); var v2=$('vLoad'); if(v2) v2.textContent=st.peso; } }
 function parseNum(v){ var n=parseFloat(String(v==null?'':v).replace(',','.')); return isNaN(n)?0:Math.round(n*10)/10; }
 function curRunSet(){ if(!sess) return null; var it=sess.items[sess.cur]; if(!it) return null; return it.sets[firstPending(it)]||null; }
-function loadOpts(cur){ cur=Math.round((Number(cur)||0)*10)/10; var inc=incDefault()||2.5; var max=Math.max(120,cur+30); var seen={}, arr=[]; for(var w=0;w<=max+0.001;w=Math.round((w+inc)*100)/100){ if(!seen[w]){ seen[w]=1; arr.push(w); } } if(!seen[cur]) arr.push(cur); arr.sort(function(a,b){return a-b;}); return arr.map(function(w){ return '<option value="'+w+'"'+(w===cur?' selected':'')+'>'+w+'</option>'; }).join(''); }
-function rSetLoad(v){ var st=curRunSet(); if(st) st.peso=parseNum(v); }
-function rSetLoadStr(v){ var st=curRunSet(); if(st) st.peso=parseNum(v); }
-function rLoadPencil(){ loadEdit=true; renderRun(); setTimeout(function(){ var i=$('vLoadInput'); if(i){ i.focus(); if(i.select) i.select(); } },30); }
+function loadOpts(cur){ cur=Math.round((Number(cur)||0)*10)/10; var inc=incDefault()||2.5; var max=Math.max(120,cur+30); var seen={}, arr=[]; for(var w=0;w<=max+0.001;w=Math.round((w+inc)*100)/100){ if(!seen[w]){ seen[w]=1; arr.push(w); } } if(!seen[cur]) arr.push(cur); arr.sort(function(a,b){return a-b;}); return arr.map(function(w){ return '<div class="jb-dd-opt'+(w===cur?' is-sel':'')+'" onclick="rPickLoad('+w+')">'+w+' kg</div>'; }).join(''); }
+function loadBoxInner(){ var st=curRunSet()||{}; var cur=Math.round((Number(st.peso)||0)*10)/10; var head='<div class="lbl">Carga kg</div>'; if(loadEdit){ return head+'<div class="loadpick"><input class="field wload" id="vLoadInput" type="text" inputmode="decimal" value="'+cur+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();rLoadConfirm();}"><button class="loadpen ok" onclick="rLoadConfirm()" title="Confirmar">✓</button></div>'; } return head+'<div class="loadpick"><div class="jb-dd up" style="flex:1;min-width:0"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>'+cur+' kg</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">'+loadOpts(cur)+'</div></div><button class="loadpen" onclick="rLoadPencil()" title="Digitar valor">✎</button></div>'; }
+function renderLoadBox(){ var el=$('loadWrap'); if(el) el.innerHTML=loadBoxInner(); }
+function rPickLoad(v){ var st=curRunSet(); if(st) st.peso=parseNum(v); if(window.JB&&JB.ddClose) JB.ddClose(); renderLoadBox(); }
+function rLoadPencil(){ loadEdit=true; renderLoadBox(); setTimeout(function(){ var i=$('vLoadInput'); if(i){ i.focus(); if(i.select) i.select(); } },30); }
+function rLoadConfirm(){ var i=$('vLoadInput'); if(i){ var st=curRunSet(); if(st) st.peso=parseNum(i.value); } loadEdit=false; renderLoadBox(); }
 function rSalvar(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; var st=it.sets[fp]; st.done=true; for(var j=fp+1;j<it.sets.length;j++){ if(!it.sets[j].done){ if(st.peso!==''&&st.peso!=null) it.sets[j].peso=st.peso; if(st.reps!==''&&st.reps!=null) it.sets[j].reps=st.reps; } } if(rest.id&&rest.secs>0){ runPhase='rest'; renderRun(); } else { rNextSet(); } }
 function rNextSet(){ stopRest(); var it=sess.items[sess.cur]; if(firstPending(it)<0){ if(sess.cur<sess.items.length-1){ sess.cur++; runPhase='ready'; renderRun(); } else { rFinish(); } } else { runPhase='ready'; renderRun(); } }
 function rClose(){ stopRest(); stopWork(); sess=null; $('runOverlay').classList.remove('open'); renderHoje(); }

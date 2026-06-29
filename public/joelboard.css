@@ -77,7 +77,7 @@ body.jb-noscroll { overflow: hidden; }
 .jb-dd-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); padding: 11px 13px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; }
 .jb-dd-caret { color: var(--muted); font-size: 11px; transition: transform 0.15s; }
 .jb-dd.open .jb-dd-caret { transform: rotate(180deg); }
-.jb-dd-menu { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 5px); max-height: 240px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 12px 34px rgba(0,0,0,0.42); z-index: 500; padding: 5px; }
+.jb-dd-menu { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 5px); max-height: 240px; overflow-y: auto; overflow-x: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 12px 34px rgba(0,0,0,0.42); z-index: 500; padding: 5px; }
 .jb-dd.up .jb-dd-menu { top: auto; bottom: calc(100% + 5px); }
 .jb-dd.open .jb-dd-menu { display: block; }
 .jb-dd-opt { padding: 10px 12px; border-radius: 9px; cursor: pointer; font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; }

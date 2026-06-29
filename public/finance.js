@@ -2355,7 +2355,7 @@ var FIN_TOUR=[
   { go:function(){ switchTab('overview'); }, sel:'.summary-grid', title:'Visão geral', body:'Receitas, despesas, saldo e taxa de poupança do mês — tudo no topo.' },
   { go:function(){ switchTab('worklog'); }, sel:'.cal-grid', title:'Jornada', body:'Marque os dias que trabalhou; o app estima sua renda e você a lança no mês.' },
   { go:function(){ switchTab('money'); }, sel:'#tab-money .card', title:'Dinheiro', body:'Lance transações, veja o histórico e busque por descrição.' },
-  { go:function(){ switchTab('bills'); }, sel:'#tab-bills .card', title:'Contas & Poupança', body:'Contas recorrentes e metas de poupança num lugar só.' },
+  { go:function(){ switchTab('bills'); }, sel:'#tab-bills', title:'Contas & Poupança', body:'Contas recorrentes, poupança e metas — tudo num lugar só.' },
   { go:function(){ switchTab('budget'); }, sel:'#tab-budget .card', title:'Orçamento', body:'Defina limites por categoria e acompanhe os gastos do mês.' },
   { go:function(){ switchTab('overview'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para lançar uma transação rapidamente.' },
   { sel:'#settingsBtn', title:'Ajustes', body:'Temas, idioma, backup e este tutorial ficam aqui. ✨' }

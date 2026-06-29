@@ -267,7 +267,7 @@
   function tourPosition(){
     var step=_tSteps[_tI], ov=document.getElementById('jbTour'); if(!ov) return;
     var block=ov.querySelector('.jbt-block'), hole=ov.querySelector('.jbt-hole'), pop=ov.querySelector('.jbt-pop');
-    var rect=null; if(step.sel){ var el=document.querySelector(step.sel); if(el){ try{ el.scrollIntoView({block:'center'}); }catch(_){} rect=el.getBoundingClientRect(); } }
+    var rect=null; if(step.sel){ var el=document.querySelector(step.sel); if(el){ try{ el.scrollIntoView({block:'nearest'}); }catch(_){} rect=el.getBoundingClientRect(); } }
     if(rect && rect.width){ var pad=6; hole.style.display='block'; block.style.background='transparent'; hole.style.left=(rect.left-pad)+'px'; hole.style.top=(rect.top-pad)+'px'; hole.style.width=(rect.width+pad*2)+'px'; hole.style.height=(rect.height+pad*2)+'px'; }
     else { hole.style.display='none'; block.style.background='rgba(0,0,0,0.66)'; }
     pop.style.display='block';

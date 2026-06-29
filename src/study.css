@@ -145,3 +145,13 @@ textarea.field{ resize:vertical; min-height:64px; }
 .matchip{ display:inline-flex; align-items:center; background:var(--surface2); border:1px solid var(--border); border-radius:99px; padding:7px 12px; font-size:13px; font-weight:700; cursor:pointer; margin:0 6px 6px 0; color:var(--text); font-family:inherit; }
 .matchip.on{ font-weight:800; }
 .linkhdr{ display:flex; align-items:center; font-size:11px; font-weight:800; color:var(--muted); margin:12px 0 6px; text-transform:uppercase; letter-spacing:.4px; }
+
+/* subject detail + module checklist */
+.matdet-head{ display:flex; align-items:center; gap:10px; margin:12px 0 4px; }
+.matdet-name{ flex:1; font-size:20px; font-weight:800; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.modrow{ display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:7px; }
+.modrow.done .modname{ text-decoration:line-through; color:var(--muted); }
+.modname{ flex:1; min-width:0; font-size:14px; font-weight:600; }
+.modadd{ display:flex; gap:8px; margin-top:8px; }
+.modadd .field{ flex:1; }
+.modadd .btn{ flex:0 0 auto; align-self:stretch; }

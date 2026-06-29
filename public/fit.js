@@ -303,6 +303,7 @@ var rest={id:null,secs:0,tot:0};
 function startRest(secs){ stopRest(); rest.secs=Number(secs)||0; rest.tot=rest.secs; if(rest.secs<=0) return; rest.id=setInterval(function(){ rest.secs--; if(rest.secs<=0){ rest.secs=0; clearInterval(rest.id); rest.id=null; beep(); if(runPhase==='rest'){ rNextSet(); return; } } renderRun(); },1000); }
 function stopRest(){ if(rest.id){ clearInterval(rest.id); rest.id=null; } rest.secs=0; rest.tot=0; }
 var work={id:null,secs:0,tot:0};
+var loadEdit=false;
 function startWork(secs){ stopWork(); work.tot=Number(secs)||0; work.secs=work.tot; if(work.secs<=0) return; work.id=setInterval(function(){ work.secs--; if(work.secs<=0){ work.secs=0; clearInterval(work.id); work.id=null; beep(); rConcluir(); return; } renderRun(); },1000); }
 function stopWork(){ if(work.id){ clearInterval(work.id); work.id=null; } }
 function rAdd30(){ if(rest.id){ rest.secs+=30; rest.tot+=30; renderRun(); } }
@@ -326,7 +327,7 @@ function renderRun(){
   }
   if(runPhase==='log'){
     var st=it.sets[fp]||{}; var resting=(rest.id&&rest.secs>0); var pct=rest.tot?rest.secs/rest.tot:0;
-    var loadBox=(bw||timed)?'':'<div class="sbox"><div class="lbl">Carga kg</div><div class="sctl"><button onclick="rBump(\'load\',-2.5)">−</button><span class="v" id="vLoad">'+(st.peso||0)+'</span><button onclick="rBump(\'load\',2.5)">+</button></div></div>';
+    var loadBox=(bw||timed)?'':'<div class="sbox grow"><div class="lbl">Carga kg</div>'+(loadEdit?'<input class="field wload" id="vLoadInput" type="text" inputmode="decimal" value="'+(st.peso||0)+'" onchange="rSetLoadStr(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()">':'<div class="loadpick"><select class="field wsel" onchange="rSetLoad(this.value)">'+loadOpts(st.peso)+'</select><button class="loadpen" onclick="rLoadPencil()" title="Digitar valor">✎</button></div>')+'</div>';
     var timer=resting?('<div class="disc2" style="width:148px;height:148px;margin:14px 0">'+ringSvg(pct,'var(--primary)')+'<div class="face"><div class="big" style="font-size:32px">'+fmtT(rest.secs)+'</div></div></div>'):'';
     stage.innerHTML='<div class="rkick">'+(resting?('Registrar · ⏱ '+fmtT(rest.secs)):'Registrar série')+'</div><div class="rname">'+esc(it.name)+'</div>'+timer+'<div class="small" style="color:var(--muted);margin:'+(resting?'0 0 12px':'16px 0 12px')+'">Série '+setNo+' — quanto fez?</div><div class="rsteps"><div class="sbox"><div class="lbl">'+(timed?'Segundos':'Reps')+'</div><div class="sctl"><button onclick="rBump(\'reps\',-1)">−</button><span class="v" id="vReps">'+(st.reps||0)+'</span><button onclick="rBump(\'reps\',1)">+</button></div></div>'+loadBox+'</div>';
     btm.innerHTML='<button class="rcta save" onclick="rSalvar()">Salvar ✓</button>';
@@ -351,9 +352,15 @@ function renderRun(){
 }
 function rIniciar(){ runPhase='active'; var it=sess.items[sess.cur]; if(it&&it.mode==='time'){ startWork(Number(it.rmax)||Number(it.rmin)||30); } renderRun(); }
 function rIsLast(it,fp){ return sess.cur>=sess.items.length-1 && fp>=it.sets.length-1; }
-function rConcluir(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; var st=it.sets[fp]; if(it.mode==='time'){ var held=(work.id?Math.max(1,work.tot-work.secs):work.tot)||Number(it.rmax)||Number(it.rmin)||0; stopWork(); st.reps=held; st.peso=0; } else { if(st.reps===''||st.reps==null) st.reps=it.rmin; if(st.peso===''||st.peso==null) st.peso=(it.sg&&it.sg.weight!==''&&it.sg.weight!=null)?it.sg.weight:0; } runPhase='log'; if(rIsLast(it,fp)){ stopRest(); } else { startRest(restFor(it)); } renderRun(); }
+function rConcluir(){ loadEdit=false; var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; var st=it.sets[fp]; if(it.mode==='time'){ var held=(work.id?Math.max(1,work.tot-work.secs):work.tot)||Number(it.rmax)||Number(it.rmin)||0; stopWork(); st.reps=held; st.peso=0; } else { if(st.reps===''||st.reps==null) st.reps=it.rmin; if(st.peso===''||st.peso==null) st.peso=(it.sg&&it.sg.weight!==''&&it.sg.weight!=null)?it.sg.weight:0; } runPhase='log'; if(rIsLast(it,fp)){ stopRest(); } else { startRest(restFor(it)); } renderRun(); }
 function rBump(f,d){ var it=sess.items[sess.cur]; var fp=firstPending(it); var st=it.sets[fp]; if(!st) return; if(f==='reps'){ st.reps=Math.max(0,(Number(st.reps)||0)+d); var v=$('vReps'); if(v) v.textContent=st.reps; } else { st.peso=Math.max(0,Math.round(((Number(st.peso)||0)+d)*10)/10); var v2=$('vLoad'); if(v2) v2.textContent=st.peso; } }
-function rSalvar(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; it.sets[fp].done=true; if(rest.id&&rest.secs>0){ runPhase='rest'; renderRun(); } else { rNextSet(); } }
+function parseNum(v){ var n=parseFloat(String(v==null?'':v).replace(',','.')); return isNaN(n)?0:Math.round(n*10)/10; }
+function curRunSet(){ if(!sess) return null; var it=sess.items[sess.cur]; if(!it) return null; return it.sets[firstPending(it)]||null; }
+function loadOpts(cur){ cur=Math.round((Number(cur)||0)*10)/10; var inc=incDefault()||2.5; var max=Math.max(120,cur+30); var seen={}, arr=[]; for(var w=0;w<=max+0.001;w=Math.round((w+inc)*100)/100){ if(!seen[w]){ seen[w]=1; arr.push(w); } } if(!seen[cur]) arr.push(cur); arr.sort(function(a,b){return a-b;}); return arr.map(function(w){ return '<option value="'+w+'"'+(w===cur?' selected':'')+'>'+w+'</option>'; }).join(''); }
+function rSetLoad(v){ var st=curRunSet(); if(st) st.peso=parseNum(v); }
+function rSetLoadStr(v){ var st=curRunSet(); if(st) st.peso=parseNum(v); }
+function rLoadPencil(){ loadEdit=true; renderRun(); setTimeout(function(){ var i=$('vLoadInput'); if(i){ i.focus(); if(i.select) i.select(); } },30); }
+function rSalvar(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; var st=it.sets[fp]; st.done=true; for(var j=fp+1;j<it.sets.length;j++){ if(!it.sets[j].done){ if(st.peso!==''&&st.peso!=null) it.sets[j].peso=st.peso; if(st.reps!==''&&st.reps!=null) it.sets[j].reps=st.reps; } } if(rest.id&&rest.secs>0){ runPhase='rest'; renderRun(); } else { rNextSet(); } }
 function rNextSet(){ stopRest(); var it=sess.items[sess.cur]; if(firstPending(it)<0){ if(sess.cur<sess.items.length-1){ sess.cur++; runPhase='ready'; renderRun(); } else { rFinish(); } } else { runPhase='ready'; renderRun(); } }
 function rClose(){ stopRest(); stopWork(); sess=null; $('runOverlay').classList.remove('open'); renderHoje(); }
 function rCapturedCount(){ var n=0; if(sess) sess.items.forEach(function(it){ it.sets.forEach(function(st){ if(st.done&&((Number(st.reps)||0)>0||(Number(st.peso)||0)>0)) n++; }); }); return n; }

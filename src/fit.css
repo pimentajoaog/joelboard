@@ -198,7 +198,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .pulse2{ @apply w-[240px] h-[240px] rounded-full border-[3px] border-primary flex items-center justify-center flex-col my-[22px]; animation:pulse2 1.6s ease-in-out infinite; }
 @keyframes pulse2{ 0%,100%{ box-shadow:0 0 0 0 transparent; } 50%{ box-shadow:0 0 0 16px color-mix(in srgb, var(--primary) 10%, transparent); } }
 .rgo{ @apply text-[30px] font-black; }
-.rsteps{ @apply flex gap-3.5; }
+.rsteps{ @apply flex flex-wrap gap-3.5; }
 .sbox{ @apply border border-border rounded-[20px] px-4 py-3.5 min-w-[120px]; background:var(--surface2); }
 .sbox .lbl{ @apply text-[11px] font-extrabold tracking-[.5px] uppercase text-muted; }
 .sctl{ @apply flex items-center justify-between gap-2 mt-2; }
@@ -224,3 +224,11 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .wrow{ display:flex; gap:8px; }
 .wfield{ flex:1; }
 .wsub{ font-size:12px; color:var(--muted); margin-top:9px; }
+
+/* runner: carga as dropdown + manual-input pencil */
+.sbox.grow{ flex:1; min-width:140px; }
+.loadpick{ display:flex; align-items:center; gap:8px; margin-top:8px; }
+.wsel{ flex:1; min-width:0; padding:10px 12px; font-size:17px; font-weight:800; cursor:pointer; }
+.loadpen{ flex:0 0 auto; width:40px; height:40px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--primary); cursor:pointer; font-size:15px; font-family:inherit; }
+.loadpen:active{ background:var(--surface2); }
+.wload{ margin-top:8px; width:100%; font-size:20px; font-weight:800; text-align:center; }

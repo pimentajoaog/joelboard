@@ -86,7 +86,7 @@ function buildStudy(t){
   var config={}; body(t.Config).forEach(function(r){ if(r[0]) config[r[0]]=r[1]; });
   return {
     materias: body(t.Materias).filter(function(r){return r[0];}).map(function(r){ return { id:r[4], nome:String(r[0]), cor:r[1]||SUBJECT_COLORS[0], total:Number(r[2])||0, feitas:Number(r[3])||0 }; }),
-    eventos: body(t.Eventos).filter(function(r){return r[0]||r[2];}).map(function(r){ return { id:r[7], titulo:String(r[0]||''), tipo:r[1]||'Outro', data:String(r[2]||''), hora:String(r[3]||''), materiaId:String(r[4]||''), concluido:!!r[5], notas:String(r[6]||'') }; }),
+    eventos: body(t.Eventos).filter(function(r){return r[0]||r[2];}).map(function(r){ return { id:r[7], titulo:String(r[0]||''), tipo:r[1]||'Outro', data:String(r[2]||''), hora:String(r[3]||''), materiaIds:String(r[4]||'').split(',').filter(Boolean), concluido:!!r[5], notas:String(r[6]||'') }; }),
     anexos: body(t.Anexos||[]).filter(function(r){return r[3];}).map(function(r){ return { materiaId:String(r[0]||''), eventoId:String(r[1]||''), nome:String(r[2]||''), url:String(r[3]||''), fileId:String(r[4]||''), id:r[5] }; }),
     focos: body(t.Foco||[]).filter(function(r){return r[2];}).map(function(r){ return { data:String(r[0]||''), materiaId:String(r[1]||''), min:Number(r[2])||0, id:r[3] }; }),
     config: config
@@ -111,12 +111,13 @@ function renderCal(){
   for(var i=0;i<first;i++) cells+='<div class="cd empty"></div>';
   for(var d=1;d<=dim;d++){
     var iso=calY+'-'+pad(calM+1)+'-'+pad(d); var evs=evtsOn(iso);
-    var dots=evs.slice(0,4).map(function(e){ return '<span class="cdot" style="background:'+(e.materiaId?matColor(e.materiaId):'var(--muted)')+(e.concluido?';opacity:.4':'')+'"></span>'; }).join('');
+    var dots=evs.slice(0,4).map(function(e){ return '<span class="cdot" style="background:'+((e.materiaIds&&e.materiaIds[0])?matColor(e.materiaIds[0]):'var(--muted)')+(e.concluido?';opacity:.4':'')+'"></span>'; }).join('');
     cells+='<div class="cd'+(iso===todayIso?' today':'')+(iso===selDate?' sel':'')+(evs.length?' has':'')+'" onclick="selectDay(\''+iso+'\')"><span class="cdn">'+d+'</span><span class="cdots">'+dots+'</span></div>';
   }
   var head=WD.map(function(w){return '<div class="cwd">'+w[0]+'</div>';}).join('');
   el.innerHTML='<div class="calhead"><button class="navb" onclick="calNav(-1)">‹</button><button class="calmonth" onclick="calToday()">'+MOFULL[calM]+' '+calY+'</button><button class="navb" onclick="calNav(1)">›</button></div>'
     +'<div class="calgrid calwd">'+head+'</div><div class="calgrid">'+cells+'</div>'
+    +'<button class="focuslaunch" onclick="openFoco()">🍅 Modo foco</button>'
     + dayPanelHtml() + proximosHtml();
 }
 function dayPanelHtml(){
@@ -130,8 +131,8 @@ function proximosHtml(){
   return '<div class="secbar" style="margin-top:26px"><div class="sect">⏳ Próximos</div></div>'+up.map(function(e){return evtRow(e,true);}).join('');
 }
 function evtRow(e,showDate){
-  var m=mat(e.materiaId), col=m?m.cor:'var(--muted)', nc=nearClass(e.data,e.concluido);
-  var meta=(m?esc(m.nome)+' · ':'')+'<span class="etype">'+esc(e.tipo)+'</span>'+(e.hora?(' · '+esc(e.hora)):'')+(evtAnexos(e.id).length?' · 📎':'');
+  var subs=(e.materiaIds||[]).map(mat).filter(Boolean); var col=subs[0]?subs[0].cor:'var(--muted)', nc=nearClass(e.data,e.concluido);
+  var meta=(subs.length?subs.map(function(x){return esc(x.nome);}).join(', ')+' · ':'')+'<span class="etype">'+esc(e.tipo)+'</span>'+(e.hora?(' · '+esc(e.hora)):'')+(evtAnexos(e.id).length?' · 📎':'');
   var flag = showDate ? ('<span class="eflag '+nc+'">'+esc(relLabel(e.data))+'</span>') : '';
   return '<div class="erow'+(e.concluido?' done':'')+'" onclick="openEvt(\''+e.id+'\')"><span class="ebar" style="background:'+col+'"></span>'
     +'<div class="einfo"><div class="etitle">'+esc(e.titulo||'(sem título)')+'</div><div class="emeta">'+meta+(showDate?(' · '+esc(fmtBR(e.data))):'')+'</div></div>'
@@ -140,7 +141,7 @@ function evtRow(e,showDate){
 function toggleDone(id){ var e=(DATA.eventos||[]).find(function(x){return x.id===id;}); if(!e) return; e.concluido=!e.concluido; render(); saveEvtRow(e); }
 
 /* ---- event modal ---- */
-var editingEvt=null, evtTipo='Prova', evtMateria='';
+var editingEvt=null, evtTipo='Prova', evtMaterias=[];
 function openEvt(id){
   var e=id?(DATA.eventos||[]).find(function(x){return x.id===id;}):null;
   editingEvt=id||null;
@@ -149,7 +150,7 @@ function openEvt(id){
   $('evtData').value = e?e.data:selDate;
   $('evtHora').value = e?e.hora:'';
   $('evtNotas').value = e?e.notas:'';
-  evtTipo = e?e.tipo:'Prova'; evtMateria = e?e.materiaId:'';
+  evtTipo = e?e.tipo:'Prova'; evtMaterias = e?((e.materiaIds||[]).slice()):[];
   $('evtConcluido').classList.toggle('on', !!(e&&e.concluido));
   $('evtDel').style.display = e?'block':'none';
   renderEvtTipo(); renderEvtMateria();
@@ -160,11 +161,8 @@ function closeEvt(){ $('evtOverlay').classList.remove('open'); }
 function toggleEvtDone(){ $('evtConcluido').classList.toggle('on'); }
 function renderEvtTipo(){ var el=$('evtTipoWrap'); if(!el) return; el.innerHTML='<div class="jb-dd"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>'+esc(evtTipo)+'</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">'+EVENT_TYPES.map(function(t){return '<div class="jb-dd-opt'+(t===evtTipo?' is-sel':'')+'" onclick="pickEvtTipo(\''+t+'\')">'+t+'</div>';}).join('')+'</div></div>'; }
 function pickEvtTipo(t){ evtTipo=t; if(window.JB&&JB.ddClose)JB.ddClose(); renderEvtTipo(); }
-function renderEvtMateria(){ var el=$('evtMatWrap'); if(!el) return; var cur=mat(evtMateria);
-  var btn = cur ? ('<span class="dotc" style="background:'+cur.cor+'"></span>'+esc(cur.nome)) : '— nenhuma —';
-  var opts='<div class="jb-dd-opt'+(evtMateria===''?' is-sel':'')+'" onclick="pickEvtMat(\'\')">— nenhuma —</div>'+(DATA.materias||[]).map(function(m){return '<div class="jb-dd-opt'+(m.id===evtMateria?' is-sel':'')+'" onclick="pickEvtMat(\''+m.id+'\')"><span class="dotc" style="background:'+m.cor+'"></span>'+esc(m.nome)+'</div>';}).join('');
-  el.innerHTML='<div class="jb-dd"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>'+btn+'</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">'+opts+'</div></div>'; }
-function pickEvtMat(id){ evtMateria=id; if(window.JB&&JB.ddClose)JB.ddClose(); renderEvtMateria(); }
+function renderEvtMateria(){ var el=$('evtMatWrap'); if(!el) return; var ms=(DATA.materias||[]); if(!ms.length){ el.innerHTML='<div class="rg">Crie matérias na aba Matérias para vincular.</div>'; return; } el.innerHTML='<div class="matchips">'+ms.map(function(m){ var on=evtMaterias.indexOf(m.id)>-1; return '<button type="button" class="matchip'+(on?' on':'')+'" style="'+(on?('border-color:'+m.cor):'')+'" onclick="toggleEvtMat(\''+m.id+'\')"><span class="dotc" style="background:'+m.cor+'"></span>'+esc(m.nome)+'</button>'; }).join('')+'</div>'; }
+function toggleEvtMat(id){ var i=evtMaterias.indexOf(id); if(i>-1) evtMaterias.splice(i,1); else evtMaterias.push(id); renderEvtMateria(); }
 function saveEvt(){
   var titulo=($('evtTitulo').value||'').trim(); var data=$('evtData').value;
   if(!titulo){ $('evtTitulo').focus(); return; }
@@ -173,13 +171,13 @@ function saveEvt(){
   var e;
   if(editingEvt){ e=(DATA.eventos||[]).find(function(x){return x.id===editingEvt;}); if(!e) return; }
   else { e={id:uuid()}; DATA.eventos.push(e); }
-  e.titulo=titulo; e.tipo=evtTipo; e.data=data; e.hora=($('evtHora').value||''); e.materiaId=evtMateria; e.concluido=concl; e.notas=($('evtNotas').value||'').trim();
+  e.titulo=titulo; e.tipo=evtTipo; e.data=data; e.hora=($('evtHora').value||''); e.materiaIds=evtMaterias.slice(); e.concluido=concl; e.notas=($('evtNotas').value||'').trim();
   closeEvt(); render(); toast('✓ Salvo');
   if(editingEvt){ saveEvtRow(e); } else {
     JB.api('POST', ssUrl('/values/Eventos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[evtRowVals(e)] }).catch(function(){ toast('Erro ao salvar'); });
   }
 }
-function evtRowVals(e){ return [e.titulo,e.tipo,e.data,e.hora,e.materiaId,e.concluido?'1':'',e.notas,e.id]; }
+function evtRowVals(e){ return [e.titulo,e.tipo,e.data,e.hora,(e.materiaIds||[]).join(','),e.concluido?'1':'',e.notas,e.id]; }
 function saveEvtRow(e){ findRow('Eventos',7,e.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Eventos!A'+row+':H'+row)+'?valueInputOption=RAW'), { values:[evtRowVals(e)] }); }).catch(function(){ toast('Erro ao salvar'); }); }
 function deleteEvt(){ if(!editingEvt) return; var id=editingEvt; JB.confirm('Excluir item?','Esse agendamento será removido.', function(){
   DATA.eventos=(DATA.eventos||[]).filter(function(x){return x.id!==id;}); closeEvt(); render(); toast('✓ Excluído');
@@ -192,7 +190,7 @@ function renderMaterias(){
   if(!ms.length){ el.innerHTML='<div class="empty" style="padding:30px 14px">Nenhuma matéria ainda. Toque em "+ Adicionar" para criar uma.</div>'; return; }
   el.innerHTML=ms.map(function(m){
     var pct=m.total>0?Math.min(100,Math.round(m.feitas/m.total*100)):0;
-    var cnt=(DATA.eventos||[]).filter(function(e){return e.materiaId===m.id && !e.concluido && daysUntil(e.data)>=0;}).length; var anx=subjAnexos(m.id).length;
+    var cnt=(DATA.eventos||[]).filter(function(e){return (e.materiaIds||[]).indexOf(m.id)>-1 && !e.concluido && daysUntil(e.data)>=0;}).length; var anx=subjAnexos(m.id).length;
     return '<div class="matc" onclick="openMat(\''+m.id+'\')"><div class="matrow"><span class="dotc lg" style="background:'+m.cor+'"></span><div class="matname">'+esc(m.nome)+'</div>'
       +'<button class="aulabtn" onclick="event.stopPropagation();addAula(\''+m.id+'\')">+1 aula</button></div>'
       +'<div class="matsub">'+m.feitas+' / '+(m.total||'—')+' aulas'+(cnt?(' · '+cnt+' próximo'+(cnt>1?'s':'')):'')+(anx?(' · 📎 '+anx):'')+studyTimeStr(m.id)+'</div>'
@@ -231,7 +229,7 @@ function matRowVals(m){ return [m.nome,m.cor,m.total,m.feitas,m.id]; }
 function saveMatRow(m){ findRow('Materias',4,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Materias!A'+row+':E'+row)+'?valueInputOption=RAW'), { values:[matRowVals(m)] }); }).catch(function(){ toast('Erro ao salvar'); }); }
 function deleteMat(){ if(!editingMat) return; var id=editingMat; JB.confirm('Excluir matéria?','A matéria será removida (os itens ligados a ela ficam sem matéria).', function(){
   DATA.materias=(DATA.materias||[]).filter(function(x){return x.id!==id;});
-  (DATA.eventos||[]).forEach(function(e){ if(e.materiaId===id){ e.materiaId=''; saveEvtRow(e); } });
+  (DATA.eventos||[]).forEach(function(e){ var i=(e.materiaIds||[]).indexOf(id); if(i>-1){ e.materiaIds.splice(i,1); saveEvtRow(e); } });
   closeMat(); render(); toast('✓ Excluído');
   findRow('Materias',4,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Materias'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){ toast('Erro ao excluir'); });
 }, { yes:'Excluir', no:'Cancelar', danger:true }); }
@@ -268,7 +266,7 @@ function pickFileFor(kind,id){ uploadCtx={kind:kind,id:id}; var fi=$('fileInput'
 function onFilePicked(){ var fi=$('fileInput'); var file=fi.files&&fi.files[0]; if(file) doUpload(file); }
 function doUpload(file){
   if(!uploadCtx) return; var ctx=uploadCtx;
-  var matId = ctx.kind==='mat' ? ctx.id : (function(){ var e=(DATA.eventos||[]).find(function(x){return x.id===ctx.id;}); return e?e.materiaId:''; })();
+  var matId = ctx.kind==='mat' ? ctx.id : (function(){ var e=(DATA.eventos||[]).find(function(x){return x.id===ctx.id;}); return (e&&e.materiaIds&&e.materiaIds[0])?e.materiaIds[0]:''; })();
   toast('Enviando '+file.name+'…');
   ensureSub(matId).then(function(folderId){ return uploadFile(file, folderId); }).then(function(f){
     var a={ id:uuid(), materiaId:matId, eventoId:(ctx.kind==='evt'?ctx.id:''), nome:(f.name||file.name), url:(f.webViewLink||''), fileId:(f.id||'') };
@@ -280,7 +278,14 @@ function doUpload(file){
 }
 function anexoRow(a,kind,ctxId){ return '<div class="anexrow"><a class="anexlink" href="'+esc(a.url)+'" target="_blank" rel="noopener">📄 '+esc(a.nome)+'</a><button class="anexx" onclick="removeAnexo(\''+a.id+'\',\''+kind+'\',\''+ctxId+'\')" title="Remover">✕</button></div>'; }
 function renderMatAnexos(matId){ var el=$('matAnexos'); if(!el) return; var list=subjAnexos(matId); el.innerHTML=(list.length?list.map(function(a){return anexoRow(a,'mat',matId);}).join(''):'<div class="rg">Nenhum material ainda.</div>')+'<button class="btn ghost anexbtn" onclick="pickFileFor(\'mat\',\''+matId+'\')">📎 Anexar arquivo</button>'; }
-function renderEvtAnexos(evtId){ var el=$('evtAnexos'); if(!el) return; var list=evtAnexos(evtId); var e=(DATA.eventos||[]).find(function(x){return x.id===evtId;}); var m=e?mat(e.materiaId):null; var matLink=m?('<div class="rg" style="margin-top:7px">📚 <a class="anexlink" style="display:inline" onclick="closeEvt();tab(\'materias\');openMat(\''+m.id+'\')">Materiais de '+esc(m.nome)+'</a></div>'):''; el.innerHTML=(list.length?list.map(function(a){return anexoRow(a,'evt',evtId);}).join(''):'<div class="rg">Nenhum anexo neste item.</div>')+'<button class="btn ghost anexbtn" onclick="pickFileFor(\'evt\',\''+evtId+'\')">📎 Anexar arquivo</button>'+matLink; }
+function renderEvtAnexos(evtId){ var el=$('evtAnexos'); if(!el) return; var list=evtAnexos(evtId); var e=(DATA.eventos||[]).find(function(x){return x.id===evtId;}); var subs=e?((e.materiaIds||[]).map(mat).filter(Boolean)):[]; var matLink=subs.length?('<div class="rg" style="margin-top:8px">📚 Materiais: '+subs.map(function(m){return '<a class="anexlink" style="display:inline" onclick="closeEvt();tab(\'materias\');openMat(\''+m.id+'\')">'+esc(m.nome)+'</a>';}).join(' · ')+'</div>'):''; el.innerHTML=(list.length?list.map(function(a){return anexoRow(a,'evt',evtId);}).join(''):'<div class="rg">Nenhum anexo neste item.</div>')+'<div style="display:flex;gap:8px;margin-top:4px"><button class="btn ghost anexbtn" style="margin-top:0" onclick="pickFileFor(\'evt\',\''+evtId+'\')">📎 Anexar arquivo</button><button class="btn ghost anexbtn" style="margin-top:0" onclick="openLinkPicker(\''+evtId+'\')">🔗 Vincular material</button></div>'+matLink; }
+var linkEvtId=null;
+function openLinkPicker(evtId){ linkEvtId=evtId; var have={}; evtAnexos(evtId).forEach(function(a){ have[a.fileId||a.url]=1; }); var avail=(DATA.anexos||[]).filter(function(a){ return !a.eventoId && !have[a.fileId||a.url]; }); var el=$('linkList');
+  if(!avail.length){ el.innerHTML='<div class="empty" style="padding:22px">Nenhum material disponível. Anexe arquivos a uma matéria primeiro.</div>'; }
+  else { var byM={}; avail.forEach(function(a){ (byM[a.materiaId]=byM[a.materiaId]||[]).push(a); }); var html=''; Object.keys(byM).forEach(function(mid){ var m=mat(mid); html+='<div class="linkhdr"><span class="dotc" style="background:'+(m?m.cor:'var(--muted)')+'"></span>'+esc(m?m.nome:'Sem matéria')+'</div>'+byM[mid].map(function(a){ return '<div class="anexrow" style="cursor:pointer" onclick="linkExisting(\''+a.id+'\')"><span class="anexlink">📄 '+esc(a.nome)+'</span><span style="color:var(--primary);font-weight:800;font-size:13px">+ Vincular</span></div>'; }).join(''); }); el.innerHTML=html; }
+  $('linkOverlay').classList.add('open'); }
+function closeLink(){ $('linkOverlay').classList.remove('open'); }
+function linkExisting(srcId){ var src=(DATA.anexos||[]).find(function(a){return a.id===srcId;}); if(!src||!linkEvtId) return; var a={ id:uuid(), materiaId:src.materiaId, eventoId:linkEvtId, nome:src.nome, url:src.url, fileId:src.fileId }; DATA.anexos.push(a); JB.api('POST', ssUrl('/values/Anexos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[anexoRowVals(a)] }).catch(function(){}); closeLink(); renderEvtAnexos(linkEvtId); renderCal(); toast('✓ Vinculado'); }
 function removeAnexo(id,kind,ctxId){ JB.confirm('Remover anexo?','O arquivo continua no seu Google Drive.', function(){ DATA.anexos=(DATA.anexos||[]).filter(function(a){return a.id!==id;}); if(kind==='mat') renderMatAnexos(ctxId); else renderEvtAnexos(ctxId); renderMaterias(); renderCal(); findRow('Anexos',5,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Anexos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){}); }, { yes:'Remover', no:'Cancelar', danger:true }); }
 function fmtT(x){ var m=Math.floor(x/60),s=x%60; return m+':'+(s<10?'0':'')+s; }
 function studyMin(matId){ return (DATA.focos||[]).filter(function(f){return f.materiaId===matId;}).reduce(function(a,f){return a+(f.min||0);},0); }

@@ -25,7 +25,7 @@
 <div id="app">
   <div class="header">
     <div class="hl"><img src="/icon-192.png" alt="Joelboard"><h1>Study</h1></div>
-    <div class="acct"><span id="acctEmail"></span><button class="lnk" onclick="openFoco()" title="Modo foco">🍅</button><button class="lnk" onclick="openSettings()" title="Ajustes">⚙</button><button class="lnk" onclick="studySignOut()">Sair</button></div>
+    <div class="acct"><span id="acctEmail"></span><button class="lnk" onclick="openSettings()" title="Ajustes">⚙</button><button class="lnk" onclick="studySignOut()">Sair</button></div>
   </div>
   <div class="tabbar">
     <button class="tabb on" data-tab="calendario" onclick="tab('calendario')">Calendário</button>
@@ -79,6 +79,9 @@
   </div>
 </div>
 
+<div class="overlay" id="linkOverlay" onclick="if(event.target===this)closeLink()">
+  <div class="modal"><div class="mh"><div class="mt">Vincular material</div><button class="x" onclick="closeLink()">✕</button></div><div id="linkList" style="max-height:380px;overflow-y:auto"></div></div>
+</div>
 <div class="overlay" id="setOverlay" onclick="if(event.target===this)closeSettings()">
   <div class="modal">
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>

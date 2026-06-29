@@ -562,7 +562,8 @@ select.cs-native { position: absolute; width: 1px; height: 1px; padding: 0; marg
   .cs-menu, .mfield-pop { max-width: calc(100vw - 20px); }
   /* modals slide up as bottom sheets */
   .overlay { align-items: flex-end; }
-  .modal { max-width: 100%; width: 100%; border-radius: 18px 18px 0 0; max-height: 92vh; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); animation: sheetUp 0.24s cubic-bezier(.4,0,.2,1); }
+  .modal { max-width: 100%; width: 100%; border-radius: 18px 18px 0 0; max-height: 92vh; padding: 20px 18px calc(22px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform 0.26s cubic-bezier(.4,0,.2,1); animation: none; }
+  .overlay.open .modal { transform: translateY(0); }
   .modal-head { margin-bottom: 18px; }
 }
 /* ===== Bill split (rachar conta) — Who owes me card ===== */

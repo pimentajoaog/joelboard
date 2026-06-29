@@ -74,3 +74,13 @@ a.tile:hover{ @apply border-primary; transform:translateY(-3px); }
 
 /* skin display font on headings */
 .wm, .name { font-family: var(--font-display); }
+
+/* motion */
+.tile{ animation: jb-rise 0.4s cubic-bezier(.2,.7,.3,1) both; }
+.tile:nth-child(2){ animation-delay: 0.05s; }
+.tile:nth-child(3){ animation-delay: 0.1s; }
+.tile:nth-child(4){ animation-delay: 0.15s; }
+.tile:nth-child(5){ animation-delay: 0.2s; }
+.mbtn{ transition: transform 0.09s ease, border-color 0.15s ease; }
+.mbtn:active{ transform: scale(0.98); }
+.authbtn:active, .gear:active{ transform: scale(0.94); }

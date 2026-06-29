@@ -35,9 +35,12 @@ body.jb-noscroll { overflow: hidden; }
 /* Shared primitives — one definition for every app (overlay + modal). Per-app extras
    (e.g. Finance .modal.split-modal, mobile sheet) layer on top in each app's stylesheet.
    Uses var(--surface)/--border/--radius so it adapts per app and per Finance skin. */
-.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none; align-items: center; justify-content: center; z-index: 200; padding: 18px; backdrop-filter: blur(4px); }
-.overlay.open { display: flex; }
-.modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; overflow-x: hidden; animation: jb-modal-in .2s ease; }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 18px; backdrop-filter: blur(4px); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.2s ease, visibility 0.24s ease; }
+.overlay.open { opacity: 1; visibility: visible; pointer-events: auto; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; overflow-x: hidden; transform: scale(0.94); transition: transform 0.24s cubic-bezier(.2,.85,.3,1); }
+.overlay.open .modal { transform: scale(1); }
+/* respect reduced-motion: no zoom/slide/page-fade for users who ask */
+@media (prefers-reduced-motion: reduce) { .overlay, .modal { transition: none; } .modal { transform: none; } .page.on, .tab-page.active, .tile, .set-pane, .jb-dd.open .jb-dd-menu { animation: none; } }
 @keyframes jb-modal-in { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .mh { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .mt { font-size: 17px; font-weight: 800; }
@@ -98,3 +101,15 @@ body.jb-noscroll { overflow: hidden; }
 .jbt-skip{ background:transparent; border:0; color:var(--muted); font-size:13px; cursor:pointer; font-family:inherit; }
 .jbt-back{ background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
 .jbt-next{ background:var(--brand); border:0; color:var(--on-brand); border-radius:10px; padding:9px 16px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; }
+
+/* ===== Shared animation kit (ported from Finance's polish) ===== */
+@keyframes jb-fade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes jb-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes jb-pop  { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+.jb-fade-in { animation: jb-fade 0.22s ease both; }
+.jb-rise-in { animation: jb-rise 0.34s cubic-bezier(.2,.7,.3,1) both; }
+/* press feedback + smooth transitions on shared interactive bits */
+.btn-primary, .jb-dd-btn, .cc-btn, .echk { transition: transform 0.09s ease, opacity 0.2s ease, border-color 0.15s ease, background 0.15s ease; }
+.btn-primary:active, .jb-dd-btn:active, .cc-btn:active, .echk:active { transform: scale(0.98); }
+/* dropdown menu pops in when opened */
+.jb-dd.open .jb-dd-menu { animation: jb-pop 0.15s ease; }

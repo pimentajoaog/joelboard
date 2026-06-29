@@ -68,6 +68,7 @@ Plain CSS on CSS-variable tokens (adapts per app + per Finance skin). Provides:
 - **Slide-in nudge/confirm card:** `.confirm-card` (+ `.show`) — bottom-right toast-style prompt, NOT a modal. Inner: `.cc-head` / `.cc-x` / `.cc-body` / `.cc-q`(` strong` = green highlight) / `.cc-btns` / `.cc-btn`(`.yes` = affirmative green). Use for low-friction confirmations & contextual nudges (see Finance `showNudge`/salary card).
 - **Input:** `.field` (+ `:focus`)
 - **Primary button:** `.btn-primary`
+- **Animation kit:** keyframes `jb-fade` / `jb-rise` / `jb-pop` + utility classes `.jb-fade-in` / `.jb-rise-in`; press-feedback (`:active` scale) + smooth transitions are built into `.btn-primary`/`.jb-dd-btn`/`.cc-btn`, and `.jb-dd-menu` pops in. **For tab transitions, add `animation: jb-fade .22s ease` to your page-active class** (Fit/Study use `.page.on`, Finance `.tab-page.active`). Keyframes live in joelboard.css so any app can reference them.
 
 ## Design tokens (set in each app's `:root`, mapped to Tailwind utilities)
 

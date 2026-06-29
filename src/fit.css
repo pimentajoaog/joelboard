@@ -232,3 +232,13 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .loadpen.ok{ background:var(--success); color:#05281c; border-color:var(--success); font-weight:800; }
 .loadpen:active{ opacity:.85; }
 .wload{ flex:1; min-width:0; font-size:18px; font-weight:800; text-align:center; }
+
+/* motion */
+.page.on{ animation: jb-fade 0.22s ease; }
+.set-pane{ animation: jb-fade 0.18s ease; }
+.btn{ transition: transform 0.09s ease; }
+.btn:active{ transform: scale(0.96); }
+.row, .exc, .selrow{ transition: transform 0.12s ease, border-color 0.12s ease; }
+.row:hover{ transform: translateY(-1px); }
+.fab{ transition: transform 0.12s ease; }
+.fab:active{ transform: scale(0.92); }

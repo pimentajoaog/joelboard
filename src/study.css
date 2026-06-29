@@ -1,0 +1,114 @@
+/* Joelboard Study — styles, Tailwind-based. © 2026 Joel Soluções LTDA.
+   Preflight off (tailwind.config) so the reset below is the single source of truth.
+   :root tokens use the shared neutral vocabulary; --primary is Study's violet accent. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --primary:#a78bfa; --text:#e7eaf3; --muted:#7b85a0; --success:#34d399; --radius:16px; --radius-sm:10px; --brand:var(--primary); --on-brand:#241544; --font-body:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; --font-display:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+
+*,::before,::after{ box-sizing:border-box; margin:0; padding:0; border-width:0; border-style:solid; border-color:var(--border); }
+button,input,select,textarea{ font-family:inherit; }
+html,body{ overflow-x:hidden; }
+body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg); font-family:var(--font-body); padding:26px 18px 90px; }
+
+#loading{ @apply max-w-[480px] mx-auto; }
+#app{ @apply hidden max-w-[760px] mx-auto; }
+
+.header{ @apply flex items-center justify-between gap-3 mb-5; }
+.hl{ @apply flex items-center gap-2.5; }
+.hl img{ @apply w-[34px] h-[34px] rounded-[9px]; }
+.hl h1{ @apply text-xl font-extrabold tracking-[-.4px]; font-family:var(--font-display); }
+.acct{ @apply text-xs text-muted flex items-center gap-2.5; }
+.lnk{ @apply bg-transparent border-0 text-primary font-bold text-xs cursor-pointer; font-family:inherit; }
+
+.tabbar{ @apply flex gap-0.5 border-b border-border mb-5 overflow-x-auto overflow-y-hidden; touch-action:pan-x; scrollbar-width:none; }
+.tabbar::-webkit-scrollbar{ display:none; }
+.tabb{ @apply flex-[0_0_auto] bg-transparent border-0 text-muted text-sm font-semibold px-3.5 py-3 cursor-pointer border-b-2 border-b-transparent -mb-px; font-family:inherit; }
+.tabb.on{ @apply text-primary; border-bottom-color:var(--primary); }
+
+.page{ @apply hidden; }
+.page.on{ @apply block; }
+
+.secbar{ @apply flex items-center justify-between gap-2.5 mb-3.5 flex-wrap; }
+.sect{ @apply text-[11px] font-bold tracking-[.8px] uppercase text-muted; }
+
+.btn{ @apply bg-primary border-0 rounded-full px-[15px] py-2 font-extrabold text-[13px] cursor-pointer text-[color:var(--on-brand)]; font-family:inherit; }
+.btn.ghost{ @apply bg-surface2 text-ink border border-border font-bold; }
+.rg{ @apply text-xs text-muted mt-px; }
+.empty{ @apply text-muted text-center py-10 px-4 text-[13px]; }
+.foot{ @apply text-center text-muted text-[11px] opacity-[0.55] mt-9; }
+
+.fab{ @apply fixed bottom-[22px] right-[18px] w-[54px] h-[54px] rounded-full bg-primary border-0 text-[30px] cursor-pointer flex items-center justify-center z-40 text-[color:var(--on-brand)]; box-shadow:0 6px 22px color-mix(in srgb, var(--primary) 38%, transparent); }
+.door{ @apply fixed bottom-5 left-4 z-40 w-[42px] h-[42px] rounded-xl bg-surface border border-border text-primary flex items-center justify-center cursor-pointer; box-shadow:0 3px 12px rgba(0,0,0,0.25); }
+
+.fg{ @apply mb-3.5; }
+.fl{ @apply block text-xs text-muted mb-1.5 font-semibold; }
+.field{ width:100%; }
+textarea.field{ resize:vertical; min-height:64px; }
+.toast{ @apply fixed left-1/2 bottom-[84px] bg-surface2 border border-border text-ink px-4 py-2.5 rounded-full text-[13px] opacity-0 pointer-events-none z-[300] whitespace-nowrap; transform:translateX(-50%); transition:opacity .2s; }
+.toast.show{ @apply opacity-100; }
+
+.gate{ @apply max-w-[420px] mx-auto my-10 text-center; }
+.gate .gt{ @apply text-[22px] font-extrabold tracking-[-.5px]; font-family:var(--font-display); }
+.gate .gs{ @apply text-muted text-[13px] mt-1.5 mb-6; }
+
+.set-tabs{ @apply flex gap-1 mb-4 border-b border-border flex-nowrap overflow-x-auto overflow-y-hidden; touch-action:pan-x; scrollbar-width:none; }
+.set-tabs::-webkit-scrollbar{ display:none; }
+.set-tab{ @apply bg-transparent border-0 border-b-2 border-b-transparent text-muted text-[13px] font-bold px-3 py-2 cursor-pointer -mb-px whitespace-nowrap flex-[0_0_auto]; font-family:inherit; }
+.set-tab.active{ @apply text-primary; border-bottom-color:var(--primary); }
+
+/* color dots + swatches + toggle */
+.dotc{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:7px; flex:0 0 auto; vertical-align:middle; }
+.dotc.lg{ width:14px; height:14px; }
+.cswatch{ width:30px; height:30px; border-radius:9px; cursor:pointer; border:2px solid transparent; }
+.cswatch.on{ border-color:var(--text); box-shadow:0 0 0 2px var(--surface) inset; }
+.tg{ @apply inline-flex items-center gap-2 bg-surface2 border border-border rounded-full px-[14px] py-2 text-[13px] font-bold cursor-pointer text-muted; font-family:inherit; }
+.tg.on{ background:color-mix(in srgb, var(--success) 18%, var(--surface)); border-color:var(--success); color:var(--success); }
+.tg.on::before{ content:'✓ '; }
+
+/* calendar */
+.calhead{ @apply flex items-center justify-between mb-3; }
+.navb{ @apply w-9 h-9 rounded-full bg-surface2 border border-border text-ink text-lg cursor-pointer; font-family:inherit; }
+.calmonth{ @apply bg-transparent border-0 text-base font-extrabold text-ink cursor-pointer capitalize; font-family:var(--font-display); }
+.calgrid{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+.calwd{ margin-bottom:6px; }
+.cwd{ @apply text-[11px] font-bold text-muted text-center; }
+.cd{ position:relative; min-height:46px; border-radius:11px; background:var(--surface); border:1px solid var(--border); cursor:pointer; padding:6px 7px; display:flex; flex-direction:column; justify-content:space-between; transition:border-color .12s; }
+.cd.empty{ background:transparent; border-color:transparent; cursor:default; }
+.cd:hover{ border-color:var(--primary); }
+.cd.has{ background:var(--surface2); }
+.cd.today .cdn{ color:var(--primary); font-weight:900; }
+.cd.sel{ border-color:var(--primary); box-shadow:0 0 0 1px var(--primary); }
+.cdn{ @apply text-[13px] font-semibold text-ink; }
+.cdots{ display:flex; gap:3px; flex-wrap:wrap; }
+.cdot{ width:6px; height:6px; border-radius:50%; }
+
+/* event rows */
+.erow{ @apply flex items-center gap-3 bg-surface border border-border rounded-[14px] px-3.5 py-3 mb-2 cursor-pointer; }
+.erow:hover{ border-color:var(--primary); }
+.erow.done{ opacity:.55; }
+.erow.done .etitle{ text-decoration:line-through; }
+.ebar{ width:4px; align-self:stretch; border-radius:3px; flex:0 0 auto; }
+.einfo{ flex:1; min-width:0; }
+.etitle{ @apply text-[15px] font-semibold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.emeta{ @apply text-xs text-muted mt-px; }
+.etype{ @apply inline-block text-[10px] font-bold uppercase tracking-[.4px] rounded px-1.5 py-0.5; background:var(--surface2); color:var(--muted); }
+.eflag{ @apply text-[11px] font-bold rounded-full px-2 py-1 whitespace-nowrap; background:var(--surface2); color:var(--muted); }
+.eflag.warn{ color:#fbbf24; background:rgba(251,191,36,.14); }
+.eflag.soon{ color:var(--primary); background:color-mix(in srgb, var(--primary) 16%, var(--surface)); }
+.eflag.over{ color:#fb7185; background:rgba(251,113,133,.16); }
+.echk{ @apply w-7 h-7 rounded-full border border-border bg-transparent text-success text-[13px] font-bold cursor-pointer flex items-center justify-center flex-[0_0_auto]; font-family:inherit; }
+.echk.on{ background:color-mix(in srgb, var(--success) 18%, var(--surface)); border-color:var(--success); }
+
+/* matérias */
+.matc{ @apply bg-surface border border-border rounded-[16px] p-4 mb-2.5 cursor-pointer; }
+.matc:hover{ border-color:var(--primary); }
+.matrow{ @apply flex items-center gap-2.5; }
+.matname{ @apply flex-1 text-[15px] font-bold; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aulabtn{ @apply bg-surface2 border border-border text-ink text-xs font-bold rounded-full px-3 py-1.5 cursor-pointer flex-[0_0_auto]; font-family:inherit; }
+.aulabtn:active{ background:color-mix(in srgb, var(--primary) 18%, var(--surface)); }
+.matsub{ @apply text-xs text-muted mt-2 mb-2; }
+.pbar{ height:8px; border-radius:6px; background:var(--surface2); overflow:hidden; }
+.pbar span{ display:block; height:100%; border-radius:6px; transition:width .3s; }
+.del{ @apply w-full bg-transparent border-0 text-muted text-[13px] underline cursor-pointer mt-3; font-family:inherit; }

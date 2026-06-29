@@ -92,6 +92,9 @@ Theme = override these vars under `body[data-skin="…"]`. Themes stay **per-app
    **Theming:** call `JB.applySkin('newapp')` once on load, and drop `JB.renderSkinPicker('newapp', el)` into a settings "Tema" section — the 8 skins + persistence come free.
 4. **Data:** `JB.requestToken(true)` → `JB.resolveSheet({app:'newapp', namePart:'Joelboard', requiredTabs:[...]})`
    → `JB.api(...)`; persist with `JB.setSheetId('newapp', id)`. Create the per-user sheet in the user's Drive.
+   **`requiredTabs` validation is `.some` (≥1 present), so pass only tabs UNIQUE to this app** — never the
+   shared `Config` tab, or resolveSheet will match another app's sheet on a fresh device (e.g. Study uses
+   `['Materias','Eventos']`, not `['…','Config']`). Use a small `ensureTabs()` to create any missing tabs (incl. Config) after resolve.
 5. **Shell:** dark theme + Hanken Grotesk; a `←` hub door (`location.href='/'`); tabbed settings overlay
    with `id="setOverlay"`; put **Enviar feedback** in settings.
 6. Add a tile for it on the Hub.

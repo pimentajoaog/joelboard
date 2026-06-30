@@ -69,8 +69,9 @@ function ensureTabs(){
       return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data: missing.map(function(t){ return { range:t[0]+'!A1', values:[t[1]] }; }) }); })
     .then(function(){}).catch(function(){});
 }
-function ensureTipoHeader(){ if(notasGrid['Itens']==null) return Promise.resolve(); return JB.api('GET', ssUrl('/values/'+encodeURIComponent('Itens!1:1'))).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[6]==='Tipo') return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Itens!G1')+'?valueInputOption=RAW'), { values:[['Tipo']] }); }).catch(function(){}); }
-function ensureVenceHeader(){ if(notasGrid['Notas']==null) return Promise.resolve(); return JB.api('GET', ssUrl('/values/'+encodeURIComponent('Notas!1:1'))).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[7]==='Vence') return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Notas!H1')+'?valueInputOption=RAW'), { values:[['Vence']] }); }).catch(function(){}); }
+function ensureGrid(tab, minCols){ var sid=notasGrid[tab]; if(sid==null) return Promise.resolve(); return JB.api('GET','https://sheets.googleapis.com/v4/spreadsheets/'+JB.getSheetId('notas')+'?fields=sheets(properties(sheetId,gridProperties(columnCount)))').then(function(meta){ var cc=0; (meta.sheets||[]).forEach(function(sh){ if(sh.properties.sheetId===sid) cc=((sh.properties.gridProperties)||{}).columnCount||0; }); if(cc>=minCols) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ updateSheetProperties:{ properties:{ sheetId:sid, gridProperties:{ columnCount:minCols } }, fields:'gridProperties.columnCount' } }] }); }).catch(function(){}); }
+function ensureTipoHeader(){ if(notasGrid['Itens']==null) return Promise.resolve(); return ensureGrid('Itens',7).then(function(){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent('Itens!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[6]==='Tipo') return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Itens!G1')+'?valueInputOption=RAW'), { values:[['Tipo']] }); }).catch(function(){}); }
+function ensureVenceHeader(){ if(notasGrid['Notas']==null) return Promise.resolve(); return ensureGrid('Notas',8).then(function(){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent('Notas!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[7]==='Vence') return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Notas!H1')+'?valueInputOption=RAW'), { values:[['Vence']] }); }).catch(function(){}); }
 function gate(){
   loadingHtml('<div class="gate"><div class="gt">📝 Comece suas listas</div><div class="gs">Crie sua planilha de notas — ela fica no seu Google Drive.</div>'
     + '<button class="btn-primary" onclick="createSheet()">✨ Criar minhas notas</button>'
@@ -115,7 +116,7 @@ function show(){ $('loading').style.display='none'; $('app').style.display='bloc
 /* ---- routing / render ---- */
 function note(id){ return (DATA.notas||[]).find(function(n){return n.id===id;}); }
 function render(){ var ed=!!(openNoteId&&note(openNoteId)); $('fab').style.display=ed?'none':'flex'; if(ed) renderEditor(); else renderHomeShell(); }
-function openNote(id){ openNoteId=id; render(); window.scrollTo(0,0); }
+function openNote(id){ openNoteId=id; _lastTick=null; render(); window.scrollTo(0,0); }
 function backHome(){ openNoteId=null; render(); }
 
 /* ---- home ---- */
@@ -154,13 +155,14 @@ function createNote(){ var t=($('newTitle').value||'').trim(); var kd=kindDef(ne
 /* ---- editor ---- */
 function renderEditor(){
   var n=note(openNoteId); if(!n){ openNoteId=null; renderHomeShell(); return; }
-  var kd=kindDef(n.tipo); var src=lastNoteOfKind(n.tipo,n.id); var fc=fillableCount(n,src);
+  var kd=kindDef(n.tipo); var src=lastNoteOfKind(n.tipo,n.id); var fc=fillableCount(n,src); var doneN=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel && x.feito;}).length;
   var html='<div style="--kc:'+kd.color+'">'
     +'<button class="lnk" onclick="backHome()">← Listas</button>'
     +'<div class="ed-head"><span class="ed-ico">'+kd.icon+'</span><input class="ed-title" id="edTitle" value="'+escAttr(n.titulo)+'" onblur="commitTitle(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()"></div>'
     +'<div class="ed-sub"><b>'+esc(kd.label)+'</b> · criada '+esc(relTime(n.criado))+'</div>'
     +'<div class="duerow"><span class="dl">📅 Prazo</span><input type="date" class="field due-input" id="edDue" value="'+esc(n.vence||'')+'" onchange="commitDue(this.value)">'+(n.vence?'<button class="due-clear" onclick="clearDue()" title="Remover prazo">✕</button>':'')+'</div>'
     + (fc? '<button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button>':'')
+    + (doneN? '<button class="delchecked" onclick="deleteChecked()">🗑 Excluir marcados ('+doneN+')</button>':'')
     +'<div id="edItems"></div>'
     +'<div class="iadd"><span class="ico">+</span><input id="addInput" placeholder="Adicionar item… (cole várias linhas de uma vez)" autocomplete="off" oninput="renderUsuals()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addItemFromInput();}" onpaste="addPaste(event)"><button class="iaddbtn" onclick="addItemFromInput()">Adicionar</button></div>'
     +'<button class="gaddbtn" onclick="addGroup()">＋ Adicionar grupo</button>'
@@ -192,7 +194,7 @@ function persistItems(arr){ if(!arr||!arr.length) return; JB.api('GET', ssUrl('/
 function itemRow(it, hidden){
   var done=it.feito;
   var left = it.marcavel
-    ? '<button class="ichk'+(done?' on':'')+'" onclick="toggleItem(\''+it.id+'\')" title="Marcar">'+(done?'✓':'')+'</button>'
+    ? '<button class="ichk'+(done?' on':'')+'" onclick="toggleItem(event,\''+it.id+'\')" title="Marcar (shift+clique = intervalo)">'+(done?'✓':'')+'</button>'
     : '<span class="ispacer" title="linha de texto">¶</span>';
   var typeBtn = it.marcavel
     ? '<button class="itype" title="Tornar texto" onclick="convertItem(\''+it.id+'\',0)">¶</button>'
@@ -207,7 +209,9 @@ function nextOrd(){ var o=1; (DATA.itens||[]).forEach(function(x){ if(x.notaId==
 function addItemText(text, mk){ var n=note(openNoteId); if(!n) return null; var kd=kindDef(n.tipo); var it={ id:uuid(), notaId:openNoteId, ordem:nextOrd(), texto:text, marcavel:(mk==null?kd.defCheck:!!mk), feito:false, tipo:'' }; DATA.itens=DATA.itens||[]; DATA.itens.push(it); appendItem(it); touchNote(n); return it; }
 function addItemFromInput(){ var inp=$('addInput'); var v=(inp.value||'').trim(); if(!v) return; addItemText(v); inp.value=''; renderItems(); renderUsuals(); setTimeout(function(){ var a=$('addInput'); if(a) a.focus(); },10); }
 function addUsual(t){ addItemText(t); var inp=$('addInput'); if(inp) inp.value=''; renderItems(); renderUsuals(); }
-function toggleItem(id){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; it.feito=!it.feito; renderItems(); saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
+function toggleItem(ev,id){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return;
+  if(ev && ev.shiftKey && _lastTick && _lastTick!==id){ var its=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel;}); var i1=-1,i2=-1; for(var k=0;k<its.length;k++){ if(its[k].id===_lastTick) i1=k; if(its[k].id===id) i2=k; } if(i1>-1 && i2>-1){ var lo=Math.min(i1,i2), hi=Math.max(i1,i2), target=!it.feito, changed=[]; for(var j=lo;j<=hi;j++){ if(its[j].feito!==target){ its[j].feito=target; changed.push(its[j]); } } _lastTick=id; renderItems(); if(changed.length) persistItems(changed); var nn=note(openNoteId); if(nn) touchNote(nn); return; } }
+  it.feito=!it.feito; _lastTick=id; renderItems(); saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
 function convertItem(id,mk){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; it.marcavel=!!mk; if(!mk) it.feito=false; renderItems(); saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
 function commitText(id,val){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; var v=val.replace(/\s+$/,''); if(it.tipo==='g'){ if(v===it.texto) return; it.texto=v; saveItemRow(it); var ng=note(openNoteId); if(ng) touchNote(ng); return; } if(!v.trim()){ deleteItem(id); return; } if(v===it.texto) return; it.texto=v; saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
 function deleteItem(id){ DATA.itens=(DATA.itens||[]).filter(function(x){return x.id!==id;}); renderItems(); renderUsuals(); var n=note(openNoteId); if(n) touchNote(n); findRow('Itens',5,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:notasGrid['Itens'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){}); }
@@ -301,10 +305,12 @@ function itemPaste(e,id){ var t=((e.clipboardData||window.clipboardData)||{}).ge
 function normalizeOrder(){ var its=itemsOf(openNoteId); var changed=false; its.forEach(function(x,i){ if(x.ordem!==i+1){ x.ordem=i+1; changed=true; } }); if(changed) persistOrder(); }
 function persistOrder(){ JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; var rowOf={}; for(var i=1;i<v.length;i++){ rowOf[String((v[i]||[])[5])]=i+1; } var data=(DATA.itens||[]).filter(function(x){return x.notaId===openNoteId && rowOf[x.id];}).map(function(x){ return { range:'Itens!B'+rowOf[x.id], values:[[x.ordem]] }; }); if(!data.length) return; return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data:data }); }).catch(function(){}); }
 function applyOrder(ids){ var idx={}; ids.forEach(function(id,i){ idx[id]=i+1; }); (DATA.itens||[]).forEach(function(x){ if(x.notaId===openNoteId && idx[x.id]!=null) x.ordem=idx[x.id]; }); renderItems(); persistOrder(); var n=note(openNoteId); if(n) touchNote(n); }
-var _drag=null;
+var _drag=null, _lastTick=null;
 function dragBegin(ev,id){ ev.preventDefault(); var cont=$('edItems'); if(!cont) return; var row=cont.querySelector('[data-id="'+id+'"]'); if(!row) return; var block=[row]; if(row.getAttribute('data-g')==='1'){ var sib=row.nextElementSibling; while(sib && sib.getAttribute('data-g')!=='1'){ block.push(sib); sib=sib.nextElementSibling; } } _drag={ block:block, cont:cont, moved:false }; block.forEach(function(b){ b.classList.add('dragging'); }); document.addEventListener('pointermove', dragMove, {passive:false}); document.addEventListener('pointerup', dragEnd, {once:true}); }
 function dragMove(ev){ if(!_drag) return; ev.preventDefault(); _drag.moved=true; var cont=_drag.cont, y=ev.clientY; var rows=[].slice.call(cont.children).filter(function(r){ return _drag.block.indexOf(r)<0 && !r.classList.contains('ihide'); }); var target=null; for(var i=0;i<rows.length;i++){ var rect=rows[i].getBoundingClientRect(); if(y < rect.top+rect.height/2){ target=rows[i]; break; } } _drag.block.forEach(function(b){ if(target) cont.insertBefore(b,target); else cont.appendChild(b); }); }
 function dragEnd(){ if(!_drag) return; document.removeEventListener('pointermove', dragMove); _drag.block.forEach(function(b){ b.classList.remove('dragging'); }); var cont=_drag.cont, moved=_drag.moved; _drag=null; if(!moved) return; var ids=[].slice.call(cont.children).filter(function(r){return r.getAttribute && r.getAttribute('data-id');}).map(function(r){return r.getAttribute('data-id');}); applyOrder(ids); }
+
+function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel && x.feito;}); if(!done.length) return; var ids={}; done.forEach(function(x){ids[x.id]=1;}); JB.confirm('Excluir marcados?', done.length+(done.length>1?' itens marcados serão removidos.':' item marcado será removido.'), function(){ DATA.itens=(DATA.itens||[]).filter(function(x){return !ids[x.id];}); renderEditor(); var n=note(openNoteId); if(n) touchNote(n); JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; var rows=[]; for(var i=1;i<v.length;i++){ if(ids[String((v[i]||[])[5])]) rows.push(i+1); } rows.sort(function(a,b){return b-a;}); if(rows.length) return JB.api('POST', ssUrl(':batchUpdate'), { requests: rows.map(function(r){ return { deleteDimension:{ range:{ sheetId:notasGrid['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }; }) }); }).catch(function(){}); toast('✓ Removidos'); }, { yes:'Excluir', no:'Cancelar', danger:true }); }
 
 JB.applySkin('notas');
 startAuth();

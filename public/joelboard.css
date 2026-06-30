@@ -122,8 +122,8 @@ body.jb-noscroll { overflow: hidden; }
 .jb-cal-nav:active { transform: scale(.94); }
 .jb-cal-dows { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 4px; margin-bottom: 6px; }
 .jb-cal-dows span { text-align: center; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-.jb-cal-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 4px; }
-.jb-cal-d { aspect-ratio: 1/1; min-width: 0; min-height: 0; border: 0; background: transparent; color: var(--text); border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; font-family: inherit; }
+.jb-cal-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); grid-auto-rows: 40px; gap: 4px; }
+.jb-cal-d { min-width: 0; border: 0; background: transparent; color: var(--text); border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; font-family: inherit; }
 .jb-cal-d.empty { pointer-events: none; }
 .jb-cal-d:hover { background: var(--surface2); }
 .jb-cal-d.today { box-shadow: inset 0 0 0 1.5px var(--primary); color: var(--primary); }

@@ -297,11 +297,17 @@ function noteRowVals(n){ return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.cri
 function mdToHtml(t){ var s=esc(t); s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>'); s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>'); s=s.replace(/__([^_\n]+)__/g,'<u>$1</u>'); s=s.replace(/~~([^~\n]+)~~/g,'<s>$1</s>'); return s; }
 function startEdit(id){ _editId=id; renderItems(); var bar=$('fmtBar'); if(bar) bar.classList.add('show'); positionFmtBar(); }
 function exitEdit(){ if(_editId==null) return; _editId=null; var bar=$('fmtBar'); if(bar) bar.classList.remove('show'); renderItems(); }
-function fmt(mk){ var ta=$('editTA'); if(!ta) return; var sS=ta.selectionStart||0, sE=ta.selectionEnd||0, v=ta.value, sel=v.slice(sS,sE), L=mk.length;
-  if(sel.length>=2*L && sel.slice(0,L)===mk && sel.slice(sel.length-L)===mk){ var inner=sel.slice(L, sel.length-L); ta.value=v.slice(0,sS)+inner+v.slice(sE); ta.focus(); try{ ta.setSelectionRange(sS, sS+inner.length); }catch(_){} }
-  else if(v.slice(sS-L,sS)===mk && v.slice(sE,sE+L)===mk){ ta.value=v.slice(0,sS-L)+sel+v.slice(sE+L); ta.focus(); try{ ta.setSelectionRange(sS-L, sS-L+sel.length); }catch(_){} }
-  else { ta.value=v.slice(0,sS)+mk+sel+mk+v.slice(sE); ta.focus(); try{ ta.setSelectionRange(sS+L, sS+L+sel.length); }catch(_){} }
-  if(ta.tagName==='TEXTAREA') autoGrow(ta); }
+function wordAt(v,pos){ var i=pos,j=pos; var isW=function(c){ return c && /\S/.test(c) && c!=='*' && c!=='_' && c!=='~'; }; while(i>0 && isW(v[i-1])) i--; while(j<v.length && isW(v[j])) j++; return [i,j]; }
+function fmt(mk){ var ta=$('editTA'); if(!ta) return; var v=ta.value, sS=ta.selectionStart||0, sE=ta.selectionEnd||0, L=mk.length, sel0=v.slice(sS,sE);
+  // (a) selection already includes the markers -> strip them
+  if(sel0.length>=2*L && sel0.slice(0,L)===mk && sel0.slice(sel0.length-L)===mk){ var inner=sel0.slice(L,sel0.length-L); ta.value=v.slice(0,sS)+inner+v.slice(sE); ta.focus(); try{ ta.setSelectionRange(sS,sS+inner.length); }catch(_){} if(ta.tagName==='TEXTAREA') autoGrow(ta); return; }
+  // no selection -> expand to the word under the cursor
+  if(sS===sE){ var w=wordAt(v,sS); sS=w[0]; sE=w[1]; }
+  // (b) is [sS,sE] inside an enclosing mk...mk pair? -> remove that pair (toggle off)
+  var open=v.lastIndexOf(mk, sS-1);
+  if(open>=0){ var close=v.indexOf(mk, Math.max(sE, open+L)); if(close>=0){ var b1=v.slice(open+L,sS), b2=v.slice(sE,close); if(b1.indexOf(mk)===-1 && b2.indexOf(mk)===-1){ ta.value=v.slice(0,open)+v.slice(open+L,close)+v.slice(close+L); ta.focus(); try{ ta.setSelectionRange(sS-L,sE-L); }catch(_){} if(ta.tagName==='TEXTAREA') autoGrow(ta); return; } } }
+  // (c) wrap
+  var sel=v.slice(sS,sE); ta.value=v.slice(0,sS)+mk+sel+mk+v.slice(sE); ta.focus(); try{ ta.setSelectionRange(sS+L,sS+L+sel.length); }catch(_){} if(ta.tagName==='TEXTAREA') autoGrow(ta); }
 function fmtApply(ev,mk){ if(ev) ev.preventDefault(); fmt(mk); }
 function fmtDone(ev){ if(ev) ev.preventDefault(); var ta=$('editTA'); if(ta) ta.blur(); }
 function positionFmtBar(){ var bar=$('fmtBar'); if(!bar||!bar.classList.contains('show')) return; var vv=window.visualViewport; if(vv){ var gap=window.innerHeight-(vv.height+vv.offsetTop); bar.style.bottom=(Math.max(gap,0)+8)+'px'; } else { bar.style.bottom='18px'; } }

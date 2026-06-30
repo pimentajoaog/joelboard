@@ -1,6 +1,6 @@
 /* Joelboard Notas — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
-var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false;
+var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, newDue='';
 var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']]];
 var KINDS=[
   {k:'compras', label:'Compras', icon:'🛒', color:'#34d399', defCheck:true},
@@ -38,6 +38,10 @@ function dueStripHtml(){
   if(!ds.length) return '';
   return '<div class="secbar" style="margin-bottom:8px"><div class="sect">⏳ Com prazo</div></div><div class="due-strip">'+ds.map(function(n){ var kd=kindDef(n.tipo); var open=noteOpen(n); return '<div class="due-row" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')"><span class="dr-ico">'+kd.icon+'</span><span class="dr-title">'+esc(n.titulo)+'</span>'+(open?'<span class="dr-rem">faltam '+open+'</span>':'')+'<span class="due-badge '+dueClass(n.vence)+'">'+esc(dueLabel(n.vence))+'</span></div>'; }).join('')+'</div>';
 }
+function fmtDateBR(iso){ var p=String(iso||'').split('-'); return p.length===3? (p[2]+'/'+p[1]+'/'+p[0]) : iso; }
+function pickNewDate(){ JB.datePicker(newDue, function(iso){ newDue=iso; renderNewDate(); }); }
+function renderNewDate(){ var b=$('newDateBtn'); if(!b) return; b.textContent = newDue? fmtDateBR(newDue) : 'Escolher data…'; b.classList.toggle('empty', !newDue); }
+function pickDue(){ var n=note(openNoteId); if(!n) return; JB.datePicker(n.vence, function(iso){ commitDue(iso); }); }
 function commitDue(v){ var n=note(openNoteId); if(!n) return; n.vence=v||''; touchNote(n); renderEditor(); }
 function clearDue(){ var n=note(openNoteId); if(!n) return; n.vence=''; touchNote(n); renderEditor(); }
 
@@ -116,7 +120,7 @@ function show(){ $('loading').style.display='none'; $('app').style.display='bloc
 /* ---- routing / render ---- */
 function note(id){ return (DATA.notas||[]).find(function(n){return n.id===id;}); }
 function render(){ var ed=!!(openNoteId&&note(openNoteId)); $('fab').style.display=ed?'none':'flex'; if(ed) renderEditor(); else renderHomeShell(); }
-function openNote(id){ openNoteId=id; _lastTick=null; render(); window.scrollTo(0,0); }
+function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; render(); window.scrollTo(0,0); }
 function backHome(){ openNoteId=null; render(); }
 
 /* ---- home ---- */
@@ -146,11 +150,11 @@ function togglePin(ev,id){ ev.stopPropagation(); var n=note(id); if(!n) return; 
 
 /* ---- new note ---- */
 var newKind='tarefas';
-function openNew(){ newKind='tarefas'; renderNewKind(); $('newTitle').value=''; if($('newDate'))$('newDate').value=''; $('newOverlay').classList.add('open'); setTimeout(function(){ $('newTitle').focus(); },60); }
+function openNew(){ newKind='tarefas'; renderNewKind(); $('newTitle').value=''; newDue=''; renderNewDate(); $('newOverlay').classList.add('open'); setTimeout(function(){ $('newTitle').focus(); },60); }
 function closeNew(){ $('newOverlay').classList.remove('open'); }
 function renderNewKind(){ var el=$('newKindWrap'); if(!el) return; var cur=kindDef(newKind); el.innerHTML='<div class="jb-dd"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>'+cur.icon+' '+esc(cur.label)+'</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">'+KINDS.map(function(k){return '<div class="jb-dd-opt'+(k.k===newKind?' is-sel':'')+'" onclick="pickNewKind(\''+k.k+'\')">'+k.icon+' '+esc(k.label)+'</div>';}).join('')+'</div></div>'; }
 function pickNewKind(k){ newKind=k; if(window.JB&&JB.ddClose)JB.ddClose(); renderNewKind(); }
-function createNote(){ var t=($('newTitle').value||'').trim(); var kd=kindDef(newKind); if(!t){ var d=new Date(); t=kd.label+' — '+MOFULL[d.getMonth()]; } var now=new Date().toISOString(); var n={ id:uuid(), titulo:t, tipo:newKind, cor:'', fixado:false, criado:now, atualizado:now, vence:(($('newDate')&&$('newDate').value)||'') }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); closeNew(); openNote(n.id); }
+function createNote(){ var t=($('newTitle').value||'').trim(); var kd=kindDef(newKind); if(!t){ var d=new Date(); t=kd.label+' — '+MOFULL[d.getMonth()]; } var now=new Date().toISOString(); var n={ id:uuid(), titulo:t, tipo:newKind, cor:'', fixado:false, criado:now, atualizado:now, vence:newDue }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); closeNew(); openNote(n.id); }
 
 /* ---- editor ---- */
 function renderEditor(){
@@ -160,7 +164,7 @@ function renderEditor(){
     +'<button class="lnk" onclick="backHome()">← Listas</button>'
     +'<div class="ed-head"><span class="ed-ico">'+kd.icon+'</span><input class="ed-title" id="edTitle" value="'+escAttr(n.titulo)+'" onblur="commitTitle(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()"></div>'
     +'<div class="ed-sub"><b>'+esc(kd.label)+'</b> · criada '+esc(relTime(n.criado))+'</div>'
-    +'<div class="duerow"><span class="dl">📅 Prazo</span><input type="date" class="field due-input" id="edDue" value="'+esc(n.vence||'')+'" onchange="commitDue(this.value)">'+(n.vence?'<button class="due-clear" onclick="clearDue()" title="Remover prazo">✕</button>':'')+'</div>'
+    +'<div class="duerow"><span class="dl">📅 Prazo</span><button type="button" class="field datebtn'+(n.vence?'':' empty')+'" id="edDueBtn" onclick="pickDue()">'+(n.vence?esc(fmtDateBR(n.vence)):'Definir prazo')+'</button>'+(n.vence?'<button class="due-clear" onclick="clearDue()" title="Remover prazo">✕</button>':'')+'</div>'
     + (fc? '<button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button>':'')
     +'<button class="delchecked" id="delChecked" onclick="deleteChecked()" style="display:'+(doneN?'inline-flex':'none')+'">🗑 Excluir marcados ('+doneN+')</button>'
     +'<div id="edItems"></div>'
@@ -177,7 +181,7 @@ function renderItems(){
   var collapsed=false, html='';
   its.forEach(function(it){ if(it.tipo==='g'){ collapsed=!!it.feito; html+=groupRow(it); } else { html+=itemRow(it, collapsed); } });
   el.innerHTML=html;
-  var tas=el.querySelectorAll('textarea.itext'); for(var i=0;i<tas.length;i++) autoGrow(tas[i]);
+  var ed=el.querySelector('#editTA'); if(ed){ ed.focus(); try{ var L=ed.value.length; ed.setSelectionRange(L,L); }catch(e){} if(ed.tagName==='TEXTAREA') autoGrow(ed); }
   updateDelChecked();
 }
 function updateDelChecked(){ var b=$('delChecked'); if(!b) return; var dn=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel && x.feito;}).length; b.style.display=dn?'inline-flex':'none'; b.textContent='🗑 Excluir marcados ('+dn+')'; }
@@ -188,7 +192,9 @@ function groupRow(g){ var st=groupStats(g.id); var allon=st.total>0 && st.done==
   return '<div class="ihdr'+(g.feito?' collapsed':'')+'" data-id="'+g.id+'" data-g="1">'
   +'<button class="ihandle" onpointerdown="dragBegin(event,\''+g.id+'\')" title="Arrastar">⠿</button>'
   +'<button class="gchev" onclick="toggleGroup(\''+g.id+'\')" title="Expandir/recolher">'+(g.feito?'▸':'▾')+'</button>'+chk
-  +'<input class="gname" value="'+escAttr(g.texto)+'" placeholder="Nome do grupo" autocomplete="off" onblur="commitText(\''+g.id+'\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}">'
+  +((g.id===_editId)
+     ? '<input class="gname" id="editTA" value="'+escAttr(g.texto)+'" placeholder="Nome do grupo" autocomplete="off" onblur="commitText(\''+g.id+'\',this.value);exitEdit();" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}">'
+     : '<div class="gname gname-view" onclick="startEdit(\''+g.id+'\')">'+(g.texto?mdToHtml(g.texto):'<span class="iplace">Nome do grupo</span>')+'</div>')
   +'<span class="gcount">'+(st.total?(st.done+'/'+st.total):'')+'</span>'
   +'<button class="idel" title="Remover grupo" onclick="deleteGroup(\''+g.id+'\')">✕</button></div>'; }
 function toggleGroupAll(gid){ var its=itemsOf(openNoteId); var i=-1; for(var k=0;k<its.length;k++){ if(its[k].id===gid){ i=k; break; } } if(i<0) return; var members=[]; for(var j=i+1;j<its.length;j++){ if(its[j].tipo==='g') break; if(its[j].marcavel) members.push(its[j]); } if(!members.length) return; var allDone=members.every(function(m){return m.feito;}); var target=!allDone; members.forEach(function(m){ m.feito=target; }); renderItems(); persistItems(members); var n=note(openNoteId); if(n) touchNote(n); }
@@ -201,9 +207,11 @@ function itemRow(it, hidden){
   var typeBtn = it.marcavel
     ? '<button class="itype" title="Tornar texto" onclick="convertItem(\''+it.id+'\',0)">¶</button>'
     : '<button class="itype" title="Tornar item marcável" onclick="convertItem(\''+it.id+'\',1)">☑</button>';
+  var body = (it.id===_editId)
+    ? '<textarea class="itext" id="editTA" rows="1" autocomplete="off" oninput="autoGrow(this)" onblur="commitText(\''+it.id+'\',this.value);exitEdit();" onkeydown="itemKey(event,\''+it.id+'\')" onpaste="itemPaste(event,\''+it.id+'\')">'+esc(it.texto)+'</textarea>'
+    : '<div class="itext itext-view" onclick="startEdit(\''+it.id+'\')">'+(it.texto?mdToHtml(it.texto):'<span class="iplace">(vazio)</span>')+'</div>';
   return '<div class="irow'+(done?' done':'')+(hidden?' ihide':'')+'" data-id="'+it.id+'">'
-    +'<button class="ihandle" onpointerdown="dragBegin(event,\''+it.id+'\')" title="Arrastar">⠿</button>'+left
-    +'<textarea class="itext" rows="1" autocomplete="off" oninput="autoGrow(this)" onblur="commitText(\''+it.id+'\',this.value)" onkeydown="itemKey(event,\''+it.id+'\')" onpaste="itemPaste(event,\''+it.id+'\')">'+esc(it.texto)+'</textarea>'
+    +'<button class="ihandle" onpointerdown="dragBegin(event,\''+it.id+'\')" title="Arrastar">⠿</button>'+left+body
     +typeBtn+'<button class="idel" title="Excluir" onclick="deleteItem(\''+it.id+'\')">✕</button></div>';
 }
 function itemKey(e,id){ if(e.key==='Enter'){ e.preventDefault(); commitText(id,e.target.value); var a=$('addInput'); if(a) a.focus(); } }
@@ -273,6 +281,14 @@ function createNoteFromKind(kind,titulo,fill){ var now=new Date().toISOString();
 
 /* ---- persistence ---- */
 function noteRowVals(n){ return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.criado,n.atualizado,n.id,n.vence||'']; }
+function mdToHtml(t){ var s=esc(t); s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>'); s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>'); s=s.replace(/__([^_\n]+)__/g,'<u>$1</u>'); s=s.replace(/~~([^~\n]+)~~/g,'<s>$1</s>'); return s; }
+function startEdit(id){ _editId=id; renderItems(); var bar=$('fmtBar'); if(bar) bar.classList.add('show'); positionFmtBar(); }
+function exitEdit(){ if(_editId==null) return; _editId=null; var bar=$('fmtBar'); if(bar) bar.classList.remove('show'); renderItems(); }
+function fmt(mk){ var ta=$('editTA'); if(!ta) return; var sS=ta.selectionStart||0, sE=ta.selectionEnd||0, v=ta.value, sel=v.slice(sS,sE); ta.value=v.slice(0,sS)+mk+sel+mk+v.slice(sE); ta.focus(); var cs=sS+mk.length; try{ ta.setSelectionRange(cs, cs+sel.length); }catch(_){} if(ta.tagName==='TEXTAREA') autoGrow(ta); }
+function fmtApply(ev,mk){ if(ev) ev.preventDefault(); fmt(mk); }
+function fmtDone(ev){ if(ev) ev.preventDefault(); var ta=$('editTA'); if(ta) ta.blur(); }
+function positionFmtBar(){ var bar=$('fmtBar'); if(!bar||!bar.classList.contains('show')) return; var vv=window.visualViewport; if(vv){ var gap=window.innerHeight-(vv.height+vv.offsetTop); bar.style.bottom=(Math.max(gap,0)+8)+'px'; } else { bar.style.bottom='18px'; } }
+if(window.visualViewport){ window.visualViewport.addEventListener('resize', positionFmtBar); window.visualViewport.addEventListener('scroll', positionFmtBar); }
 function itemRowVals(it){ return [it.notaId,it.ordem,it.texto,it.marcavel?'1':'',it.feito?'1':'',it.id,it.tipo||'']; }
 function appendNote(n){ JB.api('POST', ssUrl('/values/Notas:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[noteRowVals(n)] }).catch(function(){ toast('Erro ao salvar'); }); }
 function saveNoteRow(n){ findRow('Notas',6,n.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Notas!A'+row+':H'+row)+'?valueInputOption=RAW'), { values:[noteRowVals(n)] }); }).catch(function(){}); }
@@ -307,7 +323,7 @@ function itemPaste(e,id){ var t=((e.clipboardData||window.clipboardData)||{}).ge
 function normalizeOrder(){ var its=itemsOf(openNoteId); var changed=false; its.forEach(function(x,i){ if(x.ordem!==i+1){ x.ordem=i+1; changed=true; } }); if(changed) persistOrder(); }
 function persistOrder(){ JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; var rowOf={}; for(var i=1;i<v.length;i++){ rowOf[String((v[i]||[])[5])]=i+1; } var data=(DATA.itens||[]).filter(function(x){return x.notaId===openNoteId && rowOf[x.id];}).map(function(x){ return { range:'Itens!B'+rowOf[x.id], values:[[x.ordem]] }; }); if(!data.length) return; return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data:data }); }).catch(function(){}); }
 function applyOrder(ids){ var idx={}; ids.forEach(function(id,i){ idx[id]=i+1; }); (DATA.itens||[]).forEach(function(x){ if(x.notaId===openNoteId && idx[x.id]!=null) x.ordem=idx[x.id]; }); renderItems(); persistOrder(); var n=note(openNoteId); if(n) touchNote(n); }
-var _drag=null, _lastTick=null;
+var _drag=null, _lastTick=null, _editId=null;
 function dragBegin(ev,id){ ev.preventDefault(); var cont=$('edItems'); if(!cont) return; var row=cont.querySelector('[data-id="'+id+'"]'); if(!row) return; var block=[row]; if(row.getAttribute('data-g')==='1'){ var sib=row.nextElementSibling; while(sib && sib.getAttribute('data-g')!=='1'){ block.push(sib); sib=sib.nextElementSibling; } } _drag={ block:block, cont:cont, moved:false }; block.forEach(function(b){ b.classList.add('dragging'); }); document.addEventListener('pointermove', dragMove, {passive:false}); document.addEventListener('pointerup', dragEnd, {once:true}); }
 function dragMove(ev){ if(!_drag) return; ev.preventDefault(); _drag.moved=true; var cont=_drag.cont, y=ev.clientY; var rows=[].slice.call(cont.children).filter(function(r){ return _drag.block.indexOf(r)<0 && !r.classList.contains('ihide'); }); var target=null; for(var i=0;i<rows.length;i++){ var rect=rows[i].getBoundingClientRect(); if(y < rect.top+rect.height/2){ target=rows[i]; break; } } _drag.block.forEach(function(b){ if(target) cont.insertBefore(b,target); else cont.appendChild(b); }); }
 function dragEnd(){ if(!_drag) return; document.removeEventListener('pointermove', dragMove); _drag.block.forEach(function(b){ b.classList.remove('dragging'); }); var cont=_drag.cont, moved=_drag.moved; _drag=null; if(!moved) return; var ids=[].slice.call(cont.children).filter(function(r){return r.getAttribute && r.getAttribute('data-id');}).map(function(r){return r.getAttribute('data-id');}); applyOrder(ids); }

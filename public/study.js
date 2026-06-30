@@ -148,7 +148,7 @@ function openEvt(id){
   editingEvt=id||null;
   $('evtTitle').textContent = e?'Editar item':'Novo item';
   $('evtTitulo').value = e?e.titulo:'';
-  $('evtData').value = e?e.data:selDate;
+  JB.dpSet('evtData', e?e.data:selDate);
   $('evtHora').value = e?e.hora:'';
   $('evtNotas').value = e?e.notas:'';
   evtTipo = e?e.tipo:'Prova'; evtMaterias = e?((e.materiaIds||[]).slice()):[];
@@ -165,7 +165,7 @@ function pickEvtTipo(t){ evtTipo=t; if(window.JB&&JB.ddClose)JB.ddClose(); rende
 function renderEvtMateria(){ var el=$('evtMatWrap'); if(!el) return; var ms=(DATA.materias||[]); if(!ms.length){ el.innerHTML='<div class="rg">Crie matérias na aba Matérias para vincular.</div>'; return; } el.innerHTML='<div class="matchips">'+ms.map(function(m){ var on=evtMaterias.indexOf(m.id)>-1; return '<button type="button" class="matchip'+(on?' on':'')+'" style="'+(on?('border-color:'+m.cor):'')+'" onclick="toggleEvtMat(\''+m.id+'\')"><span class="dotc" style="background:'+m.cor+'"></span>'+esc(m.nome)+'</button>'; }).join('')+'</div>'; }
 function toggleEvtMat(id){ var i=evtMaterias.indexOf(id); if(i>-1) evtMaterias.splice(i,1); else evtMaterias.push(id); renderEvtMateria(); }
 function saveEvt(){
-  var titulo=($('evtTitulo').value||'').trim(); var data=$('evtData').value;
+  var titulo=($('evtTitulo').value||'').trim(); var data=JB.dpGet('evtData');
   if(!titulo){ $('evtTitulo').focus(); return; }
   if(!data){ toast('Escolha uma data'); return; }
   var concl=$('evtConcluido').classList.contains('on');

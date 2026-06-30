@@ -53,7 +53,7 @@
     <div class="fg"><label class="fl">Tipo</label><div id="evtTipoWrap"></div></div>
     <div class="fg"><label class="fl">Matéria</label><div id="evtMatWrap"></div></div>
     <div style="display:flex;gap:10px">
-      <div class="fg" style="flex:1"><label class="fl">Data</label><input class="field" id="evtData" type="date"></div>
+      <div class="fg" style="flex:1"><label class="fl">Data</label><button type="button" class="field datebtn empty" id="evtData" data-iso="" data-ph="dd/mm/aaaa" onclick="JB.dpOpen('evtData')">dd/mm/aaaa</button></div>
       <div class="fg" style="flex:0 0 38%"><label class="fl">Hora (opcional)</label><input class="field" id="evtHora" type="time"></div>
     </div>
     <div class="fg"><label class="fl">Notas</label><textarea class="field" id="evtNotas" placeholder="Conteúdo, capítulos, link…"></textarea></div>

@@ -276,6 +276,53 @@
   }
   function tourEnd(markDone){ var ov=document.getElementById('jbTour'); if(ov) ov.style.display='none'; if(markDone) ls('jb_tour_'+_tApp,'1'); if(_tDone) _tDone(); }
 
+
+  // ---- Shared in-app date picker (popup month calendar) ----
+  function datePicker(curISO, onPick, opts){
+    opts = opts || {};
+    var MO=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var DOW=['D','S','T','Q','Q','S','S'];
+    function p2(n){ return (n<10?'0':'')+n; }
+    function isoOf(y,m,d){ return y+'-'+p2(m+1)+'-'+p2(d); }
+    function parse(x){ var a=String(x||'').split('-'); return (a.length===3)? new Date(+a[0],+a[1]-1,+a[2]) : null; }
+    var sel = (curISO && /^\d{4}-\d{2}-\d{2}$/.test(curISO)) ? curISO : '';
+    var base = parse(sel) || new Date();
+    var vy=base.getFullYear(), vm=base.getMonth();
+    var t=new Date(), todayISO=isoOf(t.getFullYear(),t.getMonth(),t.getDate());
+    var ov=document.createElement('div'); ov.className='overlay';
+    ov.innerHTML = '<div class="modal jb-cal" role="dialog">'
+      + '<div class="jb-cal-head"><button type="button" class="jb-cal-nav" data-nav="-1" aria-label="Anterior">‹</button>'
+      + '<div class="jb-cal-title"></div>'
+      + '<button type="button" class="jb-cal-nav" data-nav="1" aria-label="Próximo">›</button></div>'
+      + '<div class="jb-cal-dows">' + DOW.map(function(w){return '<span>'+w+'</span>';}).join('') + '</div>'
+      + '<div class="jb-cal-grid"></div>'
+      + '<div class="jb-cal-foot"><button type="button" class="jb-cal-link" data-act="clear">'+(opts.clearLabel||'Limpar')+'</button>'
+      + '<button type="button" class="jb-cal-link strong" data-act="today">Hoje</button></div></div>';
+    document.body.appendChild(ov);
+    requestAnimationFrame(function(){ ov.classList.add('open'); });
+    function close(){ ov.classList.remove('open'); setTimeout(function(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }, 220); }
+    function draw(){
+      ov.querySelector('.jb-cal-title').textContent = MO[vm]+' '+vy;
+      var first=new Date(vy,vm,1).getDay(), dim=new Date(vy,vm+1,0).getDate(), cells='';
+      for(var i=0;i<first;i++) cells+='<span class="jb-cal-d empty"></span>';
+      for(var d=1;d<=dim;d++){ var iso=isoOf(vy,vm,d), cls='jb-cal-d'; if(iso===todayISO) cls+=' today'; if(iso===sel) cls+=' sel'; cells+='<button type="button" class="'+cls+'" data-d="'+d+'">'+d+'</button>'; }
+      ov.querySelector('.jb-cal-grid').innerHTML=cells;
+    }
+    ov.addEventListener('click', function(e){
+      if(e.target===ov){ close(); return; }
+      var nav=e.target.closest && e.target.closest('.jb-cal-nav'); if(nav){ vm+=(+nav.getAttribute('data-nav')); if(vm<0){vm=11;vy--;} if(vm>11){vm=0;vy++;} draw(); return; }
+      var act=e.target.closest && e.target.closest('[data-act]'); if(act){ var a=act.getAttribute('data-act'); if(a==='clear'){ onPick(''); } else { var n=new Date(); onPick(isoOf(n.getFullYear(),n.getMonth(),n.getDate())); } close(); return; }
+      var day=e.target.closest && e.target.closest('.jb-cal-d'); if(day && day.getAttribute('data-d')){ onPick(isoOf(vy,vm,+day.getAttribute('data-d'))); close(); return; }
+    });
+    draw();
+  }
+
+  // date-field glue: a .datebtn button stores ISO in data-iso, shows dd/mm/yyyy
+  function dpFmt(iso){ var p=String(iso||'').split('-'); return p.length===3? p[2]+'/'+p[1]+'/'+p[0] : (iso||''); }
+  function dpSet(id, iso){ var b=document.getElementById(id); if(!b) return; b.setAttribute('data-iso', iso||''); b.textContent = iso? dpFmt(iso) : (b.getAttribute('data-ph')||'Escolher data…'); b.classList.toggle('empty', !iso); }
+  function dpGet(id){ var b=document.getElementById(id); return b? (b.getAttribute('data-iso')||'') : ''; }
+  function dpOpen(id, onChange){ var b=document.getElementById(id); if(!b) return; datePicker(b.getAttribute('data-iso')||'', function(iso){ dpSet(id, iso); if(typeof onChange==='function') onChange(iso); }); }
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, email: email, fetchEmail: fetchEmail,
@@ -283,6 +330,6 @@
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, toast: jbToast, confirm: confirm, whenReady: whenReady,
-    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone
+    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt
   };
 })();

@@ -1058,7 +1058,7 @@ function unpaidExtra() {
   return t;
 }
 
-function setDefaultDate() { document.getElementById('txDate').value = isFuture() ? ymStr(selY,selM)+'-01' : todayStr(); }
+function setDefaultDate() { JB.dpSet('txDate', isFuture() ? ymStr(selY,selM)+'-01' : todayStr()); }
 function navigate(d) { selM += d; if (selM > 11) { selM = 0; selY++; } if (selM < 0) { selM = 11; selY--; } editingHoursDate=null; setDefaultDate(); renderAll(); }
 function updateMonthDisplay() {
   document.getElementById('monthDisplay').textContent = new Date(selY, selM, 1).toLocaleString(L(), {month:'long', year:'numeric'});
@@ -1520,7 +1520,7 @@ function editTx(id) {
   editing={type:'transactions',id:id};
   document.getElementById('txTitle').textContent=t('tx.edit'); document.getElementById('txDel').style.display='block'; document.getElementById('txSave').textContent=t('tx.update');
   setType(tx.type);
-  document.getElementById('txDate').value=tx.date; document.getElementById('txDesc').value=tx.description; selectCategory('txCat', tx.category); document.getElementById('txAmt').value=tx.amount;
+  JB.dpSet('txDate', tx.date); document.getElementById('txDesc').value=tx.description; selectCategory('txCat', tx.category); document.getElementById('txAmt').value=tx.amount;
   document.getElementById('txOverlay').classList.add('open');
 }
 function setType(t) {
@@ -1530,7 +1530,7 @@ function setType(t) {
 }
 function submitTx() {
   setFormError('txErr','');
-  const date=document.getElementById('txDate').value, desc=document.getElementById('txDesc').value.trim(), cat=document.getElementById('txCat').value, amt=parseAmount(document.getElementById('txAmt').value);
+  const date=JB.dpGet('txDate'), desc=document.getElementById('txDesc').value.trim(), cat=document.getElementById('txCat').value, amt=parseAmount(document.getElementById('txAmt').value);
   if (!date||!desc||!amt||amt<=0) { setFormError('txErr',t('err.allFields')); return; }
   saveRecord('transactions', {date,description:desc,category:cat,amount:amt,type:txType}, document.getElementById('txSave'), editing.id?t('tx.update'):t('tx.save'), 'txOverlay');
 }
@@ -1660,20 +1660,20 @@ function renderGoals() {
 function openGoal() {
   closeFab(); editing={type:null,id:null};
   document.getElementById('goalTitle').textContent=t('goal.add'); document.getElementById('goalDel').style.display='none'; document.getElementById('goalSave').textContent=t('goal.save');
-  document.getElementById('goalName').value=''; document.getElementById('goalTarget').value=''; document.getElementById('goalCurrent').value=''; document.getElementById('goalDeadline').value=''; document.getElementById('goalColor').value='#818cf8';
+  document.getElementById('goalName').value=''; document.getElementById('goalTarget').value=''; document.getElementById('goalCurrent').value=''; JB.dpSet('goalDeadline',''); document.getElementById('goalColor').value='#818cf8';
   document.getElementById('goalOverlay').classList.add('open');
 }
 function editGoal(id) {
   const g = (DATA.goals||[]).find(x=>x.id===id); if(!g) return;
   editing={type:'goals',id:id};
   document.getElementById('goalTitle').textContent=t('goal.edit'); document.getElementById('goalDel').style.display='block'; document.getElementById('goalSave').textContent=t('goal.update');
-  document.getElementById('goalName').value=g.name; document.getElementById('goalTarget').value=g.target; document.getElementById('goalCurrent').value=g.current; document.getElementById('goalDeadline').value=g.deadline||'';
+  document.getElementById('goalName').value=g.name; document.getElementById('goalTarget').value=g.target; document.getElementById('goalCurrent').value=g.current; JB.dpSet('goalDeadline', g.deadline||'');
   document.getElementById('goalColor').value=/^#[0-9a-fA-F]{6}$/.test(g.color)?g.color:'#818cf8';
   document.getElementById('goalOverlay').classList.add('open');
 }
 function submitGoal() {
   setFormError('goalErr','');
-  const name=document.getElementById('goalName').value.trim(), target=parseAmount(document.getElementById('goalTarget').value), current=parseAmount(document.getElementById('goalCurrent').value)||0, deadline=document.getElementById('goalDeadline').value, color=document.getElementById('goalColor').value;
+  const name=document.getElementById('goalName').value.trim(), target=parseAmount(document.getElementById('goalTarget').value), current=parseAmount(document.getElementById('goalCurrent').value)||0, deadline=JB.dpGet('goalDeadline'), color=document.getElementById('goalColor').value;
   if (!name||!target||target<=0) { setFormError('goalErr',t('err.goalFields')); return; }
   saveRecord('goals', {name,target,current,deadline,color}, document.getElementById('goalSave'), editing.id?t('goal.update'):t('goal.save'), 'goalOverlay');
 }

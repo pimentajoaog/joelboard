@@ -193,7 +193,7 @@
   <div class="modal">
     <div class="modal-head"><div class="modal-title" id="txTitle">Add Transaction</div><button class="close-btn" onclick="closeOverlay('txOverlay')">✕</button></div>
     <div class="fg"><label class="flabel" data-i18n="f.type">Type</label><div class="type-row"><button class="type-btn exp" id="btnExp" onclick="setType('Expense')" data-i18n="type.expense">💸 Expense</button><button class="type-btn" id="btnInc" onclick="setType('Income')" data-i18n="type.income">💰 Income</button></div></div>
-    <div class="fg"><label class="flabel" data-i18n="f.date">Date</label><input type="date" class="field" id="txDate"></div>
+    <div class="fg"><label class="flabel" data-i18n="f.date">Date</label><button type="button" class="field datebtn empty" id="txDate" data-iso="" data-ph="dd/mm/aaaa" onclick="JB.dpOpen('txDate')">dd/mm/aaaa</button></div>
     <div class="fg"><label class="flabel" data-i18n="f.description">Description</label><input type="text" class="field" id="txDesc" placeholder="e.g. Mercado, Salário…" data-i18n-ph="ph.txDesc"></div>
     <div class="fg"><label class="flabel" data-i18n="f.category">Category</label><select class="fselect" id="txCat"></select></div>
     <div class="fg"><label class="flabel" data-i18n-html="amt.tx">Amount (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="field" id="txAmt" placeholder="0,00" onblur="normAmount(this)"></div>
@@ -277,7 +277,7 @@
     <div class="fg"><label class="flabel" data-i18n="f.goalName">Goal Name</label><input type="text" class="field" id="goalName" placeholder="e.g. Emergency Fund" data-i18n-ph="ph.goalName"></div>
     <div class="fg"><label class="flabel" data-i18n-html="amt.target">Target Amount (<span class="cur-sym"></span>)</label><input type="text" inputmode="decimal" class="field" id="goalTarget" placeholder="0,00" onblur="normAmount(this)"></div>
     <div class="fg"><label class="flabel" data-i18n-html="amt.startBal">Starting Balance (<span class="cur-sym"></span> — planned savings add on top)</label><input type="text" inputmode="decimal" class="field" id="goalCurrent" placeholder="0,00" onblur="normAmount(this)"></div>
-    <div class="fg"><label class="flabel" data-i18n="f.deadline">Deadline (optional — goal hides after it passes)</label><input type="date" class="field" id="goalDeadline"></div>
+    <div class="fg"><label class="flabel" data-i18n="f.deadline">Deadline (optional — goal hides after it passes)</label><button type="button" class="field datebtn empty" id="goalDeadline" data-iso="" data-ph="dd/mm/aaaa" onclick="JB.dpOpen('goalDeadline')">dd/mm/aaaa</button></div>
     <div class="fg"><label class="flabel" data-i18n="f.color">Color</label><input type="color" class="field" id="goalColor" value="#818cf8" style="height:42px;padding:4px;cursor:pointer;"></div>
     <div class="form-err" id="goalErr"></div><button class="btn-primary" id="goalSave" onclick="submitGoal()">Save Goal</button>
     <button class="del-btn" id="goalDel" onclick="deleteCurrent('goals')" style="display:none;" data-i18n="goal.delete">Delete Goal</button>

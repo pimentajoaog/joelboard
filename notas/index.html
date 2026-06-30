@@ -44,7 +44,7 @@
     <div class="mh"><div class="mt">Nova lista</div><button class="x" onclick="closeNew()">✕</button></div>
     <div class="fg"><label class="fl">Tipo</label><div id="newKindWrap"></div></div>
     <div class="fg"><label class="fl">Título</label><input class="field" id="newTitle" placeholder="ex.: Compras do mês"></div>
-    <div class="fg"><label class="fl">Prazo (opcional)</label><input class="field due-input" id="newDate" type="date" style="color-scheme:dark"></div>
+    <div class="fg"><label class="fl">Prazo (opcional)</label><button type="button" class="field datebtn empty" id="newDateBtn" onclick="pickNewDate()">Escolher data…</button></div>
     <button class="btn-primary" onclick="createNote()">Criar</button>
   </div>
 </div>
@@ -77,6 +77,15 @@
   <button class="cc-x" onclick="dismissNudge()">✕</button>
   <div class="cc-body"><div class="cc-q" id="nudgeQ"></div></div>
   <div class="cc-btns"><button class="cc-btn" onclick="dismissNudge()">Agora não</button><button class="cc-btn yes" onclick="acceptNudge()" id="nudgeYes">Recriar</button></div>
+</div>
+
+<!-- inline formatting toolbar (shown while editing an item/group) -->
+<div class="fmtbar" id="fmtBar">
+  <button type="button" onpointerdown="fmtApply(event,'**')" title="Negrito"><b>B</b></button>
+  <button type="button" onpointerdown="fmtApply(event,'*')" title="Italico"><i>I</i></button>
+  <button type="button" onpointerdown="fmtApply(event,'__')" title="Sublinhado"><u>U</u></button>
+  <button type="button" onpointerdown="fmtApply(event,'~~')" title="Tachado"><s>S</s></button>
+  <button type="button" class="fmtdone" onpointerdown="fmtDone(event)" title="Pronto">&#10003;</button>
 </div>
 
 <div class="toast" id="toast"></div>

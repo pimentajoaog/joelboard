@@ -147,3 +147,7 @@ textarea.itext{ resize:none; overflow:hidden; font-family:inherit; line-height:1
 .iaddbtn{ background:var(--primary); border:0; color:var(--on-brand); border-radius:99px; padding:6px 14px; font-weight:800; font-size:12px; cursor:pointer; flex:0 0 auto; font-family:inherit; }
 .gaddbtn{ display:block; width:100%; background:transparent; border:1px dashed var(--border); color:var(--muted); border-radius:var(--radius-sm); padding:8px 12px; font-weight:700; font-size:12px; cursor:pointer; margin-top:10px; font-family:inherit; }
 .gaddbtn:hover{ color:var(--text); border-color:var(--muted); }
+
+/* group "tick all" checkbox states */
+.gchk{ margin-right:2px; }
+.ichk.part{ border-color:var(--primary); color:var(--primary); font-size:16px; }

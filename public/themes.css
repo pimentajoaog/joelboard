@@ -61,3 +61,52 @@ body[data-skin="mint"] {
   --font-body:'Hanken Grotesk',sans-serif; --font-display:'Hanken Grotesk',sans-serif;
   --success: var(--income);
 }
+
+/* ===== Day / Night ===== Each skin gets its OPPOSITE mode, tinted by its own accent
+   (color-mix) so the light/dark counterpart still feels like that skin. The base skin block
+   stays the NATIVE look; these [data-mode] blocks only kick in on the flipped side.
+   Generic default-theme (no skin) modes use :not([data-skin]) so they never fight a skin. */
+
+/* default theme (no skin): native is dark (app :root); add a light flip */
+body:not([data-skin])[data-mode="light"] {
+  --bg: color-mix(in srgb, var(--primary) 5%, #faf9f5);
+  --surface: color-mix(in srgb, var(--primary) 3%, #ffffff);
+  --surface2: color-mix(in srgb, var(--primary) 8%, #efedf0);
+  --border: color-mix(in srgb, var(--primary) 14%, #e2e0e6);
+  --text: #1b1b22; --muted: #79798a;
+  --shadow: 0 4px 18px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+/* dark-native skins -> LIGHT variant */
+body[data-skin="vault"][data-mode="light"],
+body[data-skin="arcade"][data-mode="light"] {
+  --bg: color-mix(in srgb, var(--primary) 6%, #faf8f2);
+  --surface: color-mix(in srgb, var(--primary) 3%, #ffffff);
+  --surface2: color-mix(in srgb, var(--primary) 10%, #f0ece2);
+  --border: color-mix(in srgb, var(--primary) 16%, #e4ddcf);
+  --text: color-mix(in srgb, var(--primary) 24%, #1b1813);
+  --muted: color-mix(in srgb, var(--primary) 20%, #8a8478);
+  --shadow: 0 6px 22px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+/* light-native skins -> DARK variant */
+body[data-skin="garden"][data-mode="dark"],
+body[data-skin="aperture"][data-mode="dark"],
+body[data-skin="sorbet"][data-mode="dark"],
+body[data-skin="mint"][data-mode="dark"] {
+  --bg: color-mix(in srgb, var(--primary) 7%, #0e1014);
+  --surface: color-mix(in srgb, var(--primary) 10%, #161922);
+  --surface2: color-mix(in srgb, var(--primary) 14%, #1f2330);
+  --border: color-mix(in srgb, var(--primary) 20%, #2c3140);
+  --text: color-mix(in srgb, var(--primary) 8%, #eef0f6);
+  --muted: color-mix(in srgb, var(--primary) 18%, #8990a2);
+  --shadow: none;
+}
+
+/* Press has an INK accent (near-black) — its dark variant inverts to a paper-cream accent so it stays visible */
+body[data-skin="press"][data-mode="dark"] {
+  --bg: #14130f; --surface: #1c1b15; --surface2: #24221a; --border: #322f25;
+  --text: #efe9da; --muted: #8f8a7b;
+  --primary: #ece4d0; --on-brand: #1c1813;
+  --shadow: none;
+}

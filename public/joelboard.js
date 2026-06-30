@@ -190,15 +190,29 @@
   function skinKey(app){ return 'jb_skin_' + app; }
   function getSkin(app){ return lg(skinKey(app)) || 'default'; }
   function applySkinAttr(id){ whenReady(function(){ if (id && id !== 'default') document.body.setAttribute('data-skin', id); else document.body.removeAttribute('data-skin'); }); }
-  function applySkin(app){ applySkinAttr(getSkin(app)); }
-  function setSkin(app, id){ if (id && id !== 'default') ls(skinKey(app), id); else lr(skinKey(app)); applySkinAttr(id); return id; }
+  function applySkin(app){ applySkinAttr(getSkin(app)); applyModeAttr(getMode(app)); }
+  function setSkin(app, id){ if (id && id !== 'default') ls(skinKey(app), id); else lr(skinKey(app)); applySkinAttr(id); applyModeAttr(getMode(app)); return id; }
+  // --- day / night mode (orthogonal to skin; each skin has a native mode, user can flip) ---
+  var SKIN_MODE = { vault:'dark', arcade:'dark', garden:'light', aperture:'light', sorbet:'light', press:'light', mint:'light' };
+  function nativeMode(app){ return SKIN_MODE[getSkin(app)] || 'dark'; }
+  function modeKey(app){ return 'jb_mode_' + app; }
+  function getMode(app){ return lg(modeKey(app)) || nativeMode(app); }
+  function applyModeAttr(m){ whenReady(function(){ document.body.setAttribute('data-mode', (m==='light'?'light':'dark')); }); }
+  function applyMode(app){ applyModeAttr(getMode(app)); }
+  function setMode(app, m){ m=(m==='light'?'light':'dark'); ls(modeKey(app), m); applyModeAttr(m); return m; }
+  function toggleMode(app){ return setMode(app, getMode(app)==='light'?'dark':'light'); }
   function renderSkinPicker(app, el, onChange){
     if (!el) return;
-    var cur = getSkin(app);
-    el.innerHTML = '<div class="jb-skins">' + SKINS.map(function (s) {
+    var cur = getSkin(app), mode = getMode(app);
+    var toggle = '<button type="button" class="jb-mode-toggle" data-jbmode="1">'
+      + '<span>' + (mode==='light' ? '☀️ Modo claro' : '🌙 Modo escuro') + '</span>'
+      + '<span class="jb-mode-hint">alternar</span></button>';
+    el.innerHTML = toggle + '<div class="jb-skins">' + SKINS.map(function (s) {
       return '<button type="button" class="jb-skin' + (s.id===cur?' on':'') + '" data-sk="' + s.id + '" style="background:' + s.bg + ';color:' + s.text + (s.id===cur?(';border-color:'+s.accent):'') + '">'
         + '<span class="jb-skin-dot" style="background:' + s.accent + '"></span><span>' + s.name + '</span></button>';
     }).join('') + '</div>';
+    var mt = el.querySelector('[data-jbmode]');
+    if (mt) mt.addEventListener('click', function(){ toggleMode(app); renderSkinPicker(app, el, onChange); if (onChange) onChange(cur); });
     Array.prototype.forEach.call(el.querySelectorAll('.jb-skin'), function (b) {
       b.addEventListener('click', function () { var id=b.getAttribute('data-sk'); setSkin(app, id); renderSkinPicker(app, el, onChange); if (onChange) onChange(id); });
     });
@@ -330,6 +344,6 @@
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, toast: jbToast, confirm: confirm, whenReady: whenReady,
-    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt
+    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt
   };
 })();

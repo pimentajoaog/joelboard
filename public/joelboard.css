@@ -135,3 +135,8 @@ body.jb-noscroll { overflow: hidden; }
 /* date-picker trigger button (pairs with JB.dpOpen/dpSet/dpGet) */
 .datebtn { width: 100%; text-align: left; cursor: pointer; }
 .datebtn.empty { color: var(--muted); }
+
+/* day/night toggle (top of the skin picker) */
+.jb-mode-toggle { display: flex; align-items: center; gap: 8px; width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); padding: 11px 14px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; margin-bottom: 12px; transition: border-color .15s ease; }
+.jb-mode-toggle:hover { border-color: var(--primary); }
+.jb-mode-toggle .jb-mode-hint { margin-left: auto; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }

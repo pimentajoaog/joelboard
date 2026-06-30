@@ -162,7 +162,7 @@ function renderEditor(){
     +'<div class="ed-sub"><b>'+esc(kd.label)+'</b> · criada '+esc(relTime(n.criado))+'</div>'
     +'<div class="duerow"><span class="dl">📅 Prazo</span><input type="date" class="field due-input" id="edDue" value="'+esc(n.vence||'')+'" onchange="commitDue(this.value)">'+(n.vence?'<button class="due-clear" onclick="clearDue()" title="Remover prazo">✕</button>':'')+'</div>'
     + (fc? '<button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button>':'')
-    + (doneN? '<button class="delchecked" onclick="deleteChecked()">🗑 Excluir marcados ('+doneN+')</button>':'')
+    +'<button class="delchecked" id="delChecked" onclick="deleteChecked()" style="display:'+(doneN?'inline-flex':'none')+'">🗑 Excluir marcados ('+doneN+')</button>'
     +'<div id="edItems"></div>'
     +'<div class="iadd"><span class="ico">+</span><input id="addInput" placeholder="Adicionar item… (cole várias linhas de uma vez)" autocomplete="off" oninput="renderUsuals()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addItemFromInput();}" onpaste="addPaste(event)"><button class="iaddbtn" onclick="addItemFromInput()">Adicionar</button></div>'
     +'<button class="gaddbtn" onclick="addGroup()">＋ Adicionar grupo</button>'
@@ -178,7 +178,9 @@ function renderItems(){
   its.forEach(function(it){ if(it.tipo==='g'){ collapsed=!!it.feito; html+=groupRow(it); } else { html+=itemRow(it, collapsed); } });
   el.innerHTML=html;
   var tas=el.querySelectorAll('textarea.itext'); for(var i=0;i<tas.length;i++) autoGrow(tas[i]);
+  updateDelChecked();
 }
+function updateDelChecked(){ var b=$('delChecked'); if(!b) return; var dn=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel && x.feito;}).length; b.style.display=dn?'inline-flex':'none'; b.textContent='🗑 Excluir marcados ('+dn+')'; }
 function autoGrow(t){ if(!t) return; t.style.height='auto'; t.style.height=(t.scrollHeight)+'px'; }
 function groupStats(gid){ var its=itemsOf(openNoteId); var i=-1; for(var k=0;k<its.length;k++){ if(its[k].id===gid){ i=k; break; } } var done=0,total=0; for(var j=i+1;j<its.length;j++){ if(its[j].tipo==='g') break; if(its[j].marcavel){ total++; if(its[j].feito) done++; } } return {done:done,total:total}; }
 function groupRow(g){ var st=groupStats(g.id); var allon=st.total>0 && st.done===st.total;
@@ -311,6 +313,21 @@ function dragMove(ev){ if(!_drag) return; ev.preventDefault(); _drag.moved=true;
 function dragEnd(){ if(!_drag) return; document.removeEventListener('pointermove', dragMove); _drag.block.forEach(function(b){ b.classList.remove('dragging'); }); var cont=_drag.cont, moved=_drag.moved; _drag=null; if(!moved) return; var ids=[].slice.call(cont.children).filter(function(r){return r.getAttribute && r.getAttribute('data-id');}).map(function(r){return r.getAttribute('data-id');}); applyOrder(ids); }
 
 function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel && x.feito;}); if(!done.length) return; var ids={}; done.forEach(function(x){ids[x.id]=1;}); JB.confirm('Excluir marcados?', done.length+(done.length>1?' itens marcados serão removidos.':' item marcado será removido.'), function(){ DATA.itens=(DATA.itens||[]).filter(function(x){return !ids[x.id];}); renderEditor(); var n=note(openNoteId); if(n) touchNote(n); JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; var rows=[]; for(var i=1;i<v.length;i++){ if(ids[String((v[i]||[])[5])]) rows.push(i+1); } rows.sort(function(a,b){return b-a;}); if(rows.length) return JB.api('POST', ssUrl(':batchUpdate'), { requests: rows.map(function(r){ return { deleteDimension:{ range:{ sheetId:notasGrid['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }; }) }); }).catch(function(){}); toast('✓ Removidos'); }, { yes:'Excluir', no:'Cancelar', danger:true }); }
+
+function dedupeItems(){
+  var seen={}, dups=[];
+  (DATA.itens||[]).slice().sort(function(a,b){ return String(a.notaId).localeCompare(String(b.notaId)) || (a.ordem-b.ordem); }).forEach(function(x){
+    if(x.tipo==='g') return; var t=normText(x.texto); if(!t) return; var k=x.notaId+'|'+t;
+    if(seen[k]) dups.push(x); else seen[k]=1;
+  });
+  if(!dups.length){ toast('Nenhuma duplicata 🎉'); return; }
+  var ids={}; dups.forEach(function(x){ids[x.id]=1;});
+  JB.confirm('Remover duplicatas?', dups.length+(dups.length>1?' itens repetidos':' item repetido')+' (mesmo texto na mesma lista) serão removidos. Um de cada é mantido.', function(){
+    DATA.itens=(DATA.itens||[]).filter(function(x){return !ids[x.id];});
+    JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; var rows=[]; for(var i=1;i<v.length;i++){ if(ids[String((v[i]||[])[5])]) rows.push(i+1); } rows.sort(function(a,b){return b-a;}); if(rows.length) return JB.api('POST', ssUrl(':batchUpdate'), { requests: rows.map(function(r){ return { deleteDimension:{ range:{ sheetId:notasGrid['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }; }) }); }).catch(function(){ toast('Erro ao limpar'); });
+    closeSettings(); render(); toast('✓ '+dups.length+' removidos');
+  }, { yes:'Remover', no:'Cancelar', danger:true });
+}
 
 JB.applySkin('notas');
 startAuth();

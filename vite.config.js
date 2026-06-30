@@ -8,7 +8,8 @@ export default defineConfig({
         main: 'index.html',
         finance: 'finance/index.html',
         fit: 'fit/index.html',
-        study: 'study/index.html'
+        study: 'study/index.html',
+        notas: 'notas/index.html'
       }
     }
   }

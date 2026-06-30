@@ -1,0 +1,108 @@
+/* Joelboard Notas — styles, Tailwind-based. © 2026 Joel Soluções LTDA.
+   Preflight off (tailwind.config) so the reset below is the single source of truth.
+   :root tokens use the shared neutral vocabulary; --primary is Notas's amber accent. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --primary:#f59e0b; --text:#e7eaf3; --muted:#7b85a0; --success:#34d399; --radius:16px; --radius-sm:10px; --brand:var(--primary); --on-brand:#241803; --font-body:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; --font-display:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+
+*,::before,::after{ box-sizing:border-box; margin:0; padding:0; border-width:0; border-style:solid; border-color:var(--border); }
+button,input,select,textarea{ font-family:inherit; }
+html,body{ overflow-x:hidden; }
+body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg); font-family:var(--font-body); padding:26px 18px 90px; }
+
+#loading{ @apply max-w-[480px] mx-auto; }
+#app{ @apply hidden max-w-[760px] mx-auto; }
+
+.header{ @apply flex items-center justify-between gap-3 mb-5; }
+.hl{ @apply flex items-center gap-2.5; }
+.hl img{ @apply w-[34px] h-[34px] rounded-[9px]; }
+.hl h1{ @apply text-xl font-extrabold tracking-[-.4px]; font-family:var(--font-display); }
+.acct{ @apply text-xs text-muted flex items-center gap-2.5; }
+.lnk{ @apply bg-transparent border-0 text-primary font-bold text-xs cursor-pointer; font-family:inherit; }
+
+.secbar{ @apply flex items-center justify-between gap-2.5 mb-3.5 flex-wrap; }
+.sect{ @apply text-[11px] font-bold tracking-[.8px] uppercase text-muted; }
+
+.btn{ @apply bg-primary border-0 rounded-full px-[15px] py-2 font-extrabold text-[13px] cursor-pointer text-[color:var(--on-brand)]; font-family:inherit; }
+.btn.ghost{ @apply bg-surface2 text-ink border border-border font-bold; }
+.rg{ @apply text-xs text-muted mt-px; }
+.empty{ @apply text-muted text-center py-10 px-4 text-[13px]; }
+.foot{ @apply text-center text-muted text-[11px] opacity-[0.55] mt-9; }
+.del{ @apply bg-transparent border border-border text-[#f87171] rounded-full px-[15px] py-2.5 font-bold text-[13px] cursor-pointer mt-2; font-family:inherit; }
+
+.fab{ @apply fixed bottom-[22px] right-[18px] w-[54px] h-[54px] rounded-full bg-primary border-0 text-[30px] cursor-pointer flex items-center justify-center z-40 text-[color:var(--on-brand)]; box-shadow:0 6px 22px color-mix(in srgb, var(--primary) 38%, transparent); }
+.door{ @apply fixed bottom-5 left-4 z-40 w-[42px] h-[42px] rounded-xl bg-surface border border-border text-primary flex items-center justify-center cursor-pointer; box-shadow:0 3px 12px rgba(0,0,0,0.25); }
+
+.fg{ @apply mb-3.5; }
+.fl{ @apply block text-xs text-muted mb-1.5 font-semibold; }
+.field{ width:100%; }
+.toast{ @apply fixed left-1/2 bottom-[84px] bg-surface2 border border-border text-ink px-4 py-2.5 rounded-full text-[13px] opacity-0 pointer-events-none z-[300] whitespace-nowrap; transform:translateX(-50%); transition:opacity .2s; }
+.toast.show{ @apply opacity-100; }
+
+.gate{ @apply max-w-[420px] mx-auto my-10 text-center; }
+.gate .gt{ @apply text-[22px] font-extrabold tracking-[-.5px]; font-family:var(--font-display); }
+.gate .gs{ @apply text-muted text-[13px] mt-1.5 mb-6; }
+
+.set-tabs{ @apply flex gap-1 mb-4 border-b border-border flex-nowrap overflow-x-auto overflow-y-hidden; touch-action:pan-x; scrollbar-width:none; }
+.set-tabs::-webkit-scrollbar{ display:none; }
+.set-tab{ @apply bg-transparent border-0 border-b-2 border-b-transparent text-muted text-[13px] font-bold px-3 py-2 cursor-pointer -mb-px whitespace-nowrap flex-[0_0_auto]; font-family:inherit; }
+.set-tab.active{ @apply text-primary; border-bottom-color:var(--primary); }
+
+.tg{ @apply inline-flex items-center gap-2 bg-surface2 border border-border rounded-full px-[14px] py-2 text-[13px] font-bold cursor-pointer text-muted; font-family:inherit; }
+.tg.on{ background:color-mix(in srgb, var(--success) 18%, var(--surface)); border-color:var(--success); color:var(--success); }
+.tg.on::before{ content:'✓ '; }
+
+/* ===== home: search + note cards ===== */
+.searchbar{ @apply mb-4; }
+.searchbar input{ width:100%; }
+
+.notes-grid{ @apply grid gap-3; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); }
+.notec{ @apply bg-surface border border-border rounded-[var(--radius)] p-4 cursor-pointer relative overflow-hidden; }
+.notec::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--kc,var(--primary)); }
+.nc-top{ @apply flex items-center gap-2.5 mb-1.5; }
+.nc-ico{ @apply w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-[18px] flex-[0_0_auto]; background:color-mix(in srgb, var(--kc,var(--primary)) 16%, var(--surface2)); }
+.nc-title{ @apply font-extrabold text-[15px] leading-tight flex-1 min-w-0; font-family:var(--font-display); word-break:break-word; }
+.nc-pin{ @apply bg-transparent border-0 text-muted cursor-pointer text-[15px] leading-none p-0 flex-[0_0_auto]; }
+.nc-pin.on{ color:var(--primary); }
+.nc-kind{ @apply text-[11px] font-bold uppercase tracking-[.5px]; color:var(--kc,var(--primary)); }
+.nc-meta{ @apply text-xs text-muted mt-1.5 flex items-center gap-1.5 flex-wrap; }
+.nc-pbar{ @apply mt-2 h-1.5 rounded-full bg-surface2 overflow-hidden; }
+.nc-pbar span{ @apply block h-full rounded-full; background:var(--kc,var(--primary)); }
+.pin-sect{ @apply mb-2; }
+
+/* ===== editor ===== */
+.ed-head{ @apply flex items-center gap-2 mb-1; }
+.ed-ico{ @apply w-[30px] h-[30px] rounded-[9px] flex items-center justify-center text-[16px] flex-[0_0_auto]; background:color-mix(in srgb, var(--kc,var(--primary)) 16%, var(--surface2)); }
+.ed-title{ @apply flex-1 bg-transparent border-0 text-ink text-xl font-extrabold p-0; font-family:var(--font-display); }
+.ed-title:focus{ outline:none; }
+.ed-sub{ @apply text-xs text-muted mb-4 mt-0.5; }
+.ed-sub b{ color:var(--kc,var(--primary)); }
+
+.irow{ @apply flex items-center gap-2.5 py-1.5; border-bottom:1px solid color-mix(in srgb, var(--border) 55%, transparent); }
+.irow:last-of-type{ border-bottom:0; }
+.ichk{ @apply w-[22px] h-[22px] rounded-md border-2 bg-transparent cursor-pointer flex-[0_0_auto] flex items-center justify-center text-[13px] font-bold p-0; border-color:var(--border); color:var(--on-brand); }
+.ichk.on{ background:var(--primary); border-color:var(--primary); }
+.ispacer{ @apply w-[22px] flex-[0_0_auto] flex items-center justify-center text-muted text-[12px]; }
+.itext{ @apply flex-1 bg-transparent border-0 text-ink text-sm p-0 min-w-0; }
+.itext:focus{ outline:none; }
+.irow.done .itext{ @apply line-through text-muted; }
+.itype{ @apply bg-transparent border-0 text-muted cursor-pointer text-[13px] flex-[0_0_auto] opacity-60 px-1; }
+.itype:hover{ opacity:1; }
+.idel{ @apply bg-transparent border-0 text-muted cursor-pointer text-[13px] flex-[0_0_auto] opacity-50 px-1; }
+.idel:hover{ color:#f87171; opacity:1; }
+
+.iadd{ @apply flex items-center gap-2.5 py-2 mt-1; }
+.iadd .ico{ @apply w-[22px] text-center text-primary text-[18px] flex-[0_0_auto]; }
+.iadd input{ @apply flex-1 bg-transparent border-0 text-ink text-sm p-0; }
+.iadd input:focus{ outline:none; }
+
+/* usuals / suggestions */
+.uwrap{ @apply mt-4; }
+.uchips{ @apply flex gap-2 flex-wrap mt-2; }
+.uchip{ @apply bg-surface2 border border-border rounded-full px-3 py-1.5 text-[13px] font-semibold cursor-pointer text-ink; font-family:inherit; }
+.uchip .uplus{ color:var(--primary); font-weight:800; margin-right:4px; }
+
+.fillbtn{ @apply w-full bg-surface2 border border-border rounded-[var(--radius-sm)] px-3 py-2.5 text-[13px] font-bold cursor-pointer text-ink mb-4 text-left; font-family:inherit; }
+.fillbtn b{ color:var(--primary); }

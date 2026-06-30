@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<!-- Joelboard Notas. © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Joelboard Notas</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/joelboard.css">
+<link rel="stylesheet" href="/themes.css">
+<meta name="theme-color" content="#0d0f18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Notas">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Chakra+Petch:wght@500;600;700&family=Cormorant+Garamond:wght@500;600&family=Darker+Grotesque:wght@500;700;900&family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/notas.css">
+</head>
+<body>
+<div id="loading"></div>
+
+<div id="app">
+  <div class="header">
+    <div class="hl"><img src="/icon-192.png" alt="Joelboard"><h1>Notas</h1></div>
+    <div class="acct"><span id="acctEmail"></span><button class="lnk" onclick="openSettings()" title="Ajustes">⚙</button><button class="lnk" onclick="notasSignOut()">Sair</button></div>
+  </div>
+
+  <div id="main"></div>
+
+  <div class="foot">© 2026 Joel Soluções LTDA</div>
+</div>
+
+<button class="door" onclick="location.href='/'" title="Voltar ao Joelboard" aria-label="Voltar ao Joelboard">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg>
+</button>
+<button class="fab" id="fab" onclick="openNew()" title="Nova lista">+</button>
+
+<!-- new note modal -->
+<div class="overlay" id="newOverlay" onclick="if(event.target===this)closeNew()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Nova lista</div><button class="x" onclick="closeNew()">✕</button></div>
+    <div class="fg"><label class="fl">Tipo</label><div id="newKindWrap"></div></div>
+    <div class="fg"><label class="fl">Título</label><input class="field" id="newTitle" placeholder="ex.: Compras do mês"></div>
+    <button class="btn-primary" onclick="createNote()">Criar</button>
+  </div>
+</div>
+
+<!-- settings -->
+<div class="overlay" id="setOverlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>
+    <div class="set-tabs">
+      <button class="set-tab active" data-st="tema" onclick="switchSet('tema')">Tema</button>
+      <button class="set-tab" data-st="sobre" onclick="switchSet('sobre')">Sobre</button>
+    </div>
+    <div class="set-pane" data-pane="tema">
+      <div class="fg"><label class="fl">Tema do app</label><div id="setSkins"></div></div>
+      <div class="fg"><button class="tg" id="setNudge" onclick="toggleNudgePref()">Sugestões automáticas</button><div class="rg">Lembretes do tipo "mês passado você fez…".</div></div>
+    </div>
+    <div class="set-pane" data-pane="sobre" style="display:none">
+      <div class="fg"><button class="btn ghost" style="width:100%" onclick="notasVerTutorial()">🧭 Ver tutorial</button></div>
+      <div class="fg"><button class="btn ghost" style="width:100%" onclick="JB.feedback('Joelboard Notas')">💬 Enviar feedback</button></div>
+      <div class="fg"><button class="del" style="width:100%" onclick="notasSignOut()">Sair</button></div>
+      <div class="rg" style="text-align:center;font-size:11px;margin-top:4px">Joelboard Notas</div>
+    </div>
+    <button class="btn-primary" onclick="closeSettings()">Pronto</button>
+  </div>
+</div>
+
+<!-- recurrence nudge (slide-in card) -->
+<div class="confirm-card" id="nudgeCard">
+  <button class="cc-x" onclick="dismissNudge()">✕</button>
+  <div class="cc-body"><div class="cc-q" id="nudgeQ"></div></div>
+  <div class="cc-btns"><button class="cc-btn" onclick="dismissNudge()">Agora não</button><button class="cc-btn yes" onclick="acceptNudge()" id="nudgeYes">Recriar</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="/joelboard.js"></script>
+<script src="/notas.js"></script>
+</body>
+</html>

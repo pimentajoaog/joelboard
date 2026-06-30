@@ -1,6 +1,6 @@
 /* Joelboard Notas — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
-var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, newDue='';
+var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, newDue='', _selMode=false, _sel={};
 var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']]];
 var KINDS=[
   {k:'compras', label:'Compras', icon:'🛒', color:'#34d399', defCheck:true},
@@ -160,20 +160,25 @@ function createNote(){ var t=($('newTitle').value||'').trim(); var kd=kindDef(ne
 function renderEditor(){
   var n=note(openNoteId); if(!n){ openNoteId=null; renderHomeShell(); return; }
   var kd=kindDef(n.tipo); var src=lastNoteOfKind(n.tipo,n.id); var fc=fillableCount(n,src); var doneN=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel && x.feito;}).length;
+  var hasItems=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g';}).length>0;
   var html='<div style="--kc:'+kd.color+'">'
     +'<button class="lnk" onclick="backHome()">← Listas</button>'
     +'<div class="ed-head"><span class="ed-ico">'+kd.icon+'</span><input class="ed-title" id="edTitle" value="'+escAttr(n.titulo)+'" onblur="commitTitle(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()"></div>'
     +'<div class="ed-sub"><b>'+esc(kd.label)+'</b> · criada '+esc(relTime(n.criado))+'</div>'
     +'<div class="duerow"><span class="dl">📅 Prazo</span><button type="button" class="field datebtn'+(n.vence?'':' empty')+'" id="edDueBtn" onclick="pickDue()">'+(n.vence?esc(fmtDateBR(n.vence)):'Definir prazo')+'</button>'+(n.vence?'<button class="due-clear" onclick="clearDue()" title="Remover prazo">✕</button>':'')+'</div>'
-    + (fc? '<button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button>':'')
-    +'<button class="delchecked" id="delChecked" onclick="deleteChecked()" style="display:'+(doneN?'inline-flex':'none')+'">🗑 Excluir marcados ('+doneN+')</button>'
+    +'<div class="ed-actions">'
+      +(hasItems?'<button class="selstart'+(_selMode?' on':'')+'" onclick="toggleSelMode()">'+(_selMode?'✕ Cancelar':'☑ Selecionar')+'</button>':'')
+      +(!_selMode?'<button class="delchecked" id="delChecked" onclick="deleteChecked()" style="display:'+(doneN?'inline-flex':'none')+'">🗑 Excluir marcados ('+doneN+')</button>':'')
+    +'</div>'
+    +(_selMode? '' : (fc? '<button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button>':''))
     +'<div id="edItems"></div>'
-    +'<div class="iadd"><span class="ico">+</span><input id="addInput" placeholder="Adicionar item… (cole várias linhas de uma vez)" autocomplete="off" oninput="renderUsuals()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addItemFromInput();}" onpaste="addPaste(event)"><button class="iaddbtn" onclick="addItemFromInput()">Adicionar</button></div>'
-    +'<button class="gaddbtn" onclick="addGroup()">＋ Adicionar grupo</button>'
-    +'<div class="uwrap" id="edUsuals"></div>'
-    +'<button class="del" style="margin-top:26px" onclick="deleteNote()">Excluir lista</button>'
+    +(_selMode? '' :
+       ('<div class="iadd"><span class="ico">+</span><input id="addInput" placeholder="Adicionar item… (cole várias linhas de uma vez)" autocomplete="off" oninput="renderUsuals()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addItemFromInput();}" onpaste="addPaste(event)"><button class="iaddbtn" onclick="addItemFromInput()">Adicionar</button></div>'
+        +'<button class="gaddbtn" onclick="addGroup()">＋ Adicionar grupo</button>'
+        +'<div class="uwrap" id="edUsuals"></div>'
+        +'<button class="del" style="margin-top:26px" onclick="deleteNote()">Excluir lista</button>'))
     +'</div>';
-  $('main').innerHTML=html; renderItems(); renderUsuals();
+  $('main').innerHTML=html; renderItems(); if(!_selMode) renderUsuals(); updateSelBar();
 }
 function renderItems(){
   var el=$('edItems'); if(!el) return; var n=note(openNoteId); var its=itemsOf(openNoteId);
@@ -182,7 +187,7 @@ function renderItems(){
   its.forEach(function(it){ if(it.tipo==='g'){ collapsed=!!it.feito; html+=groupRow(it); } else { html+=itemRow(it, collapsed); } });
   el.innerHTML=html;
   var ed=el.querySelector('#editTA'); if(ed){ ed.focus(); try{ var L=ed.value.length; ed.setSelectionRange(L,L); }catch(e){} if(ed.tagName==='TEXTAREA') autoGrow(ed); }
-  updateDelChecked();
+  updateDelChecked(); updateSelBar();
 }
 function updateDelChecked(){ var b=$('delChecked'); if(!b) return; var dn=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel && x.feito;}).length; b.style.display=dn?'inline-flex':'none'; b.textContent='🗑 Excluir marcados ('+dn+')'; }
 function autoGrow(t){ if(!t) return; t.style.height='auto'; t.style.height=(t.scrollHeight)+'px'; }
@@ -196,10 +201,18 @@ function groupRow(g){ var st=groupStats(g.id); var allon=st.total>0 && st.done==
      ? '<input class="gname" id="editTA" value="'+escAttr(g.texto)+'" placeholder="Nome do grupo" autocomplete="off" onblur="commitText(\''+g.id+'\',this.value);exitEdit();" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}">'
      : '<div class="gname gname-view" onclick="startEdit(\''+g.id+'\')">'+(g.texto?mdToHtml(g.texto):'<span class="iplace">Nome do grupo</span>')+'</div>')
   +'<span class="gcount">'+(st.total?(st.done+'/'+st.total):'')+'</span>'
+  +'<button class="gadd" onclick="addToGroup(\''+g.id+'\')" title="Adicionar item neste grupo">+</button>'
   +'<button class="idel" title="Remover grupo" onclick="deleteGroup(\''+g.id+'\')">✕</button></div>'; }
+function addToGroup(gid){ var n=note(openNoteId); if(!n) return; var g=(DATA.itens||[]).find(function(x){return x.id===gid;}); if(!g) return; if(g.feito){ g.feito=false; saveItemRow(g); } var its=itemsOf(openNoteId); var gi=-1; for(var k=0;k<its.length;k++){ if(its[k].id===gid){ gi=k; break; } } if(gi<0) return; var last=gi; for(var j=gi+1;j<its.length;j++){ if(its[j].tipo==='g') break; last=j; } var lastOrd=its[last].ordem, nextO=(last+1<its.length)?its[last+1].ordem:null; var newOrd=(nextO!=null)?(lastOrd+nextO)/2:(lastOrd+1); var kd=kindDef(n.tipo); var it={ id:uuid(), notaId:openNoteId, ordem:newOrd, texto:'', marcavel:kd.defCheck, feito:false, tipo:'' }; DATA.itens.push(it); appendItem(it); touchNote(n); renderItems(); startEdit(it.id); }
 function toggleGroupAll(gid){ var its=itemsOf(openNoteId); var i=-1; for(var k=0;k<its.length;k++){ if(its[k].id===gid){ i=k; break; } } if(i<0) return; var members=[]; for(var j=i+1;j<its.length;j++){ if(its[j].tipo==='g') break; if(its[j].marcavel) members.push(its[j]); } if(!members.length) return; var allDone=members.every(function(m){return m.feito;}); var target=!allDone; members.forEach(function(m){ m.feito=target; }); renderItems(); persistItems(members); var n=note(openNoteId); if(n) touchNote(n); }
 function persistItems(arr){ if(!arr||!arr.length) return; JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; var rowOf={}; for(var i=1;i<v.length;i++){ rowOf[String((v[i]||[])[5])]=i+1; } var data=arr.filter(function(x){return rowOf[x.id];}).map(function(x){ return { range:'Itens!A'+rowOf[x.id]+':G'+rowOf[x.id], values:[itemRowVals(x)] }; }); if(!data.length) return; return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data:data }); }).catch(function(){}); }
 function itemRow(it, hidden){
+  if(_selMode){ var son=!!_sel[it.id];
+    return '<div class="irow selrow'+(son?' on':'')+(hidden?' ihide':'')+'" data-id="'+it.id+'" onclick="selToggle(\''+it.id+'\')">'
+      +'<button class="ihandle" onpointerdown="dragBegin(event,\''+it.id+'\')" onclick="event.stopPropagation()" title="Arrastar">⠿</button>'
+      +'<span class="seldot'+(son?' on':'')+'">'+(son?'✓':'')+'</span>'
+      +'<div class="itext itext-view">'+(it.texto?mdToHtml(it.texto):'<span class="iplace">(vazio)</span>')+'</div></div>';
+  }
   var done=it.feito;
   var left = it.marcavel
     ? '<button class="ichk'+(done?' on':'')+'" onclick="toggleItem(event,\''+it.id+'\')" title="Marcar (shift+clique = intervalo)">'+(done?'✓':'')+'</button>'
@@ -284,7 +297,11 @@ function noteRowVals(n){ return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.cri
 function mdToHtml(t){ var s=esc(t); s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>'); s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>'); s=s.replace(/__([^_\n]+)__/g,'<u>$1</u>'); s=s.replace(/~~([^~\n]+)~~/g,'<s>$1</s>'); return s; }
 function startEdit(id){ _editId=id; renderItems(); var bar=$('fmtBar'); if(bar) bar.classList.add('show'); positionFmtBar(); }
 function exitEdit(){ if(_editId==null) return; _editId=null; var bar=$('fmtBar'); if(bar) bar.classList.remove('show'); renderItems(); }
-function fmt(mk){ var ta=$('editTA'); if(!ta) return; var sS=ta.selectionStart||0, sE=ta.selectionEnd||0, v=ta.value, sel=v.slice(sS,sE); ta.value=v.slice(0,sS)+mk+sel+mk+v.slice(sE); ta.focus(); var cs=sS+mk.length; try{ ta.setSelectionRange(cs, cs+sel.length); }catch(_){} if(ta.tagName==='TEXTAREA') autoGrow(ta); }
+function fmt(mk){ var ta=$('editTA'); if(!ta) return; var sS=ta.selectionStart||0, sE=ta.selectionEnd||0, v=ta.value, sel=v.slice(sS,sE), L=mk.length;
+  if(sel.length>=2*L && sel.slice(0,L)===mk && sel.slice(sel.length-L)===mk){ var inner=sel.slice(L, sel.length-L); ta.value=v.slice(0,sS)+inner+v.slice(sE); ta.focus(); try{ ta.setSelectionRange(sS, sS+inner.length); }catch(_){} }
+  else if(v.slice(sS-L,sS)===mk && v.slice(sE,sE+L)===mk){ ta.value=v.slice(0,sS-L)+sel+v.slice(sE+L); ta.focus(); try{ ta.setSelectionRange(sS-L, sS-L+sel.length); }catch(_){} }
+  else { ta.value=v.slice(0,sS)+mk+sel+mk+v.slice(sE); ta.focus(); try{ ta.setSelectionRange(sS+L, sS+L+sel.length); }catch(_){} }
+  if(ta.tagName==='TEXTAREA') autoGrow(ta); }
 function fmtApply(ev,mk){ if(ev) ev.preventDefault(); fmt(mk); }
 function fmtDone(ev){ if(ev) ev.preventDefault(); var ta=$('editTA'); if(ta) ta.blur(); }
 function positionFmtBar(){ var bar=$('fmtBar'); if(!bar||!bar.classList.contains('show')) return; var vv=window.visualViewport; if(vv){ var gap=window.innerHeight-(vv.height+vv.offsetTop); bar.style.bottom=(Math.max(gap,0)+8)+'px'; } else { bar.style.bottom='18px'; } }
@@ -324,7 +341,7 @@ function normalizeOrder(){ var its=itemsOf(openNoteId); var changed=false; its.f
 function persistOrder(){ JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; var rowOf={}; for(var i=1;i<v.length;i++){ rowOf[String((v[i]||[])[5])]=i+1; } var data=(DATA.itens||[]).filter(function(x){return x.notaId===openNoteId && rowOf[x.id];}).map(function(x){ return { range:'Itens!B'+rowOf[x.id], values:[[x.ordem]] }; }); if(!data.length) return; return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data:data }); }).catch(function(){}); }
 function applyOrder(ids){ var idx={}; ids.forEach(function(id,i){ idx[id]=i+1; }); (DATA.itens||[]).forEach(function(x){ if(x.notaId===openNoteId && idx[x.id]!=null) x.ordem=idx[x.id]; }); renderItems(); persistOrder(); var n=note(openNoteId); if(n) touchNote(n); }
 var _drag=null, _lastTick=null, _editId=null;
-function dragBegin(ev,id){ ev.preventDefault(); var cont=$('edItems'); if(!cont) return; var row=cont.querySelector('[data-id="'+id+'"]'); if(!row) return; var block=[row]; if(row.getAttribute('data-g')==='1'){ var sib=row.nextElementSibling; while(sib && sib.getAttribute('data-g')!=='1'){ block.push(sib); sib=sib.nextElementSibling; } } _drag={ block:block, cont:cont, moved:false }; block.forEach(function(b){ b.classList.add('dragging'); }); document.addEventListener('pointermove', dragMove, {passive:false}); document.addEventListener('pointerup', dragEnd, {once:true}); }
+function dragBegin(ev,id){ ev.preventDefault(); var cont=$('edItems'); if(!cont) return; var block; if(_selMode && _sel[id] && selCount()>1){ block=[].slice.call(cont.children).filter(function(r){ return r.getAttribute && _sel[r.getAttribute('data-id')]; }); if(!block.length){ var rr=cont.querySelector('[data-id="'+id+'"]'); block=rr?[rr]:[]; } } else { var row=cont.querySelector('[data-id="'+id+'"]'); if(!row) return; block=[row]; if(row.getAttribute('data-g')==='1'){ var sib=row.nextElementSibling; while(sib && sib.getAttribute('data-g')!=='1'){ block.push(sib); sib=sib.nextElementSibling; } } } if(!block.length) return; _drag={ block:block, cont:cont, moved:false }; block.forEach(function(b){ b.classList.add('dragging'); }); document.addEventListener('pointermove', dragMove, {passive:false}); document.addEventListener('pointerup', dragEnd, {once:true}); }
 function dragMove(ev){ if(!_drag) return; ev.preventDefault(); _drag.moved=true; var cont=_drag.cont, y=ev.clientY; var rows=[].slice.call(cont.children).filter(function(r){ return _drag.block.indexOf(r)<0 && !r.classList.contains('ihide'); }); var target=null; for(var i=0;i<rows.length;i++){ var rect=rows[i].getBoundingClientRect(); if(y < rect.top+rect.height/2){ target=rows[i]; break; } } _drag.block.forEach(function(b){ if(target) cont.insertBefore(b,target); else cont.appendChild(b); }); }
 function dragEnd(){ if(!_drag) return; document.removeEventListener('pointermove', dragMove); _drag.block.forEach(function(b){ b.classList.remove('dragging'); }); var cont=_drag.cont, moved=_drag.moved; _drag=null; if(!moved) return; var ids=[].slice.call(cont.children).filter(function(r){return r.getAttribute && r.getAttribute('data-id');}).map(function(r){return r.getAttribute('data-id');}); applyOrder(ids); }
 
@@ -344,6 +361,15 @@ function dedupeItems(){
     closeSettings(); render(); toast('✓ '+dups.length+' removidos');
   }, { yes:'Remover', no:'Cancelar', danger:true });
 }
+
+function selCount(){ return Object.keys(_sel).length; }
+function toggleSelMode(){ _selMode=!_selMode; _sel={}; _editId=null; renderEditor(); }
+function selToggle(id){ if(_sel[id]) delete _sel[id]; else _sel[id]=1; renderItems(); }
+function selAll(){ var its=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g';}); var all=its.length>0 && its.every(function(x){return _sel[x.id];}); _sel={}; if(!all) its.forEach(function(x){ _sel[x.id]=1; }); renderItems(); }
+function selMark(v){ var ids=Object.keys(_sel); if(!ids.length) return; var changed=[]; ids.forEach(function(id){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(it && it.marcavel && it.feito!==v){ it.feito=v; changed.push(it); } }); renderItems(); if(changed.length) persistItems(changed); var n=note(openNoteId); if(n) touchNote(n); }
+function delItemRows(ids){ JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; var rows=[]; for(var i=1;i<v.length;i++){ if(ids[String((v[i]||[])[5])]) rows.push(i+1); } rows.sort(function(a,b){return b-a;}); if(rows.length) return JB.api('POST', ssUrl(':batchUpdate'), { requests: rows.map(function(r){ return { deleteDimension:{ range:{ sheetId:notasGrid['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }; }) }); }).catch(function(){}); }
+function selDelete(){ var ids=Object.keys(_sel); if(!ids.length) return; var m={}; ids.forEach(function(i){m[i]=1;}); JB.confirm('Excluir selecionados?', ids.length+(ids.length>1?' itens serão removidos.':' item será removido.'), function(){ DATA.itens=(DATA.itens||[]).filter(function(x){return !m[x.id];}); _sel={}; _selMode=false; renderEditor(); var n=note(openNoteId); if(n) touchNote(n); delItemRows(m); toast('✓ Removidos'); }, { yes:'Excluir', no:'Cancelar', danger:true }); }
+function updateSelBar(){ var bar=$('selBar'); if(!bar) return; bar.classList.toggle('show', _selMode); var c=$('selCount'); if(c) c.textContent=selCount(); }
 
 JB.applySkin('notas');
 startAuth();

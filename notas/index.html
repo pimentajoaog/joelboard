@@ -79,6 +79,16 @@
   <div class="cc-btns"><button class="cc-btn" onclick="dismissNudge()">Agora não</button><button class="cc-btn yes" onclick="acceptNudge()" id="nudgeYes">Recriar</button></div>
 </div>
 
+<!-- multi-select action bar (shown in selection mode) -->
+<div class="selbar" id="selBar">
+  <span class="selcount"><b id="selCount">0</b> sel.</span>
+  <button onclick="selAll()" title="Selecionar tudo">Tudo</button>
+  <button onclick="selMark(true)" title="Marcar">✓</button>
+  <button onclick="selMark(false)" title="Desmarcar">▢</button>
+  <button class="seldel" onclick="selDelete()" title="Excluir">🗑</button>
+  <button onclick="toggleSelMode()" title="Sair">✕</button>
+</div>
+
 <!-- inline formatting toolbar (shown while editing an item/group) -->
 <div class="fmtbar" id="fmtBar">
   <button type="button" onpointerdown="fmtApply(event,'**')" title="Negrito"><b>B</b></button>

@@ -30,6 +30,7 @@ joelboard/
 - Local: `npm install` then `npm run build` (output `dist/`). `npm run dev` for dev server.
 - Vercel: Build Command `npm run build`, Output `dist/`. You commit **source**; Vercel builds.
 - Do NOT commit `node_modules/` or `dist/` (see `.gitignore`).
+- **Cache gotcha:** core files (`/joelboard.js|css`, `/themes.css`, `/<app>.js`) are served at UNHASHED URLs, so the PWA/browser can serve stale copies after a deploy ("I don't see my change"). `public/sw.js` (network-first) force-revalidates these with `{cache:'reload'}`; bump its `C` version when changing SW behavior. If a change isn't showing, it's almost always a stale core file → hard-refresh / let the new SW activate.
 - Tooling note: large file writes via the editor have truncated before — after writing a big
   file, verify `{`/`}` brace counts (or write via shell + `cp`), then `npm run build`.
 

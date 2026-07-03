@@ -4,14 +4,6 @@
    (--income/--expense/… ) ride along for Finance; harmless where unused. --success aliases the
    skin green so any app gets a coherent positive color. Per-skin COMPONENT tweaks stay in finance.css. */
 
-body[data-skin="vault"] {
-  --on-brand:#2a2012;
-  --bg:#14140f; --surface:#1b1b15; --surface2:#222218; --border:#2e2d24;
-  --primary:#cba86a; --income:#9bbf86; --on-income:#21301a; --expense:#d98b6e; --warning:#cba86a; --savings:#a9b58a;
-  --text:#e9e4d6; --muted:#8f897a; --radius:13px; --radius-sm:9px; --shadow:none;
-  --font-body:'Jost',sans-serif; --font-display:'Cormorant Garamond',serif;
-  --success: var(--income);
-}
 body[data-skin="garden"] {
   --on-brand:#ffffff;
   --bg:#f3ede0; --surface:#fffdf8; --surface2:#f0e8d6; --border:#e7ddc8;
@@ -78,7 +70,6 @@ body:not([data-skin])[data-mode="light"] {
 }
 
 /* dark-native skins -> LIGHT variant */
-body[data-skin="vault"][data-mode="light"],
 body[data-skin="arcade"][data-mode="light"] {
   --bg: color-mix(in srgb, var(--primary) 6%, #faf8f2);
   --surface: color-mix(in srgb, var(--primary) 3%, #ffffff);

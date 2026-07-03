@@ -179,7 +179,6 @@
   // --- shared theming: skins live in /themes.css (body[data-skin]); selection persists per-app in localStorage ---
   var SKINS = [
     { id:'default',  name:'Default',  bg:'#0d0f18', card:'#1b1f32', accent:'#818cf8', text:'#e2e8f0' },
-    { id:'vault',    name:'Vault',    bg:'#14140f', card:'#222218', accent:'#cba86a', text:'#e9e4d6' },
     { id:'garden',   name:'Garden',   bg:'#f3ede0', card:'#fffdf8', accent:'#7c9a6e', text:'#3b352c' },
     { id:'aperture', name:'Aperture', bg:'#fbfbf9', card:'#f1f0ec', accent:'#e8482b', text:'#101010' },
     { id:'arcade',   name:'Arcade',   bg:'#0a0a16', card:'#171936', accent:'#22e0e0', text:'#dfe3ff' },
@@ -193,7 +192,7 @@
   function applySkin(app){ applySkinAttr(getSkin(app)); applyModeAttr(getMode(app)); }
   function setSkin(app, id){ if (id && id !== 'default') ls(skinKey(app), id); else lr(skinKey(app)); applySkinAttr(id); applyModeAttr(getMode(app)); return id; }
   // --- day / night mode (orthogonal to skin; each skin has a native mode, user can flip) ---
-  var SKIN_MODE = { vault:'dark', arcade:'dark', garden:'light', aperture:'light', sorbet:'light', press:'light', mint:'light' };
+  var SKIN_MODE = { arcade:'dark', garden:'light', aperture:'light', sorbet:'light', press:'light', mint:'light' };
   function nativeMode(app){ return SKIN_MODE[getSkin(app)] || 'dark'; }
   function modeKey(app){ return 'jb_mode_' + app; }
   function getMode(app){ return lg(modeKey(app)) || nativeMode(app); }

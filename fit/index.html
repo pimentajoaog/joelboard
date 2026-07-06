@@ -118,15 +118,16 @@
   </div>
 </div>
 
-<div class="overlay" id="macroCustomOverlay" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="overlay" id="macroCustomOverlay" onclick="if(event.target===this)macroCloseCustom()">
   <div class="modal" style="max-width:360px">
-    <div class="mh"><div class="mt">Alimento custom</div><button class="x" onclick="document.getElementById('macroCustomOverlay').classList.remove('open')">✕</button></div>
+    <div class="mh"><div class="mt" id="macroCustomTitle">Alimento custom</div><button class="x" onclick="macroCloseCustom()">✕</button></div>
     <div class="fg"><label class="fl">Nome</label><input class="field" id="macroCustomName"></div>
     <div class="fg"><label class="fl">Proteína / 100g</label><input class="field" id="macroCustomP" type="number" inputmode="decimal"></div>
     <div class="fg"><label class="fl">Carboidratos / 100g</label><input class="field" id="macroCustomC" type="number" inputmode="decimal"></div>
     <div class="fg"><label class="fl">Gordura / 100g</label><input class="field" id="macroCustomG" type="number" inputmode="decimal"></div>
     <div class="fg"><label class="fl">Kcal / 100g</label><input class="field" id="macroCustomK" type="number" inputmode="decimal"></div>
-    <button class="btn-primary" onclick="macroSaveCustom()">Salvar</button>
+    <button class="btn ghost" id="macroCustomDel" style="display:none;width:100%;margin-bottom:8px" onclick="macroDeleteCustom()">Excluir alimento</button>
+    <button class="btn-primary" id="macroCustomSave" onclick="macroSaveCustom()">Salvar</button>
   </div>
 </div>
 

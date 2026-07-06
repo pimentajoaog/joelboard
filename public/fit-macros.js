@@ -11,7 +11,7 @@ var MACRO_PRESETS_GLOBAL = [
   { l: '100 g', g: 100 }, { l: '50 g', g: 50 }, { l: '30 g', g: 30 },
   { l: '1 colher sopa (~15 g)', g: 15 }, { l: '1 colher chá (~5 g)', g: 5 }
 ];
-var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroSearchT = null, _offCache = {};
+var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _offCache = {};
 
 function macroToday() { return new Date().toISOString().slice(0, 10); }
 function macroDate() { return _macroDate || macroToday(); }
@@ -469,10 +469,41 @@ function saveMacroSettings() {
 }
 function toggleMacroShow(el) { el.classList.toggle('on'); }
 
+function macroCustomUi() {
+  var editing = !!_macroCustomEdit;
+  $('macroCustomTitle').textContent = editing ? 'Editar alimento' : 'Alimento custom';
+  $('macroCustomDel').style.display = editing ? '' : 'none';
+  $('macroCustomSave').textContent = editing ? 'Salvar alterações' : 'Salvar';
+}
+function macroCloseCustom() {
+  $('macroCustomOverlay').classList.remove('open');
+  _macroCustomEdit = null;
+}
 function macroOpenCustom(prefill) {
+  _macroCustomEdit = null;
+  macroCustomUi();
   $('macroCustomName').value = prefill || '';
   $('macroCustomP').value = ''; $('macroCustomC').value = ''; $('macroCustomG').value = ''; $('macroCustomK').value = '';
   $('macroCustomOverlay').classList.add('open');
+}
+function macroEditCustom(id) {
+  var f = (DATA.macrofoods || []).find(function (x) { return x.id === id; });
+  if (!f) return;
+  _macroCustomEdit = id;
+  macroCustomUi();
+  $('macroCustomName').value = f.name;
+  $('macroCustomP').value = f.p100; $('macroCustomC').value = f.c100;
+  $('macroCustomG').value = f.g100; $('macroCustomK').value = f.k100;
+  $('macroCustomOverlay').classList.add('open');
+}
+function macroSyncFavFood(f) {
+  var key = 'custom:' + f.id, favs = macroFavs(), changed = false;
+  favs = favs.map(function (x) {
+    if (x.key !== key) return x;
+    changed = true;
+    return { key: key, id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, src: 'custom' };
+  });
+  if (changed) macroSaveFavs(favs);
 }
 function macroSaveCustom() {
   var name = ($('macroCustomName').value || '').trim();
@@ -481,25 +512,74 @@ function macroSaveCustom() {
   var g100 = Number(($('macroCustomG').value || '').replace(',', '.')) || 0;
   var k100 = Number(($('macroCustomK').value || '').replace(',', '.')) || 0;
   if (!name) { toast('Nome obrigatório'); return; }
-  var id = uuid(), row = { id: id, name: name, p100: p100, c100: c100, g100: g100, k100: k100 };
   DATA.macrofoods = DATA.macrofoods || [];
+  if (_macroCustomEdit) {
+    var row = DATA.macrofoods.find(function (x) { return x.id === _macroCustomEdit; });
+    if (!row) return;
+    row.name = name; row.p100 = p100; row.c100 = c100; row.g100 = g100; row.k100 = k100;
+    JB.persist({
+      run: function () {
+        return fitFindRow('MacroFoods', 5, row.id).then(function (r) {
+          if (r < 0) throw new Error('Alimento não encontrado');
+          return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('MacroFoods!A' + r + ':F' + r) + '?valueInputOption=RAW'), { values: [macroFoodRow(row)] });
+        });
+      },
+      onSuccess: function () {
+        macroSyncFavFood(row);
+        macroCloseCustom();
+        renderMacroCustomList();
+        toast('✓ Atualizado');
+      },
+      onError: fitWriteErr
+    });
+    return;
+  }
+  var id = uuid(), row = { id: id, name: name, p100: p100, c100: c100, g100: g100, k100: k100 };
   DATA.macrofoods.push(row);
   JB.persist({
     run: function () {
       return JB.api('POST', ssUrl('/values/MacroFoods:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [macroFoodRow(row)] });
     },
     onSuccess: function () {
-      $('macroCustomOverlay').classList.remove('open');
+      macroCloseCustom();
       if (_macroPick) macroSelectFood({ id: id, name: name, p100: p100, c100: c100, g100: g100, k100: k100, src: 'custom', presets: [] });
       else { renderMacroCustomList(); toast('✓ Alimento salvo'); }
     },
     onError: fitWriteErr
   });
 }
+function macroDeleteCustom(id) {
+  id = id || _macroCustomEdit;
+  if (!id) return;
+  var f = (DATA.macrofoods || []).find(function (x) { return x.id === id; });
+  if (!f) return;
+  JB.confirm('Excluir alimento?', 'Remover “' + f.name + '” da biblioteca custom.', function () {
+    DATA.macrofoods = DATA.macrofoods.filter(function (x) { return x.id !== id; });
+    var key = 'custom:' + id;
+    var favs = macroFavs().filter(function (x) { return x.key !== key; });
+    if (favs.length !== macroFavs().length) macroSaveFavs(favs);
+    JB.persist({
+      run: function () {
+        return fitFindRow('MacroFoods', 5, id).then(function (r) {
+          if (r < 0) throw new Error('Alimento não encontrado');
+          return JB.api('POST', ssUrl(':batchUpdate'), { requests: [{ deleteDimension: { range: { sheetId: fitGrid['MacroFoods'], dimension: 'ROWS', startIndex: r - 1, endIndex: r } } }] });
+        });
+      },
+      onSuccess: function () {
+        macroCloseCustom();
+        renderMacroCustomList();
+        toast('✓ Removido');
+      },
+      onError: fitWriteErr
+    });
+  });
+}
 function renderMacroCustomList() {
   var el = $('macroCustomList'); if (!el) return;
   var foods = DATA.macrofoods || [];
   el.innerHTML = foods.length ? foods.map(function (f) {
-    return '<div class="row" style="cursor:default"><div><div class="rn">' + esc(f.name) + '</div><div class="rg">P' + f.p100 + ' C' + f.c100 + ' G' + f.g100 + ' · ' + f.k100 + ' kcal/100g</div></div></div>';
+    return '<div class="mcustom-row" onclick="macroEditCustom(\'' + f.id + '\')">'
+      + '<div class="mcustom-l"><div class="rn">' + esc(f.name) + '</div><div class="rg">P' + f.p100 + ' C' + f.c100 + ' G' + f.g100 + ' · ' + f.k100 + ' kcal/100g</div></div>'
+      + '<button class="rm" onclick="event.stopPropagation();macroDeleteCustom(\'' + f.id + '\')">✕</button></div>';
   }).join('') : '<div class="rg">Nenhum alimento custom ainda.</div>';
 }

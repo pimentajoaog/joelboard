@@ -4,9 +4,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "node scripts/zip-extensions.mjs && vite",
+    "build": "node scripts/zip-extensions.mjs && vite build",
+    "preview": "vite preview",
+    "zip:extensions": "node scripts/zip-extensions.mjs"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",

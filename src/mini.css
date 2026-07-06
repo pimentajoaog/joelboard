@@ -28,8 +28,10 @@ body { @apply min-h-screen text-ink; background: var(--bg); font-family: var(--f
 .card {
   @apply flex flex-col items-start gap-[6px] bg-surface border border-border rounded-[18px] p-[22px];
 }
-.card.live { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); }
+.card.live { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); cursor: pointer; text-decoration: none; color: inherit; transition: transform .15s ease, border-color .15s ease; }
+a.card.live:hover { border-color: var(--primary); transform: translateY(-3px); }
 .card.soon { @apply opacity-[0.55]; }
+.open { @apply mt-[13px] text-xs font-bold; color: var(--primary); }
 .card-ico { @apply w-[50px] h-[50px] rounded-[14px] flex items-center justify-center mb-2; }
 .suite { @apply text-[11px] font-bold tracking-[.5px] uppercase text-muted; }
 .name { @apply text-[19px] font-extrabold tracking-[-.4px]; color: var(--primary); }

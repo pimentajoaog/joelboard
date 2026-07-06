@@ -4,7 +4,9 @@
   var SCOPES = 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
   var TOK = 'jb_tok', EXP = 'jb_tok_exp', EML = 'jb_email';
   var tokenClient = null, pendingRes = null, pendingRej = null, inflightToken = null, refreshTimer = null;
+  var silentTimer = null, authGen = 0, authChain = Promise.resolve();
   var SILENT_TIMEOUT_MS = 15000;
+  var GIS_SETTLE_MS = 300;
 
   function lg(k){ try { return localStorage.getItem(k); } catch (_) { return null; } }
   function ls(k, v){ try { localStorage.setItem(k, v); } catch (_) {} }
@@ -13,7 +15,9 @@
   function tokenExpiresAt(){ return Number(lg(EXP) || 0); }
   function isTokenValid(){ var t = lg(TOK), e = tokenExpiresAt(); return !!(t && e && Date.now() < e); }
   function cachedToken(){ return isTokenValid() ? lg(TOK) : ''; }
+  function isSignedIn(){ return isTokenValid() && !!email(); }
   function hasSession(){ if (lg('jb_signedout')) return false; return !!(lg(EML) || lg(TOK)); }
+  function clearStaleToken(){ if (lg(TOK) && !isTokenValid()) { lr(TOK); lr(EXP); } }
   function saveToken(tok, expiresIn){
     ls(TOK, tok);
     ls(EXP, String(Date.now() + (Number(expiresIn) || 3600) * 1000 - 120000));
@@ -40,16 +44,34 @@
     return requestToken(!!interactive);
   }
 
+  function clearSilentTimer(){ if (silentTimer) { clearTimeout(silentTimer); silentTimer = null; } }
+  function finishPending(err, tok){
+    clearSilentTimer();
+    var res = pendingRes, rej = pendingRej;
+    pendingRes = pendingRej = null;
+    if (err) { clearStaleToken(); if (rej) rej(err); }
+    else if (res) res(tok);
+  }
+  function cancelSilentAuth(reason){
+    authGen++;
+    clearSilentTimer();
+    if (pendingRej) finishPending(new Error(reason || 'auth_cancelled'));
+    inflightToken = null;
+  }
+
   function ensureClient(cb){
     if (window.google && google.accounts && google.accounts.oauth2) {
       if (!tokenClient) {
-        tokenClient = google.accounts.oauth2.initTokenClient({ client_id: CLIENT_ID, scope: SCOPES, callback: function (r) {
-          if (r && r.access_token) {
-            saveToken(r.access_token, r.expires_in);
-            if (pendingRes) { var f = pendingRes; pendingRes = pendingRej = null; f(r.access_token); }
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID, scope: SCOPES,
+          callback: function (r) {
+            if (r && r.access_token) { saveToken(r.access_token, r.expires_in); finishPending(null, r.access_token); }
+            else finishPending(new Error('auth_failed'));
+          },
+          error_callback: function (err) {
+            finishPending(new Error((err && (err.type || err.message)) || 'auth_failed'));
           }
-          else { if (pendingRej) { var g = pendingRej; pendingRes = pendingRej = null; g(new Error('auth_failed')); } }
-        } });
+        });
       }
       cb();
     } else setTimeout(function () { ensureClient(cb); }, 150);
@@ -80,22 +102,42 @@
     ov.querySelector('#jbcNo').onclick = function(){ close(); if (onCancel) onCancel(); };
   }
   // interactive=false => silent; true => shows the pre-consent explainer (first login / when scopes change), then Google
-  function requestToken(interactive){
-    if (!interactive && inflightToken) return inflightToken;
-    var p = new Promise(function (res, rej) {
-      if (interactive) { lr('jb_signedout'); }
-      else if (lg('jb_signedout')) { rej(new Error('signed_out')); return; }
-      function go(){ ensureClient(function () {
-        pendingRes = res; pendingRej = rej;
-        if (!interactive) setTimeout(function () { if (pendingRej === rej) { pendingRes = pendingRej = null; rej(new Error('silent_timeout')); } }, SILENT_TIMEOUT_MS);
-        try { tokenClient.requestAccessToken(interactive ? {} : { prompt: 'none' }); }
-        catch (e) { if (pendingRej === rej) { pendingRes = pendingRej = null; } rej(e); }
-      }); }
-      if (interactive && needConsent()) showConsent(function(){ ackConsent(); go(); }, function(){ rej(new Error('cancelled')); });
+  function requestTokenCore(interactive){
+    clearStaleToken();
+    if (!interactive && lg('jb_signedout')) return Promise.reject(new Error('signed_out'));
+    if (interactive) lr('jb_signedout');
+    var gen = ++authGen;
+    return new Promise(function (res, rej) {
+      function go(){
+        ensureClient(function () {
+          if (gen !== authGen) { rej(new Error('auth_cancelled')); return; }
+          pendingRes = res; pendingRej = rej;
+          if (!interactive) {
+            silentTimer = setTimeout(function () {
+              if (pendingRej === rej) finishPending(new Error('silent_timeout'));
+            }, SILENT_TIMEOUT_MS);
+          }
+          try { tokenClient.requestAccessToken(interactive ? {} : { prompt: 'none' }); }
+          catch (e) { finishPending(e); }
+        });
+      }
+      if (interactive && needConsent()) showConsent(function () { ackConsent(); go(); }, function () { rej(new Error('cancelled')); });
       else go();
     });
-    if (!interactive) inflightToken = p.finally(function () { inflightToken = null; });
-    return p;
+  }
+  function requestToken(interactive){
+    if (!interactive && inflightToken) return inflightToken;
+    if (interactive) {
+      cancelSilentAuth('superseded');
+      var p = authChain = authChain.catch(function () {}).then(function () {
+        return new Promise(function (r) { setTimeout(r, GIS_SETTLE_MS); });
+      }).then(function () { return requestTokenCore(true); });
+      return p;
+    }
+    var p = requestTokenCore(false);
+    inflightToken = p.finally(function () { inflightToken = null; });
+    authChain = authChain.catch(function () {}).then(function () { return p; });
+    return inflightToken;
   }
 
   function fetchEmail(tok){
@@ -163,9 +205,10 @@
   function signOut(){ clearRefreshTimer(); var t = lg(TOK); try { if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function () {}); } catch (_) {} lr(TOK); lr(EXP); lr(EML); ls('jb_signedout', '1'); }
 
   function initAuthPersistence(){
+    clearStaleToken();
     if (hasSession()) {
       if (isTokenValid()) scheduleTokenRefresh();
-      else ensureToken(false).then(scheduleTokenRefresh).catch(function () {});
+      else ensureToken(false).then(scheduleTokenRefresh).catch(clearStaleToken);
     }
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState !== 'visible' || !hasSession()) return;
@@ -383,7 +426,7 @@
 
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
-    cachedToken: cachedToken, hasSession: hasSession, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
+    cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
     requestToken: requestToken, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,

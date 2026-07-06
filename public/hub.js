@@ -8,7 +8,7 @@ var HUB_TOUR=[
   { sel:'.gear', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
 ];
 function hubVerTutorial(){ closeHubSet(); setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 250); }
-function setGreet(){ var em=JB.email(); var on=JB.hasSession()&&!!em; greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); if(on && !_hbooted){ _hbooted=true; if(!JB.tourDone('hub')) setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 700); } }
+function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); if(on && !_hbooted){ _hbooted=true; if(!JB.tourDone('hub')) setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 700); } }
 function doIn(){ JB.requestToken(true).then(function(t){ return JB.fetchEmail(t); }).then(setGreet).catch(function(){}); }
 function doOut(){ JB.signOut(); setGreet(); }
 /* ---- Feedback viewer (owner-only; reads the form-response sheet via Sheets API) ---- */
@@ -102,8 +102,8 @@ function renderFbChips(base){ // chips = Tudo + one per app present (known apps 
   }).join('');
 }
 function fbSetFilter(f){ fbFilter=f; renderFB(); }
-function openHubSet(){ var em=JB.email(); var on=JB.hasSession()&&!!em; document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; JB.renderSkinPicker('hub', document.getElementById("hubSkins")); document.getElementById("hubSet").classList.add("open"); }
+function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; JB.renderSkinPicker('hub', document.getElementById("hubSkins")); document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
-function hubAuth(){ var on=JB.hasSession()&&!!JB.email(); closeHubSet(); if(on) doOut(); else doIn(); }
+function hubAuth(){ var on=JB.isSignedIn(); closeHubSet(); if(on) doOut(); else doIn(); }
 JB.applySkin('hub');
 if (JB.hasSession()) { JB.ensureToken(false).then(setGreet).catch(setGreet); } else { setGreet(); }

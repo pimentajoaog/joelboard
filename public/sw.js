@@ -1,4 +1,4 @@
-const C = 'joelboard-v3';
+const C = 'joelboard-v4';
 const SHELL = ['/', '/icon-192.png', '/icon-512.png', '/favicon-32.png', '/apple-touch-icon.png'];
 const CORE = /\/(joelboard|themes|finance|fit|study|hub|notas|mini)\.(js|css)$/;
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });

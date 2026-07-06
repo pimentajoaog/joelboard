@@ -63,7 +63,9 @@
   async function ensureHostPermission(host) {
     host = JB_SITES.normalizeHost(host);
     if (!host) return false;
-    return permRequest(JB_SITES.patternForHost(host));
+    var patterns = JB_SITES.patternForHost(host);
+    if (await permContains(patterns)) return true;
+    return permRequest(patterns);
   }
 
   function setShortcutLabel(shortcut) {
@@ -294,22 +296,20 @@
     }
 
     btnAddSite.addEventListener('click', async function () {
-      var host = siteInput.value.trim();
-      if (!host) return;
-      var allowed = await ensureHostPermission(host);
-      if (!allowed) {
-        showToast('Permissão negada para este site.');
+      var host = JB_SITES.normalizeHost(siteInput.value.trim());
+      if (!host) {
+        showToast('Site inválido.');
         return;
       }
-      chrome.runtime.sendMessage({ type: 'addSite', host: host }, function (res) {
-        if (!res || !res.ok) {
-          showToast('Site inválido.');
-          return;
-        }
-        siteInput.value = '';
-        renderSites(res.sites);
-        showToast('Site adicionado.');
-      });
+      var saved = await send({ type: 'addSite', host: host });
+      if (!saved || !saved.ok) {
+        showToast('Não foi possível salvar o site.');
+        return;
+      }
+      siteInput.value = '';
+      renderSites(saved.sites);
+      await ensureHostPermission(host);
+      showToast('Site adicionado.');
     });
 
     siteInput.addEventListener('keydown', function (e) {

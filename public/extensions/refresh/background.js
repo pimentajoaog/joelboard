@@ -28,6 +28,7 @@ function scheduleRefresh(tabId, intervalSec) {
       chrome.alarms.clear(name, function () {
         chrome.alarms.create(name, { when: nextAt });
       });
+      updateBadge(tabId, true);
     });
   });
 }
@@ -48,17 +49,68 @@ function tabExists(tabId, cb) {
   });
 }
 
-function updateBadge(tabId, running, intervalSec) {
+var badgeTimers = {};
+
+function clearBadgeTimer(tabId) {
+  if (badgeTimers[tabId]) {
+    clearTimeout(badgeTimers[tabId]);
+    delete badgeTimers[tabId];
+  }
+}
+
+function formatBadgeLabel(remainingSec) {
+  if (remainingSec <= 0) return '↻';
+  if (remainingSec >= 3600) return Math.floor(remainingSec / 3600) + 'h';
+  if (remainingSec >= 60) return Math.floor(remainingSec / 60) + 'm';
+  return String(remainingSec);
+}
+
+function paintBadge(tabId) {
   tabExists(tabId, function (ok) {
-    if (!ok) return;
-    if (!running) {
-      ignorePromise(chrome.action.setBadgeText({ tabId: tabId, text: '' }));
+    if (!ok) {
+      clearBadgeTimer(tabId);
       return;
     }
-    var label = intervalSec >= 60 ? Math.round(intervalSec / 60) + 'm' : intervalSec + 's';
-    ignorePromise(chrome.action.setBadgeBackgroundColor({ tabId: tabId, color: '#059669' }));
-    ignorePromise(chrome.action.setBadgeText({ tabId: tabId, text: label }));
+    getState(function (state) {
+      var cfg = state.tabs[String(tabId)];
+      if (!cfg || !cfg.running) {
+        clearBadgeTimer(tabId);
+        ignorePromise(chrome.action.setBadgeText({ tabId: tabId, text: '' }));
+        return;
+      }
+      function show() {
+        var remaining = Math.max(0, Math.ceil((cfg.nextRefreshAt - Date.now()) / 1000));
+        ignorePromise(chrome.action.setBadgeBackgroundColor({ tabId: tabId, color: '#059669' }));
+        ignorePromise(chrome.action.setBadgeText({ tabId: tabId, text: formatBadgeLabel(remaining) }));
+        clearBadgeTimer(tabId);
+        badgeTimers[tabId] = setTimeout(function () { paintBadge(tabId); }, 1000);
+      }
+      if (cfg.pauseWhenInactive) {
+        isTabActive(tabId, function (active) {
+          if (!active) {
+            clearBadgeTimer(tabId);
+            ignorePromise(chrome.action.setBadgeText({ tabId: tabId, text: '' }));
+            return;
+          }
+          show();
+        });
+        return;
+      }
+      show();
+    });
   });
+}
+
+function updateBadge(tabId, running) {
+  clearBadgeTimer(tabId);
+  if (!running) {
+    tabExists(tabId, function (ok) {
+      if (!ok) return;
+      ignorePromise(chrome.action.setBadgeText({ tabId: tabId, text: '' }));
+    });
+    return;
+  }
+  paintBadge(tabId);
 }
 
 function injectContent(tabId, cb) {
@@ -86,6 +138,14 @@ function injectContent(tabId, cb) {
         if (cb) cb(!chrome.runtime.lastError, chrome.runtime.lastError && chrome.runtime.lastError.message);
       });
     });
+  });
+}
+
+function maybeInjectShortcut(tabId, url) {
+  if (!JB_SITES.isInjectableUrl(url)) return;
+  JB_SITES.checkPermissions(url, function (perm) {
+    if (!perm.ok) return;
+    injectContent(tabId);
   });
 }
 
@@ -155,7 +215,6 @@ function startRefresh(tabId, opts, cb) {
           }
           reloadTab(tabId, function () {
             scheduleRefresh(tabId, intervalSec);
-            updateBadge(tabId, true, intervalSec);
             if (cb) cb({ running: true, intervalSec: intervalSec, pauseWhenInactive: pauseWhenInactive });
           });
         });
@@ -165,6 +224,7 @@ function startRefresh(tabId, opts, cb) {
 }
 
 function stopRefresh(tabId, cb) {
+  clearBadgeTimer(tabId);
   getState(function (state) {
     delete state.tabs[String(tabId)];
     saveState(state, function () {
@@ -232,11 +292,22 @@ chrome.tabs.onRemoved.addListener(function (tabId) {
 
 chrome.tabs.onUpdated.addListener(function (tabId, info, tab) {
   if (info.status !== 'complete' || !tab.url) return;
+  maybeInjectShortcut(tabId, tab.url);
+});
+
+chrome.tabs.onActivated.addListener(function (info) {
   getState(function (state) {
-    var cfg = state.tabs[String(tabId)];
-    if (!cfg || !cfg.running) return;
-    ensureInject(tabId, tab.url, function () {});
+    var cfg = state.tabs[String(info.tabId)];
+    if (cfg && cfg.running) paintBadge(info.tabId);
   });
+  chrome.tabs.get(info.tabId, function (tab) {
+    if (!chrome.runtime.lastError && tab && tab.url) maybeInjectShortcut(info.tabId, tab.url);
+  });
+});
+
+chrome.commands.onCommand.addListener(function (command) {
+  if (command !== JB_REFRESH.COMMAND_NAME) return;
+  toggleRefreshForActiveTab(function () {});
 });
 
 function toggleRefreshForTab(tabId, cb) {
@@ -319,7 +390,6 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
           }
           saveState(state, function () {
             scheduleRefresh(msg.tabId, cfg.intervalSec);
-            updateBadge(msg.tabId, true, cfg.intervalSec);
             sendResponse({
               running: true,
               intervalSec: cfg.intervalSec,

@@ -276,16 +276,16 @@ function initSitesUI() {
   var btnAddSite = $('btnAddSite');
   if (!sitesList || !siteInput || !btnAddSite) return;
 
-  function permRequest(origins) {
-    return new Promise(function (resolve) {
-      chrome.permissions.request({ origins: origins }, resolve);
-    });
-  }
-
   async function ensureHostPermission(host) {
     host = JB_SITES.normalizeHost(host);
     if (!host) return false;
-    return permRequest(JB_SITES.patternForHost(host));
+    var patterns = JB_SITES.patternForHost(host);
+    return new Promise(function (resolve) {
+      chrome.permissions.contains({ origins: patterns }, function (has) {
+        if (has) { resolve(true); return; }
+        chrome.permissions.request({ origins: patterns }, resolve);
+      });
+    });
   }
 
   function renderSites(sites) {
@@ -307,20 +307,19 @@ function initSitesUI() {
   });
 
   btnAddSite.onclick = async function () {
-    var host = siteInput.value.trim();
-    if (!host) return;
-    var allowed = await ensureHostPermission(host);
-    if (!allowed) {
-      toast('Permissão negada.');
+    var host = JB_SITES.normalizeHost(siteInput.value.trim());
+    if (!host) {
+      toast('Site inválido.');
       return;
     }
-    chrome.runtime.sendMessage({ type: 'addSite', host: host }, function (res) {
+    chrome.runtime.sendMessage({ type: 'addSite', host: host }, async function (res) {
       if (!res || !res.ok) {
-        toast('Site inválido.');
+        toast('Não foi possível salvar o site.');
         return;
       }
       siteInput.value = '';
       renderSites(res.sites);
+      await ensureHostPermission(host);
       toast('Site adicionado.');
     });
   };

@@ -53,8 +53,14 @@
     <button class="btn stop" id="btnStop" disabled>Parar</button>
   </div>
 
-  <p class="hint">Atalho: <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> para alternar</p>
+  <label class="fl" for="shortcutBtn">Atalho</label>
+  <button type="button" class="field shortcut-btn" id="shortcutBtn">—</button>
+  <p class="hint shortcut-hint" id="shortcutHint">Clique acima e pressione a nova combinação. <a href="#" id="shortcutLink">Atalhos do Chrome</a></p>
+
+  <p class="hint" id="shortcutUse">Use o atalho para alternar nesta aba.</p>
 </div>
+
+<div class="toast" id="toast"></div>
 
 <script src="lib/shared.js"></script>
 <script src="popup.js"></script>

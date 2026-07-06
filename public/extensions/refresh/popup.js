@@ -1,6 +1,8 @@
 /* Joelboard Refresh — popup. © 2026 Joel Soluções LTDA. */
 (function () {
   var tabId = null;
+  var recordingShortcut = false;
+  var toastTimer = null;
 
   var $ = function (id) { return document.getElementById(id); };
   var tabUrl = $('tabUrl');
@@ -13,11 +15,61 @@
   var btnStart = $('btnStart');
   var btnStop = $('btnStop');
   var presets = $('presets');
+  var shortcutBtn = $('shortcutBtn');
+  var shortcutHint = $('shortcutHint');
+  var shortcutUse = $('shortcutUse');
+  var shortcutLink = $('shortcutLink');
+  var toast = $('toast');
 
   function send(msg) {
     return new Promise(function (resolve) {
       chrome.runtime.sendMessage(msg, resolve);
     });
+  }
+
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2600);
+  }
+
+  function setShortcutLabel(shortcut) {
+    var label = JB_REFRESH.formatShortcutDisplay(shortcut || JB_REFRESH.DEFAULT_SHORTCUT);
+    shortcutBtn.textContent = label;
+    shortcutUse.textContent = 'Use ' + label + ' para alternar nesta aba.';
+  }
+
+  function loadShortcut() {
+    chrome.commands.getAll(function (commands) {
+      var cmd = commands.filter(function (c) { return c.name === JB_REFRESH.COMMAND_NAME; })[0];
+      setShortcutLabel(cmd && cmd.shortcut);
+    });
+  }
+
+  function applyShortcut(shortcut) {
+    if (!JB_REFRESH.isValidShortcut(shortcut)) {
+      showToast('Combinação inválida — use Ctrl/Alt/⌘ + tecla.');
+      return;
+    }
+    chrome.commands.update({
+      name: JB_REFRESH.COMMAND_NAME,
+      shortcut: shortcut
+    }, function () {
+      if (chrome.runtime.lastError) {
+        showToast(chrome.runtime.lastError.message || 'Atalho em conflito ou inválido.');
+        loadShortcut();
+        return;
+      }
+      setShortcutLabel(shortcut);
+      showToast('Atalho atualizado.');
+    });
+  }
+
+  function stopRecordingShortcut() {
+    recordingShortcut = false;
+    shortcutBtn.classList.remove('recording');
+    loadShortcut();
   }
 
   function readIntervalSec() {
@@ -134,5 +186,48 @@
     if (tabId != null) send({ type: 'update', tabId: tabId, opts: currentOpts() });
   });
 
+  shortcutBtn.addEventListener('click', function () {
+    recordingShortcut = !recordingShortcut;
+    shortcutBtn.classList.toggle('recording', recordingShortcut);
+    if (recordingShortcut) {
+      shortcutBtn.textContent = 'Pressione a combinação…';
+      shortcutHint.textContent = 'Esc cancela. Inclua Ctrl, Alt ou ⌘.';
+    } else {
+      loadShortcut();
+      shortcutHint.innerHTML = 'Clique acima e pressione a nova combinação. <a href="#" id="shortcutLink">Atalhos do Chrome</a>';
+      bindShortcutLink();
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (!recordingShortcut) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.key === 'Escape') {
+      stopRecordingShortcut();
+      shortcutHint.innerHTML = 'Clique acima e pressione a nova combinação. <a href="#" id="shortcutLink">Atalhos do Chrome</a>';
+      bindShortcutLink();
+      return;
+    }
+    var shortcut = JB_REFRESH.eventToShortcut(e);
+    if (!shortcut) return;
+    recordingShortcut = false;
+    shortcutBtn.classList.remove('recording');
+    applyShortcut(shortcut);
+    shortcutHint.innerHTML = 'Clique acima e pressione a nova combinação. <a href="#" id="shortcutLink">Atalhos do Chrome</a>';
+    bindShortcutLink();
+  });
+
+  function bindShortcutLink() {
+    var link = $('shortcutLink');
+    if (!link) return;
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+    });
+  }
+
+  bindShortcutLink();
+  loadShortcut();
   refreshUI();
 })();

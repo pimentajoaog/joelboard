@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Joelboard Refresh",
   "short_name": "Refresh",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Auto-refresh da aba atual — intervalo configurável, atalho e pausa em aba inativa. Parte do Joelboard Mini.",
   "permissions": ["storage", "alarms", "tabs"],
   "action": {

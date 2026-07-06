@@ -569,6 +569,8 @@
   whenReady(initScrollLock);
   whenReady(initAuthPersistence);
   whenReady(initTabSync);
+  whenReady(initTabPills);
+  whenReady(initFabScroll);
 
   // --- shared feedback (posts to the app owner's Google Form) + a tiny core toast ---
   var FB_FORM = { action: 'https://docs.google.com/forms/d/e/1FAIpQLSdfIXwvv96V8E2aMsS0Yu9AlugAy0NZ7-eAklGisFO6cuSCuA/formResponse', nameEntry: 'entry.2102774097', kindEntry: 'entry.1066607309', msgEntry: 'entry.315076588' };
@@ -909,6 +911,71 @@
       + '<div class="jb-empty-title">' + escHtml(o.title || 'Nada por aqui') + '</div>' + hint + btn + '</div>';
   }
 
+  function syncTabPill(bar) {
+    if (!bar) return;
+    var active = bar.querySelector('.tabb.on, .tab-btn.active');
+    var pill = bar.querySelector('.jb-tab-pill');
+    if (!pill) {
+      pill = document.createElement('span');
+      pill.className = 'jb-tab-pill';
+      pill.setAttribute('aria-hidden', 'true');
+      bar.appendChild(pill);
+    }
+    if (!active) { pill.style.opacity = '0'; return; }
+    pill.style.opacity = '1';
+    pill.style.width = active.offsetWidth + 'px';
+    pill.style.transform = 'translateX(' + active.offsetLeft + 'px)';
+  }
+  function initTabPill(bar) {
+    if (!bar || bar.getAttribute('data-jb-pill')) return;
+    bar.setAttribute('data-jb-pill', '1');
+    syncTabPill(bar);
+    bar.addEventListener('scroll', function () { syncTabPill(bar); }, { passive: true });
+    window.addEventListener('resize', function () { syncTabPill(bar); });
+  }
+  function initTabPills() {
+    document.querySelectorAll('.tabbar').forEach(initTabPill);
+    try {
+      new MutationObserver(function () {
+        document.querySelectorAll('.tabbar').forEach(function (bar) {
+          if (!bar.getAttribute('data-jb-pill')) initTabPill(bar);
+          else syncTabPill(bar);
+        });
+      }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    } catch (_) {}
+  }
+  function initFabScroll() {
+    var lastY = 0, hidden = false;
+    function apply() {
+      document.querySelectorAll('.fab').forEach(function (f) {
+        if (f.style.display === 'none') return;
+        f.classList.toggle('jb-fab-hide', hidden);
+      });
+    }
+    function onScroll() {
+      var y = window.scrollY || document.documentElement.scrollTop || 0;
+      var dy = y - lastY;
+      if (y < 20) hidden = false;
+      else if (dy > 8) hidden = true;
+      else if (dy < -8) hidden = false;
+      lastY = y;
+      apply();
+    }
+    var busy = false;
+    window.addEventListener('scroll', function () {
+      if (busy) return;
+      busy = true;
+      requestAnimationFrame(function () { onScroll(); busy = false; });
+    }, { passive: true });
+  }
+  function searchFocus(el) { var w = el && el.closest && el.closest('.jb-search'); if (w) w.classList.add('focus'); }
+  function searchBlur(el) { var w = el && el.closest && el.closest('.jb-search'); if (w) w.classList.remove('focus'); }
+  function searchClearVis(inputId, btnId, hasValue) {
+    var b = document.getElementById(btnId);
+    if (b) b.style.display = hasValue ? 'flex' : 'none';
+    if (!hasValue) { var i = document.getElementById(inputId); if (i) i.focus(); }
+  }
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
@@ -917,6 +984,6 @@
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, toast: jbToast, persist: persist, onTabVisible: onTabVisible, watchSheet: watchSheet, confirm: confirm, whenReady: whenReady,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
-    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState
+    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis
   };
 })();

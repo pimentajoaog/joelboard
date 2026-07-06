@@ -161,6 +161,4 @@ textarea.field{ resize:vertical; min-height:64px; }
 .btn:active{ transform: scale(0.96); }
 .matc, .erow, .cd{ transition: transform 0.12s ease, border-color 0.12s ease; }
 .matc:hover, .erow:hover{ transform: translateY(-1px); }
-.fab{ transition: transform 0.12s ease; }
-.fab:active{ transform: scale(0.92); }
 .focuslaunch{ transition: transform 0.1s ease; }

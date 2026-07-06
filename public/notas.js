@@ -134,8 +134,15 @@ function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; render(); wi
 function backHome(){ openNoteId=null; render(); }
 
 /* ---- home ---- */
-function renderHomeShell(){ $('main').innerHTML='<div class="searchbar"><input class="field" placeholder="🔎 Buscar listas…" value="'+escAttr(homeQuery)+'" oninput="onHomeSearch(this.value)"></div><div id="homeList"></div>'; renderHomeList(); }
-function onHomeSearch(v){ homeQuery=v; renderHomeList(); }
+function renderHomeShell(){
+  $('main').innerHTML='<div class="jb-search searchbar">'
+    +'<input class="field jb-search-input" id="homeSearch" type="search" placeholder="Buscar listas…" value="'+escAttr(homeQuery)+'" oninput="onHomeSearch(this.value)" onfocus="JB.searchFocus(this)" onblur="JB.searchBlur(this)">'
+    +'<button type="button" class="jb-search-clear" id="homeSearchClear" onclick="clearHomeSearch()" aria-label="Limpar busca" style="display:'+(homeQuery?'flex':'none')+'">✕</button>'
+    +'</div><div id="homeList"></div>';
+  renderHomeList();
+}
+function onHomeSearch(v){ homeQuery=v; JB.searchClearVis('homeSearch','homeSearchClear',!!v); renderHomeList(); }
+function clearHomeSearch(){ homeQuery=''; var i=$('homeSearch'); if(i) i.value=''; JB.searchClearVis('homeSearch','homeSearchClear',false); renderHomeList(); }
 function itemsOf(id){ return (DATA.itens||[]).filter(function(x){return x.notaId===id;}).sort(function(a,b){ return a.ordem-b.ordem; }); }
 function renderHomeList(){
   var el=$('homeList'); if(!el) return; var q=normText(homeQuery);

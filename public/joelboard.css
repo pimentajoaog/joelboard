@@ -40,7 +40,7 @@ body.jb-noscroll { overflow: hidden; }
 .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; overflow-x: hidden; transform: scale(0.94); transition: transform 0.24s cubic-bezier(.2,.85,.3,1); }
 .overlay.open .modal { transform: scale(1); }
 /* respect reduced-motion: no zoom/slide/page-fade for users who ask */
-@media (prefers-reduced-motion: reduce) { .overlay, .modal { transition: none; } .modal { transform: none; } .page.on, .tab-page.active, .tile, .set-pane, .set-pane.active, .jb-dd.open .jb-dd-menu, .mring-arc, .jb-stagger > *, .jb-skel, html.jb-syncing .header, .jb-sync-bar { animation: none; transition: none; } .row:active, .notec:active, .erow:active, .matc:active, .mline:active { transform: none; opacity: 1; } #toast, .jb-toast { transition: opacity 0.12s ease; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .overlay, .modal { transition: none; } .modal { transform: none; } .page.on, .tab-page.active, .tile, .set-pane, .set-pane.active, .jb-dd.open .jb-dd-menu, .mring-arc, .jb-stagger > *, .jb-skel, html.jb-syncing .header, .jb-sync-bar, .jb-tab-pill { animation: none; transition: none; } .row:active, .notec:active, .erow:active, .matc:active, .mline:active { transform: none; opacity: 1; } .fab.jb-fab-hide { transform: none; opacity: 1; pointer-events: auto; } .jb-search.focus .jb-search-input { transform: none; } #toast, .jb-toast { transition: opacity 0.12s ease; transform: translate(-50%, 0); } }
 @keyframes jb-modal-in { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .mh { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .mt { font-size: 17px; font-weight: 800; }
@@ -148,6 +148,67 @@ html.jb-syncing .header { animation: jb-sync-pulse 1.1s ease-in-out infinite; }
 .page.on,
 .tab-page.active,
 .set-pane.active { animation: jb-fade 0.18s ease both; }
+/* Sliding tab pill (JB tab pill sync on .tabbar) */
+.tabbar { position: relative; }
+.jb-tab-pill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--primary, #818cf8);
+  border-radius: 99px 99px 0 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: transform 0.28s cubic-bezier(.4, 0, .2, 1), width 0.28s cubic-bezier(.4, 0, .2, 1), opacity 0.16s ease;
+}
+.tabb.on,
+.tab-btn.active { border-bottom-color: transparent !important; }
+/* FAB scroll hide + press */
+.fab {
+  transition: transform 0.28s cubic-bezier(.4, 0, .2, 1), opacity 0.22s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.fab:active { transform: scale(0.9); }
+.fab.jb-fab-hide {
+  transform: translateY(calc(100% + 28px)) scale(0.88);
+  opacity: 0;
+  pointer-events: none;
+}
+.fab.jb-fab-hide:active { transform: translateY(calc(100% + 28px)) scale(0.88); }
+/* Search focus polish (Notas home) */
+.jb-search { position: relative; margin-bottom: 16px; transition: margin 0.2s ease; }
+.jb-search.focus { margin-bottom: 18px; }
+.jb-search .jb-search-input {
+  width: 100%;
+  padding-right: 42px !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.jb-search.focus .jb-search-input {
+  border-color: var(--primary, #818cf8);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #818cf8) 16%, transparent);
+  transform: scale(1.012);
+}
+.jb-search-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface2, #252a40);
+  color: var(--muted, #7b85a0);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-family: inherit;
+  transition: transform 0.09s ease, opacity 0.15s ease;
+}
+.jb-search-clear:active { transform: translateY(-50%) scale(0.9); opacity: 0.75; }
 /* press feedback + smooth transitions on shared interactive bits */
 .btn-primary, .jb-dd-btn, .cc-btn, .echk { transition: transform 0.09s ease, opacity 0.2s ease, border-color 0.15s ease, background 0.15s ease; }
 .btn-primary:active, .jb-dd-btn:active, .cc-btn:active, .echk:active { transform: scale(0.98); }

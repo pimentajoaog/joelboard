@@ -280,5 +280,3 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .btn:active{ transform: scale(0.96); }
 .row, .exc, .selrow{ transition: transform 0.12s ease, border-color 0.12s ease; }
 .row:hover{ transform: translateY(-1px); }
-.fab{ transition: transform 0.12s ease; }
-.fab:active{ transform: scale(0.92); }

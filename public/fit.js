@@ -473,7 +473,7 @@ function renderProgresso(){
   el.innerHTML=weightSecHtml()+volSec+exSec;
 }
 function fillGroupSelect(val){ var sel=$('exGroup'); var tags=(DATA.config&&DATA.config.tags)||DEFAULT_TAGS; var opts='<option value="">— sem grupo —</option>'; if(val && tags.indexOf(val)<0) opts+='<option value="'+esc(val)+'">'+esc(val)+'</option>'; opts+=tags.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join(''); sel.innerHTML=opts; sel.value=val||''; }
-function openSettings(){ renderSettings(); switchSet('geral'); $('setOverlay').classList.add('open'); }
+function openSettings(tab){ renderSettings(); switchSet(tab||'geral'); $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function renderSettings(){
   var u=unit();
@@ -483,8 +483,9 @@ function renderSettings(){
   $('setTags').innerHTML=tags.map(function(t,i){ return '<span class="tagchip">'+esc(t)+'<span class="tx" onclick="removeTag('+i+')">✕</span></span>'; }).join('')||'<div class="rg">Nenhum grupo.</div>';
   if($('setRest')) $('setRest').value=restDefault(); if($('setInc')) $('setInc').value=incDefault();
   renderSched(); renderVolGoals();
+  if(typeof renderMacroSettingsPanel==='function') renderMacroSettingsPanel();
 }
-function switchSet(name){ document.querySelectorAll('#setOverlay .set-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-st')===name); }); document.querySelectorAll('#setOverlay .set-pane').forEach(function(p){ p.style.display=(p.getAttribute('data-pane')===name)?'':'none'; }); }
+function switchSet(name){ document.querySelectorAll('#setOverlay .set-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-st')===name); }); document.querySelectorAll('#setOverlay .set-pane').forEach(function(p){ p.style.display=(p.getAttribute('data-pane')===name)?'':'none'; }); if(name==='macros'&&typeof initMacroMealsSort==='function') initMacroMealsSort(); }
 function loadDefaults(){ var have={}; (DATA.exercicios||[]).forEach(function(e){ have[(e.name||'').toLowerCase()]=1; }); var add=STARTER.filter(function(e){ return !have[e[0].toLowerCase()]; }); if(!add.length){ toast('Biblioteca já está completa ✓'); return; } var rows=add.map(function(e){ var id=uuid(); DATA.exercicios.push({id:id,name:e[0],group:e[1]}); return [e[0],e[1],id]; }); renderExercicios(); renderSettings(); toast('+'+add.length+' exercícios adicionados'); JB.api('POST', ssUrl('/values/'+encodeURIComponent('Exercicios')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:rows}).catch(function(){ toast('Erro ao salvar — recarregue'); }); }
 function setUnitS(u){ DATA.config=DATA.config||{}; DATA.config.unit=u; saveConfig('unit',u); renderSettings(); renderHoje(); }
 function persistTags(){ saveConfig('tags', JSON.stringify(DATA.config.tags||[])); }

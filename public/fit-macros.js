@@ -11,7 +11,7 @@ var MACRO_PRESETS_GLOBAL = [
   { l: '100 g', g: 100 }, { l: '50 g', g: 50 }, { l: '30 g', g: 30 },
   { l: '1 colher sopa (~15 g)', g: 15 }, { l: '1 colher chá (~5 g)', g: 5 }
 ];
-var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _offCache = {};
+var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _macroMealsSortable = null, _offCache = {};
 
 function macroToday() { return new Date().toISOString().slice(0, 10); }
 function macroDate() { return _macroDate || macroToday(); }
@@ -184,9 +184,8 @@ function renderMacros() {
     + '<button class="field datebtn" style="flex:1;text-align:center" onclick="macroPickDate()">' + macroFmtDate(date) + '</button>'
     + '<button class="lnk" onclick="macroNav(1)">›</button>'
     + '<button class="lnk" onclick="macroCopyYesterday()" title="Copiar ontem">↻</button>'
-    + '<button class="lnk" onclick="openMacroSettings()" title="Metas">⚙</button>'
     + '</div>'
-    + '<div class="mrings">' + (rings || '<div class="rg">Defina metas em ⚙</div>') + '</div>'
+    + '<div class="mrings">' + (rings || '<div class="rg">Defina metas em <button class="lnk" onclick="openMacroSettings()">Ajustes → Macros</button></div>') + '</div>'
     + favHtml + mealHtml;
 }
 
@@ -427,47 +426,93 @@ function macroCopyYesterday() {
   });
 }
 
-function openMacroSettings() {
+function openMacroSettings() { openSettings('macros'); }
+
+function renderMacroSettingsPanel() {
   var g = macroGoals(), s = macroShow();
-  $('macroGoalP').value = g.p; $('macroGoalC').value = g.c; $('macroGoalG').value = g.g; $('macroGoalK').value = g.kcal;
-  $('macroShowP').classList.toggle('on', s.p); $('macroShowC').classList.toggle('on', s.c);
-  $('macroShowG').classList.toggle('on', s.g); $('macroShowK').classList.toggle('on', s.kcal);
+  if ($('macroGoalP')) $('macroGoalP').value = g.p;
+  if ($('macroGoalC')) $('macroGoalC').value = g.c;
+  if ($('macroGoalG')) $('macroGoalG').value = g.g;
+  if ($('macroGoalK')) $('macroGoalK').value = g.kcal;
+  if ($('macroShowP')) $('macroShowP').classList.toggle('on', s.p);
+  if ($('macroShowC')) $('macroShowC').classList.toggle('on', s.c);
+  if ($('macroShowG')) $('macroShowG').classList.toggle('on', s.g);
+  if ($('macroShowK')) $('macroShowK').classList.toggle('on', s.kcal);
   renderMacroMealsEditor();
   renderMacroCustomList();
-  $('macroSetOverlay').classList.add('open');
 }
-function closeMacroSettings() { $('macroSetOverlay').classList.remove('open'); }
-
+function macroGoalsFromInputs() {
+  return {
+    p: Number($('macroGoalP').value) || 0,
+    c: Number($('macroGoalC').value) || 0,
+    g: Number($('macroGoalG').value) || 0,
+    kcal: Number($('macroGoalK').value) || 0
+  };
+}
+function macroSaveGoalsFromInputs() {
+  macroSaveGoals(macroGoalsFromInputs());
+  renderMacros();
+}
+function macroApplyMealOrder(meals) {
+  meals.forEach(function (m, i) { m.order = i; });
+  macroSaveMeals(meals);
+  renderMacroMealsEditor();
+  renderMacros();
+}
 function renderMacroMealsEditor() {
   var el = $('macroMealsEdit'); if (!el) return;
-  el.innerHTML = macroMeals().map(function (m, i) {
-    return '<div class="mmealedit"><input class="field" value="' + escAttr(m.name) + '" onchange="macroRenameMeal(' + i + ',this.value)">'
-      + '<button class="rm" onclick="macroRemoveMeal(' + i + ')">✕</button></div>';
-  }).join('') + '<button class="btn ghost" style="width:100%;margin-top:8px" onclick="macroAddMeal()">+ Nova refeição</button>';
+  el.innerHTML = macroMeals().map(function (m) {
+    return '<div class="mmealedit" data-meal-id="' + escAttr(m.id) + '"><span class="dh" title="Arrastar">⠿</span>'
+      + '<input class="field" value="' + escAttr(m.name) + '" onchange="macroRenameMealById(\'' + escAttr(m.id) + '\',this.value)">'
+      + '<button class="rm" onclick="macroRemoveMealById(\'' + escAttr(m.id) + '\')">✕</button></div>';
+  }).join('');
+  initMacroMealsSort();
 }
-function macroRenameMeal(i, name) {
-  var meals = macroMeals(); if (!meals[i]) return;
-  meals[i].name = (name || '').trim() || meals[i].name;
-  macroSaveMeals(meals); renderMacros();
+function initMacroMealsSort() {
+  if (_macroMealsSortable) { try { _macroMealsSortable.destroy(); } catch (e) {} _macroMealsSortable = null; }
+  var el = $('macroMealsEdit');
+  if (!el || !window.Sortable || !el.querySelector('.mmealedit')) return;
+  _macroMealsSortable = Sortable.create(el, {
+    animation: 150,
+    handle: '.dh',
+    draggable: '.mmealedit',
+    onEnd: function () {
+      var ids = Array.prototype.slice.call(el.querySelectorAll('.mmealedit')).map(function (n) { return n.getAttribute('data-meal-id'); });
+      var byId = {};
+      macroMeals().forEach(function (m) { byId[m.id] = m; });
+      var meals = ids.map(function (id) { return byId[id]; }).filter(Boolean);
+      macroApplyMealOrder(meals);
+    }
+  });
 }
-function macroRemoveMeal(i) {
+function macroRenameMealById(id, name) {
+  var meals = macroMeals();
+  var m = meals.find(function (x) { return x.id === id; });
+  if (!m) return;
+  m.name = (name || '').trim() || m.name;
+  macroSaveMeals(meals);
+  renderMacros();
+}
+function macroRemoveMealById(id) {
   var meals = macroMeals();
   if (meals.length <= 1) { toast('Precisa de ao menos uma refeição'); return; }
-  meals.splice(i, 1); macroSaveMeals(meals); renderMacroMealsEditor(); renderMacros();
+  macroApplyMealOrder(meals.filter(function (x) { return x.id !== id; }));
 }
 function macroAddMeal() {
   var meals = macroMeals();
   meals.push({ id: 'meal_' + uuid().slice(0, 8), name: 'Nova refeição', order: meals.length });
-  macroSaveMeals(meals); renderMacroMealsEditor(); renderMacros();
+  macroApplyMealOrder(meals);
 }
-
-function saveMacroSettings() {
-  var g = { p: Number($('macroGoalP').value) || 0, c: Number($('macroGoalC').value) || 0, g: Number($('macroGoalG').value) || 0, kcal: Number($('macroGoalK').value) || 0 };
-  var s = { p: $('macroShowP').classList.contains('on'), c: $('macroShowC').classList.contains('on'), g: $('macroShowG').classList.contains('on'), kcal: $('macroShowK').classList.contains('on') };
-  macroSaveGoals(g); macroSaveShow(s);
-  closeMacroSettings(); renderMacros(); toast('✓ Metas salvas');
+function toggleMacroShow(el) {
+  el.classList.toggle('on');
+  macroSaveShow({
+    p: $('macroShowP').classList.contains('on'),
+    c: $('macroShowC').classList.contains('on'),
+    g: $('macroShowG').classList.contains('on'),
+    kcal: $('macroShowK').classList.contains('on')
+  });
+  renderMacros();
 }
-function toggleMacroShow(el) { el.classList.toggle('on'); }
 
 function macroCustomUi() {
   var editing = !!_macroCustomEdit;

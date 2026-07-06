@@ -264,8 +264,10 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .mtoggle{ background:var(--surface2); border:1px solid var(--border); border-radius:99px; padding:7px 12px; font-size:12px; font-weight:700; cursor:pointer; color:var(--ink); font-family:inherit; }
 .mtoggle.on{ background:var(--primary); color:var(--on-brand); border-color:var(--primary); }
 .mmealedit{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-.mmealedit .field{ flex:1; }
+.mmealedit .field{ flex:1; min-width:0; }
+.mmealedit .dh{ flex:0 0 auto; }
 .mmealedit .rm{ flex:0 0 auto; width:32px; height:32px; border:0; border-radius:8px; background:var(--surface2); color:var(--muted); cursor:pointer; font-family:inherit; }
+#macroMealsEdit{ display:flex; flex-direction:column; gap:6px; }
 .macrogoals-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .mcustom-row{ display:flex; align-items:center; gap:8px; padding:10px 4px; border-top:1px solid var(--border); cursor:pointer; }
 .mcustom-row:first-child{ border-top:0; padding-top:2px; }

@@ -6,9 +6,11 @@
   var shortcut = JB_REFRESH.DEFAULT_SHORTCUT;
   var overlay = null;
   var tickTimer = null;
+  var pollTimer = null;
   var tabRunning = false;
   var pauseWhenInactive = true;
   var nextRefreshAt = 0;
+  var dead = false;
 
   var COUNTDOWN_STYLE = [
     '#jb-refresh-countdown{',
@@ -20,6 +22,76 @@
     '}',
     '#jb-refresh-countdown.off{opacity:0;}'
   ].join('');
+
+  function extAlive() {
+    if (dead) return false;
+    try {
+      return !!(chrome.runtime && chrome.runtime.id);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function isInvalidatedErr(msg) {
+    return /invalidated|extension context/i.test(String(msg || ''));
+  }
+
+  function retire() {
+    if (dead) return;
+    dead = true;
+    tabRunning = false;
+    nextRefreshAt = 0;
+    clearInterval(tickTimer);
+    tickTimer = null;
+    clearInterval(pollTimer);
+    pollTimer = null;
+    hideOverlay();
+  }
+
+  function safeSend(msg, cb) {
+    if (!extAlive()) {
+      retire();
+      if (cb) cb(null);
+      return;
+    }
+    try {
+      chrome.runtime.sendMessage(msg, function (res) {
+        var err = chrome.runtime.lastError;
+        if (err) {
+          if (isInvalidatedErr(err.message)) retire();
+          if (cb) cb(null);
+          return;
+        }
+        if (cb) cb(res);
+      });
+    } catch (e) {
+      if (isInvalidatedErr(e && e.message)) retire();
+      else retire();
+      if (cb) cb(null);
+    }
+  }
+
+  function safeStorageGet(keys, cb) {
+    if (!extAlive()) {
+      retire();
+      if (cb) cb({});
+      return;
+    }
+    try {
+      chrome.storage.local.get(keys, function (res) {
+        var err = chrome.runtime.lastError;
+        if (err) {
+          if (isInvalidatedErr(err.message)) retire();
+          if (cb) cb({});
+          return;
+        }
+        if (cb) cb(res);
+      });
+    } catch (e) {
+      retire();
+      if (cb) cb({});
+    }
+  }
 
   function injectStyle() {
     if (document.getElementById('jb-refresh-style')) return;
@@ -44,7 +116,7 @@
   }
 
   function shouldShow() {
-    if (!tabRunning) return false;
+    if (!tabRunning || dead) return false;
     if (pauseWhenInactive && document.visibilityState !== 'visible') return false;
     return true;
   }
@@ -79,8 +151,13 @@
   }
 
   function pollStatus() {
-    chrome.runtime.sendMessage({ type: 'getTabCountdown' }, function (res) {
-      if (chrome.runtime.lastError || !res || !res.running) {
+    if (!extAlive()) {
+      retire();
+      return;
+    }
+    safeSend({ type: 'getTabCountdown' }, function (res) {
+      if (dead) return;
+      if (!res || !res.running) {
         tabRunning = false;
         nextRefreshAt = 0;
         hideOverlay();
@@ -95,11 +172,15 @@
 
   function startTick() {
     clearInterval(tickTimer);
-    tickTimer = setInterval(paintCountdown, 250);
+    tickTimer = setInterval(function () {
+      if (!extAlive()) { retire(); return; }
+      paintCountdown();
+    }, 250);
   }
 
   function loadShortcut() {
-    chrome.storage.local.get([JB_REFRESH.STORAGE_KEY], function (res) {
+    safeStorageGet([JB_REFRESH.STORAGE_KEY], function (res) {
+      if (dead) return;
       var data = res[JB_REFRESH.STORAGE_KEY];
       if (data && data.defaults && data.defaults.shortcut) {
         shortcut = data.defaults.shortcut;
@@ -108,30 +189,37 @@
   }
 
   document.addEventListener('keydown', function (e) {
-    if (!JB_REFRESH.matchesShortcut(e, shortcut)) return;
+    if (dead || !JB_REFRESH.matchesShortcut(e, shortcut)) return;
     e.preventDefault();
     e.stopPropagation();
-    chrome.runtime.sendMessage({ type: 'toggleTab' });
+    safeSend({ type: 'toggleTab' });
   }, true);
 
-  document.addEventListener('visibilitychange', paintCountdown);
-
-  chrome.storage.onChanged.addListener(function (changes, area) {
-    if (area !== 'local' || !changes[JB_REFRESH.STORAGE_KEY]) return;
-    var data = changes[JB_REFRESH.STORAGE_KEY].newValue;
-    if (data && data.defaults && data.defaults.shortcut) {
-      shortcut = data.defaults.shortcut;
-    }
-    pollStatus();
+  document.addEventListener('visibilitychange', function () {
+    if (!dead) paintCountdown();
   });
 
+  try {
+    chrome.storage.onChanged.addListener(function (changes, area) {
+      if (dead || !extAlive()) return;
+      if (area !== 'local' || !changes[JB_REFRESH.STORAGE_KEY]) return;
+      var data = changes[JB_REFRESH.STORAGE_KEY].newValue;
+      if (data && data.defaults && data.defaults.shortcut) {
+        shortcut = data.defaults.shortcut;
+      }
+      pollStatus();
+    });
+  } catch (_) {
+    retire();
+  }
+
   window.addEventListener('message', function (ev) {
-    if (!ev.data || ev.data.type !== 'jb-mini-sites-set' || !Array.isArray(ev.data.sites)) return;
-    chrome.runtime.sendMessage({ type: 'setSites', sites: ev.data.sites });
+    if (dead || !ev.data || ev.data.type !== 'jb-mini-sites-set' || !Array.isArray(ev.data.sites)) return;
+    safeSend({ type: 'setSites', sites: ev.data.sites });
   });
 
   loadShortcut();
   pollStatus();
   startTick();
-  setInterval(pollStatus, 4000);
+  pollTimer = setInterval(pollStatus, 4000);
 })();

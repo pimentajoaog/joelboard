@@ -1,4 +1,4 @@
-/* Joelboard Refresh — text expansion (content script). © 2026 Joel Soluções LTDA. */
+/* Joelboard Replace — text expansion (content script). © 2026 Joel Soluções LTDA. */
 (function () {
   var data = null;
   var pendingPrompt = null;
@@ -6,13 +6,14 @@
   var inputValSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
   var areaValSet = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
 
-  function refreshData() {
-    return JB_REFRESH.load().then(function (d) { data = d; return d; });
+  function syncData() {
+    return JB_REPLACE.load().then(function (d) { data = d; return d; });
   }
 
-  refreshData();
+  syncData();
   chrome.storage.onChanged.addListener(function (chg) {
-    if (chg.jb_refresh_data) data = chg.jb_refresh_data.newValue;
+    if (chg.jb_replace_data) data = chg.jb_replace_data.newValue;
+    else if (chg.jb_refresh_data) data = chg.jb_refresh_data.newValue;
   });
 
   function isEditable(el) {
@@ -143,10 +144,10 @@
 
   function buildBuiltins() {
     return {
-      date: JB_REFRESH.BUILTIN.date(),
-      time: JB_REFRESH.BUILTIN.time(),
-      datetime: JB_REFRESH.BUILTIN.datetime(),
-      ano: JB_REFRESH.BUILTIN.ano()
+      date: JB_REPLACE.BUILTIN.date(),
+      time: JB_REPLACE.BUILTIN.time(),
+      datetime: JB_REPLACE.BUILTIN.datetime(),
+      ano: JB_REPLACE.BUILTIN.ano()
     };
   }
 
@@ -204,10 +205,10 @@
 
     function finish(builtinsExtra) {
       Object.assign(builtins, builtinsExtra || {});
-      var missing = JB_REFRESH.missingVars(body, vars, builtins);
+      var missing = JB_REPLACE.missingVars(body, vars, builtins);
       return promptVars(missing, vars).then(function (filled) {
         if (!filled) return false;
-        var out = JB_REFRESH.expandVars(body, filled, builtins);
+        var out = JB_REPLACE.expandVars(body, filled, builtins);
         return applyToField(st, trig, out);
       });
     }
@@ -239,7 +240,7 @@
     var st = getFieldState(el);
     if (!st) return;
     var settings = data.settings || {};
-    var snippet = JB_REFRESH.findSnippet(data.snippets, st.before, !!settings.caseSensitive);
+    var snippet = JB_REPLACE.findSnippet(data.snippets, st.before, !!settings.caseSensitive);
     if (!snippet) return;
     if (key === ' ' && !settings.expandOnSpace) return;
     if (key === 'Tab' && !settings.expandOnTab) return;

@@ -1,6 +1,7 @@
-/* Joelboard Refresh — shared helpers. © 2026 Joel Soluções LTDA. */
-var JB_REFRESH = (function () {
-  var STORAGE_KEY = 'jb_refresh_data';
+/* Joelboard Replace — shared helpers. © 2026 Joel Soluções LTDA. */
+var JB_REPLACE = (function () {
+  var STORAGE_KEY = 'jb_replace_data';
+  var LEGACY_KEY = 'jb_refresh_data';
   var EXPORT_VERSION = 1;
 
   var BUILTIN = {
@@ -58,15 +59,22 @@ var JB_REFRESH = (function () {
 
   function load() {
     return new Promise(function (resolve) {
-      chrome.storage.local.get(STORAGE_KEY, function (res) {
-        var data = res[STORAGE_KEY];
+      chrome.storage.local.get([STORAGE_KEY, LEGACY_KEY], function (res) {
+        var data = res[STORAGE_KEY] || res[LEGACY_KEY];
         if (!data || !data.snippets) {
           data = defaultData();
-          chrome.storage.local.set({ jb_refresh_data: data }, function () { resolve(data); });
+          var patch = {};
+          patch[STORAGE_KEY] = data;
+          chrome.storage.local.set(patch, function () { resolve(data); });
           return;
         }
         if (!data.vars) data.vars = {};
         if (!data.settings) data.settings = defaultData().settings;
+        if (!res[STORAGE_KEY] && res[LEGACY_KEY]) {
+          var migrate = {};
+          migrate[STORAGE_KEY] = data;
+          chrome.storage.local.set(migrate);
+        }
         resolve(data);
       });
     });
@@ -74,7 +82,9 @@ var JB_REFRESH = (function () {
 
   function save(data) {
     return new Promise(function (resolve) {
-      chrome.storage.local.set({ jb_refresh_data: data }, resolve);
+      var patch = {};
+      patch[STORAGE_KEY] = data;
+      chrome.storage.local.set(patch, resolve);
     });
   }
 
@@ -128,7 +138,7 @@ var JB_REFRESH = (function () {
   function exportJson(data) {
     return JSON.stringify({
       version: EXPORT_VERSION,
-      app: 'Joelboard Refresh',
+      app: 'Joelboard Replace',
       exportedAt: new Date().toISOString(),
       snippets: data.snippets,
       vars: data.vars,

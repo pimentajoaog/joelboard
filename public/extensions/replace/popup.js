@@ -1,4 +1,4 @@
-/* Joelboard Refresh — popup logic. © 2026 Joel Soluções LTDA. */
+/* Joelboard Replace — popup logic. © 2026 Joel Soluções LTDA. */
 var DATA = null;
 var editingId = null;
 var pendingImport = null;
@@ -18,7 +18,7 @@ function esc(s) {
 }
 
 function persist() {
-  return JB_REFRESH.save(DATA);
+  return JB_REPLACE.save(DATA);
 }
 
 function switchTab(name) {
@@ -122,7 +122,7 @@ function saveEditor() {
     }
   } else {
     DATA.snippets.unshift({
-      id: JB_REFRESH.uuid(),
+      id: JB_REPLACE.uuid(),
       label: label || trigger,
       trigger: trigger,
       body: body,
@@ -174,11 +174,11 @@ function bindSettings() {
 }
 
 function exportData() {
-  var blob = new Blob([JB_REFRESH.exportJson(DATA)], { type: 'application/json' });
+  var blob = new Blob([JB_REPLACE.exportJson(DATA)], { type: 'application/json' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = 'joelboard-refresh-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.download = 'joelboard-replace-' + new Date().toISOString().slice(0, 10) + '.json';
   a.click();
   URL.revokeObjectURL(url);
   toast('✓ Exportado');
@@ -188,7 +188,7 @@ function importData(file) {
   var reader = new FileReader();
   reader.onload = function () {
     try {
-      pendingImport = JB_REFRESH.importJson(reader.result);
+      pendingImport = JB_REPLACE.importJson(reader.result);
       $('confirmOv').classList.add('open');
     } catch (e) {
       toast('Erro: ' + (e.message || 'arquivo inválido'));
@@ -237,7 +237,7 @@ $('confirmYes').onclick = applyImport;
 $('confirmOv').onclick = function (e) { if (e.target === $('confirmOv')) { pendingImport = null; $('confirmOv').classList.remove('open'); } };
 $('editor').onclick = function (e) { if (e.target === $('editor')) closeEditor(); };
 
-JB_REFRESH.load().then(function (d) {
+JB_REPLACE.load().then(function (d) {
   DATA = d;
   renderSnippets();
   renderVars();

@@ -163,7 +163,7 @@ const I18N = {
     'err.exchRate':'Enter a valid exchange rate.',
     'err.catExistsNamed': v => 'A category named “' + v.name + '” already exists.',
 
-    'confirm.deleteItemTitle':'Delete this item?', 'confirm.cantUndo':'This can’t be undone.', 'confirm.deleteCanUndo':'You can undo this right after.', 'billdel.title':'Delete this recurring bill?', 'billdel.month':'Only this month', 'billdel.onwards':'This month onwards', 'billdel.all':'All months', 'toast.billSkipped':'✓ Hidden for this month', 'toast.billStopped':'✓ Stopped from this month on',
+    'confirm.deleteItemTitle':'Delete this item?', 'confirm.cantUndo':'This can’t be undone.', 'confirm.deleteCanUndo':'You can undo this right after.', 'billdel.title':'Delete this recurring bill?', 'billdel.month':'Only this month', 'billdel.onwards':'This month onwards', 'billdel.all':'All months', 'billamt.title':'Apply new amount how?', 'toast.billSkipped':'✓ Hidden for this month', 'toast.billStopped':'✓ Stopped from this month on', 'toast.billAmtMonth':'✓ Amount updated for this month', 'toast.billAmtOnwards':'✓ New amount from this month on',
     'confirm.catTitle':'Delete category?',
     'confirm.catDelete': v => 'Delete “' + v.name + '”? This can’t be undone.',
     'confirm.catUsed': v => '“' + v.name + '” is used by ' + v.txN + ' transaction' + (v.txN!==1?'s':'') + ' and ' + v.blN + ' bill' + (v.blN!==1?'s':'') + '.\nThey’ll show as Uncategorized until reassigned.',
@@ -432,7 +432,7 @@ const I18N = {
     'err.exchRate':'Informe uma taxa de câmbio válida.',
     'err.catExistsNamed': v => 'Já existe uma categoria chamada “' + v.name + '”.',
 
-    'confirm.deleteItemTitle':'Excluir este item?', 'confirm.cantUndo':'Isso não pode ser desfeito.', 'confirm.deleteCanUndo':'Dá pra desfazer logo em seguida.', 'billdel.title':'Excluir esta conta recorrente?', 'billdel.month':'Só este mês', 'billdel.onwards':'Deste mês em diante', 'billdel.all':'Todos os meses', 'toast.billSkipped':'✓ Oculta neste mês', 'toast.billStopped':'✓ Encerrada deste mês em diante',
+    'confirm.deleteItemTitle':'Excluir este item?', 'confirm.cantUndo':'Isso não pode ser desfeito.', 'confirm.deleteCanUndo':'Dá pra desfazer logo em seguida.', 'billdel.title':'Excluir esta conta recorrente?', 'billdel.month':'Só este mês', 'billdel.onwards':'Deste mês em diante', 'billdel.all':'Todos os meses', 'billamt.title':'Como aplicar o novo valor?', 'toast.billSkipped':'✓ Oculta neste mês', 'toast.billStopped':'✓ Encerrada deste mês em diante', 'toast.billAmtMonth':'✓ Valor atualizado neste mês', 'toast.billAmtOnwards':'✓ Novo valor deste mês em diante',
     'confirm.catTitle':'Excluir categoria?',
     'confirm.catDelete': v => 'Excluir “' + v.name + '”? Isso não pode ser desfeito.',
     'confirm.catUsed': v => '“' + v.name + '” é usada por ' + v.txN + (v.txN!==1?' lançamentos':' lançamento') + ' e ' + v.blN + (v.blN!==1?' contas':' conta') + '.\nEles ficarão como Sem categoria até serem reatribuídos.',
@@ -675,6 +675,19 @@ var JB_IMPL = {
   clearWorkDay: function(date){ return jbGetVals('WorkLog').then(function(vals){ for(var i=1;i<vals.length;i++){ var dv=(vals[i]||[])[0]; var ds=(typeof dv==='number')?jbDate(dv):String(dv); if(ds===date) return jbDeleteRow('WorkLog', i+1); } return {}; }).then(function(){ return {success:true}; }); },
   setPaid: function(month,type,itemId,paid,actualAmount,paidDate){ var on=(paid===true||paid==='true'); var amt=(actualAmount===undefined||actualAmount===null||actualAmount==='')?'':Number(actualAmount); var pd=(paidDate===undefined||paidDate===null)?'':String(paidDate); return jbGetVals('Payments').then(function(vals){ var row=-1; for(var i=1;i<vals.length;i++){ var r=vals[i]||[]; var m=String(r[0]).replace(/^m/,'').slice(0,7); if(m===month && String(r[1])===String(type) && String(r[2])===String(itemId)){ row=i+1; break; } } if(on){ var rr=['m'+month,type,String(itemId),true,amt,pd]; return row<0 ? jbAppend('Payments',rr) : jbPutRange('Payments!A'+row+':F'+row,[rr]); } return row>0 ? jbDeleteRow('Payments',row) : {}; }).then(function(){ return {success:true}; }); },
   setBillSkip: function(month,id){ return jbAppend('Payments', ['m'+month,'skip',String(id),true,'','']).then(function(){ return {success:true}; }); },
+  setBillOverride: function(month,id,amount){
+    var fam=['bill','recurring','installment'];
+    return jbGetVals('Payments').then(function(vals){
+      var row=-1;
+      for(var i=1;i<vals.length;i++){
+        var r=vals[i]||[];
+        var m=String(r[0]).replace(/^m/,'').slice(0,7);
+        if(m===month && fam.indexOf(String(r[1]))>-1 && String(r[2])===String(id)){ row=i+1; break; }
+      }
+      var rr=['m'+month,'bill',String(id),'',Number(amount),''];
+      return row<0 ? jbAppend('Payments', rr) : jbPutRange('Payments!A'+row+':F'+row, [rr]);
+    }).then(function(){ return {success:true}; });
+  },
   saveSetting: function(key,value){ return jbGetVals('Settings').then(function(vals){ for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===String(key)) return jbPutRange('Settings!B'+(i+1), [[value]]); } return jbAppend('Settings', [key,value]); }).then(function(){ return {success:true}; }); },
   saveProfile: function(data){ var ch=Promise.resolve(); Object.keys(data).forEach(function(k){ var v=data[k]; if(k==='off_weekdays' && Object.prototype.toString.call(v)==='[object Array]') v=v.map(function(d){ return 'd'+d; }).join(','); ch=ch.then(function(){ return JB_IMPL.saveSetting(k,v); }); }); return ch.then(function(){ return {success:true}; }); },
   savingsMove: function(newBase,tx){ return JB_IMPL.saveSetting('savings_balance',newBase).then(function(){ return JB_IMPL.addRecord('transactions',tx); }).then(function(){ return {success:true}; }); },
@@ -1607,7 +1620,15 @@ function submitBill() {
   const start=document.getElementById('billStart').value||ymStr(selY,selM);
   const cnt = billRecur ? (parseInt(document.getElementById('billCount').value)||0) : 1;
   if (!name||isNaN(amt)||amt===0||!day||day<1||day>31) { setFormError('billErr',t('err.billFields')); return; }
-  saveRecord('recurring', {name,amount:amt,dueDay:day,category:cat,installments:cnt,startMonth:start}, document.getElementById('billSave'), editing.id?t('bill.update'):t('bill.save'), 'billOverlay');
+  const data = {name,amount:amt,dueDay:day,category:cat,installments:cnt,startMonth:start};
+  if (editing.id && editing.type==='recurring') {
+    const b = (DATA.recurring||[]).find(x => String(x.id)===String(editing.id));
+    if (b && b.installments!==1 && amt!==b.amount) {
+      openBillScope('amount', { formData: data });
+      return;
+    }
+  }
+  saveRecord('recurring', data, document.getElementById('billSave'), editing.id?t('bill.update'):t('bill.save'), 'billOverlay');
 }
 
 /* ---------- Budget ---------- */
@@ -2047,7 +2068,7 @@ function renderThemePicker() {
 function toggleFab() { fabOpen=!fabOpen; document.getElementById('fab').classList.toggle('open',fabOpen); document.getElementById('fabMenu').classList.toggle('open',fabOpen); }
 function closeFab() { fabOpen=false; document.getElementById('fab').classList.remove('open'); document.getElementById('fabMenu').classList.remove('open'); }
 function clearFormErrors() { document.querySelectorAll('.form-err').forEach(e=>{ e.textContent=''; e.classList.remove('show'); }); }
-function closeOverlay(id) { if (mOpen) mOpen(); document.getElementById(id).classList.remove('open'); clearFormErrors(); }
+function closeOverlay(id) { if (id==='billDelOverlay') billScopeCtx=null; if (mOpen) mOpen(); document.getElementById(id).classList.remove('open'); clearFormErrors(); }
 function closeAllOverlays() { if (mOpen) mOpen(); document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open')); clearFormErrors(); }
 function bgClose(e,id) { if (e.target===document.getElementById(id)) closeOverlay(id); }
 function saveRecord(type, data, btn, label, overlayId) {
@@ -2537,33 +2558,137 @@ function submitImport() {
     .withFailureHandler(e=>{ btn.disabled=false; btn.textContent=t('imp.btn'); showToast(t('err.prefix')+e.message,'error'); })
     .importTransactions(rows);
 }
-function deleteBillScoped() { if (!editing.id) return; const b=(DATA.recurring||[]).find(x=>String(x.id)===String(editing.id)); if (b && b.installments===1) { delBillAll(); return; } document.getElementById('billDelOverlay').classList.add('open'); }
+let billScopeCtx = null;
+
+function openBillScope(mode, extra) {
+  billScopeCtx = Object.assign({ mode: mode }, extra || {});
+  const titleEl = document.getElementById('billDelTitle');
+  if (titleEl) titleEl.textContent = mode === 'amount' ? t('billamt.title') : t('billdel.title');
+  const allBtn = document.getElementById('billScopeAllBtn');
+  if (allBtn) {
+    allBtn.textContent = t('billdel.all');
+    allBtn.className = mode === 'delete' ? 'btn-primary danger' : 'btn-primary alt';
+  }
+  document.getElementById('billDelOverlay').classList.add('open');
+}
+
+function billScopeThisMonth() {
+  if (!billScopeCtx) return;
+  if (billScopeCtx.mode === 'delete') delBillThisMonth();
+  else applyBillAmtThisMonth();
+}
+function billScopeOnwards() {
+  if (!billScopeCtx) return;
+  if (billScopeCtx.mode === 'delete') delBillOnwards();
+  else applyBillAmtOnwards();
+}
+function billScopeAll() {
+  if (!billScopeCtx) return;
+  if (billScopeCtx.mode === 'delete') delBillAll();
+  else applyBillAmtAll();
+}
+
+function applyBillOverride(id, month, amount) {
+  const fam = ['bill','recurring','installment'];
+  let p = (DATA.payments||[]).find(x => x.month===month && fam.indexOf(x.type)>-1 && String(x.itemId)===String(id));
+  if (p) p.actualAmount = Number(amount);
+  else (DATA.payments=DATA.payments||[]).push({ month:month, type:'bill', itemId:String(id), actualAmount:Number(amount), paidDate:'' });
+  google.script.run.withFailureHandler(e => { showToast(t('err.prefix')+e.message,'error'); reload(); }).setBillOverride(month, id, amount);
+}
+
+function splitBillAtCurrent(id, cur) {
+  const i = (DATA.recurring||[]).findIndex(x => String(x.id)===String(id));
+  if (i < 0) return { status:'gone' };
+  const b = DATA.recurring[i];
+  const start = b.startMonth || cur;
+  let n = monthDiff(start, cur);
+  if (b.installments > 0) n = Math.min(b.installments, n);
+  if (n <= 0) {
+    DATA.recurring.splice(i, 1);
+    return { status:'deleted', prev:b };
+  }
+  b.installments = n;
+  return { status:'truncated', bill:b };
+}
+
+function applyBillAmtThisMonth() {
+  const data = billScopeCtx.formData, id = editing.id, cur = curYM();
+  const b = (DATA.recurring||[]).find(x => String(x.id)===String(id));
+  billScopeCtx = null;
+  closeOverlay('billDelOverlay');
+  closeOverlay('billOverlay');
+  editing = {type:null,id:null};
+  if (!b || !data) return;
+  const patch = { name:data.name, dueDay:data.dueDay, category:data.category, installments:data.installments, startMonth:data.startMonth, amount:b.amount };
+  Object.assign(b, patch);
+  applyBillOverride(id, cur, data.amount);
+  renderAll();
+  showToast(t('toast.billAmtMonth'));
+  google.script.run.withFailureHandler(e => { showToast(t('err.prefix')+e.message,'error'); reload(); }).updateRecord('recurring', id, patch);
+}
+
+function applyBillAmtOnwards() {
+  const data = billScopeCtx.formData, id = editing.id, cur = curYM();
+  const b = (DATA.recurring||[]).find(x => String(x.id)===String(id));
+  billScopeCtx = null;
+  closeOverlay('billDelOverlay');
+  closeOverlay('billOverlay');
+  editing = {type:null,id:null};
+  if (!b || !data) return;
+  const start = b.startMonth || cur;
+  const elapsed = monthDiff(start, cur);
+  const hadFinite = b.installments > 0;
+  const remain = hadFinite ? Math.max(0, b.installments - elapsed) : 0;
+  const split = splitBillAtCurrent(id, cur);
+  const fail = e => { showToast(t('err.prefix')+e.message,'error'); reload(); };
+  if (split.status === 'deleted') {
+    google.script.run.withFailureHandler(fail).deleteRecord('recurring', id);
+    if (hadFinite && remain <= 0) { renderAll(); showToast(t('toast.billStopped')); return; }
+  } else if (split.bill) {
+    const sb = split.bill;
+    google.script.run.withFailureHandler(fail).updateRecord('recurring', id, { name:sb.name, amount:sb.amount, dueDay:sb.dueDay, category:sb.category, installments:sb.installments, startMonth:sb.startMonth });
+  }
+  if (hadFinite && remain <= 0) { renderAll(); showToast(t('toast.billStopped')); return; }
+  const newBill = { name:data.name, amount:data.amount, dueDay:data.dueDay, category:data.category, startMonth:cur, installments:hadFinite ? remain : 0 };
+  google.script.run.withSuccessHandler(res => {
+    (DATA.recurring=DATA.recurring||[]).push(Object.assign({}, newBill, { id:(res&&res.id) }));
+    renderAll();
+    showToast(t('toast.billAmtOnwards'));
+  }).withFailureHandler(fail).addRecord('recurring', newBill);
+}
+
+function applyBillAmtAll() {
+  const data = billScopeCtx.formData;
+  billScopeCtx = null;
+  closeOverlay('billDelOverlay');
+  saveRecord('recurring', data, document.getElementById('billSave'), t('bill.update'), 'billOverlay');
+}
+
+function deleteBillScoped() { if (!editing.id) return; const b=(DATA.recurring||[]).find(x=>String(x.id)===String(editing.id)); if (b && b.installments===1) { delBillAll(); return; } openBillScope('delete'); }
 function delBillAll() {
   const id=editing.id, rec=(DATA.recurring||[]).find(x=>String(x.id)===String(id));
-  closeOverlay('billDelOverlay'); closeAllOverlays(); editing={type:null,id:null};
+  billScopeCtx=null; closeOverlay('billDelOverlay'); closeAllOverlays(); editing={type:null,id:null};
   const i=(DATA.recurring||[]).findIndex(x=>String(x.id)===String(id)); if (i>-1) DATA.recurring.splice(i,1);
   renderAll();
   showToast(t('toast.deleted'), null, rec ? function(){ undoDelete('recurring', rec); } : null);
   google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); }).deleteRecord('recurring', id);
 }
 function delBillOnwards() {
-  const id=editing.id, b=(DATA.recurring||[]).find(x=>String(x.id)===String(id));
-  closeOverlay('billDelOverlay'); closeAllOverlays(); editing={type:null,id:null};
-  if (!b) return;
-  const cur=curYM(), start=b.startMonth||cur; let n=monthDiff(start, cur); if (b.installments>0) n=Math.min(b.installments, n);
-  if (n<=0) {
-    const i=DATA.recurring.findIndex(x=>String(x.id)===String(id)); if (i>-1) DATA.recurring.splice(i,1);
+  const id=editing.id, cur=curYM();
+  billScopeCtx=null; closeOverlay('billDelOverlay'); closeAllOverlays(); editing={type:null,id:null};
+  const split = splitBillAtCurrent(id, cur);
+  if (split.status === 'deleted') {
     renderAll(); showToast(t('toast.deleted'));
     google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); }).deleteRecord('recurring', id);
     return;
   }
-  b.installments = n;
   renderAll(); showToast(t('toast.billStopped'));
-  google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); }).updateRecord('recurring', id, { name:b.name, amount:b.amount, dueDay:b.dueDay, category:b.category, installments:n, startMonth:b.startMonth });
+  const b = split.bill;
+  google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); }).updateRecord('recurring', id, { name:b.name, amount:b.amount, dueDay:b.dueDay, category:b.category, installments:b.installments, startMonth:b.startMonth });
 }
 function delBillThisMonth() {
   const id=editing.id, cur=curYM();
-  closeOverlay('billDelOverlay'); closeAllOverlays(); editing={type:null,id:null};
+  billScopeCtx=null; closeOverlay('billDelOverlay'); closeAllOverlays(); editing={type:null,id:null};
   (DATA.payments=DATA.payments||[]).push({ month:cur, type:'skip', itemId:String(id), actualAmount:null, paidDate:'' });
   renderAll(); showToast(t('toast.billSkipped'));
   google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); }).setBillSkip(cur, id);

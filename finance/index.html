@@ -420,10 +420,10 @@
 
 <div class="overlay" id="billDelOverlay" onclick="bgClose(event,'billDelOverlay')">
   <div class="modal" style="max-width:360px;">
-    <div class="modal-head"><div class="modal-title" data-i18n="billdel.title">Delete this recurring bill?</div><button class="close-btn" onclick="closeOverlay('billDelOverlay')">✕</button></div>
-    <button class="btn-primary alt" onclick="delBillThisMonth()" data-i18n="billdel.month" style="margin-bottom:8px;">Only this month</button>
-    <button class="btn-primary alt" onclick="delBillOnwards()" data-i18n="billdel.onwards" style="margin-bottom:8px;">This month onwards</button>
-    <button class="btn-primary danger" onclick="delBillAll()" data-i18n="billdel.all">All months</button>
+    <div class="modal-head"><div class="modal-title" id="billDelTitle" data-i18n="billdel.title">Delete this recurring bill?</div><button class="close-btn" onclick="closeOverlay('billDelOverlay')">✕</button></div>
+    <button class="btn-primary alt" onclick="billScopeThisMonth()" data-i18n="billdel.month" style="margin-bottom:8px;">Only this month</button>
+    <button class="btn-primary alt" onclick="billScopeOnwards()" data-i18n="billdel.onwards" style="margin-bottom:8px;">This month onwards</button>
+    <button class="btn-primary danger" id="billScopeAllBtn" onclick="billScopeAll()" data-i18n="billdel.all">All months</button>
     <button class="cancel-btn" onclick="closeOverlay('billDelOverlay')" data-i18n="action.cancel">Cancel</button>
   </div>
 </div>

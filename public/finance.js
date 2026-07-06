@@ -706,6 +706,12 @@ function jbMakeRunner(){
   }});
   return p;
 }
+function jbRun(method){
+  var args = [].slice.call(arguments, 1);
+  return new Promise(function(res, rej){
+    google.script.run.withSuccessHandler(res).withFailureHandler(rej)[method].apply(google.script.run, args);
+  });
+}
 
 function jbInstallShim(){ if (!window.google) window.google = {}; google.script = { get run(){ return jbMakeRunner(); }, host:{ close:function(){}, setHeight:function(){}, editor:{} } }; }
 function jbSaveToken(tok, expiresIn){ try { localStorage.setItem('jb_tok', tok); localStorage.setItem('jb_tok_exp', String(Date.now() + (Number(expiresIn)||3600)*1000 - 120000)); if (jbEmail) localStorage.setItem('jb_email', jbEmail); } catch(e){} }
@@ -2073,18 +2079,30 @@ function closeAllOverlays() { if (mOpen) mOpen(); document.querySelectorAll('.ov
 function bgClose(e,id) { if (e.target===document.getElementById(id)) closeOverlay(id); }
 function saveRecord(type, data, btn, label, overlayId) {
   const isEdit = !!(editing.id && editing.type===type), editId = editing.id;
-  closeOverlay(overlayId); editing={type:null,id:null};
-  showToast(isEdit?t('toast.updated2'):t('toast.saved'));
   const refresh = () => { rebuildCatColors(); populateCategoryDropdowns(); renderAll(); renderCatList(); };
-  const fail = e => { showToast(t('err.prefix')+e.message,'error'); reload(); };
-  if (isEdit) {
-    const arr=DATA[type]||[], i=arr.findIndex(x=>String(x.id)===String(editId));
-    if (i>-1) arr[i]=Object.assign({}, arr[i], data, {id:editId});
-    refresh();
-    google.script.run.withFailureHandler(fail).updateRecord(type, editId, data);
-  } else {
-    google.script.run.withSuccessHandler(res => { (DATA[type]=DATA[type]||[]).push(Object.assign({}, data, {id:(res&&res.id)})); refresh(); }).withFailureHandler(fail).addRecord(type, data);
-  }
+  JB.persist({
+    btn: btn,
+    busy: t('action.saving'),
+    run: function () {
+      return isEdit ? jbRun('updateRecord', type, editId, data) : jbRun('addRecord', type, data);
+    },
+    onSuccess: function (res) {
+      if (isEdit) {
+        const arr = DATA[type] || [], i = arr.findIndex(x => String(x.id) === String(editId));
+        if (i > -1) arr[i] = Object.assign({}, arr[i], data, { id: editId });
+      } else {
+        (DATA[type] = DATA[type] || []).push(Object.assign({}, data, { id: (res && res.id) }));
+      }
+      editing = { type: null, id: null };
+      closeOverlay(overlayId);
+      refresh();
+      showToast(isEdit ? t('toast.updated2') : t('toast.saved'));
+    },
+    onError: function (e) {
+      showToast(t('err.prefix') + e.message, 'error');
+      reload();
+    }
+  });
 }
 function deleteCurrent(type) {
   if (!editing.id) return;

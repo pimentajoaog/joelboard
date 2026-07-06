@@ -230,6 +230,23 @@
   // --- shared feedback (posts to the app owner's Google Form) + a tiny core toast ---
   var FB_FORM = { action: 'https://docs.google.com/forms/d/e/1FAIpQLSdfIXwvv96V8E2aMsS0Yu9AlugAy0NZ7-eAklGisFO6cuSCuA/formResponse', nameEntry: 'entry.2102774097', kindEntry: 'entry.1066607309', msgEntry: 'entry.315076588' };
   function jbToast(msg){ var t = document.createElement('div'); t.textContent = msg; t.setAttribute('style', 'position:fixed;left:50%;bottom:32px;transform:translateX(-50%);background:#1b1f32;border:1px solid #2b3147;color:#e7eaf3;padding:12px 18px;border-radius:99px;z-index:100000;font-family:inherit;font-size:14px;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,0.4)'); document.body.appendChild(t); setTimeout(function(){ if (t.parentNode) t.parentNode.removeChild(t); }, 2600); }
+
+  // Shared write helper: await run(), disable btn while busy, call onSuccess/onError (no success toast until onSuccess).
+  function persist(opts){
+    opts = opts || {};
+    var btn = opts.btn, prevLabel = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; if (opts.busy) btn.textContent = opts.busy; }
+    function restore(){ if (btn) { btn.disabled = false; btn.textContent = prevLabel; } }
+    return Promise.resolve().then(function(){ return opts.run(); })
+      .then(function(res){ restore(); if (opts.onSuccess) opts.onSuccess(res); return res; })
+      .catch(function(err){
+        restore();
+        if (opts.onError) opts.onError(err);
+        else jbToast('Não foi possível salvar. Tente de novo.');
+        return Promise.reject(err);
+      });
+  }
+
   function feedback(appName){
     var ov = document.createElement('div'); ov.id = 'jbFb';
     ov.setAttribute('style', 'position:fixed;inset:0;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px');
@@ -430,7 +447,7 @@
     requestToken: requestToken, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
-    feedback: feedback, toast: jbToast, confirm: confirm, whenReady: whenReady,
+    feedback: feedback, toast: jbToast, persist: persist, confirm: confirm, whenReady: whenReady,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt
   };
 })();

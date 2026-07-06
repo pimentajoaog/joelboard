@@ -45,6 +45,7 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 .nov-app.finance{ background:rgba(52,211,153,0.16); color:var(--income); }
 .nov-app.notas{ background:rgba(245,158,11,0.16); color:var(--notas); }
 .nov-app.mini{ background:rgba(34,211,238,0.14); color:var(--mini); }
+.nov-app.hub{ background:rgba(129,140,248,0.16); color:var(--primary); }
 .nov-kind{ font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
 .nov-kind.novo{ color:var(--primary); }
 .nov-kind.correcao{ color:#fbbf24; }

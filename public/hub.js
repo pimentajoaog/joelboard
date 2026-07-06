@@ -3,13 +3,13 @@
 var greetEl=document.getElementById("greet"), btnEl=document.getElementById("authbtn");
 var _hbooted=false;
 var HUB_NEWS=[
+  { app:'fit', kind:'novo', text:'Ajustes → Macros: metas, refeições e alimentos custom num só lugar; arraste ⠿ para reordenar refeições.' },
+  { app:'fit', kind:'novo', text:'Alimentos custom: toque para editar ou ✕ para excluir da biblioteca.' },
+  { app:'hub', kind:'novo', text:'Painel Novidades ao lado dos apps — últimas funcionalidades e correções.' },
   { app:'fit', kind:'novo', text:'Aba Macros — registre alimentos por refeição e acompanhe metas de P/C/G e kcal.' },
-  { app:'finance', kind:'correcao', text:'Editar conta “só deste mês” não marca mais como paga automaticamente.' },
-  { app:'notas', kind:'correcao', text:'Erros ao salvar na planilha agora aparecem em vez de falhar em silêncio.' },
-  { app:'notas', kind:'correcao', text:'Botão de data do Prazo no editor com tamanho normal.' },
-  { app:'mini', kind:'novo', text:'Refresh: contador na aba durante auto-refresh; atalho e sites permitidos corrigidos.' }
+  { app:'finance', kind:'correcao', text:'Editar conta “só deste mês” não marca mais como paga automaticamente.' }
 ];
-var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', mini:'Mini' };
+var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', mini:'Mini', hub:'Hub' };
 var HUB_NEWS_KIND={ novo:'Novo', correcao:'Correção' };
 function renderHubNews(){
   var el=document.getElementById('hubNews'); if(!el) return;

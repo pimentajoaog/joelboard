@@ -1,5 +1,5 @@
 /* Joelboard Mini — allowed-site helpers (shared key across Mini extensions). © 2026 Joel Soluções LTDA. */
-var JB_SITES = window.JB_SITES || (function () {
+var JB_SITES = globalThis.JB_SITES || (function () {
   var STORAGE_KEY = 'jb_mini_sites';
   var DEFAULT_SITES = [
     'joelboard.vercel.app',
@@ -149,4 +149,4 @@ var JB_SITES = window.JB_SITES || (function () {
     removeSite: removeSite
   };
 })();
-window.JB_SITES = JB_SITES;
+globalThis.JB_SITES = JB_SITES;

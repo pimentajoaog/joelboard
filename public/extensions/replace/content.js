@@ -201,25 +201,22 @@
     var body = snippet.body || '';
     var vars = Object.assign({}, data.vars || {});
     var builtins = buildBuiltins();
-    var needsClip = body.indexOf('{{clipboard}}') > -1 || body.indexOf('{{Clipboard}}') > -1;
+    var needsClip = JB_REPLACE.needsClipboard(body);
 
-    function finish(builtinsExtra) {
-      Object.assign(builtins, builtinsExtra || {});
-      var missing = JB_REPLACE.missingVars(body, vars, builtins);
+    function finish(clipText) {
+      var expanded = JB_REPLACE.applyClipboard(body, clipText);
+      var missing = JB_REPLACE.missingVars(expanded, vars, builtins);
       return promptVars(missing, vars).then(function (filled) {
         if (!filled) return false;
-        var out = JB_REPLACE.expandVars(body, filled, builtins);
+        var out = JB_REPLACE.expandVars(expanded, filled, builtins);
         return applyToField(st, trig, out);
       });
     }
 
     if (needsClip) {
-      return readClipboard().then(function (clip) {
-        builtins.clipboard = clip;
-        return finish();
-      });
+      return readClipboard().then(function (clip) { return finish(clip); });
     }
-    return finish();
+    return finish('');
   }
 
   function showToast(msg) {

@@ -119,6 +119,15 @@ var JB_REPLACE = (function () {
     });
   }
 
+  function needsClipboard(body) {
+    return /\{\{clipboard\}\}/i.test(body) || /%clip%/i.test(body);
+  }
+
+  function applyClipboard(body, clip) {
+    var c = clip == null ? '' : String(clip);
+    return String(body || '').replace(/\{\{clipboard\}\}/gi, c).replace(/%clip%/gi, c);
+  }
+
   function missingVars(body, vars, builtins) {
     builtins = builtins || {};
     var missing = [];
@@ -279,6 +288,8 @@ var JB_REPLACE = (function () {
     save: save,
     findSnippet: findSnippet,
     expandVars: expandVars,
+    needsClipboard: needsClipboard,
+    applyClipboard: applyClipboard,
     missingVars: missingVars,
     exportJson: exportJson,
     importJson: importJson,

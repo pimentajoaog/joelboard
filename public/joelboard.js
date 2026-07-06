@@ -3,21 +3,51 @@
   var CLIENT_ID = '49262188240-l70ka2666t315gb2gmsvu357f2h7769i.apps.googleusercontent.com';
   var SCOPES = 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
   var TOK = 'jb_tok', EXP = 'jb_tok_exp', EML = 'jb_email';
-  var tokenClient = null, pendingRes = null, pendingRej = null;
+  var tokenClient = null, pendingRes = null, pendingRej = null, inflightToken = null, refreshTimer = null;
+  var SILENT_TIMEOUT_MS = 15000;
 
   function lg(k){ try { return localStorage.getItem(k); } catch (_) { return null; } }
   function ls(k, v){ try { localStorage.setItem(k, v); } catch (_) {} }
   function lr(k){ try { localStorage.removeItem(k); } catch (_) {} }
 
-  function cachedToken(){ var t = lg(TOK), e = Number(lg(EXP) || 0); return (t && Date.now() < e) ? t : ''; }
-  function saveToken(tok, expiresIn){ ls(TOK, tok); ls(EXP, String(Date.now() + (Number(expiresIn) || 3600) * 1000 - 120000)); }
+  function tokenExpiresAt(){ return Number(lg(EXP) || 0); }
+  function isTokenValid(){ var t = lg(TOK), e = tokenExpiresAt(); return !!(t && e && Date.now() < e); }
+  function cachedToken(){ return isTokenValid() ? lg(TOK) : ''; }
+  function hasSession(){ if (lg('jb_signedout')) return false; return !!(lg(EML) || lg(TOK)); }
+  function saveToken(tok, expiresIn){
+    ls(TOK, tok);
+    ls(EXP, String(Date.now() + (Number(expiresIn) || 3600) * 1000 - 120000));
+    lr('jb_signedout');
+    scheduleTokenRefresh();
+  }
   function email(){ return lg(EML) || ''; }
+
+  function clearRefreshTimer(){ if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; } }
+  function scheduleTokenRefresh(){
+    clearRefreshTimer();
+    if (!hasSession()) return;
+    var exp = tokenExpiresAt();
+    if (!exp) return;
+    var ms = exp - Date.now() - 300000;
+    if (ms < 30000) ms = 30000;
+    refreshTimer = setTimeout(function () {
+      requestToken(false).catch(function () {}).then(function () { scheduleTokenRefresh(); });
+    }, ms);
+  }
+
+  function ensureToken(interactive){
+    if (isTokenValid()) return Promise.resolve(lg(TOK));
+    return requestToken(!!interactive);
+  }
 
   function ensureClient(cb){
     if (window.google && google.accounts && google.accounts.oauth2) {
       if (!tokenClient) {
         tokenClient = google.accounts.oauth2.initTokenClient({ client_id: CLIENT_ID, scope: SCOPES, callback: function (r) {
-          if (r && r.access_token) { saveToken(r.access_token, r.expires_in); if (pendingRes) { var f = pendingRes; pendingRes = pendingRej = null; f(r.access_token); } }
+          if (r && r.access_token) {
+            saveToken(r.access_token, r.expires_in);
+            if (pendingRes) { var f = pendingRes; pendingRes = pendingRej = null; f(r.access_token); }
+          }
           else { if (pendingRej) { var g = pendingRej; pendingRes = pendingRej = null; g(new Error('auth_failed')); } }
         } });
       }
@@ -51,18 +81,21 @@
   }
   // interactive=false => silent; true => shows the pre-consent explainer (first login / when scopes change), then Google
   function requestToken(interactive){
-    return new Promise(function (res, rej) {
-      if (interactive) { lr('jb_signedout'); }                 // explicit sign-in clears the signed-out lock
-      else if (lg('jb_signedout')) { rej(new Error('signed_out')); return; }  // after an explicit logout, refuse silent re-auth
+    if (!interactive && inflightToken) return inflightToken;
+    var p = new Promise(function (res, rej) {
+      if (interactive) { lr('jb_signedout'); }
+      else if (lg('jb_signedout')) { rej(new Error('signed_out')); return; }
       function go(){ ensureClient(function () {
         pendingRes = res; pendingRej = rej;
-        if (!interactive) setTimeout(function () { if (pendingRej === rej) { pendingRes = pendingRej = null; rej(new Error('silent_timeout')); } }, 4500);
+        if (!interactive) setTimeout(function () { if (pendingRej === rej) { pendingRes = pendingRej = null; rej(new Error('silent_timeout')); } }, SILENT_TIMEOUT_MS);
         try { tokenClient.requestAccessToken(interactive ? {} : { prompt: 'none' }); }
         catch (e) { if (pendingRej === rej) { pendingRes = pendingRej = null; } rej(e); }
       }); }
       if (interactive && needConsent()) showConsent(function(){ ackConsent(); go(); }, function(){ rej(new Error('cancelled')); });
       else go();
     });
+    if (!interactive) inflightToken = p.finally(function () { inflightToken = null; });
+    return p;
   }
 
   function fetchEmail(tok){
@@ -127,7 +160,18 @@
     return tryId(cached).then(function (ctx) { if (ctx) return ctx; clearSheetId(app); return fromSearch(); });
   }
 
-  function signOut(){ var t = lg(TOK); try { if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function () {}); } catch (_) {} lr(TOK); lr(EXP); lr(EML); ls('jb_signedout', '1'); }
+  function signOut(){ clearRefreshTimer(); var t = lg(TOK); try { if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function () {}); } catch (_) {} lr(TOK); lr(EXP); lr(EML); ls('jb_signedout', '1'); }
+
+  function initAuthPersistence(){
+    if (hasSession()) {
+      if (isTokenValid()) scheduleTokenRefresh();
+      else ensureToken(false).then(scheduleTokenRefresh).catch(function () {});
+    }
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState !== 'visible' || !hasSession()) return;
+      if (!isTokenValid()) ensureToken(false).catch(function () {});
+    });
+  }
 
   // --- shared mobile scroll-lock: toggle .jb-noscroll on <html>/<body> behind any open .overlay modal.
   // The styling (scrollbar, scroll-lock, modal sizing) lives in the shared joelboard.css linked by every app. ---
@@ -138,6 +182,7 @@
   }
   function whenReady(fn){ if (document.body) fn(); else document.addEventListener('DOMContentLoaded', fn); }
   whenReady(initScrollLock);
+  whenReady(initAuthPersistence);
 
   // --- shared feedback (posts to the app owner's Google Form) + a tiny core toast ---
   var FB_FORM = { action: 'https://docs.google.com/forms/d/e/1FAIpQLSdfIXwvv96V8E2aMsS0Yu9AlugAy0NZ7-eAklGisFO6cuSCuA/formResponse', nameEntry: 'entry.2102774097', kindEntry: 'entry.1066607309', msgEntry: 'entry.315076588' };
@@ -338,7 +383,7 @@
 
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
-    cachedToken: cachedToken, email: email, fetchEmail: fetchEmail,
+    cachedToken: cachedToken, hasSession: hasSession, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
     requestToken: requestToken, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,

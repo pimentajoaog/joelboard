@@ -15,7 +15,7 @@ function startAuth(){
   if (JB.cachedToken()){ afterAuth(); return; }
   loadingHtml('<div class="gate"><div class="gt">💪 Joelboard Fit</div><div class="gs">Entrando…</div></div>');
   JB.requestToken(false).then(function(){ authDone=true; afterAuth(); }).catch(showSignIn);
-  setTimeout(function(){ if(!authDone && !JB.cachedToken()) showSignIn(); }, 3000);
+  setTimeout(function(){ if(!authDone && !JB.cachedToken()) showSignIn(); }, 16000);
 }
 function showSignIn(){ loadingHtml('<div class="gate"><div class="gt">💪 Joelboard Fit</div><div class="gs">Treinos e progressão de carga.</div><button class="btn" onclick="doSignIn()">Entrar com Google</button></div>'); }
 function doSignIn(){ JB.requestToken(true).then(function(){ authDone=true; afterAuth(); }).catch(function(){}); }

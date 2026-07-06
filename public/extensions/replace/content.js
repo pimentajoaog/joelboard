@@ -266,4 +266,9 @@
       + '.jbr-btn.ghost{background:#252a40;color:#e7eaf3;border:1px solid #2b3147}';
     document.documentElement.appendChild(style);
   }
+
+  window.addEventListener('message', function (ev) {
+    if (!ev.data || ev.data.type !== 'jb-mini-sites-set' || !Array.isArray(ev.data.sites)) return;
+    chrome.runtime.sendMessage({ type: 'setSites', sites: ev.data.sites });
+  });
 })();

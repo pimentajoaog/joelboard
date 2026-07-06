@@ -90,6 +90,18 @@ a.miniv-card.live:hover{ border-color:var(--mini); transform:translateY(-3px); }
 .miniv-steps li{ margin-bottom:8px; }
 .miniv-steps code{ background:var(--surface2); padding:2px 6px; border-radius:6px; font-size:12px; color:var(--mini); }
 .miniv-steps a{ color:var(--mini); font-weight:700; text-decoration:none; }
+.miniv-sites{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:22px; margin-top:16px; }
+.miniv-sites h2{ font-size:16px; font-weight:800; margin-bottom:8px; font-family:var(--font-display); }
+.miniv-sites-list{ display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; max-height:120px; overflow-y:auto; }
+.miniv-site-chip{ display:inline-flex; align-items:center; gap:6px; background:var(--surface2); border:1px solid var(--border); border-radius:99px; padding:6px 8px 6px 12px; font-size:12px; font-weight:600; }
+.miniv-site-rm{ background:none; border:none; color:var(--muted); cursor:pointer; font-size:12px; padding:2px 4px; }
+.miniv-site-rm:hover{ color:var(--danger,#fb7185); }
+.miniv-sites-add{ display:flex; gap:8px; }
+.miniv-site-in{ flex:1; padding:10px 12px; background:var(--surface2); border:1px solid var(--border); border-radius:11px; color:var(--text); font-size:13px; outline:none; font-family:inherit; }
+.miniv-site-in:focus{ border-color:var(--mini); }
+.miniv-site-btn{ width:40px; background:var(--surface2); border:1px solid var(--border); color:var(--mini); border-radius:11px; font-size:20px; font-weight:700; cursor:pointer; }
+.miniv-site-btn:hover{ border-color:var(--mini); }
+.miniv-sites-note{ font-size:11px; color:var(--muted); margin-top:10px; line-height:1.5; }
 
 /* skin display font on headings */
 .wm, .name { font-family: var(--font-display); }

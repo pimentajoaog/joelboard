@@ -58,11 +58,22 @@
   <p class="hint shortcut-hint" id="shortcutHint">Clique acima e pressione a nova combinação. Funciona na página enquanto ela estiver em foco.</p>
 
   <p class="hint" id="shortcutUse">Use o atalho para alternar nesta aba.</p>
+
+  <div class="sites-block">
+    <label class="fl">Sites permitidos</label>
+    <p class="hint sites-hint">A extensão só roda nos domínios abaixo. Padrão: Joelboard, Google Docs/Sheets, GitHub…</p>
+    <div class="sites-list" id="sitesList"></div>
+    <div class="sites-add">
+      <input class="field" id="siteInput" placeholder="ex.: example.com">
+      <button type="button" class="btn-sm" id="btnAddSite" title="Adicionar site">+</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script src="lib/shared.js"></script>
+<script src="lib/sites.js"></script>
 <script src="popup.js"></script>
 </body>
 </html>

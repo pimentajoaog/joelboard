@@ -267,4 +267,48 @@ JB_REPLACE.load().then(function (d) {
   renderVars();
   renderSettings();
   bindSettings();
+  initSitesUI();
 });
+
+function initSitesUI() {
+  var sitesList = $('sitesList');
+  var siteInput = $('siteInput');
+  var btnAddSite = $('btnAddSite');
+  if (!sitesList || !siteInput || !btnAddSite) return;
+
+  function renderSites(sites) {
+    sitesList.innerHTML = (sites || []).map(function (host) {
+      return '<div class="site-chip"><span>' + esc(host) + '</span>'
+        + '<button type="button" class="site-rm" data-host="' + esc(host) + '" title="Remover">✕</button></div>';
+    }).join('');
+    sitesList.querySelectorAll('.site-rm').forEach(function (btn) {
+      btn.onclick = function () {
+        chrome.runtime.sendMessage({ type: 'removeSite', host: btn.getAttribute('data-host') }, function (res) {
+          if (res && res.sites) renderSites(res.sites);
+        });
+      };
+    });
+  }
+
+  chrome.runtime.sendMessage({ type: 'getSites' }, function (sites) {
+    renderSites(sites || JB_SITES.DEFAULT_SITES);
+  });
+
+  btnAddSite.onclick = function () {
+    var host = siteInput.value.trim();
+    if (!host) return;
+    chrome.runtime.sendMessage({ type: 'addSite', host: host }, function (res) {
+      if (!res || !res.ok) {
+        toast(res && res.error === 'denied' ? 'Permissão negada.' : 'Site inválido.');
+        return;
+      }
+      siteInput.value = '';
+      renderSites(res.sites);
+      toast('Site adicionado.');
+    });
+  };
+
+  siteInput.onkeydown = function (e) {
+    if (e.key === 'Enter') btnAddSite.click();
+  };
+}

@@ -148,7 +148,17 @@
       <h3>Joelboard Replace</h3>
       <p>Em qualquer campo de texto, digite um gatilho (ex.: <code>//oi</code>) e pressione <b>Espaço</b> ou <b>Tab</b> para expandir. Planilha: colunas <code>Nome</code>, <code>Trigger</code>, <code>Text</code>. Colar Ctrl+C: <code>%clip%</code>.</p>
       <h3>Joelboard Refresh</h3>
-      <p>Abra a aba que quer monitorar, defina o intervalo e clique <b>Iniciar</b>. Atalho personalizável no popup (clique em <b>Atalho</b> para gravar). Padrão: <code>Alt+Shift+R</code>.</p>
+      <p>Abra a aba que quer monitorar, defina o intervalo e clique <b>Iniciar</b> — a página recarrega na hora e um contador aparece no canto enquanto a aba estiver ativa. Atalho personalizável no popup (clique em <b>Atalho</b> para gravar). Padrão: <code>Alt+Shift+R</code>.</p>
+    </div>
+    <div class="miniv-sites">
+      <h2>Sites permitidos</h2>
+      <p class="miniv-sub">As extensões Mini só rodam nos domínios abaixo. Padrão: Joelboard, Google Docs/Sheets, GitHub… Adicione mais conforme precisar — sincroniza com a extensão instalada nesta aba.</p>
+      <div class="miniv-sites-list" id="miniSitesList"></div>
+      <div class="miniv-sites-add">
+        <input class="miniv-site-in" id="miniSiteInput" placeholder="ex.: example.com">
+        <button type="button" class="miniv-site-btn" id="miniSiteAdd">+</button>
+      </div>
+      <p class="miniv-sites-note" id="miniSitesNote"></p>
     </div>
   </div>
 </div>

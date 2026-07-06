@@ -54,6 +54,14 @@
     <button class="btn ghost" id="btnImport">⬆ Importar planilha (CSV)</button>
     <input type="file" id="importFile" accept=".csv,.tsv,.txt,.json,application/json,text/csv" hidden>
     <p class="hint" style="margin-top:10px">Planilha: <b>Nome</b>, <b>Trigger</b>, <b>Text</b> (export inclui as três). Import aceita 2 ou 3 colunas.</p>
+    <div class="sep"></div>
+    <label class="fl" style="margin-top:4px">Sites permitidos</label>
+    <p class="hint sites-hint">Replace só injeta nos domínios abaixo. Adicione sites conforme precisar.</p>
+    <div class="sites-list" id="sitesList"></div>
+    <div class="sites-add">
+      <input class="field" id="siteInput" placeholder="ex.: example.com">
+      <button class="btn-sm" id="btnAddSite" title="Adicionar site">+</button>
+    </div>
     <div class="foot">Digite o gatilho em qualquer campo e pressione Espaço ou Tab.</div>
   </div>
 </div>
@@ -89,6 +97,7 @@
 </div>
 
 <script src="lib/shared.js"></script>
+<script src="lib/sites.js"></script>
 <script src="popup.js"></script>
 </body>
 </html>

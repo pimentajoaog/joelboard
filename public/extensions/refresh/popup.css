@@ -108,3 +108,22 @@ select.field { flex: 1; cursor: pointer; }
   text-align: center;
 }
 .toast.show { transform: translateX(-50%) translateY(0); }
+
+.sites-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.sites-hint { margin: 0 0 10px !important; text-align: left !important; }
+.sites-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; max-height: 88px; overflow-y: auto; }
+.site-chip {
+  display: inline-flex; align-items: center; gap: 4px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 99px; padding: 4px 6px 4px 10px; font-size: 11px; font-weight: 600;
+}
+.site-rm {
+  background: none; border: none; color: var(--muted); cursor: pointer; font-size: 11px; padding: 2px 4px; line-height: 1;
+}
+.site-rm:hover { color: var(--danger); }
+.sites-add { display: flex; gap: 6px; align-items: stretch; }
+.sites-add .field { flex: 1; margin: 0; }
+.btn-sm {
+  flex-shrink: 0; width: 36px; background: var(--surface2); border: 1px solid var(--border); color: var(--primary);
+  border-radius: var(--radius-sm); font-size: 18px; font-weight: 700; cursor: pointer; line-height: 1;
+}
+.btn-sm:hover { border-color: var(--primary); }

@@ -151,6 +151,14 @@
   btnStart.addEventListener('click', async function () {
     if (tabId == null) return;
     var res = await send({ type: 'start', tabId: tabId, opts: currentOpts() });
+    if (res && res.error === 'not-allowed') {
+      showToast('Este site não está na lista permitida — adicione abaixo.');
+      return;
+    }
+    if (res && res.error) {
+      showToast('Não foi possível iniciar nesta aba.');
+      return;
+    }
     render(res);
   });
 
@@ -210,6 +218,55 @@
     shortcutHint.textContent = 'Clique acima e pressione a nova combinação. Funciona na página enquanto ela estiver em foco.';
   });
 
+  function initSitesUI() {
+    var sitesList = document.getElementById('sitesList');
+    var siteInput = document.getElementById('siteInput');
+    var btnAddSite = document.getElementById('btnAddSite');
+    if (!sitesList || !siteInput || !btnAddSite) return;
+
+    function renderSites(sites) {
+      sitesList.innerHTML = (sites || []).map(function (host) {
+        return '<div class="site-chip"><span>' + host + '</span>'
+          + '<button type="button" class="site-rm" data-host="' + host + '" title="Remover">✕</button></div>';
+      }).join('');
+      sitesList.querySelectorAll('.site-rm').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var host = btn.getAttribute('data-host');
+          chrome.runtime.sendMessage({ type: 'removeSite', host: host }, function (res) {
+            if (res && res.sites) renderSites(res.sites);
+          });
+        });
+      });
+    }
+
+    function loadSites() {
+      chrome.runtime.sendMessage({ type: 'getSites' }, function (sites) {
+        renderSites(sites || JB_SITES.DEFAULT_SITES);
+      });
+    }
+
+    btnAddSite.addEventListener('click', function () {
+      var host = siteInput.value.trim();
+      if (!host) return;
+      chrome.runtime.sendMessage({ type: 'addSite', host: host }, function (res) {
+        if (!res || !res.ok) {
+          showToast(res && res.error === 'denied' ? 'Permissão negada para este site.' : 'Site inválido.');
+          return;
+        }
+        siteInput.value = '';
+        renderSites(res.sites);
+        showToast('Site adicionado.');
+      });
+    });
+
+    siteInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') btnAddSite.click();
+    });
+
+    loadSites();
+  }
+
   loadShortcut();
   refreshUI();
+  initSitesUI();
 })();

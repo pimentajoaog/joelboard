@@ -1,5 +1,5 @@
 /* Joelboard Refresh — service worker. © 2026 Joel Soluções LTDA. */
-importScripts('lib/shared.js');
+importScripts('lib/shared.js', 'lib/sites.js');
 
 function getState(cb) {
   chrome.storage.local.get([JB_REFRESH.STORAGE_KEY], function (res) {
@@ -13,10 +13,22 @@ function saveState(state, cb) {
   chrome.storage.local.set(patch, cb || function () {});
 }
 
+function setTabNextRefresh(state, tabId, intervalSec) {
+  var nextAt = Date.now() + intervalSec * 1000;
+  var cfg = state.tabs[String(tabId)];
+  if (cfg) cfg.nextRefreshAt = nextAt;
+  return nextAt;
+}
+
 function scheduleRefresh(tabId, intervalSec) {
   var name = JB_REFRESH.alarmName(tabId);
-  chrome.alarms.clear(name, function () {
-    chrome.alarms.create(name, { when: Date.now() + intervalSec * 1000 });
+  getState(function (state) {
+    var nextAt = setTabNextRefresh(state, tabId, intervalSec);
+    saveState(state, function () {
+      chrome.alarms.clear(name, function () {
+        chrome.alarms.create(name, { when: nextAt });
+      });
+    });
   });
 }
 
@@ -36,6 +48,42 @@ function updateBadge(tabId, running, intervalSec) {
   chrome.action.setBadgeText({ tabId: tabId, text: label });
 }
 
+function injectContent(tabId, cb) {
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    files: ['lib/shared.js', 'lib/sites.js', 'content.js']
+  }, function () {
+    if (cb) cb(!chrome.runtime.lastError);
+  });
+}
+
+function ensureInject(tabId, url, cb) {
+  if (!JB_SITES.isInjectableUrl(url)) {
+    if (cb) cb(false, 'unsupported');
+    return;
+  }
+  JB_SITES.ensurePermissions(url, function (perm) {
+    if (!perm.ok) {
+      if (cb) cb(false, perm.reason || 'denied');
+      return;
+    }
+    injectContent(tabId, function (ok) {
+      if (cb) cb(!!ok);
+    });
+  });
+}
+
+function reloadTab(tabId, cb) {
+  chrome.tabs.get(tabId, function (tab) {
+    if (chrome.runtime.lastError || !tab) {
+      stopRefresh(tabId);
+      if (cb) cb(false);
+      return;
+    }
+    chrome.tabs.reload(tabId, cb || function () {});
+  });
+}
+
 function startRefresh(tabId, opts, cb) {
   getState(function (state) {
     var intervalSec = JB_REFRESH.clampInterval(
@@ -50,13 +98,29 @@ function startRefresh(tabId, opts, cb) {
     state.tabs[String(tabId)] = {
       running: true,
       intervalSec: intervalSec,
-      pauseWhenInactive: pauseWhenInactive
+      pauseWhenInactive: pauseWhenInactive,
+      nextRefreshAt: Date.now() + intervalSec * 1000
     };
 
     saveState(state, function () {
-      scheduleRefresh(tabId, intervalSec);
-      updateBadge(tabId, true, intervalSec);
-      if (cb) cb({ running: true, intervalSec: intervalSec, pauseWhenInactive: pauseWhenInactive });
+      chrome.tabs.get(tabId, function (tab) {
+        if (chrome.runtime.lastError || !tab || !tab.url) {
+          if (cb) cb({ running: false, error: 'no-tab' });
+          return;
+        }
+        ensureInject(tabId, tab.url, function (ok, reason) {
+          if (!ok) {
+            stopRefresh(tabId);
+            if (cb) cb({ running: false, error: reason || 'inject-failed' });
+            return;
+          }
+          reloadTab(tabId, function () {
+            scheduleRefresh(tabId, intervalSec);
+            updateBadge(tabId, true, intervalSec);
+            if (cb) cb({ running: true, intervalSec: intervalSec, pauseWhenInactive: pauseWhenInactive });
+          });
+        });
+      });
     });
   });
 }
@@ -79,9 +143,29 @@ function getTabStatus(tabId, cb) {
       running: !!(cfg && cfg.running),
       intervalSec: cfg ? cfg.intervalSec : state.defaults.intervalSec,
       pauseWhenInactive: cfg ? cfg.pauseWhenInactive : state.defaults.pauseWhenInactive,
+      nextRefreshAt: cfg ? cfg.nextRefreshAt : 0,
       defaults: state.defaults
     });
   });
+}
+
+function doScheduledReload(tabId, cfg) {
+  function reschedule() {
+    scheduleRefresh(tabId, cfg.intervalSec);
+  }
+
+  if (cfg.pauseWhenInactive) {
+    isTabActive(tabId, function (active) {
+      if (!active) {
+        reschedule();
+        return;
+      }
+      reloadTab(tabId, reschedule);
+    });
+    return;
+  }
+
+  reloadTab(tabId, reschedule);
 }
 
 chrome.alarms.onAlarm.addListener(function (alarm) {
@@ -92,40 +176,21 @@ chrome.alarms.onAlarm.addListener(function (alarm) {
   getState(function (state) {
     var cfg = state.tabs[String(tabId)];
     if (!cfg || !cfg.running) return;
-
-    function reschedule() {
-      scheduleRefresh(tabId, cfg.intervalSec);
-    }
-
-    if (cfg.pauseWhenInactive) {
-      isTabActive(tabId, function (active) {
-        if (!active) {
-          reschedule();
-          return;
-        }
-        chrome.tabs.get(tabId, function (tab) {
-          if (chrome.runtime.lastError || !tab) {
-            stopRefresh(tabId);
-            return;
-          }
-          chrome.tabs.reload(tabId, reschedule);
-        });
-      });
-      return;
-    }
-
-    chrome.tabs.get(tabId, function (tab) {
-      if (chrome.runtime.lastError || !tab) {
-        stopRefresh(tabId);
-        return;
-      }
-      chrome.tabs.reload(tabId, reschedule);
-    });
+    doScheduledReload(tabId, cfg);
   });
 });
 
 chrome.tabs.onRemoved.addListener(function (tabId) {
   stopRefresh(tabId);
+});
+
+chrome.tabs.onUpdated.addListener(function (tabId, info, tab) {
+  if (info.status !== 'complete' || !tab.url) return;
+  getState(function (state) {
+    var cfg = state.tabs[String(tabId)];
+    if (!cfg || !cfg.running) return;
+    ensureInject(tabId, tab.url, function () {});
+  });
 });
 
 function toggleRefreshForTab(tabId, cb) {
@@ -138,7 +203,7 @@ function toggleRefreshForTab(tabId, cb) {
       if (cb) cb({ ok: false, reason: 'no-tab' });
       return;
     }
-    if (tab.url && /^(chrome|chrome-extension|edge|devtools|about):/.test(tab.url)) {
+    if (!JB_SITES.isInjectableUrl(tab.url)) {
       if (cb) cb({ ok: false, reason: 'unsupported' });
       return;
     }
@@ -149,7 +214,7 @@ function toggleRefreshForTab(tabId, cb) {
         });
       } else {
         startRefresh(tabId, { intervalSec: status.intervalSec, pauseWhenInactive: status.pauseWhenInactive }, function (res) {
-          if (cb) cb({ ok: true, tabId: tabId, running: true, result: res });
+          if (cb) cb({ ok: true, tabId: tabId, running: !!res.running, result: res, error: res.error });
         });
       }
     });
@@ -167,9 +232,27 @@ function toggleRefreshForActiveTab(cb) {
   });
 }
 
+function requestDefaultSites() {
+  JB_SITES.loadSites(function (sites) {
+    var patterns = JB_SITES.originPatterns(sites);
+    chrome.permissions.contains({ origins: patterns }, function (has) {
+      if (!has) chrome.permissions.request({ origins: patterns });
+    });
+  });
+}
+
 chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
   if (msg.type === 'getStatus') {
     getTabStatus(msg.tabId, sendResponse);
+    return true;
+  }
+  if (msg.type === 'getTabCountdown') {
+    var tabId = sender.tab && sender.tab.id;
+    if (!tabId) {
+      sendResponse({ running: false });
+      return true;
+    }
+    getTabStatus(tabId, sendResponse);
     return true;
   }
   if (msg.type === 'start') {
@@ -183,7 +266,31 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
   if (msg.type === 'update') {
     getTabStatus(msg.tabId, function (status) {
       if (status.running) {
-        startRefresh(msg.tabId, msg.opts || {}, sendResponse);
+        getState(function (state) {
+          var cfg = state.tabs[String(msg.tabId)];
+          if (!cfg) {
+            sendResponse({ running: false });
+            return;
+          }
+          if (msg.opts.intervalSec != null) {
+            cfg.intervalSec = JB_REFRESH.clampInterval(msg.opts.intervalSec);
+            state.defaults.intervalSec = cfg.intervalSec;
+          }
+          if (msg.opts.pauseWhenInactive != null) {
+            cfg.pauseWhenInactive = !!msg.opts.pauseWhenInactive;
+            state.defaults.pauseWhenInactive = cfg.pauseWhenInactive;
+          }
+          saveState(state, function () {
+            scheduleRefresh(msg.tabId, cfg.intervalSec);
+            updateBadge(msg.tabId, true, cfg.intervalSec);
+            sendResponse({
+              running: true,
+              intervalSec: cfg.intervalSec,
+              pauseWhenInactive: cfg.pauseWhenInactive,
+              nextRefreshAt: cfg.nextRefreshAt
+            });
+          });
+        });
       } else {
         getState(function (state) {
           if (msg.opts.intervalSec != null) {
@@ -232,14 +339,60 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
     });
     return true;
   }
+  if (msg.type === 'getSites') {
+    JB_SITES.loadSites(sendResponse);
+    return true;
+  }
+  if (msg.type === 'addSite') {
+    JB_SITES.addSite(msg.host, sendResponse);
+    return true;
+  }
+  if (msg.type === 'removeSite') {
+    JB_SITES.removeSite(msg.host, sendResponse);
+    return true;
+  }
+  if (msg.type === 'setSites') {
+    JB_SITES.saveSites(msg.sites, function () {
+      JB_SITES.loadSites(function (sites) {
+        chrome.permissions.request({ origins: JB_SITES.originPatterns(sites) }, function () {
+          sendResponse({ ok: true, sites: sites });
+        });
+      });
+    });
+    return true;
+  }
+});
+
+chrome.runtime.onMessageExternal.addListener(function (msg, sender, sendResponse) {
+  if (msg.type === 'getSites') {
+    JB_SITES.loadSites(sendResponse);
+    return true;
+  }
+  if (msg.type === 'setSites' && Array.isArray(msg.sites)) {
+    JB_SITES.saveSites(msg.sites, function () {
+      JB_SITES.loadSites(function (sites) {
+        chrome.permissions.request({ origins: JB_SITES.originPatterns(sites) }, function () {
+          sendResponse({ ok: true, sites: sites });
+        });
+      });
+    });
+    return true;
+  }
+  if (msg.type === 'addSite' && msg.host) {
+    JB_SITES.addSite(msg.host, sendResponse);
+    return true;
+  }
 });
 
 chrome.runtime.onInstalled.addListener(function (details) {
-  if (details.reason !== 'install') return;
   chrome.storage.local.get([JB_REFRESH.STORAGE_KEY], function (res) {
-    if (res[JB_REFRESH.STORAGE_KEY]) return;
-    var patch = {};
-    patch[JB_REFRESH.STORAGE_KEY] = JB_REFRESH.defaultData();
-    chrome.storage.local.set(patch);
+    if (!res[JB_REFRESH.STORAGE_KEY]) {
+      var patch = {};
+      patch[JB_REFRESH.STORAGE_KEY] = JB_REFRESH.defaultData();
+      chrome.storage.local.set(patch);
+    }
   });
+  if (details.reason === 'install' || details.reason === 'update') {
+    requestDefaultSites();
+  }
 });

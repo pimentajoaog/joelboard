@@ -3,6 +3,9 @@
   var data = null;
   var pendingPrompt = null;
 
+  var inputValSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  var areaValSet = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+
   function refreshData() {
     return JB_REFRESH.load().then(function (d) { data = d; return d; });
   }
@@ -27,7 +30,7 @@
   function getFieldState(el) {
     if (el.isContentEditable) {
       var sel = window.getSelection();
-      if (!sel || sel.rangeCount < 0) return null;
+      if (!sel || !sel.rangeCount) return null;
       var range = sel.getRangeAt(0);
       if (!el.contains(range.startContainer)) return null;
       var pre = range.cloneRange();
@@ -47,30 +50,95 @@
     };
   }
 
-  function setFieldValue(st, text) {
+  function captureSnapshot(st) {
     var el = st.element;
-    var trigLen = st.triggerLen || 0;
     if (st.kind === 'ce') {
-      var sel = window.getSelection();
-      if (!sel || !sel.rangeCount) return;
-      var range = sel.getRangeAt(0);
-      var node = range.startContainer;
-      var off = range.startOffset;
-      if (node.nodeType === 3 && off >= trigLen) {
-        var t = node.textContent || '';
-        node.textContent = t.slice(0, off - trigLen) + text + t.slice(off);
-        var nr = document.createRange();
-        nr.setStart(node, off - trigLen + text.length);
-        nr.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(nr);
-      }
-      return;
+      st.snapshot = { beforeLen: (st.before || '').length };
+    } else {
+      st.snapshot = {
+        value: el.value,
+        selStart: el.selectionStart,
+        selEnd: el.selectionEnd
+      };
     }
-    el.value = st.before.slice(0, st.before.length - trigLen) + text + st.after;
-    var newPos = st.before.length - trigLen + text.length;
-    el.selectionStart = el.selectionEnd = newPos;
-    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function setNativeValue(el, value) {
+    var setter = el.tagName === 'TEXTAREA' ? areaValSet : inputValSet;
+    if (setter && setter.set) setter.set.call(el, value);
+    else el.value = value;
+    try {
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText', data: value }));
+    } catch (_) {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function findTextPosition(root, charIndex) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var count = 0;
+    var node;
+    while ((node = walker.nextNode())) {
+      var len = (node.textContent || '').length;
+      if (count + len >= charIndex) {
+        return { node: node, offset: charIndex - count };
+      }
+      count += len;
+    }
+    return null;
+  }
+
+  function applyToField(st, trigger, text) {
+    var el = st.element;
+    if (!el || !trigger) return false;
+    el.focus();
+
+    if (st.kind === 'ce') {
+      var beforeLen = (st.snapshot && st.snapshot.beforeLen != null)
+        ? st.snapshot.beforeLen
+        : (st.before || '').length;
+      var startPos = findTextPosition(el, beforeLen - trigger.length);
+      var endPos = findTextPosition(el, beforeLen);
+      if (!startPos || !endPos) return false;
+      var sel = window.getSelection();
+      var range = document.createRange();
+      range.setStart(startPos.node, startPos.offset);
+      range.setEnd(endPos.node, endPos.offset);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      var ok = document.execCommand('insertText', false, text);
+      try {
+        el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText', data: text }));
+      } catch (_) {
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      return ok;
+    }
+
+    var snap = st.snapshot;
+    var val = snap ? snap.value : el.value;
+    var selStart = snap ? snap.selStart : el.selectionStart;
+    var selEnd = snap ? snap.selEnd : el.selectionEnd;
+    var before = val.slice(0, selStart);
+    var after = val.slice(selEnd);
+
+    if (before.slice(-trigger.length) !== trigger) {
+      var idx = val.lastIndexOf(trigger);
+      if (idx < 0) return false;
+      if (idx > 0) {
+        var prev = val.charAt(idx - 1);
+        if (prev !== ' ' && prev !== '\n' && prev !== '\t' && prev !== '\r') return false;
+      }
+      before = val.slice(0, idx + trigger.length);
+      after = val.slice(idx + trigger.length);
+    }
+
+    var newVal = before.slice(0, before.length - trigger.length) + text + after;
+    setNativeValue(el, newVal);
+    var pos = before.length - trigger.length + text.length;
+    try { el.setSelectionRange(pos, pos); } catch (_) {}
+    return true;
   }
 
   function buildBuiltins() {
@@ -128,7 +196,7 @@
 
   function doExpand(st, snippet) {
     var trig = snippet.trigger || '';
-    st.triggerLen = trig.length;
+    captureSnapshot(st);
     var body = snippet.body || '';
     var vars = Object.assign({}, data.vars || {});
     var builtins = buildBuiltins();
@@ -140,8 +208,7 @@
       return promptVars(missing, vars).then(function (filled) {
         if (!filled) return false;
         var out = JB_REFRESH.expandVars(body, filled, builtins);
-        setFieldValue(st, out);
-        return true;
+        return applyToField(st, trig, out);
       });
     }
 
@@ -178,6 +245,7 @@
     if (key === 'Tab' && !settings.expandOnTab) return;
     if (key === 'Enter' && !settings.expandOnEnter) return;
     e.preventDefault();
+    e.stopPropagation();
     doExpand(st, snippet).then(function (ok) {
       if (ok) showToast('✓ ' + (snippet.label || snippet.trigger));
     });

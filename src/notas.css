@@ -121,8 +121,13 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .dr-title{ flex:1; font-weight:700; font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dr-rem{ flex:0 0 auto; font-size:11px; color:var(--muted); }
 
-.duerow{ display:flex; align-items:center; gap:10px; margin:4px 0 18px; }
-.duerow .dl{ font-size:12px; color:var(--muted); font-weight:600; flex:0 0 auto; }
+.duerow{ display:flex; align-items:center; gap:10px; margin:4px 0 18px; flex-wrap:nowrap; }
+.duerow .dl{ font-size:12px; color:var(--muted); font-weight:600; flex:0 0 auto; white-space:nowrap; }
+.duerow .datebtn{
+  width:auto; flex:1 1 auto; min-width:0; max-width:100%;
+  height:auto; min-height:0; align-self:center;
+  padding:7px 12px; line-height:1.35;
+}
 .due-input{ width:auto; flex:0 0 auto; padding:7px 10px; color-scheme:dark; }
 .due-clear{ background:transparent; border:0; color:var(--muted); cursor:pointer; font-size:13px; flex:0 0 auto; }
 .due-clear:hover{ color:#f87171; }

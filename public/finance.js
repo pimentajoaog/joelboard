@@ -1031,7 +1031,10 @@ function activeAllocationsAt(y,m) {
 function paymentPaidFor(types, id, ymS) { return (DATA.payments||[]).some(p => p.month===ymS && types.indexOf(p.type)>-1 && String(p.itemId)===String(id)); }
 function paymentActualFor(types, id, ymS) { const p = (DATA.payments||[]).find(x => x.month===ymS && types.indexOf(x.type)>-1 && String(x.itemId)===String(id) && x.actualAmount!=null); return p ? p.actualAmount : null; }
 function paidDateOf(p) { const pd = p.paidDate; return (pd && /^\d{4}-\d{2}-\d{2}$/.test(pd)) ? pd : (p.month + '-01'); }
-// Virtual "actual expense" entries: each paid bill/allocation lands in the month its money actually left (paidDate).
+function billPaidType(raw) { return (Number(raw) < 0) ? 'Income' : 'Expense'; }
+function billPaidAmount(raw) { const n = Number(raw) || 0; return n < 0 ? Math.abs(n) : n; }
+function expenseFlow(entry) { return entry && entry.type === 'Income' ? -entry.amount : (entry ? entry.amount : 0); }
+// Virtual paid bill/allocation entries land in the month money actually moved (paidDate).
 function paidEntries(y,m) {
   const ymS = ymStr(y,m), out = [], seen = {};
   (DATA.payments||[]).forEach(p => {
@@ -1045,12 +1048,15 @@ function paidEntries(y,m) {
       out.push({ virtual:true, src:'allocation', id:p.itemId, category:t('cat.savings'), description:t('digest.savingsTo',{goal:goalName(a?a.goalId:null)}), amount: p.actualAmount!=null?p.actualAmount:(a?a.amount:0), date: paidDateOf(p), type:'Expense' });
     } else {
       const b = (DATA.recurring||[]).find(x=>String(x.id)===String(p.itemId)); if (!b) return;
-      out.push({ virtual:true, src:'bill', id:p.itemId, category:b.category, description:b.name, amount: p.actualAmount!=null?p.actualAmount:b.amount, date: paidDateOf(p), type:'Expense' });
+      const rawAmt = p.actualAmount!=null ? p.actualAmount : b.amount;
+      out.push({ virtual:true, src:'bill', id:p.itemId, category:b.category, description:b.name, amount: billPaidAmount(rawAmt), date: paidDateOf(p), type: billPaidType(rawAmt) });
     }
   });
   return out;
 }
-function paidExtra(y,m) { return paidEntries(y,m).reduce((s,e)=>s+e.amount, 0); }
+function paidExpenseOnly(y,m) { return paidEntries(y,m).filter(e=>e.type==='Expense').reduce((s,e)=>s+e.amount,0); }
+function paidIncomeCredit(y,m) { return paidEntries(y,m).filter(e=>e.type==='Income').reduce((s,e)=>s+e.amount,0); }
+function paidExtra(y,m) { return paidExpenseOnly(y,m) - paidIncomeCredit(y,m); }
 function unpaidExtra() {
   let t = 0;
   activeBills().forEach(b => { if (!isPaidBill(b.id)) t += b.amount; });
@@ -1114,7 +1120,7 @@ function renderSummary() {
   const txs = selectedTx();
   const income = incomeFor(selY,selM);
   const loggedExp = txs.filter(t=>t.type==='Expense').reduce((s,t)=>s+t.amount,0);
-  const expenses = loggedExp + paidExtra(selY,selM) + (isForecast() ? unpaidExtra() : 0);
+  const expenses = loggedExp + paidExpenseOnly(selY,selM) + (isForecast() ? unpaidExtra() : 0);
   const bal = income - expenses;
   const rate = income > 0 ? Math.round((bal/income)*100) : 0;
   document.getElementById('vIncome').textContent  = brl(income);
@@ -1215,7 +1221,7 @@ function renderBudget() {
 function spentVsProjectedByCat() {
   const spent = {}, proj = {};
   selectedTx().filter(t=>t.type==='Expense' && !txIsProjected(t)).forEach(t => { const k=catLabel(t.category); spent[k]=(spent[k]||0)+t.amount; });
-  paidEntries(selY,selM).forEach(e => { const k=catLabel(e.category); spent[k]=(spent[k]||0)+e.amount; });
+  paidEntries(selY,selM).forEach(e => { const k=catLabel(e.category); spent[k]=(spent[k]||0)+expenseFlow(e); });
   if (isForecast()) {
     activeBills().forEach(b => { if (!isPaidBill(b.id)) { const k=catLabel(b.category); proj[k]=(proj[k]||0)+b.amount; } });
     activeAllocations().forEach(al => { if (!isPaid('allocation', al.id)) { const sk=t('cat.savings'); proj[sk]=(proj[sk]||0)+al.amount; } });
@@ -1451,7 +1457,7 @@ function confirmActual() {
 function confirmActualInput() {
   if (!confirmCtx) return;
   const v = parseFloat(document.getElementById('ccInput').value);
-  if (isNaN(v) || v < 0) { showToast(confirmCtx.kind==='ot'?t('err.validHours'):t('err.validAmount'),'error'); return; }
+  if (isNaN(v) || (confirmCtx.kind==='ot' ? v < 0 : v === 0)) { showToast(confirmCtx.kind==='ot'?t('err.validHours'):t('err.validAmount'),'error'); return; }
   if (confirmCtx.kind==='ot') { const ds=confirmCtx.date; cancelConfirm(); commitOT(ds, v); showToast(t('toast.otLogged',{h:fmtHours(v)})); return; }
   applyPaid('bill', confirmCtx.id, true, confirmCtx.month, v, confirmCtx.paidDate);
   cancelConfirm(); renderAll(); showToast(t('toast.paidActual',{amt:brl(v)}));
@@ -1502,7 +1508,8 @@ function renderTransactions() {
     if (t.virtual) {
       if (t.src==='salary') { return '<div class="row-item click" onclick="switchTab(\'worklog\')"><div class="row-left"><div class="row-dot" style="background:'+catColor(catLabel(t.category))+'"></div><div><div class="row-name">'+esc(t.description)+' <span class="tx-src">'+window.t('salary.auto')+'</span></div><div class="row-meta">'+esc(catLabel(t.category))+' · '+d+'</div></div></div><div class="row-right"><div class="row-amount inc">+'+brl(t.amount)+'</div></div></div>'; }
       const tag = t.src==='allocation' ? window.t('src.savings') : window.t('src.bill');
-      return '<div class="row-item click" onclick="switchTab(\'bills\')"><div class="row-left"><div class="row-dot" style="background:'+catColor(catLabel(t.category))+'"></div><div><div class="row-name">'+esc(t.description)+' <span class="tx-src">'+tag+'</span></div><div class="row-meta">'+esc(catLabel(t.category))+' · '+d+'</div></div></div><div class="row-right"><div class="row-amount">−'+brl(t.amount)+'</div></div></div>';
+      const inc = t.type==='Income';
+      return '<div class="row-item click" onclick="switchTab(\'bills\')"><div class="row-left"><div class="row-dot" style="background:'+catColor(catLabel(t.category))+'"></div><div><div class="row-name">'+esc(t.description)+' <span class="tx-src">'+tag+'</span></div><div class="row-meta">'+esc(catLabel(t.category))+' · '+d+'</div></div></div><div class="row-right"><div class="row-amount'+(inc?' inc':'')+'">'+(inc?'+':'−')+brl(t.amount)+'</div></div></div>';
     }
     const inc = t.type==='Income';
     return '<div class="row-item click" onclick="editTx(\''+t.id+'\')"><div class="row-left"><div class="row-dot" style="background:'+catColor(catLabel(t.category))+'"></div><div><div class="row-name">'+esc(t.description)+'</div><div class="row-meta">'+esc(catLabel(t.category))+' · '+d+'</div></div></div><div class="row-right"><div class="row-amount'+(inc?' inc':'')+'">'+(inc?'+':'−')+brl(t.amount)+'</div></div></div>';
@@ -1792,11 +1799,11 @@ function toggleGrpAdjust() {
   if (grpCtx.expanded) {
     const cur = (CURRENCIES[currencyTo()]||{symbol:''}).symbol;
     list.style.display='flex';
-    list.innerHTML = grpCtx.items.map((it,i)=>'<div class="grp-row"><span class="grp-dot" style="background:'+(it.color||'var(--muted)')+'"></span><span class="grp-name">'+esc(it.name)+'</span><div class="grp-amt-wrap"><span class="grp-cur">'+cur+'</span><input type="number" class="grp-amt" step="0.01" min="0" value="'+it.amount+'" oninput="grpAmt('+i+',this.value)"></div></div>').join('');
+    list.innerHTML = grpCtx.items.map((it,i)=>'<div class="grp-row"><span class="grp-dot" style="background:'+(it.color||'var(--muted)')+'"></span><span class="grp-name">'+esc(it.name)+'</span><div class="grp-amt-wrap"><span class="grp-cur">'+cur+'</span><input type="number" class="grp-amt" step="0.01" value="'+it.amount+'" oninput="grpAmt('+i+',this.value)"></div></div>').join('');
     document.getElementById('grpAdjust').textContent=t('action.done');
   } else { list.style.display='none'; document.getElementById('grpAdjust').textContent=t('grp.adjust'); }
 }
-function grpAmt(i, v) { const n=parseFloat(v); grpCtx.items[i].amount = isNaN(n)?0:Math.max(n,0); grpCtx.items[i].edited = true; renderGrpSummary(); }
+function grpAmt(i, v) { const n=parseFloat(v); const it=grpCtx.items[i]; grpCtx.items[i].amount = isNaN(n)?0:(it.type==='bill'?n:Math.max(n,0)); grpCtx.items[i].edited = true; renderGrpSummary(); }
 function setGrpDate(which) { grpCtx.mode = which==='back'?'back':'today'; document.getElementById('grpDateToday').className='cc-date-btn'+(which!=='back'?' on':''); document.getElementById('grpDateBack').className='cc-date-btn'+(which==='back'?' on':''); }
 function confirmGroup() {
   if (!grpCtx) return;
@@ -1834,7 +1841,7 @@ function submitBundle() {
 }
 
 /* ---------- Income vs Budget visualizer ---------- */
-function monthIncome(y,m) { return (DATA.transactions||[]).filter(t=>t.type==='Income' && txInMonth(t,y,m)).reduce((s,t)=>s+t.amount,0); }
+function monthIncome(y,m) { return (DATA.transactions||[]).filter(t=>t.type==='Income' && txInMonth(t,y,m)).reduce((s,t)=>s+t.amount,0) + paidIncomeCredit(y,m); }
 /* ---------- Recurring salary (set & forget) ---------- */
 function salaryAmt() { return Number(P().salary_amount) || 0; }
 function salaryStart() { return String(P().salary_start||'').replace(/^m/,''); }
@@ -1844,7 +1851,7 @@ function loggedSalaryIn(y,m) { const c=t('cat.salary'); return (DATA.transaction
 // Projected only when no actual salary is logged that month, so a logged salary always wins (no double-count).
 function projectedSalary(y,m) { return (salaryActiveIn(y,m) && !loggedSalaryIn(y,m)) ? salaryAmt() : 0; }
 function incomeFor(y,m) { return monthIncome(y,m) + projectedSalary(y,m); }
-function monthExpense(y,m) { return (DATA.transactions||[]).filter(t=>t.type==='Expense' && txInMonth(t,y,m)).reduce((s,t)=>s+t.amount,0) + paidExtra(y,m); }
+function monthExpense(y,m) { return (DATA.transactions||[]).filter(t=>t.type==='Expense' && txInMonth(t,y,m)).reduce((s,t)=>s+t.amount,0) + paidExpenseOnly(y,m); }
 function avgMonthlyExpense(n) { let sum=0,cnt=0; for(let k=1;k<=n;k++){ const d=new Date(now.getFullYear(), now.getMonth()-k, 1), y=d.getFullYear(), mm=d.getMonth(); if (monthHasData(y,mm)) { sum+=monthExpense(y,mm); cnt++; } } return cnt ? sum/cnt : 0; }
 function runwayMonths() { const avg=avgMonthlyExpense(3); if (avg<=0) return null; return savingsTotal()/avg; }
 /* Amount inputs accept expressions (45+12) and comma decimals; evaluated safely (math chars only). */
@@ -1954,11 +1961,11 @@ function renderMoMDeltas() {
   const el = document.getElementById('momRow'); if (!el) return;
   const cur = selectedTx();
   const inc = incomeFor(selY,selM);
-  const exp = cur.filter(t=>t.type==='Expense' && !txIsProjected(t)).reduce((s,t)=>s+t.amount,0) + paidExtra(selY,selM);
+  const exp = cur.filter(t=>t.type==='Expense' && !txIsProjected(t)).reduce((s,t)=>s+t.amount,0) + paidExpenseOnly(selY,selM);
   const pd = new Date(selY, selM-1, 1), py=pd.getFullYear(), pm=pd.getMonth();
   const ptx = (DATA.transactions||[]).filter(t=>txInMonth(t,py,pm));
   const pinc = incomeFor(py,pm);
-  const pexp = ptx.filter(t=>t.type==='Expense' && !txIsProjected(t)).reduce((s,t)=>s+t.amount,0) + paidExtra(py,pm);
+  const pexp = ptx.filter(t=>t.type==='Expense' && !txIsProjected(t)).reduce((s,t)=>s+t.amount,0) + paidExpenseOnly(py,pm);
   el.innerHTML = momCard('Income', inc, pinc, 'up') + momCard('Expenses', exp, pexp, 'down') + momCard('Balance', inc-exp, pinc-pexp, 'up');
 }
 function momCard(label, cur, prev, goodDir) {

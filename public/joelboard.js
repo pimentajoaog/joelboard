@@ -869,6 +869,46 @@
     for (var i = 0; i < el.children.length; i++) el.children[i].style.setProperty('--jb-i', i);
   }
 
+  var syncN = 0, syncEl = null;
+  function ensureSyncEl() {
+    if (syncEl && syncEl.isConnected) return syncEl;
+    syncEl = document.createElement('div');
+    syncEl.className = 'jb-sync';
+    syncEl.setAttribute('aria-hidden', 'true');
+    syncEl.innerHTML = '<div class="jb-sync-bar"></div>';
+    whenReady(function () { document.body.appendChild(syncEl); });
+    return syncEl;
+  }
+  function syncStart() {
+    syncN++;
+    whenReady(function () {
+      ensureSyncEl().classList.add('on');
+      document.documentElement.classList.add('jb-syncing');
+    });
+  }
+  function syncEnd() {
+    syncN = Math.max(0, syncN - 1);
+    if (syncN > 0) return;
+    whenReady(function () {
+      if (syncEl) syncEl.classList.remove('on');
+      document.documentElement.classList.remove('jb-syncing');
+    });
+  }
+  function syncWrap(promise) {
+    syncStart();
+    return Promise.resolve(promise).finally(syncEnd);
+  }
+  function escHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function emptyState(o) {
+    o = o || {};
+    var hint = o.hint ? '<div class="jb-empty-hint">' + escHtml(o.hint) + '</div>' : '';
+    var btn = (o.action && o.onclick) ? '<button type="button" class="jb-empty-btn" onclick="' + o.onclick + '">' + escHtml(o.action) + '</button>' : '';
+    return '<div class="jb-empty"><div class="jb-empty-ico">' + (o.icon || '·') + '</div>'
+      + '<div class="jb-empty-title">' + escHtml(o.title || 'Nada por aqui') + '</div>' + hint + btn + '</div>';
+  }
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
@@ -877,6 +917,6 @@
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, toast: jbToast, persist: persist, onTabVisible: onTabVisible, watchSheet: watchSheet, confirm: confirm, whenReady: whenReady,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
-    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren
+    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState
   };
 })();

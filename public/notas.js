@@ -121,10 +121,10 @@ function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   var want=NOTAS_TABS.map(function(t){return t[0];}).filter(function(t){return notasGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
-  JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+  JB.syncWrap(JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
     DATA=buildNotas(by); render();
-  }).catch(function(){});
+  })).catch(function(){});
 }
 
 /* ---- routing / render ---- */
@@ -141,7 +141,7 @@ function renderHomeList(){
   var el=$('homeList'); if(!el) return; var q=normText(homeQuery);
   var ns=(DATA.notas||[]).slice().sort(function(a,b){ return String(b.atualizado||b.criado||'').localeCompare(String(a.atualizado||a.criado||'')); });
   if(q) ns=ns.filter(function(n){ if(normText(n.titulo).indexOf(q)>-1) return true; return (DATA.itens||[]).some(function(it){return it.notaId===n.id && normText(it.texto).indexOf(q)>-1;}); });
-  if(!ns.length){ el.innerHTML = (DATA.notas&&DATA.notas.length)? '<div class="empty">Nada encontrado.</div>' : '<div class="empty" style="padding:40px 14px">Nenhuma lista ainda.<br>Toque no <b>+</b> para criar sua primeira.</div>'; return; }
+  if(!ns.length){ el.innerHTML = (DATA.notas&&DATA.notas.length)? JB.emptyState({ icon:'🔎', title:'Nada encontrado', hint:'Tente outro termo na busca.' }) : JB.emptyState({ icon:'📝', title:'Nenhuma lista ainda', hint:'Crie listas de compras, tarefas, viagens e notas.', action:'+ Nova lista', onclick:'openNew()' }); return; }
   var pinned=ns.filter(function(n){return n.fixado;}), rest=ns.filter(function(n){return !n.fixado;}); var html=(q?'':dueStripHtml());
   if(pinned.length){ html+='<div class="secbar pin-sect"><div class="sect">📌 Fixadas</div></div><div class="notes-grid">'+pinned.map(noteCard).join('')+'</div>'; }
   if(rest.length){ if(pinned.length) html+='<div class="secbar" style="margin-top:18px"><div class="sect">Todas</div></div>'; html+='<div class="notes-grid">'+rest.map(noteCard).join('')+'</div>'; }

@@ -106,10 +106,10 @@ function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   var want=FIT_TABS.map(function(t){return t[0];}).filter(function(t){return fitGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
-  JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER')).then(function(res){
+  JB.syncWrap(JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
     DATA=buildFit(by); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(document.querySelector('#p-macros.on')) renderMacros();
-  }).catch(function(){});
+  })).catch(function(){});
 }
 function tab(name){
   ['hoje','treinos','exercicios','progresso','macros'].forEach(function(n){ $('p-'+n).classList.toggle('on', n===name); });
@@ -119,7 +119,7 @@ function tab(name){
 }
 function renderExercicios(){
   var el=$('exList'); var ex=(DATA.exercicios||[]);
-  if(!ex.length){ el.innerHTML='<div class="empty">Nenhum exercício ainda. Toque em “+ Adicionar”.</div>'; return; }
+  if(!ex.length){ el.innerHTML=JB.emptyState({ icon:'🏋️', title:'Nenhum exercício ainda', hint:'Monte sua biblioteca de movimentos.', action:'+ Adicionar', onclick:'openExercise()' }); return; }
   el.innerHTML = ex.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(x){
     return '<div class="row" onclick="openExercise(\''+x.id+'\')"><div><div class="rn">'+esc(x.name)+modeBadge(x.id)+'</div>'+(x.group?'<div class="rg">'+esc(x.group)+'</div>':'')+'</div><span style="color:var(--muted)">›</span></div>';
   }).join('');
@@ -165,7 +165,7 @@ function exName(id){ var x=(DATA.exercicios||[]).find(function(e){return e.id===
 function fabAdd(){ var on=document.querySelector('.page.on'); var t=on?on.id.replace('p-',''):''; if(t==='treinos') openTreino(); else openExercise(); }
 function renderTreinos(){
   var el=$('treinoList'); if(!el) return; var tr=(DATA.treinos||[]);
-  if(!tr.length){ el.innerHTML='<div class="empty">Nenhum treino ainda. Toque em “+ Adicionar” para montar um split.</div>'; return; }
+  if(!tr.length){ el.innerHTML=JB.emptyState({ icon:'📋', title:'Nenhum treino ainda', hint:'Crie um split com os exercícios da biblioteca.', action:'+ Adicionar', onclick:'openTreino()' }); return; }
   el.innerHTML=tr.map(function(r){ var items=(r.items||[]); var prev=items.slice(0,3).map(function(it){ return exName(it.ex)+' '+it.sets+'×'+it.rmin+(it.rmax&&it.rmax!==it.rmin?('-'+it.rmax):''); }).join(' · ')+(items.length>3?(' +'+(items.length-3)):''); return '<div class="row" onclick="openTreino(\''+r.id+'\')"><div><div class="rn">'+esc(r.name)+'</div><div class="rg">'+(items.length?esc(prev):'sem exercícios')+'</div></div><span style="color:var(--muted)">›</span></div>'; }).join('');
   if (!_stFitTr) { _stFitTr = true; JB.staggerChildren(el, 'fit-tr'); }
 }
@@ -461,7 +461,7 @@ function renderProgresso(){
   var el=$('prog'); if(!el) return;
   if(progEx){
     var name=exName(progEx); var d=progData(progEx);
-    if(!d.length){ el.innerHTML=progHdr(name)+'<div class="empty">Sem registros ainda.</div>'; return; }
+    if(!d.length){ el.innerHTML=progHdr(name)+JB.emptyState({ icon:'📈', title:'Sem registros ainda', hint:'Complete treinos na aba Hoje para ver evolução.' }); return; }
     var mode=exMode(progEx);
     var prTop=0,prE=0,prReps=0; d.forEach(function(x){ if(x.top>prTop)prTop=x.top; if(x.e1rm>prE)prE=x.e1rm; x.sets.forEach(function(s){ if((Number(s.reps)||0)>prReps) prReps=Number(s.reps)||0; }); });
     var cards = (mode==='time') ? ('<div class="prg"><div class="prc"><div class="prl">Melhor tempo</div><div class="prv">'+fmtT(prReps)+'</div></div><div class="prc"><div class="prl">Sessões</div><div class="prv">'+d.length+'</div></div></div>') : (mode==='bw') ? ('<div class="prg"><div class="prc"><div class="prl">Melhor série</div><div class="prv">'+prReps+' reps</div></div><div class="prc"><div class="prl">Sessões</div><div class="prv">'+d.length+'</div></div></div>') : ('<div class="prg"><div class="prc"><div class="prl">Melhor carga</div><div class="prv">'+prTop+' '+unit()+'</div></div><div class="prc"><div class="prl">1RM estim.</div><div class="prv">'+prE+' '+unit()+'</div></div><div class="prc"><div class="prl">Sessões</div><div class="prv">'+d.length+'</div></div></div>');
@@ -471,7 +471,7 @@ function renderProgresso(){
   }
   var volSec='<div class="secbar"><div class="sect">Volume da semana</div><span class="rg" style="font-size:11px">séries / grupo</span></div><div class="volwrap">'+volPanelHtml()+'</div>';
   var exs=(DATA.exercicios||[]).filter(function(x){return exHasData(x.id);}).sort(function(a,b){return a.name.localeCompare(b.name);});
-  var exSec='<div class="secbar" style="margin-top:24px"><div class="sect">Progresso por exercício</div></div>'+(exs.length?exs.map(function(x){ return '<div class="row" onclick="openProg(\''+x.id+'\')"><div class="rn">'+esc(x.name)+'</div><span style="color:var(--muted)">›</span></div>'; }).join(''):'<div class="empty" style="padding:18px">Registre treinos para ver seu progresso por exercício.</div>');
+  var exSec='<div class="secbar" style="margin-top:24px"><div class="sect">Progresso por exercício</div></div>'+(exs.length?exs.map(function(x){ return '<div class="row" onclick="openProg(\''+x.id+'\')"><div class="rn">'+esc(x.name)+'</div><span style="color:var(--muted)">›</span></div>'; }).join(''):JB.emptyState({ icon:'📊', title:'Nenhum histórico', hint:'Registre treinos para acompanhar carga e reps.' }));
   el.innerHTML=weightSecHtml()+volSec+exSec;
 }
 function fillGroupSelect(val){ var sel=$('exGroup'); var tags=(DATA.config&&DATA.config.tags)||DEFAULT_TAGS; var opts='<option value="">— sem grupo —</option>'; if(val && tags.indexOf(val)<0) opts+='<option value="'+esc(val)+'">'+esc(val)+'</option>'; opts+=tags.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join(''); sel.innerHTML=opts; sel.value=val||''; }

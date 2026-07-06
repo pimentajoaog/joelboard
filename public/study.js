@@ -99,10 +99,10 @@ function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   var want=STUDY_TABS.map(function(t){return t[0];}).filter(function(t){return studyGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
-  JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+  JB.syncWrap(JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
     DATA=buildStudy(by); render();
-  }).catch(function(){});
+  })).catch(function(){});
 }
 function render(){ renderCal(); renderMaterias(); }
 function tab(name){ matDetail=null; ['calendario','materias'].forEach(function(t){ var p=$('p-'+t); if(p) p.classList.toggle('on',t===name); }); var bs=document.querySelectorAll('.tabb'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on',bs[i].getAttribute('data-tab')===name); $('fab').style.display = (name==='calendario')?'flex':'none'; }
@@ -137,7 +137,7 @@ function renderCal(){
 }
 function dayPanelHtml(){
   var evs=evtsOn(selDate);
-  var rows = evs.length ? evs.map(evtRow).join('') : '<div class="empty" style="padding:14px">Nada nesse dia.</div>';
+  var rows = evs.length ? evs.map(evtRow).join('') : JB.emptyState({ icon:'📅', title:'Nada nesse dia', hint:'Adicione provas, trabalhos ou atividades.' });
   return '<div class="secbar" style="margin-top:22px"><div class="sect">'+esc(fmtBR(selDate))+'</div><button class="btn" onclick="openEvt(null)">+ Adicionar</button></div><div class="jb-stagger-list">'+rows+'</div>';
 }
 function proximosHtml(){
@@ -222,7 +222,7 @@ function matDetailHtml(matId){
     +(mods.length?mods.map(function(x){ return '<div class="modrow'+(x.feito?' done':'')+'"><button class="echk'+(x.feito?' on':'')+'" onclick="toggleModulo(\''+x.id+'\')">'+(x.feito?'✓':'')+'</button><span class="modname">'+esc(x.nome)+'</span><button class="anexx" onclick="removeModulo(\''+x.id+'\')">✕</button></div>'; }).join(''):'<div class="rg">Liste os módulos/aulas do curso e marque conforme avança.</div>')
     +'<div class="modadd"><input class="field" id="detModInput" placeholder="ex.: Módulo 1 — Limites" onkeydown="if(event.key===\'Enter\')addModulo(\''+matId+'\')"><button class="btn" onclick="addModulo(\''+matId+'\')">+</button></div>'
     +'<div class="secbar" style="margin-top:26px"><div class="sect">Provas & trabalhos</div><button class="btn" onclick="openEvtForMat(\''+matId+'\')">+ Adicionar</button></div>'
-    +(evs.length?evs.map(function(e){return evtRow(e,true);}).join(''):'<div class="empty" style="padding:14px">Nada agendado.</div>')
+    +(evs.length?evs.map(function(e){return evtRow(e,true);}).join(''):JB.emptyState({ icon:'📚', title:'Nada agendado', hint:'Vincule provas e trabalhos a esta matéria.' }))
     +'<div class="secbar" style="margin-top:26px"><div class="sect">Materiais</div></div>'
     +matAnexosHtml(matId);
 }
@@ -230,7 +230,7 @@ function renderMaterias(){
   var el=$('matList'); if(!el) return;
   if(matDetail){ if(mat(matDetail)){ el.innerHTML=matDetailHtml(matDetail); return; } matDetail=null; }
   var ms=(DATA.materias||[]);
-  if(!ms.length){ el.innerHTML='<div class="empty" style="padding:30px 14px">Nenhuma matéria ainda. Toque em "+ Adicionar" para criar uma.</div>'; return; }
+  if(!ms.length){ el.innerHTML=JB.emptyState({ icon:'📖', title:'Nenhuma matéria ainda', hint:'Organize cursos, módulos e provas por disciplina.', action:'+ Adicionar', onclick:'openMat()' }); return; }
   el.innerHTML=ms.map(function(m){
     var pr=modProgress(m.id);
     var cnt=(DATA.eventos||[]).filter(function(e){return (e.materiaIds||[]).indexOf(m.id)>-1 && !e.concluido && daysUntil(e.data)>=0;}).length; var anx=subjAnexos(m.id).length;

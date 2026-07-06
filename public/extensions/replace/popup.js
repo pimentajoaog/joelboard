@@ -276,6 +276,18 @@ function initSitesUI() {
   var btnAddSite = $('btnAddSite');
   if (!sitesList || !siteInput || !btnAddSite) return;
 
+  function permRequest(origins) {
+    return new Promise(function (resolve) {
+      chrome.permissions.request({ origins: origins }, resolve);
+    });
+  }
+
+  async function ensureHostPermission(host) {
+    host = JB_SITES.normalizeHost(host);
+    if (!host) return false;
+    return permRequest(JB_SITES.patternForHost(host));
+  }
+
   function renderSites(sites) {
     sitesList.innerHTML = (sites || []).map(function (host) {
       return '<div class="site-chip"><span>' + esc(host) + '</span>'
@@ -294,12 +306,17 @@ function initSitesUI() {
     renderSites(sites || JB_SITES.DEFAULT_SITES);
   });
 
-  btnAddSite.onclick = function () {
+  btnAddSite.onclick = async function () {
     var host = siteInput.value.trim();
     if (!host) return;
+    var allowed = await ensureHostPermission(host);
+    if (!allowed) {
+      toast('Permissão negada.');
+      return;
+    }
     chrome.runtime.sendMessage({ type: 'addSite', host: host }, function (res) {
       if (!res || !res.ok) {
-        toast(res && res.error === 'denied' ? 'Permissão negada.' : 'Site inválido.');
+        toast('Site inválido.');
         return;
       }
       siteInput.value = '';

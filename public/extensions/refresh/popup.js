@@ -33,6 +33,39 @@
     toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2600);
   }
 
+  function permContains(origins) {
+    return new Promise(function (resolve) {
+      chrome.permissions.contains({ origins: origins }, resolve);
+    });
+  }
+
+  function permRequest(origins) {
+    return new Promise(function (resolve) {
+      chrome.permissions.request({ origins: origins }, resolve);
+    });
+  }
+
+  async function ensureTabPermission(tabUrl) {
+    var origin = '';
+    var host = '';
+    try {
+      var u = new URL(tabUrl);
+      origin = u.origin + '/*';
+      host = JB_SITES.normalizeHost(u.hostname);
+    } catch (_) {
+      return false;
+    }
+    if (await permContains([origin])) return true;
+    if (!host) return false;
+    return permRequest(JB_SITES.patternForHost(host));
+  }
+
+  async function ensureHostPermission(host) {
+    host = JB_SITES.normalizeHost(host);
+    if (!host) return false;
+    return permRequest(JB_SITES.patternForHost(host));
+  }
+
   function setShortcutLabel(shortcut) {
     var label = JB_REFRESH.formatShortcutDisplay(shortcut || JB_REFRESH.DEFAULT_SHORTCUT);
     shortcutBtn.textContent = label;
@@ -150,12 +183,23 @@
 
   btnStart.addEventListener('click', async function () {
     if (tabId == null) return;
+    var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    var tab = tabs[0];
+    if (!tab || !tab.url) {
+      showToast('Nenhuma aba ativa.');
+      return;
+    }
+    var allowed = await ensureTabPermission(tab.url);
+    if (!allowed) {
+      showToast('Permissão negada — permita o acesso a este site no Chrome.');
+      return;
+    }
     var res = await send({ type: 'start', tabId: tabId, opts: currentOpts() });
     if (res && res.error === 'not-allowed') {
       showToast('Este site não está na lista permitida — adicione abaixo.');
       return;
     }
-    if (res && res.error === 'denied') {
+    if (res && (res.error === 'denied' || res.error === 'needs-permission')) {
       showToast('Permissão negada — permita o acesso a este site no Chrome.');
       return;
     }
@@ -249,12 +293,17 @@
       });
     }
 
-    btnAddSite.addEventListener('click', function () {
+    btnAddSite.addEventListener('click', async function () {
       var host = siteInput.value.trim();
       if (!host) return;
+      var allowed = await ensureHostPermission(host);
+      if (!allowed) {
+        showToast('Permissão negada para este site.');
+        return;
+      }
       chrome.runtime.sendMessage({ type: 'addSite', host: host }, function (res) {
         if (!res || !res.ok) {
-          showToast(res && res.error === 'denied' ? 'Permissão negada para este site.' : 'Site inválido.');
+          showToast('Site inválido.');
           return;
         }
         siteInput.value = '';

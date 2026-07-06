@@ -38,34 +38,53 @@ function isTabActive(tabId, cb) {
   });
 }
 
+function ignorePromise(p) {
+  if (p && typeof p.catch === 'function') p.catch(function () {});
+}
+
+function tabExists(tabId, cb) {
+  chrome.tabs.get(tabId, function (tab) {
+    cb(!chrome.runtime.lastError && !!tab);
+  });
+}
+
 function updateBadge(tabId, running, intervalSec) {
-  if (!running) {
-    chrome.action.setBadgeText({ tabId: tabId, text: '' });
-    return;
-  }
-  var label = intervalSec >= 60 ? Math.round(intervalSec / 60) + 'm' : intervalSec + 's';
-  chrome.action.setBadgeBackgroundColor({ tabId: tabId, color: '#059669' });
-  chrome.action.setBadgeText({ tabId: tabId, text: label });
+  tabExists(tabId, function (ok) {
+    if (!ok) return;
+    if (!running) {
+      ignorePromise(chrome.action.setBadgeText({ tabId: tabId, text: '' }));
+      return;
+    }
+    var label = intervalSec >= 60 ? Math.round(intervalSec / 60) + 'm' : intervalSec + 's';
+    ignorePromise(chrome.action.setBadgeBackgroundColor({ tabId: tabId, color: '#059669' }));
+    ignorePromise(chrome.action.setBadgeText({ tabId: tabId, text: label }));
+  });
 }
 
 function injectContent(tabId, cb) {
-  chrome.scripting.executeScript({
-    target: { tabId: tabId },
-    func: function () { return !!window.__JB_REFRESH_ON__; }
-  }, function (check) {
-    if (chrome.runtime.lastError) {
-      if (cb) cb(false, chrome.runtime.lastError.message);
-      return;
-    }
-    if (check && check[0] && check[0].result) {
-      if (cb) cb(true);
+  tabExists(tabId, function (ok) {
+    if (!ok) {
+      if (cb) cb(false, 'no-tab');
       return;
     }
     chrome.scripting.executeScript({
       target: { tabId: tabId },
-      files: ['lib/shared.js', 'lib/sites.js', 'content.js']
-    }, function () {
-      if (cb) cb(!chrome.runtime.lastError, chrome.runtime.lastError && chrome.runtime.lastError.message);
+      func: function () { return !!window.__JB_REFRESH_ON__; }
+    }, function (check) {
+      if (chrome.runtime.lastError) {
+        if (cb) cb(false, chrome.runtime.lastError.message);
+        return;
+      }
+      if (check && check[0] && check[0].result) {
+        if (cb) cb(true);
+        return;
+      }
+      chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ['lib/shared.js', 'lib/sites.js', 'content.js']
+      }, function () {
+        if (cb) cb(!chrome.runtime.lastError, chrome.runtime.lastError && chrome.runtime.lastError.message);
+      });
     });
   });
 }
@@ -75,7 +94,7 @@ function ensureInject(tabId, url, cb) {
     if (cb) cb(false, 'unsupported');
     return;
   }
-  JB_SITES.ensurePermissions(url, function (perm) {
+  JB_SITES.checkPermissions(url, function (perm) {
     if (!perm.ok) {
       if (cb) cb(false, perm.reason || 'denied');
       return;
@@ -93,7 +112,14 @@ function reloadTab(tabId, cb) {
       if (cb) cb(false);
       return;
     }
-    chrome.tabs.reload(tabId, cb || function () {});
+    chrome.tabs.reload(tabId, function () {
+      if (chrome.runtime.lastError) {
+        stopRefresh(tabId);
+        if (cb) cb(false);
+        return;
+      }
+      if (cb) cb(true);
+    });
   });
 }
 
@@ -121,10 +147,10 @@ function startRefresh(tabId, opts, cb) {
           if (cb) cb({ running: false, error: 'no-tab' });
           return;
         }
-        JB_SITES.ensurePermissions(tab.url, function (perm) {
+        JB_SITES.checkPermissions(tab.url, function (perm) {
           if (!perm.ok) {
             stopRefresh(tabId);
-            if (cb) cb({ running: false, error: perm.reason || 'denied' });
+            if (cb) cb({ running: false, error: perm.reason || 'needs-permission' });
             return;
           }
           reloadTab(tabId, function () {
@@ -163,22 +189,29 @@ function getTabStatus(tabId, cb) {
 }
 
 function doScheduledReload(tabId, cfg) {
-  function reschedule() {
-    scheduleRefresh(tabId, cfg.intervalSec);
-  }
+  tabExists(tabId, function (ok) {
+    if (!ok) {
+      stopRefresh(tabId);
+      return;
+    }
 
-  if (cfg.pauseWhenInactive) {
-    isTabActive(tabId, function (active) {
-      if (!active) {
-        reschedule();
-        return;
-      }
-      reloadTab(tabId, reschedule);
-    });
-    return;
-  }
+    function reschedule() {
+      scheduleRefresh(tabId, cfg.intervalSec);
+    }
 
-  reloadTab(tabId, reschedule);
+    if (cfg.pauseWhenInactive) {
+      isTabActive(tabId, function (active) {
+        if (!active) {
+          reschedule();
+          return;
+        }
+        reloadTab(tabId, reschedule);
+      });
+      return;
+    }
+
+    reloadTab(tabId, reschedule);
+  });
 }
 
 chrome.alarms.onAlarm.addListener(function (alarm) {
@@ -242,15 +275,6 @@ function toggleRefreshForActiveTab(cb) {
       return;
     }
     toggleRefreshForTab(tab.id, cb);
-  });
-}
-
-function requestDefaultSites() {
-  JB_SITES.loadSites(function (sites) {
-    var patterns = JB_SITES.originPatterns(sites);
-    chrome.permissions.contains({ origins: patterns }, function (has) {
-      if (!has) chrome.permissions.request({ origins: patterns });
-    });
   });
 }
 
@@ -367,9 +391,7 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
   if (msg.type === 'setSites') {
     JB_SITES.saveSites(msg.sites, function () {
       JB_SITES.loadSites(function (sites) {
-        chrome.permissions.request({ origins: JB_SITES.originPatterns(sites) }, function () {
-          sendResponse({ ok: true, sites: sites });
-        });
+        sendResponse({ ok: true, sites: sites });
       });
     });
     return true;
@@ -384,9 +406,7 @@ chrome.runtime.onMessageExternal.addListener(function (msg, sender, sendResponse
   if (msg.type === 'setSites' && Array.isArray(msg.sites)) {
     JB_SITES.saveSites(msg.sites, function () {
       JB_SITES.loadSites(function (sites) {
-        chrome.permissions.request({ origins: JB_SITES.originPatterns(sites) }, function () {
-          sendResponse({ ok: true, sites: sites });
-        });
+        sendResponse({ ok: true, sites: sites });
       });
     });
     return true;
@@ -406,6 +426,6 @@ chrome.runtime.onInstalled.addListener(function (details) {
     }
   });
   if (details.reason === 'install' || details.reason === 'update') {
-    requestDefaultSites();
+    /* Site permissions are granted from the popup when the user starts Refresh or adds a site. */
   }
 });

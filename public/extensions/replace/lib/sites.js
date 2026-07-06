@@ -84,7 +84,7 @@ var JB_SITES = window.JB_SITES || (function () {
     chrome.storage.local.set(patch, cb || function () {});
   }
 
-  function ensurePermissions(url, cb) {
+  function checkPermissions(url, cb) {
     loadSites(function (sites) {
       if (!hostAllowed(url, sites)) {
         if (cb) cb({ ok: false, reason: 'not-allowed', sites: sites });
@@ -95,23 +95,8 @@ var JB_SITES = window.JB_SITES || (function () {
         if (cb) cb({ ok: false, reason: 'unsupported', sites: sites });
         return;
       }
-      var site = matchingSite(url, sites);
-      var hostPatterns = site ? patternForHost(site) : tabPatterns;
-
       chrome.permissions.contains({ origins: tabPatterns }, function (has) {
-        if (has) {
-          if (cb) cb({ ok: true, sites: sites });
-          return;
-        }
-        chrome.permissions.request({ origins: hostPatterns }, function (granted) {
-          if (!granted) {
-            if (cb) cb({ ok: false, reason: 'denied', sites: sites });
-            return;
-          }
-          chrome.permissions.contains({ origins: tabPatterns }, function (ok) {
-            if (cb) cb({ ok: !!ok, reason: ok ? null : 'denied', sites: sites });
-          });
-        });
+        if (cb) cb({ ok: !!has, reason: has ? null : 'needs-permission', sites: sites });
       });
     });
   }
@@ -128,15 +113,8 @@ var JB_SITES = window.JB_SITES || (function () {
         return;
       }
       var next = sites.concat([h]);
-      var patterns = patternForHost(h);
-      chrome.permissions.request({ origins: patterns }, function (granted) {
-        if (!granted) {
-          if (cb) cb({ ok: false, error: 'denied', sites: sites });
-          return;
-        }
-        saveSites(next, function () {
-          if (cb) cb({ ok: true, sites: next });
-        });
+      saveSites(next, function () {
+        if (cb) cb({ ok: true, sites: next });
       });
     });
   }
@@ -165,7 +143,8 @@ var JB_SITES = window.JB_SITES || (function () {
     isInjectableUrl: isInjectableUrl,
     loadSites: loadSites,
     saveSites: saveSites,
-    ensurePermissions: ensurePermissions,
+    checkPermissions: checkPermissions,
+    ensurePermissions: checkPermissions,
     addSite: addSite,
     removeSite: removeSite
   };

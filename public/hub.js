@@ -9,7 +9,7 @@ var HUB_TOUR=[
 ];
 function hubVerTutorial(){ closeHubSet(); setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 250); }
 function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); if(on && !_hbooted){ _hbooted=true; if(!JB.tourDone('hub')) setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 700); } }
-function doIn(){ JB.requestToken(true).then(function(t){ return JB.fetchEmail(t); }).then(setGreet).catch(function(){}); }
+function doIn(){ JB.signIn({ onSuccess: function(){ setGreet(); } }); }
 function doOut(){ JB.signOut(); setGreet(); }
 /* ---- Feedback viewer (owner-only; reads the form-response sheet via Sheets API) ---- */
 var FB_SHEET='1vgpn1qRuKys8TYQD-Dx49cDjcOqJDZyqS0fZAvfxchs', FB_GID=749060366, FB_OWNER='joaogabrielpabarbosa@gmail.com';
@@ -107,7 +107,7 @@ function closeHubSet(){ document.getElementById("hubSet").classList.remove("open
 function hubAuth(){ var on=JB.isSignedIn(); closeHubSet(); if(on) doOut(); else doIn(); }
 function openMini(){
   if (!JB.isSignedIn()) {
-    JB.requestToken(true).then(function(t){ return JB.fetchEmail(t); }).then(function(){ setGreet(); document.getElementById('miniViewer').classList.add('open'); }).catch(function(){});
+    JB.signIn({ onSuccess: function(){ setGreet(); document.getElementById('miniViewer').classList.add('open'); } });
     return;
   }
   document.getElementById('miniViewer').classList.add('open');

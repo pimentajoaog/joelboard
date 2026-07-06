@@ -724,7 +724,7 @@ function jbStartAuth(){
   setTimeout(function(){ if (!jbAuthDone && !JB.cachedToken()) jbShowSignIn(); }, 16000);
 }
 function jbShowSignIn(){ jbLoadingHtml('<div style="text-align:center;padding:48px 20px"><div style="font-size:24px;font-weight:800;letter-spacing:-.5px">💰 Joelboard</div><div style="color:var(--muted);font-size:13px;margin:6px 0 26px">Suas finanças pessoais</div><button onclick="jbSignIn()" style="background:#fff;color:#1f2430;border:none;border-radius:12px;padding:13px 22px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Entrar com Google</button></div>'); }
-function jbSignIn(){ JB.requestToken(true).then(function(){ jbAuthDone = true; jbInstallShim(); jbAfterSignIn(); }).catch(function(){}); }
+function jbSignIn(){ JB.signIn({ onSuccess: function(){ jbAuthDone = true; jbInstallShim(); jbAfterSignIn(); } }); }
 function jbAfterSignIn(){
   jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando…</div>');
   function go(){ jbBootSheet(); }
@@ -2109,16 +2109,28 @@ function deleteCurrent(type) {
   const id = editing.id;
   const rec = (DATA[type]||[]).find(x=>String(x.id)===String(id));
   showConfirm(t('confirm.deleteItemTitle'), t('confirm.deleteCanUndo'), () => {
-    closeAllOverlays(); editing={type:null,id:null};
-    const arr=DATA[type]||[], i=arr.findIndex(x=>String(x.id)===String(id)); if (i>-1) arr.splice(i,1);
-    rebuildCatColors(); populateCategoryDropdowns(); renderAll(); renderCatList();
-    showToast(t('toast.deleted'), null, rec ? function(){ undoDelete(type, rec); } : null);
-    google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message, 'error'); reload(); }).deleteRecord(type, id);
+    JB.persist({
+      run: function () { return jbRun('deleteRecord', type, id); },
+      onSuccess: function () {
+        closeAllOverlays(); editing={type:null,id:null};
+        const arr=DATA[type]||[], i=arr.findIndex(x=>String(x.id)===String(id)); if (i>-1) arr.splice(i,1);
+        rebuildCatColors(); populateCategoryDropdowns(); renderAll(); renderCatList();
+        showToast(t('toast.deleted'), null, rec ? function(){ undoDelete(type, rec); } : null);
+      },
+      onError: function (e) {
+        showToast(t('err.prefix')+e.message, 'error');
+        reload();
+      }
+    });
   });
 }
 function undoDelete(type, rec) {
   const data=Object.assign({}, rec); delete data.id;
-  google.script.run.withSuccessHandler(function(){ showToast(t('toast.restored')); reload(); }).withFailureHandler(function(e){ showToast(t('err.prefix')+e.message,'error'); }).addRecord(type, data);
+  JB.persist({
+    run: function () { return jbRun('addRecord', type, data); },
+    onSuccess: function () { showToast(t('toast.restored')); reload(); },
+    onError: function (e) { showToast(t('err.prefix')+e.message,'error'); }
+  });
 }
 
 /* ---------- Settings: Income profile ---------- */

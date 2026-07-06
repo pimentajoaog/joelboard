@@ -247,6 +247,23 @@
       });
   }
 
+  var SIGNIN_ERR = { auth_failed: 'Não foi possível entrar. Tente de novo.', cancelled: 'Login cancelado.', silent_timeout: 'Login expirou. Tente de novo.', signed_out: 'Você saiu. Entre de novo.' };
+  function signIn(opts){
+    opts = opts || {};
+    return requestToken(true).then(function (tok) {
+      return fetchEmail(tok).then(function (em) {
+        if (opts.onSuccess) opts.onSuccess(tok, em);
+        return { token: tok, email: em };
+      });
+    }).catch(function (err) {
+      var key = (err && err.message) || 'auth_failed';
+      if (key === 'cancelled') { if (opts.onCancel) opts.onCancel(err); return Promise.reject(err); }
+      jbToast(SIGNIN_ERR[key] || SIGNIN_ERR.auth_failed);
+      if (opts.onError) opts.onError(err);
+      return Promise.reject(err);
+    });
+  }
+
   function feedback(appName){
     var ov = document.createElement('div'); ov.id = 'jbFb';
     ov.setAttribute('style', 'position:fixed;inset:0;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px');
@@ -444,7 +461,7 @@
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
-    requestToken: requestToken, signOut: signOut, api: api,
+    requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, toast: jbToast, persist: persist, confirm: confirm, whenReady: whenReady,

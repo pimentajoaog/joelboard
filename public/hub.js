@@ -4,7 +4,7 @@ var greetEl=document.getElementById("greet"), btnEl=document.getElementById("aut
 var _hbooted=false;
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só.' },
-  { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas, Mini…' },
+  { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas ou Mini (extensões Chrome).' },
   { sel:'.gear', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
 ];
 function hubVerTutorial(){ closeHubSet(); setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 250); }
@@ -105,5 +105,13 @@ function fbSetFilter(f){ fbFilter=f; renderFB(); }
 function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; JB.renderSkinPicker('hub', document.getElementById("hubSkins")); document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
 function hubAuth(){ var on=JB.isSignedIn(); closeHubSet(); if(on) doOut(); else doIn(); }
+function openMini(){
+  if (!JB.isSignedIn()) {
+    JB.requestToken(true).then(function(t){ return JB.fetchEmail(t); }).then(function(){ setGreet(); document.getElementById('miniViewer').classList.add('open'); }).catch(function(){});
+    return;
+  }
+  document.getElementById('miniViewer').classList.add('open');
+}
+function closeMini(){ document.getElementById('miniViewer').classList.remove('open'); }
 JB.applySkin('hub');
 if (JB.hasSession()) { JB.ensureToken(false).then(setGreet).catch(setGreet); } else { setGreet(); }

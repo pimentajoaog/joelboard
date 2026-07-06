@@ -21,7 +21,8 @@ body{ @apply min-h-screen text-ink; background:var(--bg); font-family:var(--font
 .sub{ @apply text-sm text-muted; margin:8px 2px 28px; }
 .grid{ @apply gap-4; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); }
 .tile{ @apply flex flex-col items-start gap-[3px] bg-surface border border-border rounded-[18px] p-[22px] no-underline text-ink; transition:transform .15s ease, border-color .15s ease; }
-a.tile:hover{ @apply border-primary; transform:translateY(-3px); }
+.tile.clickable{ cursor:pointer; }
+a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY(-3px); }
 .ico{ @apply w-[50px] h-[50px] rounded-[14px] flex items-center justify-center mb-3; }
 .suite{ @apply text-[11px] font-bold tracking-[.5px] uppercase text-muted; }
 .name{ @apply text-[19px] font-extrabold tracking-[-.4px] mt-[-2px]; }
@@ -72,6 +73,23 @@ a.tile:hover{ @apply border-primary; transform:translateY(-3px); }
 .fbsel{ flex:1; width:auto; }
 .fbtools{ display:flex; gap:8px; align-items:center; margin-bottom:12px; }
 .fbsearch{ flex:1; }
+
+/* Mini extensions (Hub panel) */
+.miniv-sub{ font-size:13px; color:var(--muted); line-height:1.5; margin:4px 0 20px; }
+.miniv-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; margin-bottom:20px; }
+.miniv-card{ display:flex; flex-direction:column; align-items:flex-start; gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:20px; }
+.miniv-card.live{ border-color:color-mix(in srgb, var(--mini) 35%, var(--border)); cursor:pointer; text-decoration:none; color:inherit; transition:transform .15s ease, border-color .15s ease; }
+a.miniv-card.live:hover{ border-color:var(--mini); transform:translateY(-3px); }
+.miniv-card.soon{ opacity:.55; }
+.miniv-ico{ width:50px; height:50px; border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:6px; }
+.miniv-steps{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:22px; }
+.miniv-steps h2{ font-size:16px; font-weight:800; margin-bottom:10px; font-family:var(--font-display); }
+.miniv-steps h3{ font-size:14px; font-weight:800; margin:18px 0 6px; font-family:var(--font-display); }
+.miniv-steps p{ font-size:12px; color:var(--muted); line-height:1.55; }
+.miniv-steps ol{ font-size:13px; color:var(--muted); line-height:1.65; padding-left:18px; }
+.miniv-steps li{ margin-bottom:8px; }
+.miniv-steps code{ background:var(--surface2); padding:2px 6px; border-radius:6px; font-size:12px; color:var(--mini); }
+.miniv-steps a{ color:var(--mini); font-weight:700; text-decoration:none; }
 
 /* skin display font on headings */
 .wm, .name { font-family: var(--font-display); }

@@ -1,94 +1,11 @@
 <!DOCTYPE html>
-<!-- Joelboard Mini — extension hub. © 2026 Joel Soluções LTDA. -->
+<!-- Joelboard Mini — redirect to Hub. © 2026 Joel Soluções LTDA. -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="refresh" content="0;url=/">
 <title>Joelboard Mini</title>
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.json">
-<link rel="stylesheet" href="/joelboard.css">
-<link rel="stylesheet" href="/themes.css">
-<meta name="theme-color" content="#0d0f18">
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../src/mini.css">
+<script>location.replace('/');</script>
 </head>
-<body>
-<div class="wrap">
-  <a class="door" href="/" title="Voltar ao Joelboard">← Joelboard</a>
-  <div class="top">
-    <div class="brand"><img src="/icon-192.png" alt="Joelboard"><span class="wm">Joelboard Mini</span></div>
-  </div>
-  <div class="sub">Extensões leves do Chrome — mesma família, fora da loja. Toque num card para baixar e instalar manualmente.</div>
-
-  <div class="grid">
-    <a class="card live" href="/extensions/joelboard-replace.zip" download="joelboard-replace.zip">
-      <div class="card-ico" style="background:#0f2a32">
-        <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
-          <path d="M18 32h20" stroke="#22d3ee" stroke-width="4" stroke-linecap="round"/>
-          <path d="M32 18v20" stroke="#22d3ee" stroke-width="4" stroke-linecap="round"/>
-          <path d="M40 40l8 8" stroke="#34d399" stroke-width="3.5" stroke-linecap="round"/>
-          <rect x="14" y="14" width="36" height="36" rx="8" fill="none" stroke="#22d3ee" stroke-width="3" opacity=".5"/>
-        </svg>
-      </div>
-      <div class="suite">Joelboard Mini</div>
-      <div class="name">Replace</div>
-      <div class="desc">Expansão de texto — templates, gatilhos, variáveis e import/export.</div>
-      <div class="open">Baixar →</div>
-    </a>
-    <a class="card live" href="/extensions/joelboard-refresh.zip" download="joelboard-refresh.zip">
-      <div class="card-ico" style="background:#0f2a24">
-        <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
-          <path d="M44 20A16 16 0 1 0 48 36" fill="none" stroke="#34d399" stroke-width="4" stroke-linecap="round"/>
-          <path d="M48 14v10h-10" fill="none" stroke="#34d399" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="32" cy="32" r="22" fill="none" stroke="#34d399" stroke-width="3" opacity=".35"/>
-        </svg>
-      </div>
-      <div class="suite">Joelboard Mini</div>
-      <div class="name" style="color:#34d399">Refresh</div>
-      <div class="desc">Auto-refresh da aba — intervalo, atalho e pausa em aba inativa.</div>
-      <div class="open">Baixar →</div>
-    </a>
-    <div class="card soon">
-      <div class="card-ico" style="background:#1f1f28">
-        <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
-          <circle cx="32" cy="32" r="14" fill="none" stroke="#7b85a0" stroke-width="3" stroke-dasharray="4 6"/>
-        </svg>
-      </div>
-      <div class="suite">Joelboard Mini</div>
-      <div class="name" style="color:var(--muted)">Em breve</div>
-      <div class="desc">Mais uma extensão entra aqui.</div>
-      <span class="tag">Em breve</span>
-    </div>
-  </div>
-
-  <div class="steps">
-    <h2>Instalar uma extensão</h2>
-    <ol>
-      <li>Toque no card acima para baixar o zip (<code>joelboard-replace.zip</code> ou <code>joelboard-refresh.zip</code>).</li>
-      <li>Descompacte — você terá uma pasta (<code>replace</code> ou <code>refresh</code>) com o <code>manifest.json</code>.</li>
-      <li>No Chrome, abra <a href="chrome://extensions" target="_blank" rel="noopener">chrome://extensions</a> e ative o <b>Modo do desenvolvedor</b>.</li>
-      <li>Clique em <b>Carregar sem compactação</b> e selecione a pasta descompactada.</li>
-      <li>Fixe a extensão na barra. Clique no ícone para abrir o popup.</li>
-    </ol>
-    <h2 style="margin-top:18px;font-size:14px">Joelboard Replace</h2>
-    <p style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px">
-      Em qualquer campo de texto, digite um gatilho (ex.: <code>//oi</code>) e pressione <b>Espaço</b> ou <b>Tab</b> para expandir.
-      Planilha: colunas <code>Nome</code>, <code>Trigger</code>, <code>Text</code>. Colar Ctrl+C: <code>%clip%</code>.
-    </p>
-    <h2 style="margin-top:18px;font-size:14px">Joelboard Refresh</h2>
-    <p style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px">
-      Abra a aba que quer monitorar, defina o intervalo e clique <b>Iniciar</b>.
-      Atalho personalizável no popup (clique em <b>Atalho</b> para gravar). Padrão: <code>Alt+Shift+R</code>.
-    </p>
-  </div>
-
-  <div class="foot">© 2026 Joel Soluções LTDA · Joelboard Mini</div>
-</div>
-<script src="https://accounts.google.com/gsi/client" async></script>
-<script src="/joelboard.js"></script>
-<script>JB.applySkin('mini'); if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}</script>
-</body>
+<body></body>
 </html>

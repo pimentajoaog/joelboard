@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './finance/index.html', './fit/index.html', './study/index.html', './notas/index.html', './mini/index.html', './src/**/*.css'],
+  content: ['./index.html', './finance/index.html', './fit/index.html', './study/index.html', './notas/index.html', './src/**/*.css'],
   // Apps keep their own resets; disable preflight so adopting utilities never changes existing looks.
   corePlugins: { preflight: false },
   theme: {

@@ -5,7 +5,9 @@
   var TOK = 'jb_tok', EXP = 'jb_tok_exp', EML = 'jb_email';
   var tokenClient = null, pendingRes = null, pendingRej = null, inflightToken = null, refreshTimer = null;
   var silentTimer = null, authGen = 0, authChain = Promise.resolve();
+  var pendingInteractive = false, silentCooldownUntil = 0;
   var SILENT_TIMEOUT_MS = 15000;
+  var SILENT_FAIL_COOLDOWN_MS = 90000;
   var GIS_SETTLE_MS = 300;
   var TAB_ID = 't' + Math.random().toString(36).slice(2, 10);
   var memTok = '', memExp = 0;
@@ -39,7 +41,6 @@
     ss(EXP, String(exp));
     lr('jb_signedout');
     if (AUTH_BC) try { AUTH_BC.postMessage({ t: 'tok', tok: tok, exp: exp, from: TAB_ID }); } catch (_) {}
-    scheduleTokenRefresh();
   }
   function email(){ return lg(EML) || ''; }
 
@@ -67,7 +68,6 @@
         ss(TOK, d.tok);
         ss(EXP, String(d.exp));
         lr('jb_signedout');
-        scheduleTokenRefresh();
       } else if (d.t === 'out') {
         clearTokenStorage();
         ls('jb_signedout', '1');
@@ -78,17 +78,6 @@
   function isSignedIn(){ return isTokenValid() && !!email(); }
 
   function clearRefreshTimer(){ if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; } }
-  function scheduleTokenRefresh(){
-    clearRefreshTimer();
-    if (!hasSession()) return;
-    var exp = tokenExpiresAt();
-    if (!exp) return;
-    var ms = exp - Date.now() - 300000;
-    if (ms < 30000) ms = 30000;
-    refreshTimer = setTimeout(function () {
-      requestToken(false).catch(function () {}).then(function () { scheduleTokenRefresh(); });
-    }, ms);
-  }
 
   function ensureToken(interactive){
     if (isTokenValid()) return Promise.resolve(readToken());
@@ -98,9 +87,14 @@
   function clearSilentTimer(){ if (silentTimer) { clearTimeout(silentTimer); silentTimer = null; } }
   function finishPending(err, tok){
     clearSilentTimer();
-    var res = pendingRes, rej = pendingRej;
+    var res = pendingRes, rej = pendingRej, wasInteractive = pendingInteractive;
     pendingRes = pendingRej = null;
-    if (err) { clearStaleToken(); if (rej) rej(err); }
+    pendingInteractive = false;
+    if (err) {
+      clearStaleToken();
+      if (!wasInteractive) silentCooldownUntil = Date.now() + SILENT_FAIL_COOLDOWN_MS;
+      if (rej) rej(err);
+    }
     else if (res) res(tok);
   }
   function cancelSilentAuth(reason){
@@ -114,7 +108,7 @@
     if (window.google && google.accounts && google.accounts.oauth2) {
       if (!tokenClient) {
         tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID, scope: SCOPES,
+          client_id: CLIENT_ID, scope: SCOPES, prompt: '',
           callback: function (r) {
             if (r && r.access_token) { saveToken(r.access_token, r.expires_in); finishPending(null, r.access_token); }
             else finishPending(new Error('auth_failed'));
@@ -162,13 +156,13 @@
       function go(){
         ensureClient(function () {
           if (gen !== authGen) { rej(new Error('auth_cancelled')); return; }
-          pendingRes = res; pendingRej = rej;
+          pendingRes = res; pendingRej = rej; pendingInteractive = !!interactive;
           if (!interactive) {
             silentTimer = setTimeout(function () {
               if (pendingRej === rej) finishPending(new Error('silent_timeout'));
             }, SILENT_TIMEOUT_MS);
           }
-          try { tokenClient.requestAccessToken(interactive ? {} : { prompt: 'none' }); }
+          try { tokenClient.requestAccessToken(interactive ? { prompt: 'select_account' } : { prompt: 'none' }); }
           catch (e) { finishPending(e); }
         });
       }
@@ -176,7 +170,10 @@
       else go();
     });
   }
-  function requestToken(interactive){
+  function requestToken(interactive, opts){
+    opts = opts || {};
+    if (!interactive && isTokenValid()) return Promise.resolve(readToken());
+    if (!interactive && !opts.force && Date.now() < silentCooldownUntil) return Promise.reject(new Error('silent_cooldown'));
     if (!interactive && inflightToken) return inflightToken;
     if (interactive) {
       cancelSilentAuth('superseded');
@@ -300,7 +297,7 @@
     }
     function handle(r, allowRefresh){
       if (r.status === 401 && allowRefresh) {
-        return requestToken(false).then(function (nt) { return doFetch(nt).then(function (r2) { return handle(r2, false); }); });
+        return requestToken(false, { force: true }).then(function (nt) { return doFetch(nt).then(function (r2) { return handle(r2, false); }); });
       }
       if (!r.ok) return r.text().then(function (tx) {
         var e = new Error('HTTP ' + r.status + ' — ' + tx.slice(0, 200));
@@ -541,13 +538,8 @@
     initAuthBroadcast();
     clearStaleToken();
     if (hasSession()) {
-      if (isTokenValid()) scheduleTokenRefresh();
-      else ensureToken(false).then(scheduleTokenRefresh).catch(clearStaleToken);
+      if (!isTokenValid()) ensureToken(false).catch(clearStaleToken);
     }
-    document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState !== 'visible' || !hasSession()) return;
-      if (!isTokenValid()) ensureToken(false).catch(function () {});
-    });
   }
 
   var tabSyncFn = null, tabSyncLast = 0, tabSyncMs = 90000;

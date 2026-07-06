@@ -856,7 +856,8 @@ function activeAllocationsAt(y,m) {
   const cur = ymStr(y,m);
   return (DATA.allocations||[]).map(a => { const diff = monthDiff(a.startMonth, cur); if (diff<0) return null; if (a.installments>0 && diff>=a.installments) return null; return {...a, ongoing:a.installments<=0, num:diff+1}; }).filter(Boolean);
 }
-function paymentPaidFor(types, id, ymS) { return (DATA.payments||[]).some(p => p.month===ymS && types.indexOf(p.type)>-1 && String(p.itemId)===String(id)); }
+function paymentMarkedPaid(p) { return !!(p && (p.paid === true || p.type === 'skip')); }
+function paymentPaidFor(types, id, ymS) { return (DATA.payments||[]).some(p => p.month===ymS && types.indexOf(p.type)>-1 && String(p.itemId)===String(id) && paymentMarkedPaid(p)); }
 function paymentActualFor(types, id, ymS) { const p = (DATA.payments||[]).find(x => x.month===ymS && types.indexOf(x.type)>-1 && String(x.itemId)===String(id) && x.actualAmount!=null); return p ? p.actualAmount : null; }
 function paidDateOf(p) { const pd = p.paidDate; return (pd && /^\d{4}-\d{2}-\d{2}$/.test(pd)) ? pd : (p.month + '-01'); }
 function billPaidType(raw) { return (Number(raw) < 0) ? 'Income' : 'Expense'; }
@@ -866,6 +867,7 @@ function expenseFlow(entry) { return entry && entry.type === 'Income' ? -entry.a
 function paidEntries(y,m) {
   const ymS = ymStr(y,m), out = [], seen = {};
   (DATA.payments||[]).forEach(p => {
+    if (!paymentMarkedPaid(p)) return;
     const fam = (p.type==='recurring'||p.type==='installment') ? 'bill' : p.type;
     if (fam!=='bill' && fam!=='allocation') return; // pending transactions are counted via the transaction itself
     const key = fam+':'+p.itemId+':'+p.month;
@@ -1231,13 +1233,13 @@ function logIncome() {
 }
 
 /* ---------- Paid state ---------- */
-function isPaidAny(types, id) { const m = ymStr(selY,selM); return (DATA.payments||[]).some(p => p.month===m && types.indexOf(p.type)>-1 && String(p.itemId)===String(id)); }
+function isPaidAny(types, id) { const m = ymStr(selY,selM); return (DATA.payments||[]).some(p => p.month===m && types.indexOf(p.type)>-1 && String(p.itemId)===String(id) && paymentMarkedPaid(p)); }
 function isPaid(type, id) { return isPaidAny([type], id); }
 function isPaidBill(id) { return isPaidAny(['bill','recurring','installment'], id); }
 function applyPaid(type, id, nw, m, actualAmount, paidDate) {
   const fam = type==='bill' ? ['bill','recurring','installment'] : [type];
   DATA.payments = (DATA.payments||[]).filter(p => !(p.month===m && fam.indexOf(p.type)>-1 && String(p.itemId)===String(id)));
-  if (nw) DATA.payments.push({ month:m, type:type, itemId:String(id), actualAmount: (actualAmount===undefined||actualAmount===''||actualAmount===null)?null:Number(actualAmount), paidDate: paidDate||'' });
+  if (nw) DATA.payments.push({ month:m, type:type, itemId:String(id), paid:true, actualAmount: (actualAmount===undefined||actualAmount===''||actualAmount===null)?null:Number(actualAmount), paidDate: paidDate||'' });
   google.script.run.withFailureHandler(e => { reload(); }).setPaid(m, type, id, nw, (actualAmount===undefined?'':actualAmount), paidDate||'');
   if (type==='bill' && !nw) { google.script.run.setPaid(m,'recurring',id,false,'',''); google.script.run.setPaid(m,'installment',id,false,'',''); }
 }
@@ -2423,7 +2425,7 @@ function applyBillOverride(id, month, amount) {
   const fam = ['bill','recurring','installment'];
   let p = (DATA.payments||[]).find(x => x.month===month && fam.indexOf(x.type)>-1 && String(x.itemId)===String(id));
   if (p) p.actualAmount = Number(amount);
-  else (DATA.payments=DATA.payments||[]).push({ month:month, type:'bill', itemId:String(id), actualAmount:Number(amount), paidDate:'' });
+  else (DATA.payments=DATA.payments||[]).push({ month:month, type:'bill', itemId:String(id), paid:false, actualAmount:Number(amount), paidDate:'' });
   google.script.run.withFailureHandler(e => { showToast(t('err.prefix')+e.message,'error'); reload(); }).setBillOverride(month, id, amount);
 }
 
@@ -2521,7 +2523,7 @@ function delBillOnwards() {
 function delBillThisMonth() {
   const id=editing.id, cur=curYM();
   billScopeCtx=null; closeOverlay('billDelOverlay'); closeAllOverlays(); editing={type:null,id:null};
-  (DATA.payments=DATA.payments||[]).push({ month:cur, type:'skip', itemId:String(id), actualAmount:null, paidDate:'' });
+  (DATA.payments=DATA.payments||[]).push({ month:cur, type:'skip', itemId:String(id), paid:true, actualAmount:null, paidDate:'' });
   renderAll(); showToast(t('toast.billSkipped'));
   google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); }).setBillSkip(cur, id);
 }

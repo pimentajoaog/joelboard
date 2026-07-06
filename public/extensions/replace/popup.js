@@ -173,7 +173,18 @@ function bindSettings() {
   });
 }
 
-function exportData() {
+function exportCsv() {
+  var blob = new Blob([JB_REPLACE.exportCsv(DATA)], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'joelboard-replace-' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✓ CSV exportado');
+}
+
+function exportJson() {
   var blob = new Blob([JB_REPLACE.exportJson(DATA)], { type: 'application/json' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
@@ -181,7 +192,7 @@ function exportData() {
   a.download = 'joelboard-replace-' + new Date().toISOString().slice(0, 10) + '.json';
   a.click();
   URL.revokeObjectURL(url);
-  toast('✓ Exportado');
+  toast('✓ Backup exportado');
 }
 
 function importData(file) {
@@ -238,7 +249,8 @@ $('btnAddVar').onclick = addVar;
 $('newVarKey').onkeydown = $('newVarVal').onkeydown = function (e) {
   if (e.key === 'Enter') addVar();
 };
-$('btnExport').onclick = exportData;
+$('btnExportCsv').onclick = exportCsv;
+$('btnExportJson').onclick = exportJson;
 $('btnImport').onclick = function () { $('importFile').click(); };
 $('importFile').onchange = function () {
   if (this.files && this.files[0]) importData(this.files[0]);

@@ -155,6 +155,25 @@ var JB_REPLACE = (function () {
     }, null, 2);
   }
 
+  function csvCell(v) {
+    v = v == null ? '' : String(v);
+    if (/[",\n\r]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+    return v;
+  }
+
+  /** Planilha: Nome, Trigger, Text — compatível com importação. */
+  function exportCsv(data) {
+    var lines = ['Nome,Trigger,Text'];
+    (data.snippets || []).forEach(function (s) {
+      lines.push([
+        csvCell(s.label || s.trigger || ''),
+        csvCell(s.trigger || ''),
+        csvCell(s.body || '')
+      ].join(','));
+    });
+    return '\uFEFF' + lines.join('\r\n');
+  }
+
   function importJson(text) {
     var obj = JSON.parse(text);
     if (!obj || !Array.isArray(obj.snippets)) throw new Error('Arquivo inválido — falta a lista de templates.');
@@ -209,11 +228,26 @@ var JB_REPLACE = (function () {
     return tabs > commas ? '\t' : ',';
   }
 
-  function isHeaderRow(row) {
+  function isHeaderRow2(row) {
     var a = String(row[0] || '').trim().toLowerCase();
     var b = String(row[1] || '').trim().toLowerCase();
-    return (/^(trigger|gatilho|atalho|shortcut|atalho\/trigger)$/.test(a)
+    return (/^(trigger|gatilho|atalho|shortcut)$/.test(a)
       && /^(text|texto|body|conteúdo|conteudo|expansion|mensagem|message)$/.test(b));
+  }
+
+  function isHeaderRow3(row) {
+    var a = String(row[0] || '').trim().toLowerCase();
+    var b = String(row[1] || '').trim().toLowerCase();
+    var c = String(row[2] || '').trim().toLowerCase();
+    return (/^(nome|name|label|título|titulo)$/.test(a)
+      && /^(trigger|gatilho|atalho|shortcut)$/.test(b)
+      && /^(text|texto|body|conteúdo|conteudo|expansion|mensagem|message)$/.test(c));
+  }
+
+  function detectSheetLayout(rows) {
+    if (rows.length && isHeaderRow3(rows[0])) return { cols: 3, start: 1 };
+    if (rows.length && isHeaderRow2(rows[0])) return { cols: 2, start: 1 };
+    return { cols: 2, start: 0 };
   }
 
   function labelFromRow(trigger, body) {
@@ -225,16 +259,25 @@ var JB_REPLACE = (function () {
   }
 
   function rowsToSnippets(rows) {
-    var start = (rows.length && isHeaderRow(rows[0])) ? 1 : 0;
+    var layout = detectSheetLayout(rows);
     var out = [];
-    rows.slice(start).forEach(function (row) {
-      var trigger = String(row[0] || '').trim();
-      var body = String(row[1] != null ? row[1] : '');
+    rows.slice(layout.start).forEach(function (row) {
+      var label, trigger, body;
+      if (layout.cols === 3) {
+        label = String(row[0] || '').trim();
+        trigger = String(row[1] || '').trim();
+        body = String(row[2] != null ? row[2] : '');
+      } else {
+        trigger = String(row[0] || '').trim();
+        body = String(row[1] != null ? row[1] : '');
+        label = labelFromRow(trigger, body);
+      }
       if (!trigger && !body.trim()) return;
       if (!trigger) return;
+      if (!label) label = labelFromRow(trigger, body);
       out.push({
         id: uuid(),
-        label: labelFromRow(trigger, body),
+        label: label,
         trigger: trigger,
         body: body,
         enabled: true
@@ -243,13 +286,13 @@ var JB_REPLACE = (function () {
     return out;
   }
 
-  /** Google Sheets export: col A = Trigger, col B = Text (header row optional). */
+  /** Google Sheets: 2 cols (Trigger, Text) or 3 cols (Nome, Trigger, Text). */
   function importSpreadsheet(text) {
     var delim = detectDelim(text);
     var rows = parseDelimited(text, delim);
     if (!rows.length) throw new Error('Planilha vazia.');
     var snippets = rowsToSnippets(rows);
-    if (!snippets.length) throw new Error('Nenhum template encontrado — use colunas A (gatilho) e B (texto).');
+    if (!snippets.length) throw new Error('Nenhum template encontrado — use colunas Trigger + Text, ou Nome + Trigger + Text.');
     return { mode: 'merge', snippets: snippets, vars: {}, settings: null };
   }
 
@@ -292,6 +335,7 @@ var JB_REPLACE = (function () {
     applyClipboard: applyClipboard,
     missingVars: missingVars,
     exportJson: exportJson,
+    exportCsv: exportCsv,
     importJson: importJson,
     importSpreadsheet: importSpreadsheet,
     importFile: importFile,

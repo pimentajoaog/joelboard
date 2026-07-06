@@ -49,10 +49,11 @@
     <label class="tog"><input type="checkbox" id="optEnter"> Expandir ao pressionar <kbd>Enter</kbd></label>
     <label class="tog"><input type="checkbox" id="optCase"> Gatilhos diferenciam maiúsculas</label>
     <div class="sep"></div>
-    <button class="btn ghost" id="btnExport">⬇ Exportar templates (JSON)</button>
+    <button class="btn ghost" id="btnExportCsv">⬇ Exportar planilha (CSV)</button>
+    <button class="btn ghost" id="btnExportJson">⬇ Backup (JSON)</button>
     <button class="btn ghost" id="btnImport">⬆ Importar planilha (CSV)</button>
     <input type="file" id="importFile" accept=".csv,.tsv,.txt,.json,application/json,text/csv" hidden>
-    <p class="hint" style="margin-top:10px">Migração: no Google Sheets, coluna A = <b>Trigger</b>, B = <b>Text</b> → Arquivo → Baixar → CSV. Gatilhos iguais são atualizados; novos são adicionados.</p>
+    <p class="hint" style="margin-top:10px">Planilha: <b>Nome</b>, <b>Trigger</b>, <b>Text</b> (export inclui as três). Import aceita 2 ou 3 colunas.</p>
     <div class="foot">Digite o gatilho em qualquer campo e pressione Espaço ou Tab.</div>
   </div>
 </div>

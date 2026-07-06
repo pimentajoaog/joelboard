@@ -91,7 +91,6 @@ function jbSaveProfile(data){
 }
 
 function jbInstallShim(){ if (!window.google) window.google = {}; google.script = { get run(){ return jbMakeRunner(); }, host:{ close:function(){}, setHeight:function(){}, editor:{} } }; }
-function jbSaveToken(tok, expiresIn){ try { localStorage.setItem('jb_tok', tok); localStorage.setItem('jb_tok_exp', String(Date.now() + (Number(expiresIn)||3600)*1000 - 120000)); if (jbEmail) localStorage.setItem('jb_email', jbEmail); } catch(e){} }
 function jbCachedToken(){ return JB.cachedToken(); }
 function jbLogout(){ JB.signOut(); location.reload(); }
 function jbStartAuth(){

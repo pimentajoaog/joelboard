@@ -7,24 +7,75 @@
   var silentTimer = null, authGen = 0, authChain = Promise.resolve();
   var SILENT_TIMEOUT_MS = 15000;
   var GIS_SETTLE_MS = 300;
+  var TAB_ID = 't' + Math.random().toString(36).slice(2, 10);
+  var memTok = '', memExp = 0;
+  var AUTH_BC = null;
+  try { AUTH_BC = new BroadcastChannel('jb-auth'); } catch (_) {}
 
   function lg(k){ try { return localStorage.getItem(k); } catch (_) { return null; } }
   function ls(k, v){ try { localStorage.setItem(k, v); } catch (_) {} }
   function lr(k){ try { localStorage.removeItem(k); } catch (_) {} }
+  function sg(k){ try { return sessionStorage.getItem(k); } catch (_) { return null; } }
+  function ss(k, v){ try { sessionStorage.setItem(k, v); } catch (_) {} }
+  function sr(k){ try { sessionStorage.removeItem(k); } catch (_) {} }
 
-  function tokenExpiresAt(){ return Number(lg(EXP) || 0); }
-  function isTokenValid(){ var t = lg(TOK), e = tokenExpiresAt(); return !!(t && e && Date.now() < e); }
-  function cachedToken(){ return isTokenValid() ? lg(TOK) : ''; }
-  function isSignedIn(){ return isTokenValid() && !!email(); }
-  function hasSession(){ if (lg('jb_signedout')) return false; return !!(lg(EML) || lg(TOK)); }
-  function clearStaleToken(){ if (lg(TOK) && !isTokenValid()) { lr(TOK); lr(EXP); } }
+  function readToken(){ return memTok || sg(TOK) || ''; }
+  function readExp(){ return memExp || Number(sg(EXP) || 0); }
+  function tokenExpiresAt(){ return readExp(); }
+  function isTokenValid(){ var t = readToken(), e = readExp(); return !!(t && e && Date.now() < e); }
+  function cachedToken(){ return isTokenValid() ? readToken() : ''; }
+  function hasSession(){ if (lg('jb_signedout')) return false; return !!(lg(EML) || readToken()); }
+  function clearTokenStorage(){
+    memTok = ''; memExp = 0;
+    sr(TOK); sr(EXP);
+    try { localStorage.removeItem(TOK); localStorage.removeItem(EXP); } catch (_) {}
+  }
+  function clearStaleToken(){ if (readToken() && !isTokenValid()) clearTokenStorage(); }
   function saveToken(tok, expiresIn){
-    ls(TOK, tok);
-    ls(EXP, String(Date.now() + (Number(expiresIn) || 3600) * 1000 - 120000));
+    var exp = Date.now() + (Number(expiresIn) || 3600) * 1000 - 120000;
+    memTok = tok;
+    memExp = exp;
+    ss(TOK, tok);
+    ss(EXP, String(exp));
     lr('jb_signedout');
+    if (AUTH_BC) try { AUTH_BC.postMessage({ t: 'tok', tok: tok, exp: exp, from: TAB_ID }); } catch (_) {}
     scheduleTokenRefresh();
   }
   function email(){ return lg(EML) || ''; }
+
+  function migrateTokenStorage(){
+    try {
+      var oldTok = localStorage.getItem(TOK), oldExp = localStorage.getItem(EXP);
+      if (oldTok && oldExp && !sg(TOK)) {
+        memTok = oldTok;
+        memExp = Number(oldExp) || 0;
+        ss(TOK, oldTok);
+        ss(EXP, oldExp);
+      }
+      localStorage.removeItem(TOK);
+      localStorage.removeItem(EXP);
+    } catch (_) {}
+  }
+  function initAuthBroadcast(){
+    if (!AUTH_BC) return;
+    AUTH_BC.onmessage = function (ev) {
+      var d = ev.data;
+      if (!d || d.from === TAB_ID) return;
+      if (d.t === 'tok' && d.tok && d.exp && d.exp > Date.now()) {
+        memTok = d.tok;
+        memExp = d.exp;
+        ss(TOK, d.tok);
+        ss(EXP, String(d.exp));
+        lr('jb_signedout');
+        scheduleTokenRefresh();
+      } else if (d.t === 'out') {
+        clearTokenStorage();
+        ls('jb_signedout', '1');
+      }
+    };
+  }
+
+  function isSignedIn(){ return isTokenValid() && !!email(); }
 
   function clearRefreshTimer(){ if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; } }
   function scheduleTokenRefresh(){
@@ -40,7 +91,7 @@
   }
 
   function ensureToken(interactive){
-    if (isTokenValid()) return Promise.resolve(lg(TOK));
+    if (isTokenValid()) return Promise.resolve(readToken());
     return requestToken(!!interactive);
   }
 
@@ -361,7 +412,6 @@
   function clearSheetId(app){ lr(sheetKey(app)); if (app === 'finance') lr('joelboard_sheet_id'); }
 
   // --- multi-tab write safety: generation counter + soft write lock (shared localStorage + BroadcastChannel) ---
-  var TAB_ID = 't' + Math.random().toString(36).slice(2, 10);
   var LOCK_MS = 22000;
   var SYNC_BC = null;
   var sheetWatchers = {};
@@ -476,9 +526,19 @@
     return tryId(cached).then(function (ctx) { if (ctx) return ctx; clearSheetId(app); return fromSearch(); });
   }
 
-  function signOut(){ clearRefreshTimer(); var t = lg(TOK); try { if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function () {}); } catch (_) {} lr(TOK); lr(EXP); lr(EML); ls('jb_signedout', '1'); }
+  function signOut(){
+    clearRefreshTimer();
+    var t = readToken();
+    try { if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function () {}); } catch (_) {}
+    clearTokenStorage();
+    lr(EML);
+    ls('jb_signedout', '1');
+    if (AUTH_BC) try { AUTH_BC.postMessage({ t: 'out', from: TAB_ID }); } catch (_) {}
+  }
 
   function initAuthPersistence(){
+    migrateTokenStorage();
+    initAuthBroadcast();
     clearStaleToken();
     if (hasSession()) {
       if (isTokenValid()) scheduleTokenRefresh();

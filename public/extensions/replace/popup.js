@@ -188,7 +188,15 @@ function importData(file) {
   var reader = new FileReader();
   reader.onload = function () {
     try {
-      pendingImport = JB_REPLACE.importJson(reader.result);
+      pendingImport = JB_REPLACE.importFile(reader.result, file.name);
+      var n = pendingImport.snippets.length;
+      if (pendingImport.mode === 'merge') {
+        $('confirmTitle').textContent = 'Importar planilha?';
+        $('confirmMsg').textContent = n + ' template' + (n === 1 ? '' : 's') + ' encontrado' + (n === 1 ? '' : 's') + '. Novos serão adicionados; gatilhos iguais serão atualizados.';
+      } else {
+        $('confirmTitle').textContent = 'Importar templates?';
+        $('confirmMsg').textContent = 'Isso substitui todos os ' + (DATA.snippets || []).length + ' templates atuais pelos ' + n + ' do arquivo JSON.';
+      }
       $('confirmOv').classList.add('open');
     } catch (e) {
       toast('Erro: ' + (e.message || 'arquivo inválido'));
@@ -199,9 +207,13 @@ function importData(file) {
 
 function applyImport() {
   if (!pendingImport) return;
-  DATA.snippets = pendingImport.snippets;
-  DATA.vars = Object.assign({}, pendingImport.vars);
-  DATA.settings = pendingImport.settings;
+  if (pendingImport.mode === 'merge') {
+    DATA.snippets = JB_REPLACE.mergeSnippets(DATA.snippets, pendingImport.snippets);
+  } else {
+    DATA.snippets = pendingImport.snippets;
+    DATA.vars = Object.assign({}, pendingImport.vars);
+    if (pendingImport.settings) DATA.settings = pendingImport.settings;
+  }
   pendingImport = null;
   $('confirmOv').classList.remove('open');
   persist().then(function () {

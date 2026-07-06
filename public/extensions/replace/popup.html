@@ -49,9 +49,10 @@
     <label class="tog"><input type="checkbox" id="optEnter"> Expandir ao pressionar <kbd>Enter</kbd></label>
     <label class="tog"><input type="checkbox" id="optCase"> Gatilhos diferenciam maiúsculas</label>
     <div class="sep"></div>
-    <button class="btn ghost" id="btnExport">⬇ Exportar templates</button>
-    <button class="btn ghost" id="btnImport">⬆ Importar templates</button>
-    <input type="file" id="importFile" accept="application/json,.json" hidden>
+    <button class="btn ghost" id="btnExport">⬇ Exportar templates (JSON)</button>
+    <button class="btn ghost" id="btnImport">⬆ Importar planilha (CSV)</button>
+    <input type="file" id="importFile" accept=".csv,.tsv,.txt,.json,application/json,text/csv" hidden>
+    <p class="hint" style="margin-top:10px">Migração: no Google Sheets, coluna A = <b>Trigger</b>, B = <b>Text</b> → Arquivo → Baixar → CSV. Gatilhos iguais são atualizados; novos são adicionados.</p>
     <div class="foot">Digite o gatilho em qualquer campo e pressione Espaço ou Tab.</div>
   </div>
 </div>
@@ -77,8 +78,8 @@
 
 <div class="overlay" id="confirmOv">
   <div class="modal" style="max-width:300px">
-    <div class="mt" style="margin-bottom:8px">Importar templates?</div>
-    <p class="hint" style="margin-bottom:14px">Isso substitui todos os templates atuais pelos do arquivo.</p>
+    <div class="mt" id="confirmTitle" style="margin-bottom:8px">Importar?</div>
+    <p class="hint" id="confirmMsg" style="margin-bottom:14px"></p>
     <div class="modal-btns">
       <button class="btn ghost" id="confirmNo">Cancelar</button>
       <button class="btn primary" id="confirmYes">Importar</button>

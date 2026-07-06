@@ -154,10 +154,120 @@ var JB_REPLACE = (function () {
       if (s.enabled == null) s.enabled = true;
     });
     return {
+      mode: 'replace',
       snippets: obj.snippets,
       vars: obj.vars || {},
       settings: Object.assign(defaultData().settings, obj.settings || {})
     };
+  }
+
+  function stripBom(text) {
+    return String(text || '').replace(/^\uFEFF/, '');
+  }
+
+  /** Parse CSV/TSV (quoted cells, commas or tabs). */
+  function parseDelimited(text, delim) {
+    text = stripBom(text);
+    var rows = [];
+    var row = [];
+    var cell = '';
+    var i = 0;
+    var inQuotes = false;
+    while (i < text.length) {
+      var c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { cell += '"'; i += 2; continue; }
+          inQuotes = false; i++; continue;
+        }
+        cell += c; i++; continue;
+      }
+      if (c === '"') { inQuotes = true; i++; continue; }
+      if (c === delim) { row.push(cell); cell = ''; i++; continue; }
+      if (c === '\r') { i++; continue; }
+      if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; i++; continue; }
+      cell += c; i++;
+    }
+    row.push(cell);
+    if (row.length > 1 || String(row[0] || '').length) rows.push(row);
+    return rows;
+  }
+
+  function detectDelim(text) {
+    var first = stripBom(text).split(/\r?\n/)[0] || '';
+    var tabs = (first.match(/\t/g) || []).length;
+    var commas = (first.match(/,/g) || []).length;
+    return tabs > commas ? '\t' : ',';
+  }
+
+  function isHeaderRow(row) {
+    var a = String(row[0] || '').trim().toLowerCase();
+    var b = String(row[1] || '').trim().toLowerCase();
+    return (/^(trigger|gatilho|atalho|shortcut|atalho\/trigger)$/.test(a)
+      && /^(text|texto|body|conteúdo|conteudo|expansion|mensagem|message)$/.test(b));
+  }
+
+  function labelFromRow(trigger, body) {
+    var t = String(body || '').trim();
+    if (!t) return trigger;
+    var line = t.split('\n')[0].trim();
+    if (line.length <= 48) return line || trigger;
+    return line.slice(0, 45) + '…';
+  }
+
+  function rowsToSnippets(rows) {
+    var start = (rows.length && isHeaderRow(rows[0])) ? 1 : 0;
+    var out = [];
+    rows.slice(start).forEach(function (row) {
+      var trigger = String(row[0] || '').trim();
+      var body = String(row[1] != null ? row[1] : '');
+      if (!trigger && !body.trim()) return;
+      if (!trigger) return;
+      out.push({
+        id: uuid(),
+        label: labelFromRow(trigger, body),
+        trigger: trigger,
+        body: body,
+        enabled: true
+      });
+    });
+    return out;
+  }
+
+  /** Google Sheets export: col A = Trigger, col B = Text (header row optional). */
+  function importSpreadsheet(text) {
+    var delim = detectDelim(text);
+    var rows = parseDelimited(text, delim);
+    if (!rows.length) throw new Error('Planilha vazia.');
+    var snippets = rowsToSnippets(rows);
+    if (!snippets.length) throw new Error('Nenhum template encontrado — use colunas A (gatilho) e B (texto).');
+    return { mode: 'merge', snippets: snippets, vars: {}, settings: null };
+  }
+
+  function mergeSnippets(existing, imported) {
+    var map = {};
+    (existing || []).forEach(function (s) { if (s.trigger) map[s.trigger] = s; });
+    (imported || []).forEach(function (s) {
+      if (!s.trigger) return;
+      if (map[s.trigger]) {
+        map[s.trigger].body = s.body;
+        map[s.trigger].label = s.label;
+        map[s.trigger].enabled = s.enabled !== false;
+      } else {
+        map[s.trigger] = s;
+      }
+    });
+    return Object.values(map);
+  }
+
+  function importFile(text, filename) {
+    var name = String(filename || '').toLowerCase();
+    var trimmed = stripBom(text).trim();
+    if (name.endsWith('.csv') || name.endsWith('.tsv') || name.endsWith('.txt')) {
+      return importSpreadsheet(text);
+    }
+    if (trimmed.charAt(0) === '{') return importJson(text);
+    return importSpreadsheet(text);
   }
 
   return {
@@ -171,6 +281,9 @@ var JB_REPLACE = (function () {
     expandVars: expandVars,
     missingVars: missingVars,
     exportJson: exportJson,
-    importJson: importJson
+    importJson: importJson,
+    importSpreadsheet: importSpreadsheet,
+    importFile: importFile,
+    mergeSnippets: mergeSnippets
   };
 })();

@@ -38,6 +38,19 @@
       <div class="desc">Expansão de texto — templates, gatilhos, variáveis e import/export.</div>
       <div class="open">Baixar →</div>
     </a>
+    <a class="card live" href="/extensions/joelboard-refresh.zip" download="joelboard-refresh.zip">
+      <div class="card-ico" style="background:#0f2a24">
+        <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M44 20A16 16 0 1 0 48 36" fill="none" stroke="#34d399" stroke-width="4" stroke-linecap="round"/>
+          <path d="M48 14v10h-10" fill="none" stroke="#34d399" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="32" cy="32" r="22" fill="none" stroke="#34d399" stroke-width="3" opacity=".35"/>
+        </svg>
+      </div>
+      <div class="suite">Joelboard Mini</div>
+      <div class="name" style="color:#34d399">Refresh</div>
+      <div class="desc">Auto-refresh da aba — intervalo, atalho e pausa em aba inativa.</div>
+      <div class="open">Baixar →</div>
+    </a>
     <div class="card soon">
       <div class="card-ico" style="background:#1f1f28">
         <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
@@ -46,35 +59,29 @@
       </div>
       <div class="suite">Joelboard Mini</div>
       <div class="name" style="color:var(--muted)">Em breve</div>
-      <div class="desc">Mais duas extensões entram aqui.</div>
-      <span class="tag">Em breve</span>
-    </div>
-    <div class="card soon">
-      <div class="card-ico" style="background:#1f1f28">
-        <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
-          <circle cx="32" cy="32" r="14" fill="none" stroke="#7b85a0" stroke-width="3" stroke-dasharray="4 6"/>
-        </svg>
-      </div>
-      <div class="suite">Joelboard Mini</div>
-      <div class="name" style="color:var(--muted)">Em breve</div>
-      <div class="desc">Mais duas extensões entram aqui.</div>
+      <div class="desc">Mais uma extensão entra aqui.</div>
       <span class="tag">Em breve</span>
     </div>
   </div>
 
   <div class="steps">
-    <h2>Instalar Joelboard Replace</h2>
+    <h2>Instalar uma extensão</h2>
     <ol>
-      <li>Toque em <b>Replace</b> acima para baixar <code>joelboard-replace.zip</code>.</li>
-      <li>Descompacte o zip — você terá uma pasta <code>replace</code> com o <code>manifest.json</code>.</li>
+      <li>Toque no card acima para baixar o zip (<code>joelboard-replace.zip</code> ou <code>joelboard-refresh.zip</code>).</li>
+      <li>Descompacte — você terá uma pasta (<code>replace</code> ou <code>refresh</code>) com o <code>manifest.json</code>.</li>
       <li>No Chrome, abra <a href="chrome://extensions" target="_blank" rel="noopener">chrome://extensions</a> e ative o <b>Modo do desenvolvedor</b>.</li>
-      <li>Clique em <b>Carregar sem compactação</b> e selecione a pasta <code>replace</code>.</li>
-      <li>Fixe a extensão na barra. Clique no ícone para gerenciar templates.</li>
-      <li>Em qualquer campo de texto, digite um gatilho (ex.: <code>//oi</code>) e pressione <b>Espaço</b> ou <b>Tab</b> para expandir.</li>
+      <li>Clique em <b>Carregar sem compactação</b> e selecione a pasta descompactada.</li>
+      <li>Fixe a extensão na barra. Clique no ícone para abrir o popup.</li>
     </ol>
-    <p style="font-size:12px;color:var(--muted);margin-top:14px;line-height:1.5">
-      Planilha: colunas <code>Nome</code>, <code>Trigger</code>, <code>Text</code> (export do Replace já inclui as três). Import aceita 2 ou 3 colunas. Colar Ctrl+C: <code>%clip%</code>.
-      Templates podem ser exportados e importados como JSON pelo popup da extensão.
+    <h2 style="margin-top:18px;font-size:14px">Joelboard Replace</h2>
+    <p style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px">
+      Em qualquer campo de texto, digite um gatilho (ex.: <code>//oi</code>) e pressione <b>Espaço</b> ou <b>Tab</b> para expandir.
+      Planilha: colunas <code>Nome</code>, <code>Trigger</code>, <code>Text</code>. Colar Ctrl+C: <code>%clip%</code>.
+    </p>
+    <h2 style="margin-top:18px;font-size:14px">Joelboard Refresh</h2>
+    <p style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px">
+      Abra a aba que quer monitorar, defina o intervalo e clique <b>Iniciar</b>.
+      Atalho <code>Alt+Shift+R</code> alterna ligado/desligado. Opcional: pausar quando a aba não estiver em foco.
     </p>
   </div>
 

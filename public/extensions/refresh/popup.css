@@ -1,0 +1,88 @@
+/* Joelboard Refresh — popup styles. © 2026 Joel Soluções LTDA. */
+:root {
+  --bg: #0d0f18;
+  --surface: #1b1f32;
+  --surface2: #252a40;
+  --border: #2b3147;
+  --primary: #34d399;
+  --text: #e7eaf3;
+  --muted: #7b85a0;
+  --danger: #fb7185;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --on-brand: #052e1f;
+}
+
+*, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; }
+button, input { font-family: inherit; }
+
+body {
+  width: 320px;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 'Hanken Grotesk', system-ui, sans-serif;
+}
+
+.wrap { padding: 14px 14px 16px; }
+
+.head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.head img { border-radius: 8px; }
+.title { font-size: 17px; font-weight: 800; letter-spacing: -.3px; }
+.sub { font-size: 11px; color: var(--muted); font-weight: 600; }
+
+.tab-url {
+  font-size: 11px; color: var(--muted); margin-bottom: 12px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.status {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0;
+}
+.status.on .status-dot { background: var(--primary); box-shadow: 0 0 8px color-mix(in srgb, var(--primary) 60%, transparent); }
+.status-label { font-size: 13px; font-weight: 700; }
+.status-detail { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+.fl {
+  display: block; font-size: 11px; font-weight: 700; color: var(--muted);
+  margin: 0 0 6px; text-transform: uppercase; letter-spacing: .4px;
+}
+
+.interval-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: stretch; }
+.field {
+  flex: 1; padding: 9px 11px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 13px; outline: none;
+}
+.field:focus { border-color: var(--primary); }
+.field.num { flex: 0 0 72px; text-align: center; font-weight: 700; }
+select.field { flex: 1; cursor: pointer; }
+
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.chip {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+  border-radius: 99px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.chip:hover, .chip.on { border-color: var(--primary); color: var(--primary); }
+.chip:disabled { opacity: .4; cursor: default; pointer-events: none; }
+
+.tog { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 14px; cursor: pointer; }
+.tog input { accent-color: var(--primary); }
+
+.actions { display: flex; gap: 8px; }
+.btn {
+  flex: 1; background: var(--primary); color: var(--on-brand); border: none;
+  border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; padding: 11px 14px;
+}
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn.stop { background: color-mix(in srgb, var(--danger) 18%, var(--surface2)); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border)); }
+
+.hint { font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 12px; text-align: center; }
+.hint kbd {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+  padding: 1px 5px; font-size: 10px; font-family: inherit;
+}

@@ -12,6 +12,7 @@ function uuid(){ return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxx'.replace(/[xy]/g,function
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function loadingHtml(h){ $('loading').style.display='block'; $('loading').innerHTML=h; }
 function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},2200); }
+function studyWriteErr(e){ toast('Erro: '+((e&&e.message)||'falha ao salvar')); }
 
 /* ---- dates ---- */
 function pad(n){ return (n<10?'0':'')+n; }
@@ -93,7 +94,16 @@ function buildStudy(t){
     config: config
   };
 }
-function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); render(); if(!_sbooted){ _sbooted=true; if(!JB.tourDone('study')) setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 600); } }
+function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); render(); if(!_sbooted){ _sbooted=true; if(!JB.tourDone('study')) setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); } }
+function refreshData(){
+  if(!$('app') || $('app').style.display==='none' || !DATA) return;
+  var want=STUDY_TABS.map(function(t){return t[0];}).filter(function(t){return studyGrid[t]!=null;});
+  var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
+  JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+    var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
+    DATA=buildStudy(by); render();
+  }).catch(function(){});
+}
 function render(){ renderCal(); renderMaterias(); }
 function tab(name){ matDetail=null; ['calendario','materias'].forEach(function(t){ var p=$('p-'+t); if(p) p.classList.toggle('on',t===name); }); var bs=document.querySelectorAll('.tabb'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on',bs[i].getAttribute('data-tab')===name); $('fab').style.display = (name==='calendario')?'flex':'none'; }
 function mat(id){ return (DATA.materias||[]).find(function(m){return m.id===id;}); }
@@ -192,10 +202,10 @@ function modProgress(matId){ var mods=modulos(matId); if(mods.length){ var d=mod
 function openMatDetail(id){ matDetail=id; renderMaterias(); window.scrollTo(0,0); }
 function backMat(){ matDetail=null; renderMaterias(); }
 function modRowVals(m){ return [m.materiaId, m.nome, m.feito?'1':'', m.id]; }
-function modSave(m){ findRow('Modulos',3,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Modulos!A'+row+':D'+row)+'?valueInputOption=RAW'), { values:[modRowVals(m)] }); }).catch(function(){}); }
-function addModulo(matId){ var inp=$('detModInput'); if(!inp) return; var nome=(inp.value||'').trim(); if(!nome) return; var mod={ id:uuid(), materiaId:matId, nome:nome, feito:false }; DATA.modulos=DATA.modulos||[]; DATA.modulos.push(mod); inp.value=''; renderMaterias(); JB.api('POST', ssUrl('/values/Modulos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[modRowVals(mod)] }).catch(function(){}); setTimeout(function(){ var i=$('detModInput'); if(i) i.focus(); },30); }
+function modSave(m){ findRow('Modulos',3,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Modulos!A'+row+':D'+row)+'?valueInputOption=RAW'), { values:[modRowVals(m)] }); }).catch(studyWriteErr); }
+function addModulo(matId){ var inp=$('detModInput'); if(!inp) return; var nome=(inp.value||'').trim(); if(!nome) return; var mod={ id:uuid(), materiaId:matId, nome:nome, feito:false }; DATA.modulos=DATA.modulos||[]; DATA.modulos.push(mod); inp.value=''; renderMaterias(); JB.api('POST', ssUrl('/values/Modulos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[modRowVals(mod)] }).catch(studyWriteErr); setTimeout(function(){ var i=$('detModInput'); if(i) i.focus(); },30); }
 function toggleModulo(id){ var m=(DATA.modulos||[]).find(function(x){return x.id===id;}); if(!m) return; m.feito=!m.feito; renderMaterias(); modSave(m); }
-function removeModulo(id){ DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.id!==id;}); renderMaterias(); findRow('Modulos',3,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Modulos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){}); }
+function removeModulo(id){ DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.id!==id;}); renderMaterias(); findRow('Modulos',3,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Modulos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(studyWriteErr); }
 function openEvtForMat(matId){ openEvt(null); evtMaterias=[matId]; renderEvtMateria(); }
 function matDetailHtml(matId){
   var m=mat(matId); if(!m) return ''; var pr=modProgress(matId), mods=modulos(matId), sm=studyMin(matId);
@@ -250,7 +260,7 @@ function saveMat(){
   if(editingMat){ m=mat(editingMat); if(!m) return; } else { m={id:uuid()}; DATA.materias.push(m); }
   m.nome=nome; m.cor=matCor; m.total=total; m.feitas=feitas;
   closeMat(); render(); toast('✓ Salvo');
-  if(editingMat){ var sf=studyFolders(); if(sf.subs&&sf.subs[m.id]){ JB.api('PATCH','https://www.googleapis.com/drive/v3/files/'+sf.subs[m.id],{ name:m.nome }).catch(function(){}); } saveMatRow(m); } else {
+  if(editingMat){ var sf=studyFolders(); if(sf.subs&&sf.subs[m.id]){ JB.api('PATCH','https://www.googleapis.com/drive/v3/files/'+sf.subs[m.id],{ name:m.nome }).catch(studyWriteErr); } saveMatRow(m); } else {
     JB.api('POST', ssUrl('/values/Materias:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[matRowVals(m)] }).catch(function(){ toast('Erro ao salvar'); });
   }
 }
@@ -259,7 +269,7 @@ function saveMatRow(m){ findRow('Materias',4,m.id).then(function(row){ if(row<0)
 function deleteMat(){ if(!editingMat) return; var id=editingMat; JB.confirm('Excluir matéria?','A matéria será removida (os itens ligados a ela ficam sem matéria).', function(){
   DATA.materias=(DATA.materias||[]).filter(function(x){return x.id!==id;});
   (DATA.eventos||[]).forEach(function(e){ var i=(e.materiaIds||[]).indexOf(id); if(i>-1){ e.materiaIds.splice(i,1); saveEvtRow(e); } });
-  (DATA.modulos||[]).filter(function(x){return x.materiaId===id;}).forEach(function(x){ findRow('Modulos',3,x.id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Modulos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){}); });
+  (DATA.modulos||[]).filter(function(x){return x.materiaId===id;}).forEach(function(x){ findRow('Modulos',3,x.id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Modulos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(studyWriteErr); });
   DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.materiaId!==id;});
   closeMat(); render(); toast('✓ Excluído');
   findRow('Materias',4,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Materias'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){ toast('Erro ao excluir'); });
@@ -273,7 +283,7 @@ function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++) ps[j].style.display=(ps[j].getAttribute('data-pane')===name)?'':'none'; }
 
 /* ---- config + Drive folders + attachments ---- */
-function saveConfig(k,v){ DATA.config=DATA.config||{}; DATA.config[k]=v; JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var vals=res.values||[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]}); } return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]}); }).catch(function(){}); }
+function saveConfig(k,v){ DATA.config=DATA.config||{}; DATA.config[k]=v; JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var vals=res.values||[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]}); } return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]}); }).catch(studyWriteErr); }
 function studyFolders(){ try{ var v=JSON.parse((DATA.config&&DATA.config.studyFolders)||'{}'); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } }
 function saveFolders(sf){ saveConfig('studyFolders', JSON.stringify(sf)); }
 function ensureRoot(){ var sf=studyFolders(); if(sf.root) return Promise.resolve(sf.root); return JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:'Joelboard Study — Anexos', mimeType:'application/vnd.google-apps.folder' }).then(function(f){ sf.root=f.id; saveFolders(sf); return f.id; }); }
@@ -317,8 +327,8 @@ function openLinkPicker(evtId){ linkEvtId=evtId; var have={}; evtAnexos(evtId).f
   else { var byM={}; avail.forEach(function(a){ (byM[a.materiaId]=byM[a.materiaId]||[]).push(a); }); var html=''; Object.keys(byM).forEach(function(mid){ var m=mat(mid); html+='<div class="linkhdr"><span class="dotc" style="background:'+(m?m.cor:'var(--muted)')+'"></span>'+esc(m?m.nome:'Sem matéria')+'</div>'+byM[mid].map(function(a){ return '<div class="anexrow" style="cursor:pointer" onclick="linkExisting(\''+a.id+'\')"><span class="anexlink">📄 '+esc(a.nome)+'</span><span style="color:var(--primary);font-weight:800;font-size:13px">+ Vincular</span></div>'; }).join(''); }); el.innerHTML=html; }
   $('linkOverlay').classList.add('open'); }
 function closeLink(){ $('linkOverlay').classList.remove('open'); }
-function linkExisting(srcId){ var src=(DATA.anexos||[]).find(function(a){return a.id===srcId;}); if(!src||!linkEvtId) return; var a={ id:uuid(), materiaId:src.materiaId, eventoId:linkEvtId, nome:src.nome, url:src.url, fileId:src.fileId }; DATA.anexos.push(a); JB.api('POST', ssUrl('/values/Anexos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[anexoRowVals(a)] }).catch(function(){}); closeLink(); renderEvtAnexos(linkEvtId); renderCal(); toast('✓ Vinculado'); }
-function removeAnexo(id,kind,ctxId){ JB.confirm('Remover anexo?','O arquivo continua no seu Google Drive.', function(){ DATA.anexos=(DATA.anexos||[]).filter(function(a){return a.id!==id;}); if(kind==='mat') renderMatAnexos(ctxId); else renderEvtAnexos(ctxId); renderMaterias(); renderCal(); findRow('Anexos',5,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Anexos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){}); }, { yes:'Remover', no:'Cancelar', danger:true }); }
+function linkExisting(srcId){ var src=(DATA.anexos||[]).find(function(a){return a.id===srcId;}); if(!src||!linkEvtId) return; var a={ id:uuid(), materiaId:src.materiaId, eventoId:linkEvtId, nome:src.nome, url:src.url, fileId:src.fileId }; JB.persist({ run: function(){ return JB.api('POST', ssUrl('/values/Anexos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[anexoRowVals(a)] }); }, onSuccess: function(){ DATA.anexos.push(a); closeLink(); renderEvtAnexos(linkEvtId); renderCal(); toast('✓ Vinculado'); }, onError: studyWriteErr }); }
+function removeAnexo(id,kind,ctxId){ JB.confirm('Remover anexo?','O arquivo continua no seu Google Drive.', function(){ JB.persist({ run: function(){ return findRow('Anexos',5,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Anexos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }); }, onSuccess: function(){ DATA.anexos=(DATA.anexos||[]).filter(function(a){return a.id!==id;}); if(kind==='mat') renderMatAnexos(ctxId); else renderEvtAnexos(ctxId); renderMaterias(); renderCal(); }, onError: studyWriteErr }); }, { yes:'Remover', no:'Cancelar', danger:true }); }
 function fmtT(x){ var m=Math.floor(x/60),s=x%60; return m+':'+(s<10?'0':'')+s; }
 function studyMin(matId){ return (DATA.focos||[]).filter(function(f){return f.materiaId===matId;}).reduce(function(a,f){return a+(f.min||0);},0); }
 function fmtStudy(m){ if(!m) return ''; var h=Math.floor(m/60), mm=m%60; var s=h?(h+'h'):''; if(mm||!h) s+=(s?' ':'')+mm+'m'; return s; }
@@ -340,7 +350,7 @@ function pauseFoco(){ focState.running=!focState.running; renderFoco(); }
 function skipFoco(){ if(focState.phase==='foco') logFocoBlock(); advanceFoc(); }
 function endFoco(){ if(focState.active && focState.phase==='foco') logFocoBlock(); clearInterval(focInt); focState.active=false; $('focoOverlay').classList.remove('open'); render(); }
 function logFocoBlock(){ var mins=Math.round((focState.tot-focState.secs)/60); if(mins>=1 && focState.matId) logFoco(focState.matId, mins); }
-function logFoco(matId,mins){ var f={id:uuid(),data:todayISO(),materiaId:matId,min:mins}; DATA.focos=DATA.focos||[]; DATA.focos.push(f); JB.api('POST', ssUrl('/values/Foco:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[[f.data,f.materiaId,f.min,f.id]] }).catch(function(){}); }
+function logFoco(matId,mins){ var f={id:uuid(),data:todayISO(),materiaId:matId,min:mins}; DATA.focos=DATA.focos||[]; DATA.focos.push(f); JB.api('POST', ssUrl('/values/Foco:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[[f.data,f.materiaId,f.min,f.id]] }).catch(studyWriteErr); }
 function renderFoco(){
   var top=$('focTop'), stage=$('focStage'), btm=$('focBtm'); if(!stage) return;
   if(!focState.active){

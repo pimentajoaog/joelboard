@@ -216,6 +216,22 @@
     });
   }
 
+  var tabSyncFn = null, tabSyncLast = 0, tabSyncMs = 90000;
+  function onTabVisible(fn, opts){
+    tabSyncFn = fn;
+    if (opts && opts.intervalMs) tabSyncMs = opts.intervalMs;
+  }
+  function initTabSync(){
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState !== 'visible' || !isSignedIn() || !tabSyncFn) return;
+      if (document.querySelector('.overlay.open')) return;
+      var now = Date.now();
+      if (now - tabSyncLast < tabSyncMs) return;
+      tabSyncLast = now;
+      tabSyncFn();
+    });
+  }
+
   // --- shared mobile scroll-lock: toggle .jb-noscroll on <html>/<body> behind any open .overlay modal.
   // The styling (scrollbar, scroll-lock, modal sizing) lives in the shared joelboard.css linked by every app. ---
   function initScrollLock(){
@@ -226,6 +242,7 @@
   function whenReady(fn){ if (document.body) fn(); else document.addEventListener('DOMContentLoaded', fn); }
   whenReady(initScrollLock);
   whenReady(initAuthPersistence);
+  whenReady(initTabSync);
 
   // --- shared feedback (posts to the app owner's Google Form) + a tiny core toast ---
   var FB_FORM = { action: 'https://docs.google.com/forms/d/e/1FAIpQLSdfIXwvv96V8E2aMsS0Yu9AlugAy0NZ7-eAklGisFO6cuSCuA/formResponse', nameEntry: 'entry.2102774097', kindEntry: 'entry.1066607309', msgEntry: 'entry.315076588' };
@@ -464,7 +481,7 @@
     requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
-    feedback: feedback, toast: jbToast, persist: persist, confirm: confirm, whenReady: whenReady,
+    feedback: feedback, toast: jbToast, persist: persist, onTabVisible: onTabVisible, confirm: confirm, whenReady: whenReady,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt
   };
 })();

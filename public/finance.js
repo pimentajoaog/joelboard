@@ -572,7 +572,7 @@ function setLang(l){
   if (!DATA.settings) DATA.settings = {};
   DATA.settings.lang = (l==='en') ? 'en' : 'ptBR';
   applyStaticI18n(); populateCategoryDropdowns(); renderAll(); renderThemePicker(); renderLangPicker(); csSyncAll();
-  google.script.run.withFailureHandler(()=>{}).saveSetting('lang', DATA.settings.lang);
+  google.script.run.withFailureHandler(function(e){ showToast(t('err.prefix')+e.message,'error'); }).saveSetting('lang', DATA.settings.lang);
   showToast(t('toast.langSet'));
 }
 function renderLangPicker(){
@@ -712,6 +712,12 @@ function jbRun(method){
     google.script.run.withSuccessHandler(res).withFailureHandler(rej)[method].apply(google.script.run, args);
   });
 }
+function jbSaveSetting(key, val){
+  jbRun('saveSetting', key, val).catch(function(e){ showToast(t('err.prefix')+e.message,'error'); });
+}
+function jbSaveProfile(data){
+  jbRun('saveProfile', data).catch(function(e){ showToast(t('err.prefix')+e.message,'error'); });
+}
 
 function jbInstallShim(){ if (!window.google) window.google = {}; google.script = { get run(){ return jbMakeRunner(); }, host:{ close:function(){}, setHeight:function(){}, editor:{} } }; }
 function jbSaveToken(tok, expiresIn){ try { localStorage.setItem('jb_tok', tok); localStorage.setItem('jb_tok_exp', String(Date.now() + (Number(expiresIn)||3600)*1000 - 120000)); if (jbEmail) localStorage.setItem('jb_email', jbEmail); } catch(e){} }
@@ -841,8 +847,9 @@ function boot(data) {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   if (!profileIsSet()) startWizard();
+  if (!window._jbTabSync) { window._jbTabSync = 1; JB.onTabVisible(function(){ if (document.getElementById('app').style.display !== 'none') reload(); }); }
 }
-function reload() { jbLoad().then(function(d){ DATA = d; rebuildCatColors(); populateCategoryDropdowns(); renderAll(); renderCatList(); }).catch(function(){}); }
+function reload() { jbLoad().then(function(d){ DATA = d; rebuildCatColors(); populateCategoryDropdowns(); renderAll(); renderCatList(); }).catch(function(e){ showToast(t('err.prefix')+e.message,'error'); }); }
 function manualRefresh() {
   const btn = document.getElementById('refreshBtn');
   if (btn.classList.contains('spinning')) return;
@@ -1348,7 +1355,7 @@ function footerEdit() {
   if (ex) DATA.settings.exchange_rate = parseFloat(ex.value)||0;
   renderCalSummary(); updateResult();
   clearTimeout(footerEdit._t);
-  footerEdit._t = setTimeout(()=>{ google.script.run.withFailureHandler(()=>{}).saveProfile({ hourly_rate:DATA.settings.hourly_rate, monthly_salary:DATA.settings.monthly_salary, exchange_rate:DATA.settings.exchange_rate }); }, 700);
+  footerEdit._t = setTimeout(()=>{ jbSaveProfile({ hourly_rate:DATA.settings.hourly_rate, monthly_salary:DATA.settings.monthly_salary, exchange_rate:DATA.settings.exchange_rate }); }, 700);
 }
 function renderCalSummary() {
   const s = calStats();
@@ -2049,12 +2056,12 @@ function toggleTheme() {
   const next = (DATA.settings.theme==='light') ? 'dark' : 'light';
   DATA.settings.theme = next;
   applyTheme();
-  google.script.run.withFailureHandler(()=>{}).saveSetting('theme', next);
+  jbSaveSetting('theme', next);
 }
 function setSkin(id) {
   DATA.settings.skin = id;
   applyTheme(); renderThemePicker();
-  google.script.run.withFailureHandler(()=>{}).saveSetting('skin', id);
+  jbSaveSetting('skin', id);
   showToast(t('toast.theme',{name:((THEMES.find(t=>t.id===id)||{}).name || id)}));
 }
 function renderThemePicker() {
@@ -2358,7 +2365,7 @@ function captureStep() {
   if (wizStep===3) { const h=document.getElementById('wizHourly'), sal=document.getElementById('wizSalary'), d=document.getElementById('wizDaily');
     if (h) wiz.hourly=parseFloat(h.value)||0; if (sal) wiz.salary=parseFloat(sal.value)||0; if (d) wiz.daily=parseFloat(d.value)||0; }
 }
-function wizSetLang(l) { wiz.lang=l; if(!DATA.settings)DATA.settings={}; DATA.settings.lang=l; applyStaticI18n(); google.script.run.withFailureHandler(()=>{}).saveSetting('lang', l); renderWizard(); }
+function wizSetLang(l) { wiz.lang=l; if(!DATA.settings)DATA.settings={}; DATA.settings.lang=l; applyStaticI18n(); jbSaveSetting('lang', l); renderWizard(); }
 function wizSetConvert(v) { captureStep(); wiz.convert=!!v; renderWizard(); }
 function wizSetMode(m) { captureStep(); wiz.mode=m; renderWizard(); }
 function wizBack() { captureStep(); if (wizStep>1) { wizStep--; renderWizard(); } }
@@ -2384,7 +2391,7 @@ function finishWizard() {
   if (wiz.mode==='salaried' && Number(wiz.salary)>0) { promptApplySalary(Number(wiz.salary)); }
   else if (!tourIsDone()) setTimeout(startTour, 450);
 }
-function skipWizard() { if(!DATA.settings)DATA.settings={}; DATA.settings.profile_set='true'; google.script.run.withFailureHandler(()=>{}).saveSetting('profile_set','true'); closeWizard(); }
+function skipWizard() { if(!DATA.settings)DATA.settings={}; DATA.settings.profile_set='true'; jbSaveSetting('profile_set','true'); closeWizard(); }
 
 /* ---------- All-settled badge ---------- */
 function allSettled() {

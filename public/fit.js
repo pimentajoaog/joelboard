@@ -9,6 +9,7 @@ function uuid(){ return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxx'.replace(/[xy]/g,function
 function loadingHtml(h){ $('loading').style.display='block'; $('loading').innerHTML=h; }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},2200); }
+function fitWriteErr(e){ toast('Erro: '+((e&&e.message)||'falha ao salvar')); }
 
 /* ---- auth (shared core) ---- */
 function startAuth(){
@@ -93,7 +94,16 @@ function buildFit(t){
 }
 
 /* ---- render ---- */
-function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(!_fbooted){ _fbooted=true; if(!JB.tourDone('fit')) setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 600); } }
+function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(!_fbooted){ _fbooted=true; if(!JB.tourDone('fit')) setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); } }
+function refreshData(){
+  if(!$('app') || $('app').style.display==='none' || !DATA) return;
+  var want=FIT_TABS.map(function(t){return t[0];}).filter(function(t){return fitGrid[t]!=null;});
+  var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
+  JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER')).then(function(res){
+    var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
+    DATA=buildFit(by); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso();
+  }).catch(function(){});
+}
 function tab(name){
   ['hoje','treinos','exercicios','progresso'].forEach(function(n){ $('p-'+n).classList.toggle('on', n===name); });
   document.querySelectorAll('.tabb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===name); });
@@ -138,7 +148,9 @@ function deleteExercise(){
   DATA.exercicios=(DATA.exercicios||[]).filter(function(e){return e.id!==id;}); renderExercicios(); closeEx(); toast('✓ Excluído');
   fitFindRow('Exercicios',2,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:fitGrid['Exercicios'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){ toast('Erro ao excluir'); reload(); });
 }
-function reload(){ JB.api('GET', ssUrl('/values:batchGet?ranges=Exercicios&ranges=Config&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var by={}; (res.valueRanges||[]).forEach(function(vr){ by[(vr.range||'').split('!')[0].replace(/'/g,'')]=vr.values||[]; }); if(by.Exercicios){ DATA.exercicios=body(by.Exercicios).filter(function(r){return r[0];}).map(function(r){return {id:r[2],name:r[0],group:r[1]||''};}); renderExercicios(); } }).catch(function(){}); }
+function reload(){
+  refreshData();
+}
 
 var editingTreino=null, trSel=[], trSortable=null;
 function exName(id){ var x=(DATA.exercicios||[]).find(function(e){return e.id===id;}); return x?x.name:'—'; }
@@ -197,7 +209,7 @@ function deleteTreino(){
 var sess=null;
 function unit(){ return (DATA.config&&DATA.config.unit)||'kg'; }
 function toggleUnit(){ DATA.config=DATA.config||{}; DATA.config.unit= unit()==='kg'?'lb':'kg'; renderHoje(); saveConfig('unit',DATA.config.unit); }
-function saveConfig(k,v){ JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var vals=res.values||[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]}); } return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]}); }).catch(function(){}); }
+function saveConfig(k,v){ JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var vals=res.values||[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]}); } return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]}); }).catch(fitWriteErr); }
 function fmtLast(l,mode){ return l.sets.map(function(s){return mode==='bw'?(''+s.reps):(s.reps+'×'+s.peso);}).join(' · '); }
 function lastFor(exId){ var ss=(DATA.series||[]).filter(function(x){return x.exId===exId;}); if(!ss.length) return null; var dateOf={}; (DATA.sessoes||[]).forEach(function(s){dateOf[s.id]=s.date;}); var best=null,bd='-'; ss.forEach(function(x){ var d=dateOf[x.sessaoId]||''; if(d>=bd){bd=d;best=x.sessaoId;} }); var sets=ss.filter(function(x){return x.sessaoId===best;}).sort(function(a,b){return a.serie-b.serie;}); return {date:bd,sets:sets}; }
 function recentHtml(){ var s=(DATA.sessoes||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');}).slice(0,5); if(!s.length) return ''; return '<div class="sect" style="margin:26px 0 10px">Últimos treinos</div>'+s.map(function(x){ var c=(DATA.series||[]).filter(function(y){return y.sessaoId===x.id;}).length; return '<div class="row" style="cursor:default"><div><div class="rn">'+esc(x.treino||'Avulso')+'</div><div class="rg">'+esc(x.date)+' · '+c+' séries</div></div><button class="rm" onclick="deleteSession(\''+x.id+'\')" title="Excluir">🗑</button></div>'; }).join(''); }

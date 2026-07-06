@@ -116,7 +116,16 @@ function buildNotas(t){
     config: config
   };
 }
-function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); render(); if(!_nbooted){ _nbooted=true; if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } }
+function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); render(); if(!_nbooted){ _nbooted=true; if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); } }
+function refreshData(){
+  if(!$('app') || $('app').style.display==='none' || !DATA) return;
+  var want=NOTAS_TABS.map(function(t){return t[0];}).filter(function(t){return notasGrid[t]!=null;});
+  var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
+  JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+    var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
+    DATA=buildNotas(by); render();
+  }).catch(function(){});
+}
 
 /* ---- routing / render ---- */
 function note(id){ return (DATA.notas||[]).find(function(n){return n.id===id;}); }

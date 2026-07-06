@@ -1,6 +1,6 @@
 /* Joelboard Study — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
-var DATA=null, studyGrid={}, authDone=false;
+var DATA=null, studyGrid={}, authDone=false, _stStudyCal=false, _stStudyMat=false;
 var STUDY_TABS=[['Materias',['Nome','Cor','Total','Feitas','ID']],['Eventos',['Titulo','Tipo','Data','Hora','MateriaID','Concluido','Notas','ID']],['Anexos',['MateriaID','EventoID','Nome','URL','FileID','ID']],['Foco',['Data','MateriaID','Minutos','ID']],['Modulos',['MateriaID','Nome','Feito','ID']],['Config',['Chave','Valor']]];
 var EVENT_TYPES=['Prova','Trabalho','Atividade','Outro'];
 var SUBJECT_COLORS=['#a78bfa','#60a5fa','#22d3ee','#34d399','#a3e635','#fbbf24','#fb923c','#fb7185','#f472b6','#94a3b8'];
@@ -75,7 +75,7 @@ function createSheet(){
 function ssUrl(p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+JB.getSheetId('study')+p; }
 function body(rows){ return (rows||[]).slice(1); }
 function loadData(){
-  loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>');
+  loadingHtml(JB.skeletonHtml('study'));
   var want=STUDY_TABS.map(function(t){return t[0];}).filter(function(t){return studyGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
@@ -130,16 +130,20 @@ function renderCal(){
     +'<div class="calgrid calwd">'+head+'</div><div class="calgrid" id="calCells">'+cells+'</div>'
     +'<button class="focuslaunch" onclick="openFoco()">🍅 Modo foco</button>'
     + dayPanelHtml() + proximosHtml();
+  if (!_stStudyCal) {
+    _stStudyCal = true;
+    el.querySelectorAll('.jb-stagger-list').forEach(function (l) { JB.staggerChildren(l, 'study-cal'); });
+  }
 }
 function dayPanelHtml(){
   var evs=evtsOn(selDate);
   var rows = evs.length ? evs.map(evtRow).join('') : '<div class="empty" style="padding:14px">Nada nesse dia.</div>';
-  return '<div class="secbar" style="margin-top:22px"><div class="sect">'+esc(fmtBR(selDate))+'</div><button class="btn" onclick="openEvt(null)">+ Adicionar</button></div>'+rows;
+  return '<div class="secbar" style="margin-top:22px"><div class="sect">'+esc(fmtBR(selDate))+'</div><button class="btn" onclick="openEvt(null)">+ Adicionar</button></div><div class="jb-stagger-list">'+rows+'</div>';
 }
 function proximosHtml(){
   var up=(DATA.eventos||[]).filter(function(e){ return !e.concluido && daysUntil(e.data)>=0; }).sort(function(a,b){ return (a.data+a.hora).localeCompare(b.data+b.hora); }).slice(0,12);
   if(!up.length) return '';
-  return '<div class="secbar" style="margin-top:26px"><div class="sect">⏳ Próximos</div></div>'+up.map(function(e){return evtRow(e,true);}).join('');
+  return '<div class="secbar" style="margin-top:26px"><div class="sect">⏳ Próximos</div></div><div class="jb-stagger-list">'+up.map(function(e){return evtRow(e,true);}).join('')+'</div>';
 }
 function evtRow(e,showDate){
   var subs=(e.materiaIds||[]).map(mat).filter(Boolean); var col=subs[0]?subs[0].cor:'var(--muted)', nc=nearClass(e.data,e.concluido);
@@ -235,6 +239,7 @@ function renderMaterias(){
       +'<div class="matsub">'+pr.done+' / '+(pr.total||'—')+(pr.mod?' módulos':' aulas')+(cnt?(' · '+cnt+' próximo'+(cnt>1?'s':'')):'')+(anx?(' · 📎 '+anx):'')+studyTimeStr(m.id)+'</div>'
       +'<div class="pbar"><span style="width:'+pr.pct+'%;background:'+m.cor+'"></span></div></div>';
   }).join('');
+  if (!_stStudyMat) { _stStudyMat = true; JB.staggerChildren(el, 'study-mat'); }
 }
 function addAula(id){ var m=mat(id); if(!m) return; if(m.total&&m.feitas>=m.total){ toast('Todas as aulas concluídas ✓'); return; } m.feitas=(m.feitas||0)+1; renderMaterias(); saveMatRow(m); }
 var editingMat=null, matCor=SUBJECT_COLORS[0];

@@ -834,6 +834,41 @@
   function dpGet(id){ var b=document.getElementById(id); return b? (b.getAttribute('data-iso')||'') : ''; }
   function dpOpen(id, onChange){ var b=document.getElementById(id); if(!b) return; datePicker(b.getAttribute('data-iso')||'', function(iso){ dpSet(id, iso); if(typeof onChange==='function') onChange(iso); }); }
 
+  function skelRow(n, cls) {
+    var h = ''; cls = cls || 'jb-skel-row';
+    for (var i = 0; i < (n || 4); i++) h += '<div class="jb-skel ' + cls + '"></div>';
+    return h;
+  }
+  function skeletonHtml(app) {
+    app = app || 'generic';
+    if (app === 'fit') {
+      return '<div class="jb-skel-wrap"><div class="jb-skel jb-skel-title"></div>'
+        + skelRow(4, 'jb-skel-row') + '<div class="jb-skel jb-skel-sub"></div>'
+        + skelRow(2, 'jb-skel-meal') + '<div class="jb-skel-hint">Carregando treino…</div></div>';
+    }
+    if (app === 'study') {
+      var cal = '<div class="jb-skel-cal">';
+      for (var c = 0; c < 14; c++) cal += '<span class="jb-skel"></span>';
+      cal += '</div>';
+      return '<div class="jb-skel-wrap"><div class="jb-skel jb-skel-title"></div>' + cal
+        + skelRow(4, 'jb-skel-row') + '<div class="jb-skel-hint">Carregando calendário…</div></div>';
+    }
+    if (app === 'notas') {
+      return '<div class="jb-skel-wrap"><div class="jb-skel jb-skel-title"></div>'
+        + skelRow(4, 'jb-skel-card') + '<div class="jb-skel-hint">Carregando listas…</div></div>';
+    }
+    return '<div class="jb-skel-wrap">' + skelRow(3) + '<div class="jb-skel-hint">Carregando…</div></div>';
+  }
+  function staggerChildren(el, key) {
+    if (!el || !el.children || !el.children.length) return;
+    key = key || 'default';
+    if (el.getAttribute('data-jb-stagger') === key) return;
+    el.setAttribute('data-jb-stagger', key);
+    try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (_) {}
+    el.classList.add('jb-stagger');
+    for (var i = 0; i < el.children.length; i++) el.children[i].style.setProperty('--jb-i', i);
+  }
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
@@ -842,6 +877,6 @@
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, toast: jbToast, persist: persist, onTabVisible: onTabVisible, watchSheet: watchSheet, confirm: confirm, whenReady: whenReady,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
-    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt
+    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren
   };
 })();

@@ -1,6 +1,6 @@
 /* Joelboard Notas — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
-var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, newDue='', _selMode=false, _sel={};
+var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={};
 var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']]];
 var KINDS=[
   {k:'compras', label:'Compras', icon:'🛒', color:'#34d399', defCheck:true},
@@ -100,7 +100,7 @@ function createSheet(){
 /* ---- load ---- */
 function body(rows){ return (rows||[]).slice(1); }
 function loadData(){
-  loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>');
+  loadingHtml(JB.skeletonHtml('notas'));
   var want=NOTAS_TABS.map(function(t){return t[0];}).filter(function(t){return notasGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
@@ -146,6 +146,10 @@ function renderHomeList(){
   if(pinned.length){ html+='<div class="secbar pin-sect"><div class="sect">📌 Fixadas</div></div><div class="notes-grid">'+pinned.map(noteCard).join('')+'</div>'; }
   if(rest.length){ if(pinned.length) html+='<div class="secbar" style="margin-top:18px"><div class="sect">Todas</div></div>'; html+='<div class="notes-grid">'+rest.map(noteCard).join('')+'</div>'; }
   el.innerHTML=html;
+  if (!_stNotasHome && !q) {
+    _stNotasHome = true;
+    el.querySelectorAll('.notes-grid').forEach(function (g, i) { JB.staggerChildren(g, 'notas-' + i); });
+  }
 }
 function noteCard(n){
   var kd=kindDef(n.tipo); var its=itemsOf(n.id).filter(function(x){return x.tipo!=='g';}); var chk=its.filter(function(x){return x.marcavel;}); var done=chk.filter(function(x){return x.feito;}).length;

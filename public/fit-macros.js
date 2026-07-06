@@ -11,7 +11,7 @@ var MACRO_PRESETS_GLOBAL = [
   { l: '100 g', g: 100 }, { l: '50 g', g: 50 }, { l: '30 g', g: 30 },
   { l: '1 colher sopa (~15 g)', g: 15 }, { l: '1 colher chá (~5 g)', g: 5 }
 ];
-var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _macroMealsSortable = null, _offCache = {};
+var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _macroMealsSortable = null, _offCache = {}, _stMacros = false;
 
 function macroToday() { return new Date().toISOString().slice(0, 10); }
 function macroDate() { return _macroDate || macroToday(); }
@@ -195,8 +195,13 @@ function renderMacros() {
     + '<button class="lnk" onclick="macroCopyYesterday()" title="Copiar ontem">↻</button>'
     + '</div>'
     + '<div class="mrings">' + (rings || '<div class="rg">Defina metas em <button class="lnk" onclick="openMacroSettings()">Ajustes → Macros</button></div>') + '</div>'
-    + favHtml + mealHtml;
+    + favHtml + '<div class="jb-meal-list">' + mealHtml + '</div>';
   animateMacroRings(el);
+  if (!_stMacros) {
+    _stMacros = true;
+    var ml = el.querySelector('.jb-meal-list');
+    if (ml) JB.staggerChildren(ml, 'macros-meals');
+  }
 }
 
 function macroNav(d) {

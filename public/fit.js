@@ -1,6 +1,6 @@
 /* Joelboard Fit — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
-var DATA=null, fitGrid={}, editingEx=null, authDone=false;
+var DATA=null, fitGrid={}, editingEx=null, authDone=false, _stFitEx=false, _stFitTr=false;
 var FIT_TABS=[['Exercicios',['Nome','Grupo','ID']],['Treinos',['Nome','Itens','ID']],['Sessoes',['Data','Treino','Notas','ID']],['Series',['Sessao ID','Exercicio ID','Serie','Reps','Peso','ID']],['Config',['Chave','Valor']],['Peso',['Data','Peso','ID']],['MacroFoods',['Nome','P/100g','C/100g','G/100g','K/100g','ID']],['MacroLog',['Data','Refeicao','Alimento','Gramas','Proteina','Carbs','Gordura','Kcal','Ref','Fonte','ID']]];
 var DEFAULT_TAGS=['Peito','Costas','Pernas','Glúteos','Ombros','Bíceps','Tríceps','Core','Panturrilha','Cardio','Outro'];
 var STARTER=[['Supino reto','Peito'],['Supino inclinado','Peito'],['Crucifixo','Peito'],['Crossover','Peito'],['Flexão','Peito'],['Puxada alta','Costas'],['Remada curvada','Costas'],['Remada baixa','Costas'],['Barra fixa','Costas'],['Levantamento terra','Costas'],['Agachamento','Pernas'],['Leg press','Pernas'],['Cadeira extensora','Pernas'],['Mesa flexora','Pernas'],['Afundo','Pernas'],['Hip thrust','Glúteos'],['Desenvolvimento','Ombros'],['Elevação lateral','Ombros'],['Elevação frontal','Ombros'],['Encolhimento','Ombros'],['Rosca direta','Bíceps'],['Rosca alternada','Bíceps'],['Rosca martelo','Bíceps'],['Tríceps na polia','Tríceps'],['Tríceps testa','Tríceps'],['Mergulho','Tríceps'],['Prancha','Core'],['Abdominal','Core'],['Panturrilha em pé','Panturrilha'],['Esteira','Cardio'],['Bicicleta','Cardio'],['Barra australiana','Costas'],['Chin-up (supinado)','Bíceps'],['Muscle-up','Costas'],['Flexão diamante','Tríceps'],['Flexão declinada','Peito'],['Pistol squat','Pernas'],['Agachamento búlgaro','Pernas'],['Ponte de glúteo','Glúteos'],['Elevação de pernas suspensa','Core'],['L-sit','Core'],['Prancha lateral','Core'],['Superman','Costas'],['Burpee','Cardio'],['Mountain climber','Core'],['Polichinelo','Cardio'],['Step-up (subida no banco)','Pernas'],['Dips de banco','Tríceps']];
@@ -67,7 +67,7 @@ function createSheet(){
 /* ---- load ---- */
 function ssUrl(p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+JB.getSheetId('fit')+p; }
 function loadData(){
-  loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>');
+  loadingHtml(JB.skeletonHtml('fit'));
   var want=FIT_TABS.map(function(t){return t[0];}).filter(function(t){return fitGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER')).then(function(res){
@@ -123,6 +123,7 @@ function renderExercicios(){
   el.innerHTML = ex.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(x){
     return '<div class="row" onclick="openExercise(\''+x.id+'\')"><div><div class="rn">'+esc(x.name)+modeBadge(x.id)+'</div>'+(x.group?'<div class="rg">'+esc(x.group)+'</div>':'')+'</div><span style="color:var(--muted)">›</span></div>';
   }).join('');
+  if (!_stFitEx) { _stFitEx = true; JB.staggerChildren(el, 'fit-ex'); }
 }
 
 /* ---- exercise CRUD (via shared JB.api) ---- */
@@ -166,6 +167,7 @@ function renderTreinos(){
   var el=$('treinoList'); if(!el) return; var tr=(DATA.treinos||[]);
   if(!tr.length){ el.innerHTML='<div class="empty">Nenhum treino ainda. Toque em “+ Adicionar” para montar um split.</div>'; return; }
   el.innerHTML=tr.map(function(r){ var items=(r.items||[]); var prev=items.slice(0,3).map(function(it){ return exName(it.ex)+' '+it.sets+'×'+it.rmin+(it.rmax&&it.rmax!==it.rmin?('-'+it.rmax):''); }).join(' · ')+(items.length>3?(' +'+(items.length-3)):''); return '<div class="row" onclick="openTreino(\''+r.id+'\')"><div><div class="rn">'+esc(r.name)+'</div><div class="rg">'+(items.length?esc(prev):'sem exercícios')+'</div></div><span style="color:var(--muted)">›</span></div>'; }).join('');
+  if (!_stFitTr) { _stFitTr = true; JB.staggerChildren(el, 'fit-tr'); }
 }
 function openTreino(id){
   if(!(DATA.exercicios||[]).length){ toast('Adicione exercícios primeiro'); tab('exercicios'); return; }

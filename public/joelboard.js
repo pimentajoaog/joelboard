@@ -146,10 +146,104 @@
       .catch(function () { return email(); });
   }
 
+  // --- offline write outbox (IndexedDB): queue mutating Google API calls when offline / transient failure ---
+  var OB_DB = 'jb-outbox', OB_STORE = 'writes', OB_MAX = 80, OB_ATTEMPTS = 12;
+  var MUTATING = { POST: 1, PUT: 1, PATCH: 1, DELETE: 1 };
+  var obDbP = null, obCount = 0, obFlushing = false, obListeners = [], obToastAt = 0, obSyncedToast = false;
+
+  function obId(){ return 'ob' + Date.now().toString(36) + Math.random().toString(36).slice(2, 9); }
+  function obOwner(){ return email() || lg(EML) || ''; }
+  function isGoogleApiUrl(url){ return String(url || '').indexOf('googleapis.com') > -1; }
+  function needsResponse(method, url, body){
+    if ((method || 'GET').toUpperCase() !== 'POST') return false;
+    var u = String(url || '').split('?')[0];
+    if (/\/spreadsheets$/.test(u)) return true;
+    if (/drive\/v3\/files$/.test(u)) return true;
+    if (body && body.requests && body.requests.some(function (r) { return r && r.addSheet; })) return true;
+    return false;
+  }
+  function isQueueableError(err){
+    if (isAuthErr(err)) return false;
+    if (!navigator.onLine) return true;
+    var st = (err && err.status) || 0;
+    if (err && err.name === 'TypeError') return true;
+    return st === 429 || st === 503 || st === 502 || st === 504;
+  }
+  function isPermanentFlushErr(err){
+    var st = (err && err.status) || 0;
+    return st >= 400 && st < 500 && st !== 429;
+  }
+  function queueToast(){
+    var now = Date.now();
+    if (now - obToastAt < 4000) return;
+    obToastAt = now;
+    jbToast('Salvo offline — sincroniza ao reconectar.');
+  }
+  function obNotify(){ obListeners.forEach(function (fn) { try { fn(obCount); } catch (_) {} }); }
+
+  function obOpen(){
+    if (obDbP) return obDbP;
+    obDbP = new Promise(function (res, rej) {
+      if (!window.indexedDB) { rej(new Error('no_idb')); return; }
+      var req = indexedDB.open(OB_DB, 1);
+      req.onupgradeneeded = function (e) {
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains(OB_STORE)) {
+          var st = db.createObjectStore(OB_STORE, { keyPath: 'id' });
+          st.createIndex('created', 'created', { unique: false });
+          st.createIndex('owner', 'owner', { unique: false });
+        }
+      };
+      req.onsuccess = function () { res(req.result); };
+      req.onerror = function () { rej(req.error || new Error('idb_open')); };
+    });
+    return obDbP;
+  }
+  function obTx(mode, fn){
+    return obOpen().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction(OB_STORE, mode);
+        var st = tx.objectStore(OB_STORE);
+        var out;
+        try { out = fn(st, tx); } catch (e) { rej(e); return; }
+        tx.oncomplete = function () { res(out); };
+        tx.onerror = function () { rej(tx.error || new Error('idb_tx')); };
+      });
+    });
+  }
+  function obList(){
+    var owner = obOwner();
+    return obOpen().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction(OB_STORE, 'readonly');
+        var req = tx.objectStore(OB_STORE).index('created').getAll();
+        req.onsuccess = function () {
+          var all = req.result || [];
+          res(all.filter(function (it) { return !owner || !it.owner || it.owner === owner; }).sort(function (a, b) { return a.created - b.created; }));
+        };
+        req.onerror = function () { rej(req.error || new Error('idb_read')); };
+      });
+    });
+  }
+  function obPut(item){ return obTx('readwrite', function (st) { st.put(item); }); }
+  function obDel(id){ return obTx('readwrite', function (st) { st.delete(id); }); }
+  function obRefreshCount(){
+    return obList().then(function (items) { obCount = items.length; obNotify(); paintOutboxBadge(); return obCount; });
+  }
+  function outboxEnqueue(method, url, body){
+    return obList().then(function (items) {
+      if (items.length >= OB_MAX) throw new Error('Fila offline cheia — sincronize antes de continuar.');
+      var item = { id: obId(), method: method, url: url, body: body || null, created: Date.now(), attempts: 0, owner: obOwner() };
+      return obPut(item).then(function () { return obRefreshCount().then(function () { return item; }); });
+    });
+  }
+  function onOutboxChange(fn){ if (typeof fn === 'function') obListeners.push(fn); }
+
   // core API call: Bearer auth + auto silent-refresh & retry once on 401
-  function api(method, url, body){
+  function executeApi(method, url, body){
+    method = method || 'GET';
     function doFetch(t){
-      var o = { method: method || 'GET', headers: { Authorization: 'Bearer ' + t } };
+      var o = { method: method, headers: { Authorization: 'Bearer ' + t } };
       if (body) { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(body); }
       return fetch(url, o);
     }
@@ -157,13 +251,96 @@
       if (r.status === 401 && allowRefresh) {
         return requestToken(false).then(function (nt) { return doFetch(nt).then(function (r2) { return handle(r2, false); }); });
       }
-      if (!r.ok) return r.text().then(function (tx) { throw new Error('HTTP ' + r.status + ' — ' + tx.slice(0, 200)); });
+      if (!r.ok) return r.text().then(function (tx) {
+        var e = new Error('HTTP ' + r.status + ' — ' + tx.slice(0, 200));
+        e.status = r.status;
+        throw e;
+      });
       return (r.status === 204) ? {} : r.json();
     }
     var tok = cachedToken();
     if (!tok) return requestToken(false).then(function (t) { return doFetch(t).then(function (r) { return handle(r, true); }); });
     return doFetch(tok).then(function (r) { return handle(r, true); });
   }
+  function api(method, url, body, opts){
+    opts = opts || {};
+    var m = (method || 'GET').toUpperCase();
+    var canQueue = opts.queue !== false && MUTATING[m] && isGoogleApiUrl(url) && !needsResponse(m, url, body);
+    if (canQueue && !navigator.onLine) {
+      return outboxEnqueue(m, url, body).then(function (item) {
+        queueToast();
+        return { __jbQueued: true, outboxId: item.id };
+      });
+    }
+    return executeApi(m, url, body).catch(function (err) {
+      if (!canQueue || !isQueueableError(err)) return Promise.reject(err);
+      return outboxEnqueue(m, url, body).then(function (item) {
+        queueToast();
+        return { __jbQueued: true, outboxId: item.id };
+      });
+    });
+  }
+  function flushOutbox(opts){
+    opts = opts || {};
+    if (obFlushing) return Promise.resolve(obCount);
+    if (!navigator.onLine || !isSignedIn()) return Promise.resolve(obCount);
+    obFlushing = true;
+    var had = obCount;
+    function step(items){
+      if (!items.length) return obRefreshCount();
+      var item = items[0];
+      return executeApi(item.method, item.url, item.body).then(function () {
+        return obDel(item.id).then(function () { items.shift(); return step(items); });
+      }).catch(function (err) {
+        item.attempts = (item.attempts || 0) + 1;
+        item.lastError = String((err && err.message) || err);
+        if (isPermanentFlushErr(err) || item.attempts >= OB_ATTEMPTS) {
+          return obDel(item.id).then(function () {
+            jbToast('Não foi possível sincronizar uma alteração. Recarregue o app.');
+            items.shift();
+            return step(items);
+          });
+        }
+        return obPut(item).then(function () { return obRefreshCount(); });
+      });
+    }
+    return obList().then(step).then(function () {
+      if (had > 0 && obCount === 0 && !obSyncedToast) {
+        obSyncedToast = true;
+        setTimeout(function () { obSyncedToast = false; }, 8000);
+        if (opts.toast !== false) jbToast('✓ Tudo sincronizado');
+        if (tabSyncFn) try { tabSyncFn(); } catch (_) {}
+      }
+      return obCount;
+    }).finally(function () { obFlushing = false; });
+  }
+  function paintOutboxBadge(){
+    var el = document.getElementById('jbOutbox');
+    if (!el) return;
+    if (obCount > 0) {
+      el.style.display = 'flex';
+      el.querySelector('[data-ob-n]').textContent = obCount;
+      el.classList.toggle('jb-outbox-sync', obFlushing);
+    } else el.style.display = 'none';
+  }
+  function initOutbox(){
+    obRefreshCount().catch(function () {});
+    var el = document.createElement('button');
+    el.id = 'jbOutbox';
+    el.type = 'button';
+    el.className = 'jb-outbox';
+    el.style.display = 'none';
+    el.title = 'Alterações pendentes — toque para sincronizar';
+    el.innerHTML = '<span class="jb-outbox-ico">⏳</span><span><span data-ob-n>0</span> pendente(s)</span>';
+    el.onclick = function () { flushOutbox({ toast: true }); };
+    document.body.appendChild(el);
+    window.addEventListener('online', function () { flushOutbox({ toast: true }); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && isSignedIn()) flushOutbox({ toast: false });
+    });
+    setInterval(function () { if (navigator.onLine && isSignedIn()) flushOutbox({ toast: false }); }, 45000);
+  }
+  whenReady(initOutbox);
 
   // per-app sheet id (namespaced); migrates the old single key for finance
   function sheetKey(app){ return 'jb_sheet_' + app; }
@@ -482,6 +659,7 @@
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, toast: jbToast, persist: persist, onTabVisible: onTabVisible, confirm: confirm, whenReady: whenReady,
+    outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt
   };
 })();

@@ -140,3 +140,31 @@ body.jb-noscroll { overflow: hidden; }
 .jb-mode-toggle { display: flex; align-items: center; gap: 8px; width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); padding: 11px 14px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; margin-bottom: 12px; transition: border-color .15s ease; }
 .jb-mode-toggle:hover { border-color: var(--primary); }
 .jb-mode-toggle .jb-mode-hint { margin-left: auto; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+/* Offline outbox badge (joelboard.js) */
+.jb-outbox {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 99990;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 99px;
+  border: 1px solid var(--border, #2b3147);
+  background: var(--surface, #1b1f32);
+  color: var(--text, #e7eaf3);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.jb-outbox:hover { transform: translateY(-1px); }
+.jb-outbox-sync { opacity: 0.72; pointer-events: none; }
+.jb-outbox-ico { font-size: 14px; line-height: 1; }
+@media (max-width: 540px) {
+  .jb-outbox { top: auto; bottom: 72px; right: 12px; left: auto; }
+}

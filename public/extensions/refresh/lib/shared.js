@@ -8,7 +8,7 @@ var JB_REFRESH = (function () {
 
   function defaultData() {
     return {
-      defaults: { intervalSec: 30, pauseWhenInactive: true },
+      defaults: { intervalSec: 30, pauseWhenInactive: true, shortcut: DEFAULT_SHORTCUT },
       tabs: {}
     };
   }
@@ -79,6 +79,11 @@ var JB_REFRESH = (function () {
     return hasCtrl || hasAlt || hasCmd;
   }
 
+  function matchesShortcut(e, shortcut) {
+    if (!shortcut || !e) return false;
+    return eventToShortcut(e) === shortcut;
+  }
+
   return {
     STORAGE_KEY: STORAGE_KEY,
     COMMAND_NAME: COMMAND_NAME,
@@ -92,6 +97,7 @@ var JB_REFRESH = (function () {
     formatShortcutDisplay: formatShortcutDisplay,
     eventToShortcut: eventToShortcut,
     isValidShortcut: isValidShortcut,
-    isMacPlatform: isMacPlatform
+    isMacPlatform: isMacPlatform,
+    matchesShortcut: matchesShortcut
   };
 })();

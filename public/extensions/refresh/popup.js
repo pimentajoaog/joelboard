@@ -18,7 +18,6 @@
   var shortcutBtn = $('shortcutBtn');
   var shortcutHint = $('shortcutHint');
   var shortcutUse = $('shortcutUse');
-  var shortcutLink = $('shortcutLink');
   var toast = $('toast');
 
   function send(msg) {
@@ -41,9 +40,8 @@
   }
 
   function loadShortcut() {
-    chrome.commands.getAll(function (commands) {
-      var cmd = commands.filter(function (c) { return c.name === JB_REFRESH.COMMAND_NAME; })[0];
-      setShortcutLabel(cmd && cmd.shortcut);
+    send({ type: 'getShortcut' }).then(function (res) {
+      setShortcutLabel(res && res.shortcut);
     });
   }
 
@@ -52,16 +50,13 @@
       showToast('Combinação inválida — use Ctrl/Alt/⌘ + tecla.');
       return;
     }
-    chrome.commands.update({
-      name: JB_REFRESH.COMMAND_NAME,
-      shortcut: shortcut
-    }, function () {
-      if (chrome.runtime.lastError) {
-        showToast(chrome.runtime.lastError.message || 'Atalho em conflito ou inválido.');
+    send({ type: 'setShortcut', shortcut: shortcut }).then(function (res) {
+      if (!res || !res.ok) {
+        showToast('Não foi possível salvar o atalho.');
         loadShortcut();
         return;
       }
-      setShortcutLabel(shortcut);
+      setShortcutLabel(res.shortcut);
       showToast('Atalho atualizado.');
     });
   }
@@ -194,8 +189,7 @@
       shortcutHint.textContent = 'Esc cancela. Inclua Ctrl, Alt ou ⌘.';
     } else {
       loadShortcut();
-      shortcutHint.innerHTML = 'Clique acima e pressione a nova combinação. <a href="#" id="shortcutLink">Atalhos do Chrome</a>';
-      bindShortcutLink();
+      shortcutHint.textContent = 'Clique acima e pressione a nova combinação. Funciona na página enquanto ela estiver em foco.';
     }
   });
 
@@ -205,8 +199,7 @@
     e.stopPropagation();
     if (e.key === 'Escape') {
       stopRecordingShortcut();
-      shortcutHint.innerHTML = 'Clique acima e pressione a nova combinação. <a href="#" id="shortcutLink">Atalhos do Chrome</a>';
-      bindShortcutLink();
+      shortcutHint.textContent = 'Clique acima e pressione a nova combinação. Funciona na página enquanto ela estiver em foco.';
       return;
     }
     var shortcut = JB_REFRESH.eventToShortcut(e);
@@ -214,20 +207,9 @@
     recordingShortcut = false;
     shortcutBtn.classList.remove('recording');
     applyShortcut(shortcut);
-    shortcutHint.innerHTML = 'Clique acima e pressione a nova combinação. <a href="#" id="shortcutLink">Atalhos do Chrome</a>';
-    bindShortcutLink();
+    shortcutHint.textContent = 'Clique acima e pressione a nova combinação. Funciona na página enquanto ela estiver em foco.';
   });
 
-  function bindShortcutLink() {
-    var link = $('shortcutLink');
-    if (!link) return;
-    link.addEventListener('click', function (e) {
-      e.preventDefault();
-      chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
-    });
-  }
-
-  bindShortcutLink();
   loadShortcut();
   refreshUI();
 })();

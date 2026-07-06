@@ -128,10 +128,13 @@ chrome.tabs.onRemoved.addListener(function (tabId) {
   stopRefresh(tabId);
 });
 
-function toggleRefreshForActiveTab(cb) {
-  chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
-    var tab = tabs[0];
-    if (!tab || tab.id == null) {
+function toggleRefreshForTab(tabId, cb) {
+  if (tabId == null) {
+    if (cb) cb({ ok: false, reason: 'no-tab' });
+    return;
+  }
+  chrome.tabs.get(tabId, function (tab) {
+    if (chrome.runtime.lastError || !tab) {
       if (cb) cb({ ok: false, reason: 'no-tab' });
       return;
     }
@@ -139,26 +142,32 @@ function toggleRefreshForActiveTab(cb) {
       if (cb) cb({ ok: false, reason: 'unsupported' });
       return;
     }
-    getTabStatus(tab.id, function (status) {
+    getTabStatus(tabId, function (status) {
       if (status.running) {
-        stopRefresh(tab.id, function (res) {
-          if (cb) cb({ ok: true, tabId: tab.id, running: false, intervalSec: status.intervalSec, pauseWhenInactive: status.pauseWhenInactive, result: res });
+        stopRefresh(tabId, function (res) {
+          if (cb) cb({ ok: true, tabId: tabId, running: false, result: res });
         });
       } else {
-        startRefresh(tab.id, { intervalSec: status.intervalSec, pauseWhenInactive: status.pauseWhenInactive }, function (res) {
-          if (cb) cb({ ok: true, tabId: tab.id, running: true, result: res });
+        startRefresh(tabId, { intervalSec: status.intervalSec, pauseWhenInactive: status.pauseWhenInactive }, function (res) {
+          if (cb) cb({ ok: true, tabId: tabId, running: true, result: res });
         });
       }
     });
   });
 }
 
-chrome.commands.onCommand.addListener(function (command) {
-  if (command !== JB_REFRESH.COMMAND_NAME) return;
-  toggleRefreshForActiveTab();
-});
+function toggleRefreshForActiveTab(cb) {
+  chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
+    var tab = tabs[0];
+    if (!tab || tab.id == null) {
+      if (cb) cb({ ok: false, reason: 'no-tab' });
+      return;
+    }
+    toggleRefreshForTab(tab.id, cb);
+  });
+}
 
-chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
+chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
   if (msg.type === 'getStatus') {
     getTabStatus(msg.tabId, sendResponse);
     return true;
@@ -199,32 +208,38 @@ chrome.runtime.onMessage.addListener(function (msg, _sender, sendResponse) {
     toggleRefreshForActiveTab(sendResponse);
     return true;
   }
+  if (msg.type === 'toggleTab') {
+    var tabId = sender.tab && sender.tab.id;
+    toggleRefreshForTab(tabId, sendResponse);
+    return true;
+  }
   if (msg.type === 'getShortcut') {
-    chrome.commands.getAll(function (commands) {
-      var cmd = commands.filter(function (c) { return c.name === JB_REFRESH.COMMAND_NAME; })[0];
-      sendResponse({ shortcut: (cmd && cmd.shortcut) || '' });
+    getState(function (state) {
+      sendResponse({ shortcut: state.defaults.shortcut || JB_REFRESH.DEFAULT_SHORTCUT });
+    });
+    return true;
+  }
+  if (msg.type === 'setShortcut') {
+    if (!JB_REFRESH.isValidShortcut(msg.shortcut)) {
+      sendResponse({ ok: false, error: 'invalid' });
+      return true;
+    }
+    getState(function (state) {
+      state.defaults.shortcut = msg.shortcut;
+      saveState(state, function () {
+        sendResponse({ ok: true, shortcut: msg.shortcut });
+      });
     });
     return true;
   }
 });
 
 chrome.runtime.onInstalled.addListener(function (details) {
-  if (details.reason === 'install') {
-    chrome.storage.local.get([JB_REFRESH.STORAGE_KEY], function (res) {
-      if (res[JB_REFRESH.STORAGE_KEY]) return;
-      var patch = {};
-      patch[JB_REFRESH.STORAGE_KEY] = JB_REFRESH.defaultData();
-      chrome.storage.local.set(patch);
-    });
-  }
-  if (details.reason === 'install' || details.reason === 'update') {
-    chrome.commands.getAll(function (commands) {
-      var cmd = commands.filter(function (c) { return c.name === JB_REFRESH.COMMAND_NAME; })[0];
-      if (cmd && cmd.shortcut) return;
-      chrome.commands.update({
-        name: JB_REFRESH.COMMAND_NAME,
-        shortcut: JB_REFRESH.DEFAULT_SHORTCUT
-      });
-    });
-  }
+  if (details.reason !== 'install') return;
+  chrome.storage.local.get([JB_REFRESH.STORAGE_KEY], function (res) {
+    if (res[JB_REFRESH.STORAGE_KEY]) return;
+    var patch = {};
+    patch[JB_REFRESH.STORAGE_KEY] = JB_REFRESH.defaultData();
+    chrome.storage.local.set(patch);
+  });
 });

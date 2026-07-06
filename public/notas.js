@@ -18,6 +18,7 @@ function normText(s){ return String(s==null?'':s).trim().toLowerCase(); }
 function loadingHtml(h){ $('loading').style.display='block'; $('loading').innerHTML=h; }
 function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},2200); }
 function notasWriteErr(e){ toast('Erro: '+((e&&e.message)||'falha ao salvar')); }
+function notasRowErr(tab){ return new Error('Registro não encontrado em '+tab+' — atualize a página.'); }
 function kindDef(k){ for(var i=0;i<KINDS.length;i++){ if(KINDS[i].k===k) return KINDS[i]; } return KINDS[1]; }
 function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate(); }
 function daysSince(iso){ if(!iso) return 1e9; var d=new Date(iso); if(isNaN(d)) return 1e9; return Math.floor((Date.now()-d.getTime())/86400000); }
@@ -63,7 +64,7 @@ function ssUrl(p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+JB.ge
 function bootSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando suas listas…</div></div>');
   JB.resolveSheet({ app:'notas', namePart:'Joelboard', requiredTabs: ['Notas','Itens'] })  /* distinctive tabs only — Config is shared */
-    .then(function(ctx){ notasGrid=ctx.grid; ensureTabs().then(ensureVenceHeader).then(ensureTipoHeader).then(loadData); })
+    .then(function(ctx){ notasGrid=ctx.grid; return ensureTabs().then(ensureVenceHeader).then(ensureTipoHeader).then(loadData); })
     .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(m)+'</div></div>'); });
 }
 function ensureTabs(){
@@ -71,8 +72,7 @@ function ensureTabs(){
   if(!missing.length) return Promise.resolve();
   return JB.api('POST', ssUrl(':batchUpdate'), { requests: missing.map(function(t){ return { addSheet:{ properties:{ title:t[0] } } }; }) })
     .then(function(res){ (res.replies||[]).forEach(function(rep){ if(rep&&rep.addSheet){ notasGrid[rep.addSheet.properties.title]=rep.addSheet.properties.sheetId; } });
-      return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data: missing.map(function(t){ return { range:t[0]+'!A1', values:[t[1]] }; }) }); })
-    .then(function(){}).catch(function(){});
+      return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data: missing.map(function(t){ return { range:t[0]+'!A1', values:[t[1]] }; }) }); });
 }
 function ensureGrid(tab, minCols){ var sid=notasGrid[tab]; if(sid==null) return Promise.resolve(); return JB.api('GET','https://sheets.googleapis.com/v4/spreadsheets/'+JB.getSheetId('notas')+'?fields=sheets(properties(sheetId,gridProperties(columnCount)))').then(function(meta){ var cc=0; (meta.sheets||[]).forEach(function(sh){ if(sh.properties.sheetId===sid) cc=((sh.properties.gridProperties)||{}).columnCount||0; }); if(cc>=minCols) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ updateSheetProperties:{ properties:{ sheetId:sid, gridProperties:{ columnCount:minCols } }, fields:'gridProperties.columnCount' } }] }); }).catch(function(){}); }
 function ensureTipoHeader(){ if(notasGrid['Itens']==null) return Promise.resolve(); return ensureGrid('Itens',7).then(function(){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent('Itens!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[6]==='Tipo') return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Itens!G1')+'?valueInputOption=RAW'), { values:[['Tipo']] }); }).catch(function(){}); }
@@ -268,7 +268,7 @@ function deleteItem(id){
   JB.persist({
     run: function(){
       return findRow('Itens',5,id).then(function(row){
-        if(row<0) return;
+        if(row<0) throw notasRowErr('Itens');
         return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:notasGrid['Itens'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
       });
     },
@@ -285,6 +285,7 @@ function deleteNote(){ var id=openNoteId; var n=note(id); if(!n) return; JB.conf
   JB.persist({
     run: function(){
       return findRow('Notas',6,id).then(function(noteRow){
+        if(noteRow<0) throw notasRowErr('Notas');
         return JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
           var v=res.values||[]; var rows=[]; var reqs=[];
           for(var i=1;i<v.length;i++){ if(String((v[i]||[])[0])===String(id)) rows.push(i+1); }
@@ -371,14 +372,64 @@ function fmtDone(ev){ if(ev) ev.preventDefault(); var ta=$('editTA'); if(ta) ta.
 function positionFmtBar(){ var bar=$('fmtBar'); if(!bar||!bar.classList.contains('show')) return; var vv=window.visualViewport; if(vv){ var gap=window.innerHeight-(vv.height+vv.offsetTop); bar.style.bottom=(Math.max(gap,0)+8)+'px'; } else { bar.style.bottom='18px'; } }
 if(window.visualViewport){ window.visualViewport.addEventListener('resize', positionFmtBar); window.visualViewport.addEventListener('scroll', positionFmtBar); }
 function itemRowVals(it){ return [it.notaId,it.ordem,it.texto,it.marcavel?'1':'',it.feito?'1':'',it.id,it.tipo||'']; }
-function appendNote(n){ JB.api('POST', ssUrl('/values/Notas:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[noteRowVals(n)] }).catch(notasWriteErr); }
-function saveNoteRow(n){ findRow('Notas',6,n.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Notas!A'+row+':H'+row)+'?valueInputOption=RAW'), { values:[noteRowVals(n)] }); }).catch(notasWriteErr); }
+function appendNote(n){
+  JB.persist({
+    run: function(){
+      return JB.api('POST', ssUrl('/values/Notas:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[noteRowVals(n)] });
+    },
+    onError: notasWriteErr
+  });
+}
+function saveNoteRow(n){
+  JB.persist({
+    run: function(){
+      return findRow('Notas',6,n.id).then(function(row){
+        if(row<0) throw notasRowErr('Notas');
+        return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Notas!A'+row+':H'+row)+'?valueInputOption=RAW'), { values:[noteRowVals(n)] });
+      });
+    },
+    onError: notasWriteErr
+  });
+}
 function touchNote(n){ n.atualizado=new Date().toISOString(); saveNoteRow(n); }
 function appendItem(it){ appendItems([it]); }
-function appendItems(arr){ if(!arr||!arr.length) return; JB.api('POST', ssUrl('/values/Itens:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: arr.map(itemRowVals) }).catch(notasWriteErr); }
-function saveItemRow(it){ findRow('Itens',5,it.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Itens!A'+row+':G'+row)+'?valueInputOption=RAW'), { values:[itemRowVals(it)] }); }).catch(notasWriteErr); }
+function appendItems(arr){
+  if(!arr||!arr.length) return;
+  JB.persist({
+    run: function(){
+      return JB.api('POST', ssUrl('/values/Itens:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: arr.map(itemRowVals) });
+    },
+    onError: notasWriteErr
+  });
+}
+function saveItemRow(it){
+  JB.persist({
+    run: function(){
+      return findRow('Itens',5,it.id).then(function(row){
+        if(row<0) throw notasRowErr('Itens');
+        return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Itens!A'+row+':G'+row)+'?valueInputOption=RAW'), { values:[itemRowVals(it)] });
+      });
+    },
+    onError: notasWriteErr
+  });
+}
 function findRow(tab,idCol,id){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; for(var i=1;i<v.length;i++){ if(String((v[i]||[])[idCol])===String(id)) return i+1; } return -1; }); }
-function saveConfig(k,v){ DATA.config=DATA.config||{}; DATA.config[k]=v; JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var vals=res.values||[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]}); } return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]}); }).catch(notasWriteErr); }
+function saveConfig(k,v){
+  DATA.config=DATA.config||{};
+  DATA.config[k]=v;
+  JB.persist({
+    run: function(){
+      return JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+        var vals=res.values||[];
+        for(var i=1;i<vals.length;i++){
+          if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]});
+        }
+        return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]});
+      });
+    },
+    onError: notasWriteErr
+  });
+}
 
 /* ---- settings + tour ---- */
 function openSettings(){ switchSet('tema'); JB.renderSkinPicker('notas', $('setSkins')); $('setNudge').classList.toggle('on', (DATA.config&&DATA.config.nudgePref)!=='off'); $('setOverlay').classList.add('open'); }
@@ -401,7 +452,7 @@ function deleteGroup(id){
   JB.persist({
     run: function(){
       return findRow('Itens',5,id).then(function(row){
-        if(row<0) return;
+        if(row<0) throw notasRowErr('Itens');
         return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:notasGrid['Itens'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
       });
     },

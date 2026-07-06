@@ -571,7 +571,7 @@ function setLang(l){
   if (!DATA.settings) DATA.settings = {};
   DATA.settings.lang = (l==='en') ? 'en' : 'ptBR';
   applyStaticI18n(); populateCategoryDropdowns(); renderAll(); renderThemePicker(); renderLangPicker(); csSyncAll();
-  google.script.run.withFailureHandler(function(e){ showToast(t('err.prefix')+e.message,'error'); }).saveSetting('lang', DATA.settings.lang);
+  jbRun('saveSetting', 'lang', DATA.settings.lang).catch(function(e){ showToast(t('err.prefix')+e.message,'error'); });
   showToast(t('toast.langSet'));
 }
 function renderLangPicker(){
@@ -1018,7 +1018,7 @@ function suggestions() {
 }
 function applySuggestion(i) {
   const s = SUGG[i]; if (!s) return;
-  google.script.run.withSuccessHandler(()=>{ showToast(t('toast.budgetSet')); reload(); }).withFailureHandler(e=>showToast(t('err.prefix')+e.message,'error')).addRecord('budget', {category:s.category, budget:s.suggested});
+  jbRun('addRecord', 'budget', {category:s.category, budget:s.suggested}).then(()=>{ showToast(t('toast.budgetSet')); reload(); }).catch(e=>showToast(t('err.prefix')+e.message,'error'));
 }
 function renderBudget() {
   const el = document.getElementById('budgetList'), budgets = DATA.budget||[];
@@ -1183,8 +1183,8 @@ function commitDay(ds, worked, hours, ot) {
   const def = isDefaultDay(ds, worked, hours, ot);
   if (!def) DATA.workLog.push({ date: ds, worked, hours, otHours: ot });
   renderCalendar();
-  const runner = google.script.run.withFailureHandler(e => { showToast(t('err.prefix')+e.message,'error'); reload(); });
-  if (def) runner.clearWorkDay(ds); else runner.setWorkDay(ds, worked, hours, ot);
+  const fail = e => { showToast(t('err.prefix')+e.message,'error'); reload(); };
+  (def ? jbRun('clearWorkDay', ds) : jbRun('setWorkDay', ds, worked, hours, ot)).catch(fail);
 }
 function toggleDay(ds) { const s = dayState(ds); commitDay(ds, !s.worked, !s.worked ? dailyHours() : 0, 0); }
 function editDayHours(ds) { editingHoursDate = ds; renderCalendar(); setTimeout(()=>{ const inp = document.getElementById('hoursInput'); if (inp) { inp.focus(); inp.select(); } }, 30); }
@@ -1215,7 +1215,7 @@ function toggleWeekday(i) {
   if (idx>-1) off.splice(idx,1); else off.push(i);
   off.sort((a,b)=>a-b);
   DATA.settings.off_weekdays = off; renderCalendar();
-  google.script.run.withFailureHandler(e => { showToast(t('err.prefix')+e.message,'error'); reload(); }).saveSetting('off_weekdays', off.map(d=>'d'+d).join(','));
+  jbRun('saveSetting', 'off_weekdays', off.map(d=>'d'+d).join(',')).catch(e => { showToast(t('err.prefix')+e.message,'error'); reload(); });
 }
 function logIncome() {
   const inc = computeIncome();
@@ -1226,10 +1226,9 @@ function logIncome() {
   const payYM = ymStr(pay.getFullYear(), pay.getMonth());
   const date = payYM + '-01';
   const payName = pay.toLocaleString(L(),{month:'long', year:'numeric'});
-  google.script.run
-    .withSuccessHandler(() => { btn.disabled=false; worklogDirty=false; showToast(t('toast.loggedTo',{month:payName,amt:brl(inc.total)})); reload(); })
-    .withFailureHandler(e => { btn.disabled=false; showToast(t('err.prefix')+e.message,'error'); })
-    .logMonthlySalary(payYM, { date, description:t('tx.salaryDesc',{month:worked,year:selY}), category:t('cat.salary'), amount:inc.total, type:'Income' });
+  jbRun('logMonthlySalary', payYM, { date, description:t('tx.salaryDesc',{month:worked,year:selY}), category:t('cat.salary'), amount:inc.total, type:'Income' })
+    .then(() => { btn.disabled=false; worklogDirty=false; showToast(t('toast.loggedTo',{month:payName,amt:brl(inc.total)})); reload(); })
+    .catch(e => { btn.disabled=false; showToast(t('err.prefix')+e.message,'error'); });
 }
 
 /* ---------- Paid state ---------- */
@@ -1240,8 +1239,8 @@ function applyPaid(type, id, nw, m, actualAmount, paidDate) {
   const fam = type==='bill' ? ['bill','recurring','installment'] : [type];
   DATA.payments = (DATA.payments||[]).filter(p => !(p.month===m && fam.indexOf(p.type)>-1 && String(p.itemId)===String(id)));
   if (nw) DATA.payments.push({ month:m, type:type, itemId:String(id), paid:true, actualAmount: (actualAmount===undefined||actualAmount===''||actualAmount===null)?null:Number(actualAmount), paidDate: paidDate||'' });
-  google.script.run.withFailureHandler(e => { reload(); }).setPaid(m, type, id, nw, (actualAmount===undefined?'':actualAmount), paidDate||'');
-  if (type==='bill' && !nw) { google.script.run.setPaid(m,'recurring',id,false,'',''); google.script.run.setPaid(m,'installment',id,false,'',''); }
+  jbRun('setPaid', m, type, id, nw, (actualAmount===undefined?'':actualAmount), paidDate||'').catch(e => { reload(); });
+  if (type==='bill' && !nw) { jbRun('setPaid', m,'recurring',id,false,'','').catch(()=>{}); jbRun('setPaid', m,'installment',id,false,'','').catch(()=>{}); }
 }
 function togglePaid(type, id) {
   const m = ymStr(selY,selM), cur = type==='bill' ? isPaidBill(id) : isPaid(type,id), nw = !cur;
@@ -2017,10 +2016,9 @@ function commitCatName(id, val) {
   const name = (val||'').trim();
   if (!c || !name || name===c.name) { renderCatList(); return; }
   if (((DATA.categories)||[]).some(x=>x.name===name)) { showToast(t('err.catExistsNamed',{name:name}), 'error'); renderCatList(); return; }
-  google.script.run
-    .withSuccessHandler(()=>{ showToast(t('toast.catRenamed')); reload(); })
-    .withFailureHandler(e=>{ showToast(t('err.prefix')+e.message, 'error'); reload(); })
-    .renameCategory(id, name);
+  jbRun('renameCategory', id, name)
+    .then(()=>{ showToast(t('toast.catRenamed')); reload(); })
+    .catch(e=>{ showToast(t('err.prefix')+e.message, 'error'); reload(); });
 }
 function addCat() {
   setFormError('catErr','');
@@ -2028,12 +2026,12 @@ function addCat() {
   if (!name) { setFormError('catErr',t('err.catName')); return; }
   if (((DATA.categories)||[]).some(c=>c.name===name)) { setFormError('catErr',t('err.catExists')); return; }
   inp.value = '';
-  google.script.run.withSuccessHandler(()=>{ showToast(t('toast.catAdded')); reload(); }).withFailureHandler(e=>showToast(t('err.prefix')+e.message,'error')).addRecord('categories', { name, color:'' });
+  jbRun('addRecord', 'categories', { name, color:'' }).then(()=>{ showToast(t('toast.catAdded')); reload(); }).catch(e=>showToast(t('err.prefix')+e.message,'error'));
 }
 function changeCatColor(id, hex) {
   const c = ((DATA.categories)||[]).find(x=>x.id===id); if (!c) return;
   c.color = hex; rebuildCatColors(); renderAll();
-  google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); }).updateRecord('categories', id, { name:c.name, color:hex });
+  jbRun('updateRecord', 'categories', id, { name:c.name, color:hex }).catch(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); });
 }
 function deleteCat(id) {
   const c = ((DATA.categories)||[]).find(x=>x.id===id); if (!c) return;
@@ -2044,7 +2042,7 @@ function deleteCat(id) {
     ? t('confirm.catUsed',{name:c.name,txN:txN,blN:blN})
     : t('confirm.catDelete',{name:c.name});
   showConfirm(t('confirm.catTitle'), msg, () => {
-    google.script.run.withSuccessHandler(()=>{ showToast(t('toast.catDeleted')); reload(); }).withFailureHandler(e=>showToast(t('err.prefix')+e.message, 'error')).deleteRecord('categories', id);
+    jbRun('deleteRecord', 'categories', id).then(()=>{ showToast(t('toast.catDeleted')); reload(); }).catch(e=>showToast(t('err.prefix')+e.message, 'error'));
   });
 }
 function submitSettings() {
@@ -2064,10 +2062,9 @@ function submitSettings() {
   const profile={ mode:setFormMode, hourly_rate:hourly, monthly_salary:salary, daily_hours:daily, overtime_mode:otMode, overtime_mult:otMult, convert_enabled:setFormConvert?'true':'false', currency_from:from, currency_to:to, exchange_rate:exch, profile_set:'true' };
   Object.assign(DATA.settings, profile);
   const btn=document.getElementById('setSave'); btn.disabled=true; btn.textContent=t('action.saving');
-  google.script.run
-    .withSuccessHandler(() => { btn.disabled=false; btn.textContent=t('set.saveIncome'); closeOverlay('setOverlay'); showToast(t('toast.incomeSaved')); renderAll(); })
-    .withFailureHandler(e => { btn.disabled=false; btn.textContent=t('set.saveIncome'); showToast(t('err.prefix')+e.message,'error'); })
-    .saveProfile(profile);
+  jbRun('saveProfile', profile)
+    .then(() => { btn.disabled=false; btn.textContent=t('set.saveIncome'); closeOverlay('setOverlay'); showToast(t('toast.incomeSaved')); renderAll(); })
+    .catch(e => { btn.disabled=false; btn.textContent=t('set.saveIncome'); showToast(t('err.prefix')+e.message,'error'); });
 }
 
 /* ---------- Sheet-setup gate (Model B: per-user spreadsheet) ---------- */
@@ -2090,20 +2087,18 @@ function gateError(msg) { const e = document.getElementById('sheetErr'); e.textC
 function createMySheet() {
   const btn = document.getElementById('sheetCreateBtn'); btn.disabled = true; btn.textContent = t('sheet.creating');
   gateError('');
-  google.script.run
-    .withSuccessHandler(onSheetReady)
-    .withFailureHandler(e => { btn.disabled = false; applyStaticI18n(); gateError(t('err.prefix') + e.message); })
-    .createUserSheet();
+  jbRun('createUserSheet')
+    .then(onSheetReady)
+    .catch(e => { btn.disabled = false; applyStaticI18n(); gateError(t('err.prefix') + e.message); });
 }
 function linkMySheet() {
   const url = document.getElementById('sheetLinkInput').value.trim();
   if (!url) { gateError(t('sheet.linkErr')); return; }
   const btn = document.getElementById('sheetLinkBtn'); btn.disabled = true; btn.textContent = t('sheet.linking');
   gateError('');
-  google.script.run
-    .withSuccessHandler(onSheetReady)
-    .withFailureHandler(e => { btn.disabled = false; applyStaticI18n(); gateError(t('sheet.linkErr')); })
-    .linkExistingSheet(url);
+  jbRun('linkExistingSheet', url)
+    .then(onSheetReady)
+    .catch(e => { btn.disabled = false; applyStaticI18n(); gateError(t('sheet.linkErr')); });
 }
 function onSheetReady(data) {
   if (data && data.needsSetup) { gateError(t('sheet.linkErr')); document.getElementById('sheetCreateBtn').disabled=false; document.getElementById('sheetLinkBtn').disabled=false; applyStaticI18n(); return; }
@@ -2182,7 +2177,7 @@ function finishWizard() {
     convert_enabled:wiz.convert?'true':'false', currency_from:wiz.convert?wiz.from:wiz.to, currency_to:wiz.to,
     exchange_rate:wiz.convert?wiz.exch:1, profile_set:'true', lang:wiz.lang };
   Object.assign(DATA.settings, profile);
-  google.script.run.withFailureHandler(e=>showToast(t('err.prefix')+e.message,'error')).saveProfile(profile);
+  jbRun('saveProfile', profile).catch(e=>showToast(t('err.prefix')+e.message,'error'));
   closeWizard(); applyStaticI18n(); renderAll(); showToast(t('wizard.done'));
   if (wiz.mode==='salaried' && Number(wiz.salary)>0) { promptApplySalary(Number(wiz.salary)); }
   else if (!tourIsDone()) setTimeout(startTour, 450);
@@ -2204,10 +2199,9 @@ function renderSettledBadge() {
 function exportBackup_() {
   const btn = document.getElementById('exportBtn'), link = document.getElementById('exportLink');
   btn.disabled = true; btn.textContent = t('export.working'); link.style.display = 'none';
-  google.script.run
-    .withSuccessHandler(r => { btn.disabled = false; applyStaticI18n(); link.href = r.url; link.textContent = t('export.open'); link.style.display = 'inline-block'; showToast(t('export.done')); })
-    .withFailureHandler(e => { btn.disabled = false; applyStaticI18n(); showToast(t('err.prefix') + e.message, 'error'); })
-    .exportBackup();
+  jbRun('exportBackup')
+    .then(r => { btn.disabled = false; applyStaticI18n(); link.href = r.url; link.textContent = t('export.open'); link.style.display = 'inline-block'; showToast(t('export.done')); })
+    .catch(e => { btn.disabled = false; applyStaticI18n(); showToast(t('err.prefix') + e.message, 'error'); });
 }
 
 /* ---------- Guided tour (core JB.tour) ---------- */
@@ -2250,7 +2244,7 @@ function commitSavingsBalance(val) {
   const n=parseFloat(val); if (isNaN(n)) { renderSavingsBalance(); return; }
   const base = n - generalSaved();   // entered value is the TOTAL; store base so total === entered
   if (!DATA.settings) DATA.settings={}; DATA.settings.savings_balance=base;
-  google.script.run.withFailureHandler(e=>showToast(t('err.prefix')+e.message,'error')).saveSetting('savings_balance', base);
+  jbRun('saveSetting', 'savings_balance', base).catch(e=>showToast(t('err.prefix')+e.message,'error'));
   renderSavingsBalance(); showToast(t('savings.saved'));
 }
 function renderGeneralSavings() {
@@ -2284,10 +2278,9 @@ function submitSavingsMove() {
     : { date, description:t('savings.depositDesc'), category:t('cat.savings'), amount:amt, type:'Expense' };
   const btn=document.getElementById('svSave'); btn.disabled=true; btn.textContent=t('action.saving');
   if (!DATA.settings) DATA.settings={}; DATA.settings.savings_balance=newBase;
-  google.script.run
-    .withSuccessHandler(()=>{ btn.disabled=false; btn.textContent=t('action.confirm'); closeOverlay('svOverlay'); showToast(svDir==='withdraw'?t('savings.withdrew'):t('savings.deposited')); reload(); })
-    .withFailureHandler(e=>{ btn.disabled=false; btn.textContent=t('action.confirm'); showToast(t('err.prefix')+e.message,'error'); })
-    .savingsMove(newBase, tx);
+  jbRun('savingsMove', newBase, tx)
+    .then(()=>{ btn.disabled=false; btn.textContent=t('action.confirm'); closeOverlay('svOverlay'); showToast(svDir==='withdraw'?t('savings.withdrew'):t('savings.deposited')); reload(); })
+    .catch(e=>{ btn.disabled=false; btn.textContent=t('action.confirm'); showToast(t('err.prefix')+e.message,'error'); });
 }
 
 /* ---------- Recurring-salary controls (Work Log) ---------- */
@@ -2308,14 +2301,14 @@ function addRecurringSalary() {
   const start='m'+curYM();
   if (!DATA.settings) DATA.settings={};
   DATA.settings.salary_amount=amt; DATA.settings.salary_start=start; DATA.settings.salary_end='';
-  google.script.run.withFailureHandler(e=>showToast(t('err.prefix')+e.message,'error')).saveProfile({ salary_amount:amt, salary_start:start, salary_end:'' });
+  jbRun('saveProfile', { salary_amount:amt, salary_start:start, salary_end:'' }).catch(e=>showToast(t('err.prefix')+e.message,'error'));
   renderAll(); showToast(t('salary.added'));
 }
 function removeRecurringSalary() {
   const end='m'+ymAdd(curYM(),-1);
   if (!DATA.settings) DATA.settings={};
   DATA.settings.salary_end=end;
-  google.script.run.withFailureHandler(e=>showToast(t('err.prefix')+e.message,'error')).saveSetting('salary_end', end);
+  jbRun('saveSetting', 'salary_end', end).catch(e=>showToast(t('err.prefix')+e.message,'error'));
   renderAll(); showToast(t('salary.removed'));
 }
 
@@ -2386,10 +2379,9 @@ function submitImport() {
   });
   if (!rows.length) { setFormError('impErr', t('imp.none')); return; }
   const btn=document.getElementById('impBtn'); btn.disabled=true; btn.textContent=t('imp.importing');
-  google.script.run
-    .withSuccessHandler(r=>{ btn.disabled=false; btn.textContent=t('imp.btn'); closeOverlay('impOverlay'); showToast(t('imp.done',{n:(r&&r.count)||rows.length})); reload(); })
-    .withFailureHandler(e=>{ btn.disabled=false; btn.textContent=t('imp.btn'); showToast(t('err.prefix')+e.message,'error'); })
-    .importTransactions(rows);
+  jbRun('importTransactions', rows)
+    .then(r=>{ btn.disabled=false; btn.textContent=t('imp.btn'); closeOverlay('impOverlay'); showToast(t('imp.done',{n:(r&&r.count)||rows.length})); reload(); })
+    .catch(e=>{ btn.disabled=false; btn.textContent=t('imp.btn'); showToast(t('err.prefix')+e.message,'error'); });
 }
 let billScopeCtx = null;
 
@@ -2426,7 +2418,7 @@ function applyBillOverride(id, month, amount) {
   let p = (DATA.payments||[]).find(x => x.month===month && fam.indexOf(x.type)>-1 && String(x.itemId)===String(id));
   if (p) p.actualAmount = Number(amount);
   else (DATA.payments=DATA.payments||[]).push({ month:month, type:'bill', itemId:String(id), paid:false, actualAmount:Number(amount), paidDate:'' });
-  google.script.run.withFailureHandler(e => { showToast(t('err.prefix')+e.message,'error'); reload(); }).setBillOverride(month, id, amount);
+  jbRun('setBillOverride', month, id, amount).catch(e => { showToast(t('err.prefix')+e.message,'error'); reload(); });
 }
 
 function splitBillAtCurrent(id, cur) {
@@ -2458,7 +2450,7 @@ function applyBillAmtThisMonth() {
   applyBillOverride(id, cur, data.amount);
   renderAll();
   showToast(t('toast.billAmtMonth'));
-  google.script.run.withFailureHandler(e => { showToast(t('err.prefix')+e.message,'error'); reload(); }).updateRecord('recurring', id, patch);
+  jbRun('updateRecord', 'recurring', id, patch).catch(e => { showToast(t('err.prefix')+e.message,'error'); reload(); });
 }
 
 function applyBillAmtOnwards() {
@@ -2476,19 +2468,19 @@ function applyBillAmtOnwards() {
   const split = splitBillAtCurrent(id, cur);
   const fail = e => { showToast(t('err.prefix')+e.message,'error'); reload(); };
   if (split.status === 'deleted') {
-    google.script.run.withFailureHandler(fail).deleteRecord('recurring', id);
+    jbRun('deleteRecord', 'recurring', id).catch(fail);
     if (hadFinite && remain <= 0) { renderAll(); showToast(t('toast.billStopped')); return; }
   } else if (split.bill) {
     const sb = split.bill;
-    google.script.run.withFailureHandler(fail).updateRecord('recurring', id, { name:sb.name, amount:sb.amount, dueDay:sb.dueDay, category:sb.category, installments:sb.installments, startMonth:sb.startMonth });
+    jbRun('updateRecord', 'recurring', id, { name:sb.name, amount:sb.amount, dueDay:sb.dueDay, category:sb.category, installments:sb.installments, startMonth:sb.startMonth }).catch(fail);
   }
   if (hadFinite && remain <= 0) { renderAll(); showToast(t('toast.billStopped')); return; }
   const newBill = { name:data.name, amount:data.amount, dueDay:data.dueDay, category:data.category, startMonth:cur, installments:hadFinite ? remain : 0 };
-  google.script.run.withSuccessHandler(res => {
+  jbRun('addRecord', 'recurring', newBill).then(res => {
     (DATA.recurring=DATA.recurring||[]).push(Object.assign({}, newBill, { id:(res&&res.id) }));
     renderAll();
     showToast(t('toast.billAmtOnwards'));
-  }).withFailureHandler(fail).addRecord('recurring', newBill);
+  }).catch(fail);
 }
 
 function applyBillAmtAll() {
@@ -2505,7 +2497,7 @@ function delBillAll() {
   const i=(DATA.recurring||[]).findIndex(x=>String(x.id)===String(id)); if (i>-1) DATA.recurring.splice(i,1);
   renderAll();
   showToast(t('toast.deleted'), null, rec ? function(){ undoDelete('recurring', rec); } : null);
-  google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); }).deleteRecord('recurring', id);
+  jbRun('deleteRecord', 'recurring', id).catch(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); });
 }
 function delBillOnwards() {
   const id=editing.id, cur=curYM();
@@ -2513,19 +2505,19 @@ function delBillOnwards() {
   const split = splitBillAtCurrent(id, cur);
   if (split.status === 'deleted') {
     renderAll(); showToast(t('toast.deleted'));
-    google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); }).deleteRecord('recurring', id);
+    jbRun('deleteRecord', 'recurring', id).catch(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); });
     return;
   }
   renderAll(); showToast(t('toast.billStopped'));
   const b = split.bill;
-  google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); }).updateRecord('recurring', id, { name:b.name, amount:b.amount, dueDay:b.dueDay, category:b.category, installments:b.installments, startMonth:b.startMonth });
+  jbRun('updateRecord', 'recurring', id, { name:b.name, amount:b.amount, dueDay:b.dueDay, category:b.category, installments:b.installments, startMonth:b.startMonth }).catch(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); });
 }
 function delBillThisMonth() {
   const id=editing.id, cur=curYM();
   billScopeCtx=null; closeOverlay('billDelOverlay'); closeAllOverlays(); editing={type:null,id:null};
   (DATA.payments=DATA.payments||[]).push({ month:cur, type:'skip', itemId:String(id), paid:true, actualAmount:null, paidDate:'' });
   renderAll(); showToast(t('toast.billSkipped'));
-  google.script.run.withFailureHandler(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); }).setBillSkip(cur, id);
+  jbRun('setBillSkip', cur, id).catch(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); });
 }
 /* ---------- Easter egg: 5 taps on the copyright ---------- */
 let eggClicks=0, eggTimer=null;
@@ -2720,7 +2712,7 @@ function saveSplit(){
   if (!DATA.debts) DATA.debts = [];
   rows.forEach(d => DATA.debts.push(d));
   closeOverlay('splitOverlay'); renderDebts(); showToast(t('split.saved'));
-  google.script.run.withFailureHandler(function(e){ showToast(t('err.prefix') + e.message, 'error'); reload(); }).addSplit(rows);
+  jbRun('addSplit', rows).catch(function(e){ showToast(t('err.prefix') + e.message, 'error'); reload(); });
 }
 function fmtDebtDate(ms){ if (!ms) return ''; try { return new Date(Number(ms)).toLocaleDateString(L(), { day:'2-digit', month:'short' }); } catch(e){ return ''; } }
 function renderDebts(){
@@ -2760,13 +2752,13 @@ function toggleDebt(id){
   const d = (DATA.debts||[]).find(function(x){ return x.id === id; }); if (!d) return;
   const np = !d.paid; d.paid = np; d.paidDate = np ? Date.now() : 0;
   renderDebts();
-  google.script.run.withFailureHandler(function(e){ showToast(t('err.prefix') + e.message, 'error'); reload(); }).setDebtPaid(id, np, d.paidDate);
+  jbRun('setDebtPaid', id, np, d.paidDate).catch(function(e){ showToast(t('err.prefix') + e.message, 'error'); reload(); });
 }
 function deleteOuting(sid){
   showConfirm(t('debts.delTitle'), t('debts.delMsg'), function(){
     DATA.debts = (DATA.debts||[]).filter(function(d){ return d.splitId !== sid; });
     renderDebts();
-    google.script.run.withFailureHandler(function(e){ showToast(t('err.prefix') + e.message, 'error'); reload(); }).deleteSplit(sid);
+    jbRun('deleteSplit', sid).catch(function(e){ showToast(t('err.prefix') + e.message, 'error'); reload(); });
   });
 }
 
@@ -2798,7 +2790,7 @@ function applyWizSalary(){
   var ym=document.getElementById('salaryWizMonth').value;
   if(!DATA.settings)DATA.settings={};
   DATA.settings.salary_amount=wizSalaryAmt; DATA.settings.salary_start='m'+ym; DATA.settings.salary_end='';
-  google.script.run.withFailureHandler(function(e){showToast(t('err.prefix')+e.message,'error');}).saveProfile({salary_amount:wizSalaryAmt, salary_start:'m'+ym, salary_end:''});
+  jbRun('saveProfile', {salary_amount:wizSalaryAmt, salary_start:'m'+ym, salary_end:''}).catch(function(e){showToast(t('err.prefix')+e.message,'error');});
   document.getElementById('salaryCard').classList.remove('show');
   renderAll(); showToast('Salário aplicado ✓');
   if(!tourIsDone()) setTimeout(startTour,300);

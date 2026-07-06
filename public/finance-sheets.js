@@ -7,7 +7,7 @@ var JB_LS_SHEET = 'joelboard_sheet_id';
 var JB_TABS = ['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings'];
 var jbToken = '', jbTokenClient = null, jbEmail = '', jbGrid = {}, jbAuthDone = false;
 function jbLoadingHtml(h){ var el = document.getElementById('loading'); if (el){ el.style.display='block'; el.innerHTML = h; } }
-/* ----- write layer: Sheets API ops behind a google.script.run drop-in ----- */
+/* ----- write layer: Sheets API ops (JB_IMPL + jbRun) ----- */
 function jbUuid(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){ var r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16); }); }
 function jbColLetter(n){ return FinMath.colLetter(n); }
 function jbReq(method,url,body){ return JB.api(method,url,body); }
@@ -68,23 +68,37 @@ var JB_IMPL = {
   logMonthlySalary: function(targetMonth,data){ return jbGetVals('Transactions').then(function(vals){ var reqs=[]; for(var i=vals.length-1;i>=1;i--){ var r=vals[i]||[]; var dv=r[0]; var ym=(typeof dv==='number')?jbDate(dv).slice(0,7):String(dv).slice(0,7); if(String(r[4])==='Income' && String(r[2])===String(data.category) && ym===targetMonth) reqs.push({ deleteDimension:{ range:{ sheetId:jbGrid['Transactions'], dimension:'ROWS', startIndex:i, endIndex:i+1 } } }); } return reqs.length ? jbReq('POST', jbBatchUrl(), { requests:reqs }) : {}; }).then(function(){ var id=jbUuid(); return jbAppend('Transactions', JB_COLS.transactions(data,id)).then(function(){ return {success:true,id:id}; }); }); },
   importTransactions: function(rows){ var ch=Promise.resolve(); var n=0; (rows||[]).forEach(function(d){ if(!d||!d.date||!(Number(d.amount)>0)) return; n++; ch=ch.then(function(){ return jbAppend('Transactions', JB_COLS.transactions(d, jbUuid())); }); }); return ch.then(function(){ return {success:true,count:n}; }); },
   renameCategory: function(id,newName){ newName=String(newName||'').trim(); if(!newName) return Promise.reject(new Error('Nome não pode ser vazio.')); var oldName=''; return jbGetVals('Categories').then(function(vals){ var row=-1, names=[]; for(var i=1;i<vals.length;i++){ var r=vals[i]||[]; names.push(String(r[0])); if(String(r[2])===String(id)){ row=i+1; oldName=String(r[0]); } } if(row<0) throw new Error('Categoria não encontrada.'); if(oldName===newName) return 'skip'; if(names.indexOf(newName)>-1) throw new Error('Já existe uma categoria com esse nome.'); return jbPutRange('Categories!A'+row, [[newName]]).then(function(){ return 'go'; }); }).then(function(st){ if(st==='skip') return {success:true}; return jbCascade('Transactions',2,oldName,newName).then(function(){ return jbCascade('Recurring',4,oldName,newName); }).then(function(){ return jbCascade('Budget',0,oldName,newName); }).then(function(){ return {success:true}; }); }); },
-  exportBackup: function(){ var tabs=['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings']; var out=[]; var ch=Promise.resolve(); tabs.forEach(function(tb){ ch=ch.then(function(){ return jbGetVals(tb).then(function(vals){ if(!vals.length) return; out.push('### '+tb); vals.forEach(function(row){ out.push((row||[]).map(jbCsvCell).join(',')); }); out.push(''); }).catch(function(){}); }); }); return ch.then(function(){ var csv='﻿'+out.join('\r\n'); var url=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); return { url:url, name:'joelboard-backup-'+new Date().toISOString().slice(0,10)+'.csv' }; }); }
+  exportBackup: function(){ var tabs=['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings']; var out=[]; var ch=Promise.resolve(); tabs.forEach(function(tb){ ch=ch.then(function(){ return jbGetVals(tb).then(function(vals){ if(!vals.length) return; out.push('### '+tb); vals.forEach(function(row){ out.push((row||[]).map(jbCsvCell).join(',')); }); out.push(''); }).catch(function(){}); }); }); return ch.then(function(){ var csv='﻿'+out.join('\r\n'); var url=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); return { url:url, name:'joelboard-backup-'+new Date().toISOString().slice(0,10)+'.csv' }; }); },
+  createUserSheet: function(){
+    var title = '💰 Joelboard — ' + (jbEmail ? jbEmail.split('@')[0] : 'Pessoal');
+    var body = { properties:{ title:title }, sheets: JB_HEADERS.map(function(t){ return { properties:{ title:t[0] } }; }) };
+    return jbReq('POST','https://sheets.googleapis.com/v4/spreadsheets', body).then(function(ss){
+      JB.setSheetId('finance', ss.spreadsheetId);
+      var data = JB_HEADERS.map(function(t){ return { range:t[0]+'!A1', values:[t[1]] }; });
+      data.push({ range:'Categories!A2', values: JB_DEFAULT_CATS.map(function(n){ return [n,'',jbUuid()]; }) });
+      data.push({ range:'Settings!A2', values:[['hourly_rate',0],['exchange_rate',0],['off_weekdays','d0,d6'],['mode','hourly'],['monthly_salary',0],['daily_hours',8],['overtime_mode','off'],['overtime_mult',1.5],['convert_enabled','true'],['currency_from','USD'],['currency_to','BRL'],['profile_set','false'],['schema_version',3]] });
+      return jbReq('POST','https://sheets.googleapis.com/v4/spreadsheets/'+ss.spreadsheetId+'/values:batchUpdate', { valueInputOption:'RAW', data:data });
+    }).then(function(){
+      return JB.resolveSheet({ app:'finance', namePart:'Joelboard', requiredTabs: JB_TABS });
+    }).then(function(ctx){ jbGrid = ctx.grid; return jbLoad(); });
+  },
+  linkExistingSheet: function(url){
+    url = String(url||'').trim();
+    var m = url.match(/[a-zA-Z0-9_-]{30,}/);
+    if (!m) return Promise.reject(new Error('invalid link'));
+    JB.setSheetId('finance', m[0]);
+    return JB.resolveSheet({ app:'finance', namePart:'Joelboard', requiredTabs: JB_TABS }).then(function(ctx){
+      jbGrid = ctx.grid;
+      return jbLoad();
+    });
+  }
 };
 
-function jbMakeRunner(){
-  var onOk=null, onErr=null;
-  var p = new Proxy({}, { get:function(target,prop){
-    if(prop==='withSuccessHandler') return function(f){ onOk=f; return p; };
-    if(prop==='withFailureHandler') return function(f){ onErr=f; return p; };
-    return function(){ var args=[].slice.call(arguments); Promise.resolve().then(function(){ var fn=JB_IMPL[prop]; return fn ? fn.apply(null,args) : undefined; }).then(function(res){ if(onOk) onOk(res); }).catch(function(e){ if(onErr) onErr(e); else { try{ showToast('Erro: '+e.message,'error'); }catch(_){ console.error(e); } } }); return p; };
-  }});
-  return p;
-}
 function jbRun(method){
   var args = [].slice.call(arguments, 1);
-  return new Promise(function(res, rej){
-    google.script.run.withSuccessHandler(res).withFailureHandler(rej)[method].apply(google.script.run, args);
-  });
+  var fn = JB_IMPL[method];
+  if (!fn) return Promise.reject(new Error('Unknown method: ' + method));
+  return Promise.resolve().then(function(){ return fn.apply(JB_IMPL, args); });
 }
 function jbSaveSetting(key, val){
   jbRun('saveSetting', key, val).catch(function(e){ showToast(t('err.prefix')+e.message,'error'); });
@@ -93,17 +107,16 @@ function jbSaveProfile(data){
   jbRun('saveProfile', data).catch(function(e){ showToast(t('err.prefix')+e.message,'error'); });
 }
 
-function jbInstallShim(){ if (!window.google) window.google = {}; google.script = { get run(){ return jbMakeRunner(); }, host:{ close:function(){}, setHeight:function(){}, editor:{} } }; }
 function jbCachedToken(){ return JB.cachedToken(); }
 function jbLogout(){ JB.signOut(); location.reload(); }
 function jbStartAuth(){
-  if (JB.cachedToken()){ jbEmail = JB.email(); jbInstallShim(); jbAfterSignIn(); return; }
+  if (JB.cachedToken()){ jbEmail = JB.email(); jbAfterSignIn(); return; }
   jbLoadingHtml('<div style="text-align:center;padding:44px;color:var(--muted)">Entrando…</div>');
-  JB.requestToken(false).then(function(){ jbAuthDone = true; jbInstallShim(); jbAfterSignIn(); }).catch(function(){ jbShowSignIn(); });
+  JB.requestToken(false).then(function(){ jbAuthDone = true; jbAfterSignIn(); }).catch(function(){ jbShowSignIn(); });
   setTimeout(function(){ if (!jbAuthDone && !JB.cachedToken()) jbShowSignIn(); }, 16000);
 }
 function jbShowSignIn(){ jbLoadingHtml('<div style="text-align:center;padding:48px 20px"><div style="font-size:24px;font-weight:800;letter-spacing:-.5px">💰 Joelboard</div><div style="color:var(--muted);font-size:13px;margin:6px 0 26px">Suas finanças pessoais</div><button onclick="jbSignIn()" style="background:#fff;color:#1f2430;border:none;border-radius:12px;padding:13px 22px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Entrar com Google</button></div>'); }
-function jbSignIn(){ JB.signIn({ onSuccess: function(){ jbAuthDone = true; jbInstallShim(); jbAfterSignIn(); } }); }
+function jbSignIn(){ JB.signIn({ onSuccess: function(){ jbAuthDone = true; jbAfterSignIn(); } }); }
 function jbAfterSignIn(){
   jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando…</div>');
   function go(){ jbBootSheet(); }

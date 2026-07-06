@@ -90,7 +90,7 @@
     return null;
   }
 
-  function applyToField(st, trigger, text) {
+  function applyToField(st, trigger, text, matchStart, caseSensitive) {
     var el = st.element;
     if (!el || !trigger) return false;
     el.focus();
@@ -99,8 +99,11 @@
       var beforeLen = (st.snapshot && st.snapshot.beforeLen != null)
         ? st.snapshot.beforeLen
         : (st.before || '').length;
-      var startPos = findTextPosition(el, beforeLen - trigger.length);
-      var endPos = findTextPosition(el, beforeLen);
+      var trigStart = (matchStart != null && matchStart >= 0)
+        ? matchStart
+        : beforeLen - trigger.length;
+      var startPos = findTextPosition(el, trigStart);
+      var endPos = findTextPosition(el, trigStart + trigger.length);
       if (!startPos || !endPos) return false;
       var sel = window.getSelection();
       var range = document.createRange();
@@ -121,23 +124,17 @@
     var val = snap ? snap.value : el.value;
     var selStart = snap ? snap.selStart : el.selectionStart;
     var selEnd = snap ? snap.selEnd : el.selectionEnd;
-    var before = val.slice(0, selStart);
+    var trigStart = (matchStart != null && matchStart >= 0)
+      ? matchStart
+      : selStart - trigger.length;
+    if (trigStart < 0 || trigStart + trigger.length > val.length) return false;
+    var typed = val.slice(trigStart, trigStart + trigger.length);
+    if (caseSensitive ? typed !== trigger : typed.toLowerCase() !== trigger.toLowerCase()) return false;
     var after = val.slice(selEnd);
 
-    if (before.slice(-trigger.length) !== trigger) {
-      var idx = val.lastIndexOf(trigger);
-      if (idx < 0) return false;
-      if (idx > 0) {
-        var prev = val.charAt(idx - 1);
-        if (prev !== ' ' && prev !== '\n' && prev !== '\t' && prev !== '\r') return false;
-      }
-      before = val.slice(0, idx + trigger.length);
-      after = val.slice(idx + trigger.length);
-    }
-
-    var newVal = before.slice(0, before.length - trigger.length) + text + after;
+    var newVal = val.slice(0, trigStart) + text + after;
     setNativeValue(el, newVal);
-    var pos = before.length - trigger.length + text.length;
+    var pos = trigStart + text.length;
     try { el.setSelectionRange(pos, pos); } catch (_) {}
     return true;
   }
@@ -195,7 +192,7 @@
     });
   }
 
-  function doExpand(st, snippet) {
+  function doExpand(st, snippet, matchStart, caseSensitive) {
     var trig = snippet.trigger || '';
     captureSnapshot(st);
     var body = snippet.body || '';
@@ -209,7 +206,7 @@
       return promptVars(missing, vars).then(function (filled) {
         if (!filled) return false;
         var out = JB_REPLACE.expandVars(expanded, filled, builtins);
-        return applyToField(st, trig, out);
+        return applyToField(st, trig, out, matchStart, caseSensitive);
       });
     }
 
@@ -237,15 +234,15 @@
     var st = getFieldState(el);
     if (!st) return;
     var settings = data.settings || {};
-    var snippet = JB_REPLACE.findSnippet(data.snippets, st.before, !!settings.caseSensitive);
-    if (!snippet) return;
+    var match = JB_REPLACE.findSnippetMatch(data.snippets, st.before, !!settings.caseSensitive);
+    if (!match) return;
     if (key === ' ' && !settings.expandOnSpace) return;
     if (key === 'Tab' && !settings.expandOnTab) return;
     if (key === 'Enter' && !settings.expandOnEnter) return;
     e.preventDefault();
     e.stopPropagation();
-    doExpand(st, snippet).then(function (ok) {
-      if (ok) showToast('✓ ' + (snippet.label || snippet.trigger));
+    doExpand(st, match.snippet, match.start, !!settings.caseSensitive).then(function (ok) {
+      if (ok) showToast('✓ ' + (match.snippet.label || match.snippet.trigger));
     });
   }, true);
 

@@ -88,7 +88,8 @@ var JB_REPLACE = (function () {
     });
   }
 
-  function findSnippet(snippets, textBefore, caseSensitive) {
+  /** Match trigger ending at cursor — no word-boundary requirement (e.g. /test in test/test). */
+  function findSnippetMatch(snippets, textBefore, caseSensitive) {
     var list = (snippets || []).filter(function (s) { return s.enabled !== false; });
     list.sort(function (a, b) { return (b.trigger || '').length - (a.trigger || '').length; });
     var hay = caseSensitive ? textBefore : textBefore.toLowerCase();
@@ -99,13 +100,14 @@ var JB_REPLACE = (function () {
       if (hay.length < needle.length) continue;
       if (hay.slice(-needle.length) !== needle) continue;
       var start = hay.length - needle.length;
-      if (start > 0) {
-        var prev = hay.charAt(start - 1);
-        if (prev !== ' ' && prev !== '\n' && prev !== '\t' && prev !== '\r') continue;
-      }
-      return list[i];
+      return { snippet: list[i], start: start, end: hay.length };
     }
     return null;
+  }
+
+  function findSnippet(snippets, textBefore, caseSensitive) {
+    var match = findSnippetMatch(snippets, textBefore, caseSensitive);
+    return match ? match.snippet : null;
   }
 
   function expandVars(body, vars, builtins) {
@@ -330,6 +332,7 @@ var JB_REPLACE = (function () {
     load: load,
     save: save,
     findSnippet: findSnippet,
+    findSnippetMatch: findSnippetMatch,
     expandVars: expandVars,
     needsClipboard: needsClipboard,
     applyClipboard: applyClipboard,

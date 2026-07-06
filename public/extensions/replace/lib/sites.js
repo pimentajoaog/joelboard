@@ -1,5 +1,5 @@
 /* Joelboard Mini — allowed-site helpers (shared key across Mini extensions). © 2026 Joel Soluções LTDA. */
-var JB_SITES = (function () {
+var JB_SITES = window.JB_SITES || (function () {
   var STORAGE_KEY = 'jb_mini_sites';
   var DEFAULT_SITES = [
     'joelboard.vercel.app',
@@ -20,6 +20,21 @@ var JB_SITES = (function () {
   function patternForHost(host) {
     if (host === 'localhost') return ['http://localhost/*', 'http://127.0.0.1/*'];
     return ['https://' + host + '/*', 'https://*.' + host + '/*'];
+  }
+
+  function matchingSite(url, sites) {
+    var host = urlToHost(url);
+    if (!host) return '';
+    for (var i = 0; i < (sites || []).length; i++) {
+      var site = sites[i];
+      if (site === 'localhost' && (host === 'localhost' || host === '127.0.0.1')) return site;
+      if (host === site || host.slice(-(site.length + 1)) === '.' + site) return site;
+    }
+    return '';
+  }
+
+  function tabOriginPatterns(url) {
+    try { return [new URL(url).origin + '/*']; } catch (_) { return []; }
   }
 
   function originPatterns(sites) {
@@ -75,14 +90,27 @@ var JB_SITES = (function () {
         if (cb) cb({ ok: false, reason: 'not-allowed', sites: sites });
         return;
       }
-      var patterns = originPatterns(sites);
-      chrome.permissions.contains({ origins: patterns }, function (has) {
+      var tabPatterns = tabOriginPatterns(url);
+      if (!tabPatterns.length) {
+        if (cb) cb({ ok: false, reason: 'unsupported', sites: sites });
+        return;
+      }
+      var site = matchingSite(url, sites);
+      var hostPatterns = site ? patternForHost(site) : tabPatterns;
+
+      chrome.permissions.contains({ origins: tabPatterns }, function (has) {
         if (has) {
           if (cb) cb({ ok: true, sites: sites });
           return;
         }
-        chrome.permissions.request({ origins: patterns }, function (granted) {
-          if (cb) cb({ ok: !!granted, sites: sites, granted: !!granted });
+        chrome.permissions.request({ origins: hostPatterns }, function (granted) {
+          if (!granted) {
+            if (cb) cb({ ok: false, reason: 'denied', sites: sites });
+            return;
+          }
+          chrome.permissions.contains({ origins: tabPatterns }, function (ok) {
+            if (cb) cb({ ok: !!ok, reason: ok ? null : 'denied', sites: sites });
+          });
         });
       });
     });
@@ -128,6 +156,8 @@ var JB_SITES = (function () {
     STORAGE_KEY: STORAGE_KEY,
     DEFAULT_SITES: DEFAULT_SITES,
     normalizeHost: normalizeHost,
+    matchingSite: matchingSite,
+    tabOriginPatterns: tabOriginPatterns,
     originPatterns: originPatterns,
     patternForHost: patternForHost,
     urlToHost: urlToHost,
@@ -140,3 +170,4 @@ var JB_SITES = (function () {
     removeSite: removeSite
   };
 })();
+window.JB_SITES = JB_SITES;

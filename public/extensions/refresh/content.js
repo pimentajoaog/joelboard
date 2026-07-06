@@ -1,5 +1,8 @@
 /* Joelboard Refresh — page overlay + shortcut listener. © 2026 Joel Soluções LTDA. */
 (function () {
+  if (window.__JB_REFRESH_ON__) return;
+  window.__JB_REFRESH_ON__ = 1;
+
   var shortcut = JB_REFRESH.DEFAULT_SHORTCUT;
   var overlay = null;
   var tickTimer = null;

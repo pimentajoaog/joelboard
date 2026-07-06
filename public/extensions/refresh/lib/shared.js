@@ -1,5 +1,5 @@
 /* Joelboard Refresh — shared storage & helpers. © 2026 Joel Soluções LTDA. */
-var JB_REFRESH = (function () {
+var JB_REFRESH = window.JB_REFRESH || (function () {
   var STORAGE_KEY = 'jb_auto_refresh';
   var COMMAND_NAME = 'toggle-refresh';
   var DEFAULT_SHORTCUT = 'Alt+Shift+R';
@@ -101,3 +101,4 @@ var JB_REFRESH = (function () {
     matchesShortcut: matchesShortcut
   };
 })();
+window.JB_REFRESH = JB_REFRESH;

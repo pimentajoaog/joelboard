@@ -155,8 +155,12 @@
       showToast('Este site não está na lista permitida — adicione abaixo.');
       return;
     }
+    if (res && res.error === 'denied') {
+      showToast('Permissão negada — permita o acesso a este site no Chrome.');
+      return;
+    }
     if (res && res.error) {
-      showToast('Não foi possível iniciar nesta aba.');
+      showToast('Não foi possível iniciar nesta aba. Recarregue a página e tente de novo.');
       return;
     }
     render(res);

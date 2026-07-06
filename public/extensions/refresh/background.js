@@ -51,9 +51,22 @@ function updateBadge(tabId, running, intervalSec) {
 function injectContent(tabId, cb) {
   chrome.scripting.executeScript({
     target: { tabId: tabId },
-    files: ['lib/shared.js', 'lib/sites.js', 'content.js']
-  }, function () {
-    if (cb) cb(!chrome.runtime.lastError);
+    func: function () { return !!window.__JB_REFRESH_ON__; }
+  }, function (check) {
+    if (chrome.runtime.lastError) {
+      if (cb) cb(false, chrome.runtime.lastError.message);
+      return;
+    }
+    if (check && check[0] && check[0].result) {
+      if (cb) cb(true);
+      return;
+    }
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ['lib/shared.js', 'lib/sites.js', 'content.js']
+    }, function () {
+      if (cb) cb(!chrome.runtime.lastError, chrome.runtime.lastError && chrome.runtime.lastError.message);
+    });
   });
 }
 
@@ -67,8 +80,8 @@ function ensureInject(tabId, url, cb) {
       if (cb) cb(false, perm.reason || 'denied');
       return;
     }
-    injectContent(tabId, function (ok) {
-      if (cb) cb(!!ok);
+    injectContent(tabId, function (ok, err) {
+      if (cb) cb(!!ok, ok ? null : (err || 'inject-failed'));
     });
   });
 }
@@ -108,10 +121,10 @@ function startRefresh(tabId, opts, cb) {
           if (cb) cb({ running: false, error: 'no-tab' });
           return;
         }
-        ensureInject(tabId, tab.url, function (ok, reason) {
-          if (!ok) {
+        JB_SITES.ensurePermissions(tab.url, function (perm) {
+          if (!perm.ok) {
             stopRefresh(tabId);
-            if (cb) cb({ running: false, error: reason || 'inject-failed' });
+            if (cb) cb({ running: false, error: perm.reason || 'denied' });
             return;
           }
           reloadTab(tabId, function () {

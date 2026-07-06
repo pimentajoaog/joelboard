@@ -4,7 +4,7 @@ var greetEl=document.getElementById("greet"), btnEl=document.getElementById("aut
 var _hbooted=false;
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só.' },
-  { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas…' },
+  { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas, Mini…' },
   { sel:'.gear', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
 ];
 function hubVerTutorial(){ closeHubSet(); setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 250); }

@@ -1,0 +1,246 @@
+/* Joelboard Refresh — popup logic. © 2026 Joel Soluções LTDA. */
+var DATA = null;
+var editingId = null;
+var pendingImport = null;
+
+function $(id) { return document.getElementById(id); }
+
+function toast(msg) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function persist() {
+  return JB_REFRESH.save(DATA);
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function (b) {
+    b.classList.toggle('on', b.getAttribute('data-tab') === name);
+  });
+  document.querySelectorAll('.pane').forEach(function (p) {
+    p.classList.toggle('on', p.id === 'pane-' + name);
+  });
+}
+
+function renderSnippets() {
+  var q = ($('search').value || '').trim().toLowerCase();
+  var list = (DATA.snippets || []).slice();
+  if (q) {
+    list = list.filter(function (s) {
+      return (s.label || '').toLowerCase().indexOf(q) > -1
+        || (s.trigger || '').toLowerCase().indexOf(q) > -1
+        || (s.body || '').toLowerCase().indexOf(q) > -1;
+    });
+  }
+  var el = $('snippetList');
+  if (!list.length) { el.innerHTML = q ? '<div class="hint" style="text-align:center;padding:20px">Nada encontrado.</div>' : ''; return; }
+  el.innerHTML = list.map(function (s) {
+    var prev = (s.body || '').replace(/\n/g, ' ').slice(0, 72);
+    return '<div class="card' + (s.enabled === false ? ' off' : '') + '" data-id="' + s.id + '">'
+      + '<div class="card-top"><div class="card-name">' + esc(s.label || '(sem nome)') + '</div>'
+      + '<span class="card-trig">' + esc(s.trigger) + '</span></div>'
+      + '<div class="card-prev">' + esc(prev) + '</div></div>';
+  }).join('');
+  el.querySelectorAll('.card').forEach(function (card) {
+    card.onclick = function () { openEditor(card.getAttribute('data-id')); };
+  });
+}
+
+function renderVars() {
+  var vars = DATA.vars || {};
+  var keys = Object.keys(vars);
+  var el = $('varList');
+  el.innerHTML = keys.map(function (k) {
+    return '<div class="var-row" data-key="' + esc(k) + '">'
+      + '<input class="field key" value="' + esc(k) + '" data-role="key" readonly>'
+      + '<input class="field" value="' + esc(vars[k]) + '" data-role="val" placeholder="valor">'
+      + '<button class="icon-btn" data-del title="Remover">✕</button></div>';
+  }).join('');
+  el.querySelectorAll('.var-row').forEach(function (row) {
+    row.querySelector('[data-role="val"]').onchange = function () {
+      var key = row.getAttribute('data-key');
+      DATA.vars[key] = this.value;
+      persist();
+    };
+    row.querySelector('[data-del]').onclick = function () {
+      delete DATA.vars[row.getAttribute('data-key')];
+      persist().then(renderVars);
+    };
+  });
+}
+
+function renderSettings() {
+  var s = DATA.settings || {};
+  $('optSpace').checked = s.expandOnSpace !== false;
+  $('optTab').checked = s.expandOnTab !== false;
+  $('optEnter').checked = !!s.expandOnEnter;
+  $('optCase').checked = !!s.caseSensitive;
+}
+
+function openEditor(id) {
+  editingId = id || null;
+  var s = id ? (DATA.snippets || []).find(function (x) { return x.id === id; }) : null;
+  $('edTitle').textContent = s ? 'Editar template' : 'Novo template';
+  $('edLabel').value = s ? (s.label || '') : '';
+  $('edTrigger').value = s ? (s.trigger || '') : '';
+  $('edBody').value = s ? (s.body || '') : '';
+  $('edEnabled').checked = s ? s.enabled !== false : true;
+  $('edDelete').style.display = s ? '' : 'none';
+  $('editor').classList.add('open');
+}
+
+function closeEditor() {
+  $('editor').classList.remove('open');
+  editingId = null;
+}
+
+function saveEditor() {
+  var label = ($('edLabel').value || '').trim();
+  var trigger = ($('edTrigger').value || '').trim();
+  var body = $('edBody').value || '';
+  if (!trigger) { toast('Gatilho obrigatório'); return; }
+  if (!body.trim()) { toast('Texto expandido obrigatório'); return; }
+  var dup = (DATA.snippets || []).find(function (s) {
+    return s.trigger === trigger && s.id !== editingId;
+  });
+  if (dup) { toast('Gatilho já em uso'); return; }
+  if (editingId) {
+    var ex = DATA.snippets.find(function (s) { return s.id === editingId; });
+    if (ex) {
+      ex.label = label || trigger;
+      ex.trigger = trigger;
+      ex.body = body;
+      ex.enabled = $('edEnabled').checked;
+    }
+  } else {
+    DATA.snippets.unshift({
+      id: JB_REFRESH.uuid(),
+      label: label || trigger,
+      trigger: trigger,
+      body: body,
+      enabled: $('edEnabled').checked
+    });
+  }
+  persist().then(function () {
+    closeEditor();
+    renderSnippets();
+    toast('✓ Salvo');
+  });
+}
+
+function deleteEditor() {
+  if (!editingId) return;
+  DATA.snippets = (DATA.snippets || []).filter(function (s) { return s.id !== editingId; });
+  persist().then(function () {
+    closeEditor();
+    renderSnippets();
+    toast('✓ Excluído');
+  });
+}
+
+function addVar() {
+  var key = ($('newVarKey').value || '').trim().replace(/\s+/g, '_');
+  var val = $('newVarVal').value || '';
+  if (!key) { toast('Nome da variável obrigatório'); return; }
+  if (!DATA.vars) DATA.vars = {};
+  if (DATA.vars[key] != null) { toast('Variável já existe'); return; }
+  DATA.vars[key] = val;
+  $('newVarKey').value = '';
+  $('newVarVal').value = '';
+  persist().then(renderVars);
+}
+
+function bindSettings() {
+  function upd() {
+    DATA.settings = {
+      expandOnSpace: $('optSpace').checked,
+      expandOnTab: $('optTab').checked,
+      expandOnEnter: $('optEnter').checked,
+      caseSensitive: $('optCase').checked
+    };
+    persist();
+  }
+  ['optSpace', 'optTab', 'optEnter', 'optCase'].forEach(function (id) {
+    $(id).onchange = upd;
+  });
+}
+
+function exportData() {
+  var blob = new Blob([JB_REFRESH.exportJson(DATA)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'joelboard-refresh-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✓ Exportado');
+}
+
+function importData(file) {
+  var reader = new FileReader();
+  reader.onload = function () {
+    try {
+      pendingImport = JB_REFRESH.importJson(reader.result);
+      $('confirmOv').classList.add('open');
+    } catch (e) {
+      toast('Erro: ' + (e.message || 'arquivo inválido'));
+    }
+  };
+  reader.readAsText(file);
+}
+
+function applyImport() {
+  if (!pendingImport) return;
+  DATA.snippets = pendingImport.snippets;
+  DATA.vars = Object.assign({}, pendingImport.vars);
+  DATA.settings = pendingImport.settings;
+  pendingImport = null;
+  $('confirmOv').classList.remove('open');
+  persist().then(function () {
+    renderSnippets();
+    renderVars();
+    renderSettings();
+    toast('✓ Importado');
+  });
+}
+
+document.querySelectorAll('.tab').forEach(function (b) {
+  b.onclick = function () { switchTab(b.getAttribute('data-tab')); };
+});
+
+$('search').oninput = renderSnippets;
+$('btnAdd').onclick = function () { openEditor(null); };
+$('btnNew').onclick = function () { openEditor(null); };
+$('edClose').onclick = closeEditor;
+$('edSave').onclick = saveEditor;
+$('edDelete').onclick = deleteEditor;
+$('btnAddVar').onclick = addVar;
+$('newVarKey').onkeydown = $('newVarVal').onkeydown = function (e) {
+  if (e.key === 'Enter') addVar();
+};
+$('btnExport').onclick = exportData;
+$('btnImport').onclick = function () { $('importFile').click(); };
+$('importFile').onchange = function () {
+  if (this.files && this.files[0]) importData(this.files[0]);
+  this.value = '';
+};
+$('confirmNo').onclick = function () { pendingImport = null; $('confirmOv').classList.remove('open'); };
+$('confirmYes').onclick = applyImport;
+$('confirmOv').onclick = function (e) { if (e.target === $('confirmOv')) { pendingImport = null; $('confirmOv').classList.remove('open'); } };
+$('editor').onclick = function (e) { if (e.target === $('editor')) closeEditor(); };
+
+JB_REFRESH.load().then(function (d) {
+  DATA = d;
+  renderSnippets();
+  renderVars();
+  renderSettings();
+  bindSettings();
+});

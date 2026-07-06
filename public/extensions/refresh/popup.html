@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<!-- Joelboard Refresh — popup. © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Joelboard Refresh</title>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <img src="icons/icon-192.png" alt="" width="28" height="28">
+    <div>
+      <div class="title">Refresh</div>
+      <div class="sub">Joelboard Mini</div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="snippets">Templates</button>
+    <button class="tab" data-tab="vars">Variáveis</button>
+    <button class="tab" data-tab="settings">Ajustes</button>
+  </div>
+
+  <div class="pane on" id="pane-snippets">
+    <div class="toolbar">
+      <input class="field search" id="search" placeholder="Buscar gatilho ou nome…">
+      <button class="btn-sm" id="btnAdd" title="Novo template">+</button>
+    </div>
+    <div class="list" id="snippetList"></div>
+    <button class="btn ghost" id="btnNew">+ Novo template</button>
+  </div>
+
+  <div class="pane" id="pane-vars">
+    <p class="hint">Use <code>{{nome}}</code> nos templates. Variáveis embutidas: <code>{{date}}</code> <code>{{time}}</code> <code>{{datetime}}</code> <code>{{clipboard}}</code></p>
+    <div class="list" id="varList"></div>
+    <div class="var-row" id="newVarRow">
+      <input class="field key" id="newVarKey" placeholder="nome">
+      <input class="field" id="newVarVal" placeholder="valor padrão">
+      <button class="btn-sm" id="btnAddVar" title="Adicionar">+</button>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-settings">
+    <label class="tog"><input type="checkbox" id="optSpace" checked> Expandir ao pressionar <kbd>Espaço</kbd></label>
+    <label class="tog"><input type="checkbox" id="optTab" checked> Expandir ao pressionar <kbd>Tab</kbd></label>
+    <label class="tog"><input type="checkbox" id="optEnter"> Expandir ao pressionar <kbd>Enter</kbd></label>
+    <label class="tog"><input type="checkbox" id="optCase"> Gatilhos diferenciam maiúsculas</label>
+    <div class="sep"></div>
+    <button class="btn ghost" id="btnExport">⬇ Exportar templates</button>
+    <button class="btn ghost" id="btnImport">⬆ Importar templates</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+    <div class="foot">Digite o gatilho em qualquer campo e pressione Espaço ou Tab.</div>
+  </div>
+</div>
+
+<div class="overlay" id="editor">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="edTitle">Novo template</div><button class="x" id="edClose">✕</button></div>
+    <label class="fl">Nome</label>
+    <input class="field" id="edLabel" placeholder="ex.: Saudação de e-mail">
+    <label class="fl">Gatilho</label>
+    <input class="field" id="edTrigger" placeholder="ex.: //oi ou ;sig">
+    <label class="fl">Texto expandido</label>
+    <textarea class="field area" id="edBody" rows="6" placeholder="Olá {{nome}},&#10;&#10;…"></textarea>
+    <label class="tog"><input type="checkbox" id="edEnabled" checked> Ativo</label>
+    <div class="modal-btns">
+      <button class="btn danger ghost" id="edDelete" style="display:none">Excluir</button>
+      <button class="btn primary" id="edSave">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="overlay" id="confirmOv">
+  <div class="modal" style="max-width:300px">
+    <div class="mt" style="margin-bottom:8px">Importar templates?</div>
+    <p class="hint" style="margin-bottom:14px">Isso substitui todos os templates atuais pelos do arquivo.</p>
+    <div class="modal-btns">
+      <button class="btn ghost" id="confirmNo">Cancelar</button>
+      <button class="btn primary" id="confirmYes">Importar</button>
+    </div>
+  </div>
+</div>
+
+<script src="lib/shared.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

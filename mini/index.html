@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<!-- Joelboard Mini — extension hub. © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Joelboard Mini</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/joelboard.css">
+<link rel="stylesheet" href="/themes.css">
+<meta name="theme-color" content="#0d0f18">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/mini.css">
+</head>
+<body>
+<div class="wrap">
+  <a class="door" href="/" title="Voltar ao Joelboard">← Joelboard</a>
+  <div class="top">
+    <div class="brand"><img src="/icon-192.png" alt="Joelboard"><span class="wm">Joelboard Mini</span></div>
+  </div>
+  <div class="sub">Extensões leves do Chrome — mesma família, fora da loja. Instale manualmente a partir dos arquivos do repositório.</div>
+
+  <div class="grid">
+    <div class="card live">
+      <div class="card-ico" style="background:#0f2a32">
+        <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M18 32h20" stroke="#22d3ee" stroke-width="4" stroke-linecap="round"/>
+          <path d="M32 18v20" stroke="#22d3ee" stroke-width="4" stroke-linecap="round"/>
+          <path d="M40 40l8 8" stroke="#34d399" stroke-width="3.5" stroke-linecap="round"/>
+          <rect x="14" y="14" width="36" height="36" rx="8" fill="none" stroke="#22d3ee" stroke-width="3" opacity=".5"/>
+        </svg>
+      </div>
+      <div class="suite">Joelboard Mini</div>
+      <div class="name">Refresh</div>
+      <div class="desc">Expansão de texto — templates, gatilhos, variáveis e import/export.</div>
+      <span class="tag ok">Disponível</span>
+    </div>
+    <div class="card soon">
+      <div class="card-ico" style="background:#1f1f28">
+        <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="14" fill="none" stroke="#7b85a0" stroke-width="3" stroke-dasharray="4 6"/>
+        </svg>
+      </div>
+      <div class="suite">Joelboard Mini</div>
+      <div class="name" style="color:var(--muted)">Em breve</div>
+      <div class="desc">Mais duas extensões entram aqui.</div>
+      <span class="tag">Em breve</span>
+    </div>
+    <div class="card soon">
+      <div class="card-ico" style="background:#1f1f28">
+        <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="14" fill="none" stroke="#7b85a0" stroke-width="3" stroke-dasharray="4 6"/>
+        </svg>
+      </div>
+      <div class="suite">Joelboard Mini</div>
+      <div class="name" style="color:var(--muted)">Em breve</div>
+      <div class="desc">Mais duas extensões entram aqui.</div>
+      <span class="tag">Em breve</span>
+    </div>
+  </div>
+
+  <div class="steps">
+    <h2>Instalar Joelboard Refresh</h2>
+    <ol>
+      <li>Baixe a pasta <code>extensions/refresh</code> do repositório — em produção ela fica em <a href="/extensions/refresh/manifest.json" target="_blank" rel="noopener">/extensions/refresh</a> após o deploy.</li>
+      <li>No Chrome, abra <a href="chrome://extensions" target="_blank" rel="noopener">chrome://extensions</a> e ative o <b>Modo do desenvolvedor</b>.</li>
+      <li>Clique em <b>Carregar sem compactação</b> e selecione a pasta <code>refresh</code> (a que contém o <code>manifest.json</code>).</li>
+      <li>Fixe a extensão na barra. Clique no ícone para gerenciar templates.</li>
+      <li>Em qualquer campo de texto, digite um gatilho (ex.: <code>//oi</code>) e pressione <b>Espaço</b> ou <b>Tab</b> para expandir.</li>
+    </ol>
+    <p style="font-size:12px;color:var(--muted);margin-top:14px;line-height:1.5">
+      Variáveis: <code>{{nome}}</code> <code>{{empresa}}</code> · embutidas: <code>{{date}}</code> <code>{{time}}</code> <code>{{clipboard}}</code>.
+      Templates podem ser exportados e importados como JSON pelo popup da extensão.
+    </p>
+  </div>
+
+  <div class="foot">© 2026 Joel Soluções LTDA · Joelboard Mini</div>
+</div>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="/joelboard.js"></script>
+<script>JB.applySkin('mini'); if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}</script>
+</body>
+</html>

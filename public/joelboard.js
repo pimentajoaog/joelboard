@@ -572,7 +572,32 @@
 
   // --- shared feedback (posts to the app owner's Google Form) + a tiny core toast ---
   var FB_FORM = { action: 'https://docs.google.com/forms/d/e/1FAIpQLSdfIXwvv96V8E2aMsS0Yu9AlugAy0NZ7-eAklGisFO6cuSCuA/formResponse', nameEntry: 'entry.2102774097', kindEntry: 'entry.1066607309', msgEntry: 'entry.315076588' };
-  function jbToast(msg){ var t = document.createElement('div'); t.textContent = msg; t.setAttribute('style', 'position:fixed;left:50%;bottom:32px;transform:translateX(-50%);background:#1b1f32;border:1px solid #2b3147;color:#e7eaf3;padding:12px 18px;border-radius:99px;z-index:100000;font-family:inherit;font-size:14px;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,0.4)'); document.body.appendChild(t); setTimeout(function(){ if (t.parentNode) t.parentNode.removeChild(t); }, 2600); }
+  function jbToast(msg, opts){
+    opts = opts || {};
+    var text = String(msg == null ? '' : msg);
+    var ok = opts.ok != null ? opts.ok : /^\s*✓/.test(text);
+    var dur = Number(opts.duration) || 2400;
+    var el = document.getElementById('toast');
+    if (el && !document.getElementById('toastMsg')) {
+      el.textContent = text;
+      el.classList.remove('show', 'ok');
+      void el.offsetWidth;
+      if (ok) el.classList.add('ok');
+      el.classList.add('show');
+      clearTimeout(el._jbT);
+      el._jbT = setTimeout(function () { el.classList.remove('show', 'ok'); }, dur);
+      return;
+    }
+    var t = document.createElement('div');
+    t.className = 'jb-toast' + (ok ? ' ok' : '');
+    t.textContent = text;
+    document.body.appendChild(t);
+    requestAnimationFrame(function () { t.classList.add('show'); });
+    setTimeout(function () {
+      t.classList.remove('show');
+      setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 300);
+    }, dur);
+  }
 
   // Shared write helper: await run(), disable btn while busy, call onSuccess/onError (no success toast until onSuccess).
   function persist(opts){

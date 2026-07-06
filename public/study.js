@@ -11,7 +11,7 @@ function $(id){ return document.getElementById(id); }
 function uuid(){ return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);}); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function loadingHtml(h){ $('loading').style.display='block'; $('loading').innerHTML=h; }
-function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},2200); }
+function toast(m){ JB.toast(m); }
 function studyWriteErr(e){ toast('Erro: '+((e&&e.message)||'falha ao salvar')); }
 
 /* ---- dates ---- */
@@ -280,7 +280,7 @@ function findRow(tab,idCol,id){ return JB.api('GET', ssUrl('/values/'+encodeURIC
 function fab(){ openEvt(null); }
 function openSettings(){ switchSet('tema'); JB.renderSkinPicker('study', $('setSkins')); var c=focCfg(); $('focoMin').value=c.foco; $('pausaMin').value=c.pausa; $('longMin').value=c.long; $('cycLong').value=c.cyc; $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
-function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++) ps[j].style.display=(ps[j].getAttribute('data-pane')===name)?'':'none'; }
+function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++){ var on=ps[j].getAttribute('data-pane')===name; ps[j].style.display=on?'':'none'; ps[j].classList.toggle('active', on); } }
 
 /* ---- config + Drive folders + attachments ---- */
 function saveConfig(k,v){ DATA.config=DATA.config||{}; DATA.config[k]=v; JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var vals=res.values||[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]}); } return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]}); }).catch(studyWriteErr); }

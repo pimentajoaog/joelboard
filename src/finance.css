@@ -114,7 +114,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
 .tab-page { display: none; padding-bottom: 90px; }
-.tab-page.active { display: block; animation: fade 0.2s ease; }
+.tab-page.active { display: block; }
 @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }

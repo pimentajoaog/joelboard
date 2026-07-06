@@ -91,12 +91,21 @@ function macroScale(p100, c100, g100, k100, grams) {
 }
 
 function macroRing(pct, color, label, val, goal, unit) {
-  var C = 2 * Math.PI * 36, off = C * (1 - Math.min(1, Math.max(0, pct)));
+  var C = 2 * Math.PI * 36, pctClamped = Math.min(1, Math.max(0, pct)), off = C * (1 - pctClamped);
   return '<div class="mring"><svg viewBox="0 0 80 80" width="72" height="72">'
     + '<circle cx="40" cy="40" r="36" fill="none" style="stroke:var(--surface2)" stroke-width="7"/>'
-    + (pct > 0 ? '<circle cx="40" cy="40" r="36" fill="none" style="stroke:' + color + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + off + '" transform="rotate(-90 40 40)"/>' : '')
+    + (pctClamped > 0 ? '<circle class="mring-arc" cx="40" cy="40" r="36" fill="none" stroke="' + color + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '" data-off="' + off + '" transform="rotate(-90 40 40)"/>' : '')
     + '</svg><div class="mring-in"><div class="mring-val">' + val + '</div><div class="mring-lbl">' + label + '</div></div></div>'
-    + '<div class="mring-meta">' + Math.round(pct * 100) + '% <span class="muted">/ ' + goal + unit + '</span></div>';
+    + '<div class="mring-meta">' + Math.round(pctClamped * 100) + '% <span class="muted">/ ' + goal + unit + '</span></div>';
+}
+function animateMacroRings(root) {
+  root = root || document;
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      var arcs = root.querySelectorAll ? root.querySelectorAll('.mring-arc') : [];
+      for (var i = 0; i < arcs.length; i++) arcs[i].style.strokeDashoffset = arcs[i].getAttribute('data-off') || '0';
+    });
+  });
 }
 
 function macroFmtDate(iso) {
@@ -187,6 +196,7 @@ function renderMacros() {
     + '</div>'
     + '<div class="mrings">' + (rings || '<div class="rg">Defina metas em <button class="lnk" onclick="openMacroSettings()">Ajustes → Macros</button></div>') + '</div>'
     + favHtml + mealHtml;
+  animateMacroRings(el);
 }
 
 function macroNav(d) {

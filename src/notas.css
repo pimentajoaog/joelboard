@@ -38,8 +38,8 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .fg{ @apply mb-3.5; }
 .fl{ @apply block text-xs text-muted mb-1.5 font-semibold; }
 .field{ width:100%; }
-.toast{ @apply fixed left-1/2 bottom-[84px] bg-surface2 border border-border text-ink px-4 py-2.5 rounded-full text-[13px] opacity-0 pointer-events-none z-[300] whitespace-nowrap; transform:translateX(-50%); transition:opacity .2s; }
-.toast.show{ @apply opacity-100; }
+
+#toast{ bottom:calc(84px + env(safe-area-inset-bottom, 0px)); }
 
 .gate{ @apply max-w-[420px] mx-auto my-10 text-center; }
 .gate .gt{ @apply text-[22px] font-extrabold tracking-[-.5px]; font-family:var(--font-display); }

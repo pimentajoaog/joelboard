@@ -54,8 +54,8 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .fl{ @apply block text-xs text-muted mb-1.5 font-semibold; }
 .del{ @apply w-full bg-transparent border-0 text-muted text-[13px] underline cursor-pointer mt-3; font-family:inherit; }
 
-.toast{ @apply fixed left-1/2 bottom-[84px] bg-surface2 border border-border text-ink px-4 py-2.5 rounded-full text-[13px] opacity-0 pointer-events-none z-[300] whitespace-nowrap; transform:translateX(-50%); transition:opacity .2s; }
-.toast.show{ @apply opacity-100; }
+#toast{ bottom:calc(84px + env(safe-area-inset-bottom, 0px)); }
+
 .foot{ @apply text-center text-muted text-[11px] opacity-[0.55] mt-9; }
 
 .gate{ @apply max-w-[420px] mx-auto my-10 text-center; }
@@ -245,6 +245,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .mring-lbl{ font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin-top:2px; }
 .mring-meta{ font-size:11px; font-weight:700; margin-top:4px; text-align:center; }
 .mring-meta .muted{ color:var(--muted); font-weight:600; }
+.mring-arc{ transition:stroke-dashoffset .65s cubic-bezier(.4,0,.2,1); }
 .mfav{ margin-bottom:16px; }
 .mfav-row{ display:flex; flex-wrap:wrap; gap:6px; }
 .mfav-btn{ background:var(--surface2); border:1px solid var(--border); border-radius:99px; padding:6px 11px; font-size:12px; font-weight:700; cursor:pointer; color:var(--ink); font-family:inherit; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -275,8 +276,6 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .mcustom-row .rm{ flex:0 0 auto; width:28px; height:28px; border:0; border-radius:8px; background:transparent; color:var(--muted); cursor:pointer; font-size:14px; font-family:inherit; }
 
 /* motion */
-.page.on{ animation: jb-fade 0.22s ease; }
-.set-pane{ animation: jb-fade 0.18s ease; }
 .btn{ transition: transform 0.09s ease; }
 .btn:active{ transform: scale(0.96); }
 .row, .exc, .selrow{ transition: transform 0.12s ease, border-color 0.12s ease; }

@@ -9,7 +9,7 @@ function uuid(){ return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxx'.replace(/[xy]/g,function
 function loadingHtml(h){ $('loading').style.display='block'; $('loading').innerHTML=h; }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
-function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},2200); }
+function toast(m){ JB.toast(m); }
 function fitWriteErr(e){ toast('Erro: '+((e&&e.message)||'falha ao salvar')); }
 
 /* ---- auth (shared core) ---- */
@@ -485,7 +485,7 @@ function renderSettings(){
   renderSched(); renderVolGoals();
   if(typeof renderMacroSettingsPanel==='function') renderMacroSettingsPanel();
 }
-function switchSet(name){ document.querySelectorAll('#setOverlay .set-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-st')===name); }); document.querySelectorAll('#setOverlay .set-pane').forEach(function(p){ p.style.display=(p.getAttribute('data-pane')===name)?'':'none'; }); if(name==='macros'&&typeof initMacroMealsSort==='function') initMacroMealsSort(); }
+function switchSet(name){ document.querySelectorAll('#setOverlay .set-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-st')===name); }); document.querySelectorAll('#setOverlay .set-pane').forEach(function(p){ var on=p.getAttribute('data-pane')===name; p.style.display=on?'':'none'; p.classList.toggle('active', on); }); if(name==='macros'&&typeof initMacroMealsSort==='function') initMacroMealsSort(); }
 function loadDefaults(){ var have={}; (DATA.exercicios||[]).forEach(function(e){ have[(e.name||'').toLowerCase()]=1; }); var add=STARTER.filter(function(e){ return !have[e[0].toLowerCase()]; }); if(!add.length){ toast('Biblioteca já está completa ✓'); return; } var rows=add.map(function(e){ var id=uuid(); DATA.exercicios.push({id:id,name:e[0],group:e[1]}); return [e[0],e[1],id]; }); renderExercicios(); renderSettings(); toast('+'+add.length+' exercícios adicionados'); JB.api('POST', ssUrl('/values/'+encodeURIComponent('Exercicios')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:rows}).catch(function(){ toast('Erro ao salvar — recarregue'); }); }
 function setUnitS(u){ DATA.config=DATA.config||{}; DATA.config.unit=u; saveConfig('unit',u); renderSettings(); renderHoje(); }
 function persistTags(){ saveConfig('tags', JSON.stringify(DATA.config.tags||[])); }

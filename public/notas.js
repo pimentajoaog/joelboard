@@ -16,7 +16,7 @@ function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,
 function escAttr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function normText(s){ return String(s==null?'':s).trim().toLowerCase(); }
 function loadingHtml(h){ $('loading').style.display='block'; $('loading').innerHTML=h; }
-function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},2200); }
+function toast(m){ JB.toast(m); }
 function notasWriteErr(e){ toast('Erro: '+((e&&e.message)||'falha ao salvar')); }
 function notasRowErr(tab){ return new Error('Registro não encontrado em '+tab+' — atualize a página.'); }
 function kindDef(k){ for(var i=0;i<KINDS.length;i++){ if(KINDS[i].k===k) return KINDS[i]; } return KINDS[1]; }
@@ -434,7 +434,7 @@ function saveConfig(k,v){
 /* ---- settings + tour ---- */
 function openSettings(){ switchSet('tema'); JB.renderSkinPicker('notas', $('setSkins')); $('setNudge').classList.toggle('on', (DATA.config&&DATA.config.nudgePref)!=='off'); $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
-function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++) ps[j].style.display=(ps[j].getAttribute('data-pane')===name)?'':'none'; }
+function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++){ var on=ps[j].getAttribute('data-pane')===name; ps[j].style.display=on?'':'none'; ps[j].classList.toggle('active', on); } }
 function toggleNudgePref(){ var off=(DATA.config&&DATA.config.nudgePref)==='off'; var nv=off?'on':'off'; saveConfig('nudgePref', nv); $('setNudge').classList.toggle('on', nv!=='off'); }
 var NOTAS_TOUR=[
   { title:'Bem-vindo ao Notas 📝', body:'Listas e notas que você marca: compras, tarefas, viagem ou nota livre.' },

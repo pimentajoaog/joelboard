@@ -40,7 +40,7 @@ body.jb-noscroll { overflow: hidden; }
 .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; overflow-x: hidden; transform: scale(0.94); transition: transform 0.24s cubic-bezier(.2,.85,.3,1); }
 .overlay.open .modal { transform: scale(1); }
 /* respect reduced-motion: no zoom/slide/page-fade for users who ask */
-@media (prefers-reduced-motion: reduce) { .overlay, .modal { transition: none; } .modal { transform: none; } .page.on, .tab-page.active, .tile, .set-pane, .jb-dd.open .jb-dd-menu { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .overlay, .modal { transition: none; } .modal { transform: none; } .page.on, .tab-page.active, .tile, .set-pane, .set-pane.active, .jb-dd.open .jb-dd-menu, .mring-arc { animation: none; transition: none; } #toast, .jb-toast { transition: opacity 0.12s ease; transform: translate(-50%, 0); } }
 @keyframes jb-modal-in { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .mh { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .mt { font-size: 17px; font-weight: 800; }
@@ -108,6 +108,10 @@ body.jb-noscroll { overflow: hidden; }
 @keyframes jb-pop  { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
 .jb-fade-in { animation: jb-fade 0.22s ease both; }
 .jb-rise-in { animation: jb-rise 0.34s cubic-bezier(.2,.7,.3,1) both; }
+/* Suite tab / page enter (Fit, Study, Finance, settings panes) */
+.page.on,
+.tab-page.active,
+.set-pane.active { animation: jb-fade 0.18s ease both; }
 /* press feedback + smooth transitions on shared interactive bits */
 .btn-primary, .jb-dd-btn, .cc-btn, .echk { transition: transform 0.09s ease, opacity 0.2s ease, border-color 0.15s ease, background 0.15s ease; }
 .btn-primary:active, .jb-dd-btn:active, .cc-btn:active, .echk:active { transform: scale(0.98); }
@@ -165,6 +169,43 @@ body.jb-noscroll { overflow: hidden; }
 .jb-outbox:hover { transform: translateY(-1px); }
 .jb-outbox-sync { opacity: 0.72; pointer-events: none; }
 .jb-outbox-ico { font-size: 14px; line-height: 1; }
+
+/* Shared toast — #toast in Fit/Notas/Study; .jb-toast for Hub / floating fallback */
+#toast,
+.jb-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 14px);
+  background: var(--surface, #1b1f32);
+  border: 1px solid var(--border, #2b3147);
+  color: var(--text, #e7eaf3);
+  padding: 12px 18px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  z-index: 100000;
+  white-space: nowrap;
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  transition: opacity 0.22s ease, transform 0.28s cubic-bezier(.2, .85, .3, 1), border-color 0.2s ease, background 0.2s ease;
+}
+#toast.show,
+.jb-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+#toast.ok,
+.jb-toast.ok {
+  border-color: color-mix(in srgb, var(--success, #34d399) 45%, var(--border, #2b3147));
+  background: color-mix(in srgb, var(--success, #34d399) 12%, var(--surface, #1b1f32));
+}
+
 @media (max-width: 540px) {
   .jb-outbox { top: auto; bottom: 72px; right: 12px; left: auto; }
 }

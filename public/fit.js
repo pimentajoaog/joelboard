@@ -1,13 +1,14 @@
 /* Joelboard Fit — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
 var DATA=null, fitGrid={}, editingEx=null, authDone=false;
-var FIT_TABS=[['Exercicios',['Nome','Grupo','ID']],['Treinos',['Nome','Itens','ID']],['Sessoes',['Data','Treino','Notas','ID']],['Series',['Sessao ID','Exercicio ID','Serie','Reps','Peso','ID']],['Config',['Chave','Valor']],['Peso',['Data','Peso','ID']]];
+var FIT_TABS=[['Exercicios',['Nome','Grupo','ID']],['Treinos',['Nome','Itens','ID']],['Sessoes',['Data','Treino','Notas','ID']],['Series',['Sessao ID','Exercicio ID','Serie','Reps','Peso','ID']],['Config',['Chave','Valor']],['Peso',['Data','Peso','ID']],['MacroFoods',['Nome','P/100g','C/100g','G/100g','K/100g','ID']],['MacroLog',['Data','Refeicao','Alimento','Gramas','Proteina','Carbs','Gordura','Kcal','Ref','Fonte','ID']]];
 var DEFAULT_TAGS=['Peito','Costas','Pernas','Glúteos','Ombros','Bíceps','Tríceps','Core','Panturrilha','Cardio','Outro'];
 var STARTER=[['Supino reto','Peito'],['Supino inclinado','Peito'],['Crucifixo','Peito'],['Crossover','Peito'],['Flexão','Peito'],['Puxada alta','Costas'],['Remada curvada','Costas'],['Remada baixa','Costas'],['Barra fixa','Costas'],['Levantamento terra','Costas'],['Agachamento','Pernas'],['Leg press','Pernas'],['Cadeira extensora','Pernas'],['Mesa flexora','Pernas'],['Afundo','Pernas'],['Hip thrust','Glúteos'],['Desenvolvimento','Ombros'],['Elevação lateral','Ombros'],['Elevação frontal','Ombros'],['Encolhimento','Ombros'],['Rosca direta','Bíceps'],['Rosca alternada','Bíceps'],['Rosca martelo','Bíceps'],['Tríceps na polia','Tríceps'],['Tríceps testa','Tríceps'],['Mergulho','Tríceps'],['Prancha','Core'],['Abdominal','Core'],['Panturrilha em pé','Panturrilha'],['Esteira','Cardio'],['Bicicleta','Cardio'],['Barra australiana','Costas'],['Chin-up (supinado)','Bíceps'],['Muscle-up','Costas'],['Flexão diamante','Tríceps'],['Flexão declinada','Peito'],['Pistol squat','Pernas'],['Agachamento búlgaro','Pernas'],['Ponte de glúteo','Glúteos'],['Elevação de pernas suspensa','Core'],['L-sit','Core'],['Prancha lateral','Core'],['Superman','Costas'],['Burpee','Cardio'],['Mountain climber','Core'],['Polichinelo','Cardio'],['Step-up (subida no banco)','Pernas'],['Dips de banco','Tríceps']];
 function $(id){ return document.getElementById(id); }
 function uuid(){ return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);}); }
 function loadingHtml(h){ $('loading').style.display='block'; $('loading').innerHTML=h; }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove('show');},2200); }
 function fitWriteErr(e){ toast('Erro: '+((e&&e.message)||'falha ao salvar')); }
 
@@ -83,32 +84,38 @@ function buildFit(t){
   config.schedule=(function(){ try{ var v=JSON.parse(config.schedule); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
   config.volgoals=(function(){ try{ var v=JSON.parse(config.volgoals); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
   config.exmodes=(function(){ try{ var v=JSON.parse(config.exmodes); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
+  config.macromeals=(function(){ try{ var v=JSON.parse(config.macromeals); return (v&&v.length)?v:[]; }catch(e){ return []; } })();
+  config.macrogoals=(function(){ try{ var v=JSON.parse(config.macrogoals); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
+  config.macroshow=(function(){ try{ var v=JSON.parse(config.macroshow); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
+  config.macrofavs=(function(){ try{ var v=JSON.parse(config.macrofavs); return (v&&v.length)?v:[]; }catch(e){ return []; } })();
   return {
     exercicios: body(t.Exercicios).filter(function(r){return r[0];}).map(function(r){ return { id:r[2], name:r[0], group:r[1]||'' }; }),
     treinos: body(t.Treinos).filter(function(r){return r[0];}).map(function(r){ var it=[]; try{it=JSON.parse(r[1]||'[]');}catch(e){} return { id:r[2], name:r[0], items:normItems(it) }; }),
     sessoes: body(t.Sessoes).filter(function(r){return r[0];}).map(function(r){ return { id:r[3], date:String(r[0]), treino:r[1]||'', notas:r[2]||'' }; }),
     series: body(t.Series).filter(function(r){return r[0]&&r[1];}).map(function(r){ return { id:r[5], sessaoId:String(r[0]), exId:String(r[1]), serie:Number(r[2])||0, reps:Number(r[3])||0, peso:Number(r[4])||0 }; }),
     pesos: body(t.Peso||[]).filter(function(r){return r[0];}).map(function(r){ return { id:r[2], date:String(r[0]), kg:Number(r[1])||0 }; }),
+    macrofoods: body(t.MacroFoods||[]).filter(function(r){return r[0];}).map(function(r){ return macroParseFood(r); }),
+    macrolog: body(t.MacroLog||[]).filter(function(r){return r[0];}).map(function(r){ return macroParseLog(r); }),
     config: config
   };
 }
 
 /* ---- render ---- */
-function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(!_fbooted){ _fbooted=true; if(!JB.tourDone('fit')) setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('fit', refreshData); } }
+function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(document.getElementById('p-macros')) renderMacros(); if(!_fbooted){ _fbooted=true; if(!JB.tourDone('fit')) setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('fit', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   var want=FIT_TABS.map(function(t){return t[0];}).filter(function(t){return fitGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
-    DATA=buildFit(by); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso();
+    DATA=buildFit(by); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(document.querySelector('#p-macros.on')) renderMacros();
   }).catch(function(){});
 }
 function tab(name){
-  ['hoje','treinos','exercicios','progresso'].forEach(function(n){ $('p-'+n).classList.toggle('on', n===name); });
+  ['hoje','treinos','exercicios','progresso','macros'].forEach(function(n){ $('p-'+n).classList.toggle('on', n===name); });
   document.querySelectorAll('.tabb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===name); });
   $('fab').style.display = (name==='exercicios'||name==='treinos') ? 'flex' : 'none';
-  if(name==='hoje') renderHoje(); else if(name==='treinos') renderTreinos(); else if(name==='exercicios') renderExercicios(); else if(name==='progresso'){ progEx=null; renderProgresso(); }
+  if(name==='hoje') renderHoje(); else if(name==='treinos') renderTreinos(); else if(name==='exercicios') renderExercicios(); else if(name==='progresso'){ progEx=null; renderProgresso(); } else if(name==='macros') renderMacros();
 }
 function renderExercicios(){
   var el=$('exList'); var ex=(DATA.exercicios||[]);
@@ -524,6 +531,7 @@ var FIT_TOUR=[
   { go:function(){ tab('treinos'); }, sel:'#p-treinos .btn', title:'Treinos', body:'Monte seus treinos (splits) com exercícios, séries e descanso.' },
   { go:function(){ tab('exercicios'); }, sel:'#p-exercicios .btn', title:'Exercícios', body:'Sua biblioteca — carga, peso corporal ou por tempo (ex.: prancha).' },
   { go:function(){ tab('progresso'); }, sel:'#p-progresso', title:'Progresso', body:'Evolução de carga, peso corporal e tempo por exercício.' },
+  { go:function(){ tab('macros'); }, sel:'#p-macros', title:'Macros', body:'Contador de macros por refeição — busque alimentos, ajuste gramas e acompanhe metas diárias.' },
   { sel:'.acct .lnk', title:'Ajustes', body:'Tema, programa e este tutorial ficam aqui.' }
 ];
 function verTutorial(){ closeSettings(); setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 250); }

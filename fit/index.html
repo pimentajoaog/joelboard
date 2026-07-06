@@ -32,6 +32,7 @@
     <button class="tabb" data-tab="treinos" onclick="tab('treinos')">Treinos</button>
     <button class="tabb" data-tab="exercicios" onclick="tab('exercicios')">Exercícios</button>
     <button class="tabb" data-tab="progresso" onclick="tab('progresso')">Progresso</button>
+    <button class="tabb" data-tab="macros" onclick="tab('macros')">Macros</button>
   </div>
 
   <div class="page on" id="p-hoje"><div id="hoje"></div></div>
@@ -41,6 +42,7 @@
     <div id="exList"></div>
   </div>
   <div class="page" id="p-progresso"><div id="prog"></div></div>
+  <div class="page" id="p-macros"></div>
 
   <div class="foot">© 2026 Joel Soluções LTDA</div>
 </div>
@@ -89,6 +91,70 @@
 <div class="overlay" id="switchOverlay" onclick="if(event.target===this)closeSwitch()">
   <div class="modal"><div class="mh"><div class="mt">Escolher treino</div><button class="x" onclick="closeSwitch()">✕</button></div><div id="switchList" style="max-height:380px;overflow-y:auto"></div></div>
 </div>
+
+<div class="overlay" id="macroAddOverlay" onclick="if(event.target===this)macroCloseAdd()">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="macroAddTitle">Adicionar alimento</div><button class="x" onclick="macroCloseAdd()">✕</button></div>
+    <div id="macroStep1">
+      <div class="fg"><input class="field" id="macroSearch" placeholder="🔎 Buscar alimento…" oninput="onMacroSearch(this.value)"></div>
+      <div id="macroFavQuick" class="mfav-row" style="margin-bottom:10px"></div>
+      <div id="macroSearchList" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;padding:4px;background:var(--surface2)"></div>
+    </div>
+    <div id="macroStep2" style="display:none">
+      <div class="fg"><label class="fl">Quantidade (gramas)</label><input class="field" id="macroGrams" type="number" inputmode="decimal" oninput="macroUpdatePreview()"></div>
+      <div id="macroPresets" class="mfav-row" style="margin-bottom:10px"></div>
+      <div class="rg" id="macroPreview" style="margin-bottom:12px"></div>
+      <button class="btn-primary" onclick="macroConfirmAdd()">Adicionar à refeição</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="macroEditOverlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:340px">
+    <div class="mh"><div class="mt" id="macroEditName">Editar</div><button class="x" onclick="document.getElementById('macroEditOverlay').classList.remove('open')">✕</button></div>
+    <div class="fg"><label class="fl">Gramas</label><input class="field" id="macroEditGrams" type="number" inputmode="decimal" oninput="macroEditPreview()"></div>
+    <div class="rg" id="macroEditPreview" style="margin-bottom:12px"></div>
+    <button class="btn-primary" onclick="macroSaveEdit()">Salvar</button>
+  </div>
+</div>
+
+<div class="overlay" id="macroCustomOverlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:360px">
+    <div class="mh"><div class="mt">Alimento custom</div><button class="x" onclick="document.getElementById('macroCustomOverlay').classList.remove('open')">✕</button></div>
+    <div class="fg"><label class="fl">Nome</label><input class="field" id="macroCustomName"></div>
+    <div class="fg"><label class="fl">Proteína / 100g</label><input class="field" id="macroCustomP" type="number" inputmode="decimal"></div>
+    <div class="fg"><label class="fl">Carboidratos / 100g</label><input class="field" id="macroCustomC" type="number" inputmode="decimal"></div>
+    <div class="fg"><label class="fl">Gordura / 100g</label><input class="field" id="macroCustomG" type="number" inputmode="decimal"></div>
+    <div class="fg"><label class="fl">Kcal / 100g</label><input class="field" id="macroCustomK" type="number" inputmode="decimal"></div>
+    <button class="btn-primary" onclick="macroSaveCustom()">Salvar</button>
+  </div>
+</div>
+
+<div class="overlay" id="macroSetOverlay" onclick="if(event.target===this)closeMacroSettings()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Metas e refeições</div><button class="x" onclick="closeMacroSettings()">✕</button></div>
+    <div class="fg"><label class="fl">Metas diárias</label>
+      <div class="macrogoals-grid">
+        <div><span class="fl">Proteína (g)</span><input class="field" id="macroGoalP" type="number"></div>
+        <div><span class="fl">Carbs (g)</span><input class="field" id="macroGoalC" type="number"></div>
+        <div><span class="fl">Gordura (g)</span><input class="field" id="macroGoalG" type="number"></div>
+        <div><span class="fl">Kcal</span><input class="field" id="macroGoalK" type="number"></div>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Exibir no resumo</label>
+      <div class="mfav-row">
+        <button class="mtoggle on" id="macroShowK" onclick="toggleMacroShow(this)">Kcal</button>
+        <button class="mtoggle on" id="macroShowP" onclick="toggleMacroShow(this)">Proteína</button>
+        <button class="mtoggle on" id="macroShowC" onclick="toggleMacroShow(this)">Carbs</button>
+        <button class="mtoggle on" id="macroShowG" onclick="toggleMacroShow(this)">Gordura</button>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Refeições</label><div id="macroMealsEdit"></div></div>
+    <div class="fg"><label class="fl">Alimentos custom</label><div id="macroCustomList"></div><button class="btn ghost" style="width:100%;margin-top:8px" onclick="macroOpenCustom()">+ Novo alimento custom</button></div>
+    <button class="btn-primary" onclick="saveMacroSettings()">Salvar</button>
+  </div>
+</div>
+
 <div class="overlay" id="setOverlay" onclick="if(event.target===this)closeSettings()">
   <div class="modal">
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>
@@ -131,5 +197,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 <script src="/joelboard.js"></script>
 <script src="/fit.js"></script>
+<script src="/fit-macros.js"></script>
 </body>
 </html>

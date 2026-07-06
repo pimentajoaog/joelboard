@@ -7,7 +7,7 @@
     "dev": "node scripts/zip-extensions.mjs && vite",
     "build": "node scripts/bundle-finance-math.mjs && node scripts/bump-sw.mjs && node scripts/zip-extensions.mjs && vite build",
     "preview": "vite preview",
-    "check": "node scripts/bundle-finance-math.mjs && node --check public/joelboard.js && node --check public/finance-math.js && node --check public/finance-sheets.js && node --check public/finance.js && node --check public/notas.js && node --check public/study.js && node --check public/fit.js && node --check public/hub.js",
+    "check": "node scripts/bundle-finance-math.mjs && node --check public/joelboard.js && node --check public/finance-math.js && node --check public/finance-sheets.js && node --check public/finance.js && node --check public/notas.js && node --check public/study.js && node --check public/fit.js && node --check public/fit-macros.js && node --check public/hub.js",
     "test": "node --test tests/*.test.mjs",
     "zip:extensions": "node scripts/zip-extensions.mjs"
   },

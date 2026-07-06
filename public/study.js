@@ -94,7 +94,7 @@ function buildStudy(t){
     config: config
   };
 }
-function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); render(); if(!_sbooted){ _sbooted=true; if(!JB.tourDone('study')) setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); } }
+function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); render(); if(!_sbooted){ _sbooted=true; if(!JB.tourDone('study')) setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('study', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   var want=STUDY_TABS.map(function(t){return t[0];}).filter(function(t){return studyGrid[t]!=null;});

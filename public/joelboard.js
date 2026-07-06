@@ -266,17 +266,27 @@
     opts = opts || {};
     var m = (method || 'GET').toUpperCase();
     var canQueue = opts.queue !== false && MUTATING[m] && isGoogleApiUrl(url) && !needsResponse(m, url, body);
+    var sid = sheetIdFromUrl(url);
+    var isMutating = !!MUTATING[m] && isGoogleApiUrl(url);
+    function afterWrite(res, queued){ if (sid && isMutating && !queued) bumpSheetGen(sid); return res; }
+    function runLive(){
+      var p = (sid && isMutating) ? waitForLock(sid).then(function () {
+        if (!tryAcquireLock(sid)) return Promise.reject(new Error('JB_WRITE_LOCK'));
+        return executeApi(m, url, body).finally(function () { releaseLock(sid); });
+      }) : executeApi(m, url, body);
+      return p.then(function (res) { return afterWrite(res, false); });
+    }
     if (canQueue && !navigator.onLine) {
       return outboxEnqueue(m, url, body).then(function (item) {
         queueToast();
-        return { __jbQueued: true, outboxId: item.id };
+        return afterWrite({ __jbQueued: true, outboxId: item.id }, true);
       });
     }
-    return executeApi(m, url, body).catch(function (err) {
+    return runLive().catch(function (err) {
       if (!canQueue || !isQueueableError(err)) return Promise.reject(err);
       return outboxEnqueue(m, url, body).then(function (item) {
         queueToast();
-        return { __jbQueued: true, outboxId: item.id };
+        return afterWrite({ __jbQueued: true, outboxId: item.id }, true);
       });
     });
   }
@@ -290,6 +300,8 @@
       if (!items.length) return obRefreshCount();
       var item = items[0];
       return executeApi(item.method, item.url, item.body).then(function () {
+        var sid = sheetIdFromUrl(item.url);
+        if (sid) bumpSheetGen(sid);
         return obDel(item.id).then(function () { items.shift(); return step(items); });
       }).catch(function (err) {
         item.attempts = (item.attempts || 0) + 1;
@@ -347,6 +359,91 @@
   function getSheetId(app){ var v = lg(sheetKey(app)); if (!v && app === 'finance') { v = lg('joelboard_sheet_id'); if (v) ls(sheetKey(app), v); } return v || ''; }
   function setSheetId(app, id){ ls(sheetKey(app), id); }
   function clearSheetId(app){ lr(sheetKey(app)); if (app === 'finance') lr('joelboard_sheet_id'); }
+
+  // --- multi-tab write safety: generation counter + soft write lock (shared localStorage + BroadcastChannel) ---
+  var TAB_ID = 't' + Math.random().toString(36).slice(2, 10);
+  var LOCK_MS = 22000;
+  var SYNC_BC = null;
+  var sheetWatchers = {};
+  var stalePending = false, staleFn = null;
+  try { SYNC_BC = new BroadcastChannel('jb-sheet-sync'); } catch (_) {}
+  function genKey(sid){ return 'jb_gen_' + sid; }
+  function lockKey(sid){ return 'jb_lock_' + sid; }
+  function sheetIdFromUrl(url){ var m = String(url || '').match(/\/spreadsheets\/([a-zA-Z0-9_-]{20,})/); return m ? m[1] : ''; }
+  function bumpSheetGen(sid){
+    if (!sid) return 0;
+    var n = Number(lg(genKey(sid)) || 0) + 1;
+    ls(genKey(sid), String(n));
+    if (SYNC_BC) try { SYNC_BC.postMessage({ t: 'gen', sid: sid, gen: n, from: TAB_ID }); } catch (_) {}
+    if (sheetWatchers[sid]) sheetWatchers[sid].localGen = n;
+    return n;
+  }
+  function lockOwner(sid){
+    var cur = lg(lockKey(sid));
+    if (!cur) return null;
+    var p = cur.split(':');
+    if (Date.now() - Number(p[1] || 0) > LOCK_MS) { lr(lockKey(sid)); return null; }
+    return p[0] || null;
+  }
+  function tryAcquireLock(sid){
+    if (!sid) return true;
+    var owner = lockOwner(sid);
+    if (owner && owner !== TAB_ID) return false;
+    ls(lockKey(sid), TAB_ID + ':' + Date.now());
+    return true;
+  }
+  function releaseLock(sid){ if (!sid) return; var cur = lg(lockKey(sid)); if (cur && cur.indexOf(TAB_ID + ':') === 0) lr(lockKey(sid)); }
+  function waitForLock(sid, n){
+    n = n || 0;
+    if (!lockOwner(sid) || lockOwner(sid) === TAB_ID) return Promise.resolve();
+    if (n >= 4) return Promise.reject(new Error('JB_WRITE_LOCK'));
+    return new Promise(function (r) { setTimeout(r, 700); }).then(function () { return waitForLock(sid, n + 1); });
+  }
+  function triggerStale(onStale){
+    if (document.querySelector('.overlay.open')) {
+      stalePending = true;
+      staleFn = onStale;
+      jbToast('Outra aba salvou — feche o formulário para atualizar.');
+      return;
+    }
+    jbToast('Atualizado em outra aba — recarregando…');
+    if (onStale) onStale();
+  }
+  function dispatchGen(sid, gen){
+    var w = sheetWatchers[sid];
+    if (!w || !gen || gen <= w.localGen) return;
+    w.localGen = gen;
+    triggerStale(w.fn);
+  }
+  function watchSheet(app, onStale){
+    var sid = getSheetId(app);
+    if (!sid || typeof onStale !== 'function') return;
+    sheetWatchers[sid] = { localGen: Number(lg(genKey(sid)) || 0), fn: onStale, app: app };
+  }
+  function initSheetSync(){
+    window.addEventListener('storage', function (e) {
+      if (!e.key || e.key.indexOf('jb_gen_') !== 0) return;
+      dispatchGen(e.key.slice(7), Number(e.newValue || 0));
+    });
+    if (SYNC_BC) {
+      SYNC_BC.onmessage = function (ev) {
+        var d = ev.data;
+        if (!d || d.t !== 'gen' || d.from === TAB_ID) return;
+        dispatchGen(d.sid, d.gen);
+      };
+    }
+    try {
+      new MutationObserver(function () {
+        if (stalePending && !document.querySelector('.overlay.open')) {
+          stalePending = false;
+          var fn = staleFn; staleFn = null;
+          jbToast('Atualizado em outra aba — recarregando…');
+          if (fn) fn();
+        }
+      }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    } catch (_) {}
+  }
+  whenReady(initSheetSync);
 
   // --- shared sheet resolution: search by app-specific name, validate required tabs, auto-pick a single match, self-heal a stale/wrong id ---
   function sheetTabs(id){
@@ -431,14 +528,22 @@
     var btn = opts.btn, prevLabel = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; if (opts.busy) btn.textContent = opts.busy; }
     function restore(){ if (btn) { btn.disabled = false; btn.textContent = prevLabel; } }
-    return Promise.resolve().then(function(){ return opts.run(); })
-      .then(function(res){ restore(); if (opts.onSuccess) opts.onSuccess(res); return res; })
-      .catch(function(err){
-        restore();
-        if (opts.onError) opts.onError(err);
-        else jbToast('Não foi possível salvar. Tente de novo.');
-        return Promise.reject(err);
-      });
+    function attempt(retry){
+      return Promise.resolve().then(function(){ return opts.run(); })
+        .then(function(res){ restore(); if (opts.onSuccess) opts.onSuccess(res); return res; })
+        .catch(function(err){
+          if (!retry && err && err.message === 'JB_WRITE_LOCK') {
+            jbToast('Outra aba está salvando — tentando de novo…');
+            return new Promise(function (r) { setTimeout(r, 900); }).then(function () { return attempt(true); });
+          }
+          restore();
+          if (opts.onError) opts.onError(err);
+          else if (err && err.message === 'JB_WRITE_LOCK') jbToast('Outra aba está salvando. Tente de novo em instantes.');
+          else jbToast('Não foi possível salvar. Tente de novo.');
+          return Promise.reject(err);
+        });
+    }
+    return attempt(false);
   }
 
   var SIGNIN_ERR = { auth_failed: 'Não foi possível entrar. Tente de novo.', cancelled: 'Login cancelado.', silent_timeout: 'Login expirou. Tente de novo.', signed_out: 'Você saiu. Entre de novo.' };
@@ -658,7 +763,7 @@
     requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
-    feedback: feedback, toast: jbToast, persist: persist, onTabVisible: onTabVisible, confirm: confirm, whenReady: whenReady,
+    feedback: feedback, toast: jbToast, persist: persist, onTabVisible: onTabVisible, watchSheet: watchSheet, confirm: confirm, whenReady: whenReady,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt
   };

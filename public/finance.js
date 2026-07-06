@@ -847,7 +847,7 @@ function boot(data) {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   if (!profileIsSet()) startWizard();
-  if (!window._jbTabSync) { window._jbTabSync = 1; JB.onTabVisible(function(){ if (document.getElementById('app').style.display !== 'none') reload(); }); }
+  if (!window._jbTabSync) { window._jbTabSync = 1; JB.onTabVisible(function(){ if (document.getElementById('app').style.display !== 'none') reload(); }); JB.watchSheet('finance', reload); }
 }
 function reload() { jbLoad().then(function(d){ DATA = d; rebuildCatColors(); populateCategoryDropdowns(); renderAll(); renderCatList(); }).catch(function(e){ showToast(t('err.prefix')+e.message,'error'); }); }
 function manualRefresh() {

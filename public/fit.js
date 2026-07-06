@@ -94,7 +94,7 @@ function buildFit(t){
 }
 
 /* ---- render ---- */
-function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(!_fbooted){ _fbooted=true; if(!JB.tourDone('fit')) setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); } }
+function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(!_fbooted){ _fbooted=true; if(!JB.tourDone('fit')) setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('fit', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   var want=FIT_TABS.map(function(t){return t[0];}).filter(function(t){return fitGrid[t]!=null;});

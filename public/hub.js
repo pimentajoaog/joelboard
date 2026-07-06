@@ -2,6 +2,21 @@
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
 var greetEl=document.getElementById("greet"), btnEl=document.getElementById("authbtn");
 var _hbooted=false;
+var HUB_NEWS=[
+  { app:'fit', kind:'novo', text:'Aba Macros — registre alimentos por refeição e acompanhe metas de P/C/G e kcal.' },
+  { app:'finance', kind:'correcao', text:'Editar conta “só deste mês” não marca mais como paga automaticamente.' },
+  { app:'notas', kind:'correcao', text:'Erros ao salvar na planilha agora aparecem em vez de falhar em silêncio.' },
+  { app:'notas', kind:'correcao', text:'Botão de data do Prazo no editor com tamanho normal.' },
+  { app:'mini', kind:'novo', text:'Refresh: contador na aba durante auto-refresh; atalho e sites permitidos corrigidos.' }
+];
+var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', mini:'Mini' };
+var HUB_NEWS_KIND={ novo:'Novo', correcao:'Correção' };
+function renderHubNews(){
+  var el=document.getElementById('hubNews'); if(!el) return;
+  el.innerHTML='<div class="nov-title">Novidades</div><ul class="nov-list">'+HUB_NEWS.map(function(n){
+    return '<li class="nov-item"><div class="nov-meta"><span class="nov-app '+n.app+'">'+esc(HUB_NEWS_LABEL[n.app]||n.app)+'</span><span class="nov-kind '+n.kind+'">'+esc(HUB_NEWS_KIND[n.kind]||n.kind)+'</span></div>'+esc(n.text)+'</li>';
+  }).join('')+'</ul>';
+}
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só.' },
   { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas ou Mini (extensões Chrome).' },
@@ -168,6 +183,7 @@ function openMini(){
 JB.applySkin('hub');
 if (JB.hasSession()) { JB.ensureToken(false).then(setGreet).catch(setGreet); } else { setGreet(); }
 document.addEventListener('DOMContentLoaded',function(){
+  renderHubNews();
   var addBtn=document.getElementById('miniSiteAdd');
   var inp=document.getElementById('miniSiteInput');
   if(addBtn) addBtn.onclick=miniAddSite;

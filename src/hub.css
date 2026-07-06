@@ -10,7 +10,9 @@
 button,input,select,textarea{ font-family:inherit; }
 body{ @apply min-h-screen text-ink; background:var(--bg); font-family:var(--font-body); padding:44px 22px 70px; }
 
-.wrap{ @apply max-w-[720px] mx-auto; }
+.wrap{ @apply max-w-[980px] mx-auto; }
+.hub-body{ display:grid; grid-template-columns:minmax(0,1fr) 248px; gap:28px; align-items:start; }
+@media (max-width:900px){ .hub-body{ grid-template-columns:1fr; } .novidades{ position:static; } }
 .top{ @apply flex items-center justify-between gap-[14px] flex-wrap; }
 .brand{ @apply flex items-center gap-3; }
 .brand img{ @apply w-10 h-10 rounded-[11px] block; }
@@ -31,6 +33,21 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 .tile.ghost{ @apply opacity-[0.62]; }
 .soon{ @apply mt-[13px] text-[10px] font-bold uppercase tracking-[1px] text-muted bg-surface2 border border-border rounded-full px-[11px] py-1; }
 .foot{ @apply mt-10 text-[11px] text-muted opacity-60 text-center; }
+
+/* Novidades sidebar */
+.novidades{ position:sticky; top:24px; background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:18px 16px; }
+.nov-title{ font-size:13px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:var(--muted); margin-bottom:14px; font-family:var(--font-display); }
+.nov-list{ display:flex; flex-direction:column; gap:12px; list-style:none; }
+.nov-item{ font-size:12.5px; line-height:1.45; color:var(--text); }
+.nov-meta{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:5px; }
+.nov-app{ font-size:10px; font-weight:800; letter-spacing:.3px; text-transform:uppercase; border-radius:99px; padding:2px 8px; }
+.nov-app.fit{ background:rgba(251,113,133,0.16); color:var(--fit); }
+.nov-app.finance{ background:rgba(52,211,153,0.16); color:var(--income); }
+.nov-app.notas{ background:rgba(245,158,11,0.16); color:var(--notas); }
+.nov-app.mini{ background:rgba(34,211,238,0.14); color:var(--mini); }
+.nov-kind{ font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+.nov-kind.novo{ color:var(--primary); }
+.nov-kind.correcao{ color:#fbbf24; }
 
 .gear{ @apply bg-surface2 border border-border text-muted text-sm rounded-full w-8 h-8 cursor-pointer; font-family:inherit; }
 .gear:hover{ @apply border-primary text-primary; }

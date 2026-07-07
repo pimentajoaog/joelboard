@@ -22,6 +22,9 @@ var searchTimer = null;
 function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+function attrEsc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
 function userLabel(em) { return USER_NAMES[(em || '').toLowerCase()] || (em || '').split('@')[0] || '?'; }
 function julioelAllowed() { return JULIOEL_EMAILS.indexOf((JB.email() || '').toLowerCase()) > -1; }
 function julioelUnlocked() { try { return localStorage.getItem('jb_julioel') === '1'; } catch (_) { return false; } }
@@ -50,9 +53,30 @@ function parseMediaId(raw) {
 }
 function typeIcon(type) { return type === 'tv' ? '📺' : (type === 'game' ? '🎮' : '🎬'); }
 function typeLabel(type) { return type === 'tv' ? 'Série' : (type === 'game' ? 'Jogo' : 'Filme'); }
+function looksLikePosterPath(p) {
+  p = String(p || '').trim();
+  if (!p) return false;
+  if (/^https?:\/\//i.test(p) || p.indexOf('image.tmdb.org') > -1) return true;
+  return p.charAt(0) === '/' && /\.(jpg|jpeg|png|webp)$/i.test(p);
+}
+function normalizePosterPath(p) {
+  p = String(p || '').trim();
+  if (!p) return '';
+  if (/^https?:\/\//i.test(p)) return p;
+  if (p.indexOf('image.tmdb.org') > -1) return p.indexOf('http') === 0 ? p : 'https:' + (p.indexOf('//') === 0 ? p : '//' + p.replace(/^\/\//, ''));
+  if (p.charAt(0) !== '/') p = '/' + p;
+  return p;
+}
 function posterUrl(path) {
+  path = normalizePosterPath(path);
   if (!path) return '';
-  return path.indexOf('http') === 0 ? path : TMDB_IMG + path;
+  if (/^https?:\/\//i.test(path)) return path;
+  return TMDB_IMG + path;
+}
+function imgTag(path, alt) {
+  var u = posterUrl(path);
+  if (!u) return '';
+  return '<img src="' + attrEsc(u) + '" alt="' + attrEsc(alt || '') + '" loading="lazy" referrerpolicy="no-referrer">';
 }
 
 function migrateAppKeys() {
@@ -142,30 +166,64 @@ function ensureHeaders() {
 
 function loadAll() {
   return Promise.all([
-    JB.api('GET', ssUrl('/values/' + encodeURIComponent('Filmes') + '?valueRenderOption=FORMATTED_VALUE')),
+    JB.api('GET', ssUrl('/values/' + encodeURIComponent('Filmes') + '?valueRenderOption=UNFORMATTED_VALUE')),
     JB.api('GET', ssUrl('/values/' + encodeURIComponent('Avaliacoes') + '?valueRenderOption=FORMATTED_VALUE')),
     JB.api('GET', ssUrl('/values/' + encodeURIComponent('Assistidos') + '?valueRenderOption=FORMATTED_VALUE')).catch(function () { return { values: [] }; })
   ]).then(function (res) {
     media = parseMedia(res[0].values || []);
     ratings = parseRatings(res[1].values || []);
     sessions = parseSessions(res[2].values || []);
+    return repairMediaPosters();
   });
+}
+
+function repairMediaPosters() {
+  if (!tmdbKey()) return Promise.resolve();
+  var todo = media.filter(function (m) { return m.type !== 'game' && !looksLikePosterPath(m.poster); });
+  if (!todo.length) return Promise.resolve();
+  return todo.reduce(function (chain, m) {
+    return chain.then(function () { return fetchPosterFromTmdb(m); });
+  }, Promise.resolve());
+}
+
+function fetchPosterFromTmdb(m) {
+  var parsed = parseMediaId(m.key);
+  if (parsed.type === 'game') return Promise.resolve();
+  var apiPath = parsed.type === 'tv' ? ('/tv/' + parsed.id) : ('/movie/' + parsed.id);
+  return fetch('https://api.themoviedb.org/3' + apiPath + '?api_key=' + encodeURIComponent(tmdbKey()) + '&language=pt-BR')
+    .then(function (r) { return r.json(); })
+    .then(function (item) {
+      if (!item.poster_path) return;
+      m.poster = item.poster_path;
+      if (!m.sheetRow) return;
+      var col = m.layout === 'new' ? 'E' : 'D';
+      return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Filmes!' + col + m.sheetRow) + '?valueInputOption=RAW'), { values: [[item.poster_path]] });
+    })
+    .catch(function () {});
 }
 
 function reloadAll() { return loadAll().then(function () { renderMain(); if (detailId) openDetail(detailId); }); }
 
 function parseMedia(rows) {
   var out = [];
+  var header = rows[0] || [];
+  var hasTipoCol = String(header[1] || '').toLowerCase() === 'tipo';
   for (var i = 1; i < rows.length; i++) {
     var r = rows[i] || [];
     if (!r[0]) continue;
-    var isNew = r[1] === 'Filme' || r[1] === 'Série' || r[1] === 'Jogo';
-    if (isNew) {
-      var type = r[1] === 'Série' ? 'tv' : (r[1] === 'Jogo' ? 'game' : 'movie');
-      out.push({ key: String(r[0]), type: type, title: String(r[2] || ''), year: String(r[3] || ''), poster: String(r[4] || ''), added: String(r[5] || '') });
+    var useNew = hasTipoCol && (r[1] === 'Filme' || r[1] === 'Série' || r[1] === 'Jogo');
+    if (useNew) {
+      var typeN = r[1] === 'Série' ? 'tv' : (r[1] === 'Jogo' ? 'game' : 'movie');
+      out.push({
+        key: String(r[0]), type: typeN, title: String(r[2] || ''), year: String(r[3] || ''),
+        poster: String(r[4] || ''), added: String(r[5] || ''), sheetRow: i + 1, layout: 'new'
+      });
     } else {
       var parsed = parseMediaId(r[0]);
-      out.push({ key: parsed.key, type: parsed.type, title: String(r[1] || ''), year: String(r[2] || ''), poster: String(r[3] || ''), added: String(r[4] || '') });
+      out.push({
+        key: parsed.key, type: parsed.type, title: String(r[1] || ''), year: String(r[2] || ''),
+        poster: String(r[3] || ''), added: String(r[4] || ''), sheetRow: i + 1, layout: 'old'
+      });
     }
   }
   return out;
@@ -260,9 +318,8 @@ function renderMain() {
       return '<div class="who">' + esc(userLabel(em)) + '</div><div class="row">' + starsHtml(rt.stars) + '</div>';
     }).join('');
     var latest = latestSession(m.key);
-    var purl = posterUrl(m.poster);
-    html += '<div class="mcard" style="animation-delay:' + (idx * 0.04) + 's" onclick="openDetail(\'' + esc(m.key) + '\')">'
-      + '<div class="mposter">' + (purl ? '<img src="' + esc(purl) + '" alt="">' : '<span class="ph">' + typeIcon(m.type) + '</span>')
+    html += '<div class="mcard" style="animation-delay:' + (idx * 0.04) + 's" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
+      + '<div class="mposter">' + (looksLikePosterPath(m.poster) ? imgTag(m.poster, m.title) : '<span class="ph">' + typeIcon(m.type) + '</span>')
       + '<span class="mbadge">' + typeIcon(m.type) + '</span></div>'
       + '<div class="mbody"><div class="mtitle">' + esc(m.title) + '</div><div class="myear">' + esc(m.year) + '</div>'
       + (latest ? '<div class="mlast"><span class="ml-dot"></span>' + esc(JB.fmtDate(latest.date)) + '</div>' : '')
@@ -296,9 +353,9 @@ function runSearch(q) {
         var inLib = media.some(function (x) { return x.key === key; });
         var title = type === 'tv' ? (item.name || '') : (item.title || '');
         var year = String((type === 'tv' ? item.first_air_date : item.release_date) || '').slice(0, 4) || '—';
-        var poster = item.poster_path ? TMDB_IMG + item.poster_path : '';
+        var poster = item.poster_path ? normalizePosterPath(item.poster_path) : '';
         return '<div class="srow" onclick="addFromTmdb(\'' + type + '\',' + item.id + ')">'
-          + (poster ? '<img src="' + esc(poster) + '" alt="">' : '<div class="ph">' + typeIcon(type) + '</div>')
+          + (poster ? imgTag(poster, title) : '<div class="ph">' + typeIcon(type) + '</div>')
           + '<div class="info"><div class="t">' + esc(title) + '</div><div class="y">'
           + esc(typeLabel(type)) + ' · ' + esc(year) + (inLib ? ' · na prateleira' : '') + '</div></div></div>';
       }).join('') + '</div>';
@@ -328,6 +385,18 @@ function addFromTmdb(type, tmdbId) {
     .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
 }
 
+function sessRowHtml(s, isLatest) {
+  var del = canEditPrateleira() ? '<button type="button" class="sess-del" onclick="event.stopPropagation();deleteSession(' + s.sheetRow + ')" title="Excluir registro">✕</button>' : '';
+  return '<div class="sess-row' + (isLatest ? ' latest' : '') + '">'
+    + '<div class="sr-main"><span class="sr-date">' + esc(JB.fmtDate(s.date)) + '</span><span class="sr-who">' + esc(userLabel(s.email)) + '</span></div>'
+    + (s.note ? '<span class="sr-note">' + esc(s.note) + '</span>' : '')
+    + del + '</div>';
+}
+
+function canEditPrateleira() {
+  return JULIOEL_EMAILS.indexOf((JB.email() || '').toLowerCase()) > -1;
+}
+
 function sessionBlockHtml(key) {
   var list = sessionsFor(key);
   if (!list.length) {
@@ -335,18 +404,22 @@ function sessionBlockHtml(key) {
   }
   var latest = list[0];
   var hist = list.slice(1);
-  var histHtml = hist.map(function (s) {
-    return '<div class="sess-row"><span class="sr-date">' + esc(JB.fmtDate(s.date)) + '</span><span class="sr-who">' + esc(userLabel(s.email)) + '</span>'
-      + (s.note ? '<span class="sr-note">' + esc(s.note) + '</span>' : '') + '</div>';
-  }).join('');
   return '<div class="sess-block"><div class="sess-label">Assistidos</div>'
-    + '<div class="sess-latest' + (hist.length ? ' has-more' : '') + '"' + (hist.length ? ' onclick="toggleSessHist()"' : '') + '>'
-    + '<div class="sl-main"><span class="sl-when">' + esc(JB.fmtDate(latest.date)) + '</span><span class="sl-who">' + esc(userLabel(latest.email)) + '</span></div>'
-    + (latest.note ? '<div class="sl-note">' + esc(latest.note) + '</div>' : '')
-    + (hist.length ? '<div class="sl-hint">' + hist.length + ' data' + (hist.length > 1 ? 's' : '') + ' anterior' + (hist.length > 1 ? 'es' : '') + ' · toque para ver</div>' : '')
-    + '</div>'
-    + (hist.length ? '<div id="sessHist" class="sess-hist' + (sessHistOpen ? '' : ' hidden') + '">' + histHtml + '</div>' : '')
+    + sessRowHtml(latest, true)
+    + (hist.length ? '<div class="sl-hint' + (hist.length ? ' tap' : '') + '" onclick="toggleSessHist()">' + hist.length + ' data' + (hist.length > 1 ? 's' : '') + ' anterior' + (hist.length > 1 ? 'es' : '') + ' · toque para ver</div>' : '')
+    + (hist.length ? '<div id="sessHist" class="sess-hist' + (sessHistOpen ? '' : ' hidden') + '">' + hist.map(function (s) { return sessRowHtml(s, false); }).join('') + '</div>' : '')
     + '</div>';
+}
+
+function deleteSession(sheetRow) {
+  if (!sheetRow || !sheetGrid || sheetGrid.Assistidos == null) return;
+  JB.confirm('Excluir este registro?', 'A data assistida será removida da prateleira.', function () {
+    JB.api('POST', ssUrl(':batchUpdate'), {
+      requests: [{ deleteDimension: { range: { sheetId: sheetGrid.Assistidos, dimension: 'ROWS', startIndex: sheetRow - 1, endIndex: sheetRow } } }]
+    }).then(function () { return reloadAll(); })
+      .then(function () { JB.toast('✓ Removido'); })
+      .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
+  }, { yes: 'Excluir', no: 'Cancelar', danger: true });
 }
 
 function logFormHtml() {
@@ -364,7 +437,6 @@ function openDetail(id) {
   var m = media.find(function (x) { return x.key === String(id); });
   if (!m) return;
   document.getElementById('detailTitle').textContent = m.title;
-  var poster = posterUrl(m.poster);
   var rs = ratingsFor(m.key);
   var myEm = (JB.email() || '').toLowerCase();
   var blocks = JULIOEL_EMAILS.map(function (em) {
@@ -385,7 +457,7 @@ function openDetail(id) {
       + '<div class="rev-count"><span class="rc">' + String((rt.review || '').length) + '</span>/' + REVIEW_MAX + '</div></div>';
   }).join('');
   document.getElementById('detailBody').innerHTML = '<div class="dhero">'
-    + (poster ? '<img src="' + esc(poster) + '" alt="">' : '<div class="ph">' + typeIcon(m.type) + '</div>')
+    + (looksLikePosterPath(m.poster) ? imgTag(m.poster, m.title) : '<div class="ph">' + typeIcon(m.type) + '</div>')
     + '<div class="dmeta"><h2>' + esc(m.title) + '</h2><p>' + esc(typeLabel(m.type)) + ' · ' + esc(m.year) + '</p></div></div>'
     + sessionBlockHtml(m.key) + logFormHtml() + blocks
     + (JULIOEL_EMAILS.indexOf(myEm) > -1 ? '<button class="btn-primary" style="width:100%;margin-top:4px" onclick="saveDetail()">Salvar minha avaliação</button>' : '');

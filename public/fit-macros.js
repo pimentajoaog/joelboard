@@ -5,8 +5,8 @@ var MACRO_MEALS_DEFAULT = [
   { id: 'dinner', name: 'Jantar', order: 2 },
   { id: 'snacks', name: 'Lanches', order: 3 }
 ];
-var MACRO_GOALS_DEFAULT = { p: 150, c: 200, g: 65, f: 25, kcal: 2200 };
-var MACRO_SHOW_DEFAULT = { p: true, c: true, g: true, f: true, kcal: true };
+var MACRO_GOALS_DEFAULT = { p: 150, c: 200, g: 65, f: 25, sf: 10, kcal: 2200 };
+var MACRO_SHOW_DEFAULT = { p: true, c: true, g: true, f: true, sf: true, kcal: true };
 var MACRO_PRESETS_GLOBAL = [
   { l: '100 g', g: 100 }, { l: '50 g', g: 50 }, { l: '30 g', g: 30 },
   { l: '1 colher sopa (~15 g)', g: 15 }, { l: '1 colher chá (~5 g)', g: 5 }
@@ -24,11 +24,11 @@ function macroMeals() {
 }
 function macroGoals() {
   var g = (DATA.config && DATA.config.macrogoals) || {};
-  return { p: Number(g.p) || MACRO_GOALS_DEFAULT.p, c: Number(g.c) || MACRO_GOALS_DEFAULT.c, g: Number(g.g) || MACRO_GOALS_DEFAULT.g, f: Number(g.f) || MACRO_GOALS_DEFAULT.f, kcal: Number(g.kcal) || MACRO_GOALS_DEFAULT.kcal };
+  return { p: Number(g.p) || MACRO_GOALS_DEFAULT.p, c: Number(g.c) || MACRO_GOALS_DEFAULT.c, g: Number(g.g) || MACRO_GOALS_DEFAULT.g, f: Number(g.f) || MACRO_GOALS_DEFAULT.f, sf: Number(g.sf) || MACRO_GOALS_DEFAULT.sf, kcal: Number(g.kcal) || MACRO_GOALS_DEFAULT.kcal };
 }
 function macroShow() {
   var s = (DATA.config && DATA.config.macroshow) || {};
-  return { p: s.p !== false, c: s.c !== false, g: s.g !== false, f: s.f !== false, kcal: s.kcal !== false };
+  return { p: s.p !== false, c: s.c !== false, g: s.g !== false, f: s.f !== false, sf: s.sf !== false, kcal: s.kcal !== false };
 }
 function macroFavs() { return (DATA.config && DATA.config.macrofavs) || []; }
 
@@ -54,33 +54,45 @@ function macroSaveFavs(f) {
 }
 
 function macroLogRow(e) {
-  return [e.date, e.mealId, e.name, e.grams, e.p, e.c, e.g, e.f, e.k, e.ref, e.src, e.id];
+  return [e.date, e.mealId, e.name, e.grams, e.p, e.c, e.g, e.f, e.sf, e.k, e.ref, e.src, e.id];
 }
 function macroFoodRow(f) {
-  return [f.name, f.p100, f.c100, f.g100, f.k100, f.f100, f.id];
+  return [f.name, f.p100, f.c100, f.g100, f.k100, f.f100, f.sf100, f.id];
 }
 function macroParseLog(r) {
-  if (r.length >= 12) {
-    return { id: r[11], date: String(r[0]), mealId: String(r[1]), name: r[2], grams: Number(r[3]) || 0, p: Number(r[4]) || 0, c: Number(r[5]) || 0, g: Number(r[6]) || 0, f: Number(r[7]) || 0, k: Number(r[8]) || 0, ref: String(r[9] || ''), src: r[10] || 'bundled' };
+  if (r.length >= 13) {
+    return { id: r[12], date: String(r[0]), mealId: String(r[1]), name: r[2], grams: Number(r[3]) || 0, p: Number(r[4]) || 0, c: Number(r[5]) || 0, g: Number(r[6]) || 0, f: Number(r[7]) || 0, sf: Number(r[8]) || 0, k: Number(r[9]) || 0, ref: String(r[10] || ''), src: r[11] || 'bundled' };
   }
-  return { id: r[10], date: String(r[0]), mealId: String(r[1]), name: r[2], grams: Number(r[3]) || 0, p: Number(r[4]) || 0, c: Number(r[5]) || 0, g: Number(r[6]) || 0, f: 0, k: Number(r[7]) || 0, ref: String(r[8] || ''), src: r[9] || 'bundled' };
+  if (r.length >= 12) {
+    return { id: r[11], date: String(r[0]), mealId: String(r[1]), name: r[2], grams: Number(r[3]) || 0, p: Number(r[4]) || 0, c: Number(r[5]) || 0, g: Number(r[6]) || 0, f: Number(r[7]) || 0, sf: 0, k: Number(r[8]) || 0, ref: String(r[9] || ''), src: r[10] || 'bundled' };
+  }
+  return { id: r[10], date: String(r[0]), mealId: String(r[1]), name: r[2], grams: Number(r[3]) || 0, p: Number(r[4]) || 0, c: Number(r[5]) || 0, g: Number(r[6]) || 0, f: 0, sf: 0, k: Number(r[7]) || 0, ref: String(r[8] || ''), src: r[9] || 'bundled' };
 }
 function macroParseFood(r) {
-  if (r.length >= 7) {
-    return { id: r[6], name: r[0], p100: Number(r[1]) || 0, c100: Number(r[2]) || 0, g100: Number(r[3]) || 0, k100: Number(r[4]) || 0, f100: Number(r[5]) || 0 };
+  if (r.length >= 8) {
+    return { id: r[7], name: r[0], p100: Number(r[1]) || 0, c100: Number(r[2]) || 0, g100: Number(r[3]) || 0, k100: Number(r[4]) || 0, f100: Number(r[5]) || 0, sf100: Number(r[6]) || 0 };
   }
-  return { id: r[5], name: r[0], p100: Number(r[1]) || 0, c100: Number(r[2]) || 0, g100: Number(r[3]) || 0, k100: Number(r[4]) || 0, f100: 0 };
+  if (r.length >= 7) {
+    return { id: r[6], name: r[0], p100: Number(r[1]) || 0, c100: Number(r[2]) || 0, g100: Number(r[3]) || 0, k100: Number(r[4]) || 0, f100: Number(r[5]) || 0, sf100: 0 };
+  }
+  return { id: r[5], name: r[0], p100: Number(r[1]) || 0, c100: Number(r[2]) || 0, g100: Number(r[3]) || 0, k100: Number(r[4]) || 0, f100: 0, sf100: 0 };
 }
 function macroFindLogRow(id) {
-  return fitFindRow('MacroLog', 11, id).then(function (r) {
+  return fitFindRow('MacroLog', 12, id).then(function (r) {
     if (r >= 0) return r;
-    return fitFindRow('MacroLog', 10, id);
+    return fitFindRow('MacroLog', 11, id).then(function (r2) {
+      if (r2 >= 0) return r2;
+      return fitFindRow('MacroLog', 10, id);
+    });
   });
 }
 function macroFindFoodRow(id) {
-  return fitFindRow('MacroFoods', 6, id).then(function (r) {
+  return fitFindRow('MacroFoods', 7, id).then(function (r) {
     if (r >= 0) return r;
-    return fitFindRow('MacroFoods', 5, id);
+    return fitFindRow('MacroFoods', 6, id).then(function (r2) {
+      if (r2 >= 0) return r2;
+      return fitFindRow('MacroFoods', 5, id);
+    });
   });
 }
 
@@ -88,29 +100,34 @@ function macroEntriesFor(date) {
   return (DATA.macrolog || []).filter(function (e) { return e.date === date; });
 }
 function macroTotals(entries) {
-  var t = { p: 0, c: 0, g: 0, f: 0, k: 0 };
+  var t = { p: 0, c: 0, g: 0, f: 0, sf: 0, k: 0 };
   (entries || []).forEach(function (e) {
-    t.p += e.p; t.c += e.c; t.g += e.g; t.f += e.f || 0; t.k += e.k;
+    t.p += e.p; t.c += e.c; t.g += e.g; t.f += e.f || 0; t.sf += e.sf || 0; t.k += e.k;
   });
   t.p = Math.round(t.p * 10) / 10;
   t.c = Math.round(t.c * 10) / 10;
   t.g = Math.round(t.g * 10) / 10;
   t.f = Math.round(t.f * 10) / 10;
+  t.sf = Math.round(t.sf * 10) / 10;
   t.k = Math.round(t.k);
   return t;
 }
-function macroScale(p100, c100, g100, k100, grams, f100) {
+function macroScale(p100, c100, g100, k100, grams, f100, sf100) {
   var f = (Number(grams) || 0) / 100;
   return {
     p: Math.round((Number(p100) || 0) * f * 10) / 10,
     c: Math.round((Number(c100) || 0) * f * 10) / 10,
     g: Math.round((Number(g100) || 0) * f * 10) / 10,
     f: Math.round((Number(f100) || 0) * f * 10) / 10,
+    sf: Math.round((Number(sf100) || 0) * f * 10) / 10,
     k: Math.round((Number(k100) || 0) * f)
   };
 }
 function macroFmtLine(t) {
-  return 'P ' + t.p + ' · C ' + t.c + ' · G ' + t.g + ' · F ' + (t.f || 0) + ' · ' + t.k + ' kcal';
+  return 'P ' + t.p + ' · C ' + t.c + ' · G ' + t.g + ' · F ' + (t.f || 0) + ' · Fs ' + (t.sf || 0) + ' · ' + t.k + ' kcal';
+}
+function macroFmtFood100(f) {
+  return 'P' + f.p100 + ' C' + f.c100 + ' G' + f.g100 + ' F' + (f.f100 || 0) + ' Fs' + (f.sf100 || 0);
 }
 
 function macroRing(pct, color, label, val, goal, unit) {
@@ -141,7 +158,7 @@ function loadBundledFoods(cb) {
   if (_bundledFoods) { cb(_bundledFoods); return; }
   fetch('/fit-foods.json').then(function (r) { return r.json(); }).then(function (j) {
     _bundledFoods = (j || []).map(function (f) {
-      return { id: f.id, name: f.n, p100: f.p, c100: f.c, g100: f.g, k100: f.k, f100: Number(f.f) || 0, src: 'bundled', presets: f.presets || [], tags: f.tags || [] };
+      return { id: f.id, name: f.n, p100: f.p, c100: f.c, g100: f.g, k100: f.k, f100: Number(f.f) || 0, sf100: Number(f.fs) || 0, src: 'bundled', presets: f.presets || [], tags: f.tags || [] };
     });
     cb(_bundledFoods);
   }).catch(function () { _bundledFoods = []; cb([]); });
@@ -149,7 +166,7 @@ function loadBundledFoods(cb) {
 
 function macroCustomFoods() {
   return (DATA.macrofoods || []).map(function (f) {
-    return { id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: Number(f.f100) || 0, src: 'custom', presets: [] };
+    return { id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: Number(f.f100) || 0, sf100: Number(f.sf100) || 0, src: 'custom', presets: [] };
   });
 }
 
@@ -183,7 +200,7 @@ function macroSearchOff(q, cb) {
       var name = (p.product_name || '').trim();
       if (p.brands) name += (name ? ' · ' : '') + String(p.brands).split(',')[0].trim();
       if (!name) return;
-      out.push({ id: 'off:' + p.code, name: name, p100: p100 || 0, c100: c100 || 0, g100: g100 || 0, k100: k100 || 0, f100: f100 >= 0 ? f100 : 0, src: 'off', presets: [] });
+      out.push({ id: 'off:' + p.code, name: name, p100: p100 || 0, c100: c100 || 0, g100: g100 || 0, k100: k100 || 0, f100: f100 >= 0 ? f100 : 0, sf100: 0, src: 'off', presets: [] });
     });
     _offCache[q] = out;
     cb(out);
@@ -200,6 +217,7 @@ function renderMacros() {
   if (show.c) rings += '<div class="mring-wrap">' + macroRing(totals.c / goals.c, '#fbbf24', 'Carbs', totals.c, goals.c, 'g') + '</div>';
   if (show.g) rings += '<div class="mring-wrap">' + macroRing(totals.g / goals.g, '#34d399', 'Gordura', totals.g, goals.g, 'g') + '</div>';
   if (show.f) rings += '<div class="mring-wrap">' + macroRing(totals.f / goals.f, '#c084fc', 'Fibra', totals.f, goals.f, 'g') + '</div>';
+  if (show.sf) rings += '<div class="mring-wrap">' + macroRing(totals.sf / goals.sf, '#818cf8', 'Fibra sol.', totals.sf, goals.sf, 'g') + '</div>';
 
   var mealHtml = meals.map(function (m) {
     var items = entries.filter(function (e) { return e.mealId === m.id; });
@@ -309,7 +327,7 @@ function renderMacroFavQuick() {
 }
 function macroSelectFavIdx(i) {
   var f = macroFavs()[i];
-  if (f) macroSelectFood({ id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: f.f100 || 0, src: f.src, presets: [] });
+  if (f) macroSelectFood({ id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: f.f100 || 0, sf100: f.sf100 || 0, src: f.src, presets: [] });
 }
 
 function onMacroSearch(v) {
@@ -336,7 +354,7 @@ function renderMacroSearch(q) {
       el.innerHTML = rows.map(function (f) {
         return '<div class="addrow" onclick="macroSelectFoodById(\'' + escAttr(f.id) + '\',\'' + escAttr(f.src) + '\')">'
           + '<span>' + esc(f.name) + (f.src === 'off' ? ' <span class="modebadge">OFF</span>' : '') + '</span>'
-          + '<span class="plus">P' + f.p100 + ' C' + f.c100 + ' G' + f.g100 + ' F' + (f.f100 || 0) + '</span></div>';
+          + '<span class="plus">' + macroFmtFood100(f) + '</span></div>';
       }).join('') + (q ? '<div class="addrow create" onclick="macroOpenCustom(\'' + escAttr(q) + '\')"><span>Criar “' + esc(q) + '” como custom</span><span class="plus">＋</span></div>' : '');
       macroSyncAddSheet();
     });
@@ -345,7 +363,7 @@ function renderMacroSearch(q) {
 
 function macroFindFood(id, src) {
   var custom = (DATA.macrofoods || []).find(function (f) { return f.id === id; });
-  if (custom) return { id: custom.id, name: custom.name, p100: custom.p100, c100: custom.c100, g100: custom.g100, k100: custom.k100, f100: Number(custom.f100) || 0, src: 'custom', presets: [] };
+  if (custom) return { id: custom.id, name: custom.name, p100: custom.p100, c100: custom.c100, g100: custom.g100, k100: custom.k100, f100: Number(custom.f100) || 0, sf100: Number(custom.sf100) || 0, src: 'custom', presets: [] };
   if (_bundledFoods) {
     var b = _bundledFoods.find(function (f) { return f.id === id; });
     if (b) return b;
@@ -389,7 +407,7 @@ function macroSetGrams(g) { $('macroGrams').value = g; macroUpdatePreview(); }
 function macroUpdatePreview() {
   if (!_macroPick || !_macroPick.food) return;
   var g = Number(($('macroGrams').value || '').replace(',', '.')) || 0;
-  var s = macroScale(_macroPick.food.p100, _macroPick.food.c100, _macroPick.food.g100, _macroPick.food.k100, g, _macroPick.food.f100);
+  var s = macroScale(_macroPick.food.p100, _macroPick.food.c100, _macroPick.food.g100, _macroPick.food.k100, g, _macroPick.food.f100, _macroPick.food.sf100);
   $('macroPreview').textContent = macroFmtLine(s);
 }
 
@@ -397,8 +415,8 @@ function macroConfirmAdd() {
   if (!_macroPick || !_macroPick.food) return;
   var g = Number(($('macroGrams').value || '').replace(',', '.')) || 0;
   if (!(g > 0)) { toast('Informe a quantidade em gramas'); return; }
-  var f = _macroPick.food, s = macroScale(f.p100, f.c100, f.g100, f.k100, g, f.f100);
-  var entry = { id: uuid(), date: macroDate(), mealId: _macroPick.mealId, name: f.name, grams: g, p: s.p, c: s.c, g: s.g, f: s.f, k: s.k, ref: f.id, src: f.src };
+  var f = _macroPick.food, s = macroScale(f.p100, f.c100, f.g100, f.k100, g, f.f100, f.sf100);
+  var entry = { id: uuid(), date: macroDate(), mealId: _macroPick.mealId, name: f.name, grams: g, p: s.p, c: s.c, g: s.g, f: s.f, sf: s.sf, k: s.k, ref: f.id, src: f.src };
   DATA.macrolog = DATA.macrolog || [];
   DATA.macrolog.push(entry);
   macroPersistAppend(entry);
@@ -421,7 +439,7 @@ function macroPersistUpdate(entry) {
     run: function () {
       return macroFindLogRow(entry.id).then(function (row) {
         if (row < 0) throw new Error('Registro não encontrado');
-        return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('MacroLog!A' + row + ':L' + row) + '?valueInputOption=RAW'), { values: [macroLogRow(entry)] });
+        return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('MacroLog!A' + row + ':M' + row) + '?valueInputOption=RAW'), { values: [macroLogRow(entry)] });
       });
     },
     onError: fitWriteErr
@@ -442,7 +460,7 @@ function macroPersistDelete(id) {
 function macroAddFav(f) {
   var favs = macroFavs(), key = f.src + ':' + f.id;
   favs = favs.filter(function (x) { return x.key !== key; });
-  favs.unshift({ key: key, id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: f.f100 || 0, src: f.src });
+  favs.unshift({ key: key, id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: f.f100 || 0, sf100: f.sf100 || 0, src: f.src });
   if (favs.length > 24) favs = favs.slice(0, 24);
   macroSaveFavs(favs);
 }
@@ -453,7 +471,7 @@ function macroQuickFav(key) {
   var meals = macroMeals();
   macroOpenAdd(meals[0] ? meals[0].id : 'breakfast');
   setTimeout(function () {
-    macroSelectFood({ id: fav.id, name: fav.name, p100: fav.p100, c100: fav.c100, g100: fav.g100, k100: fav.k100, f100: fav.f100 || 0, src: fav.src, presets: [] });
+    macroSelectFood({ id: fav.id, name: fav.name, p100: fav.p100, c100: fav.c100, g100: fav.g100, k100: fav.k100, f100: fav.f100 || 0, sf100: fav.sf100 || 0, src: fav.src, presets: [] });
   }, 80);
 }
 
@@ -469,7 +487,7 @@ function macroEditEntry(id) {
 function macroEditPreview() {
   if (!_macroEdit) return;
   var g = Number(($('macroEditGrams').value || '').replace(',', '.')) || 0;
-  var per = macroScale(_macroEdit.p / (_macroEdit.grams || 100) * 100, _macroEdit.c / (_macroEdit.grams || 100) * 100, _macroEdit.g / (_macroEdit.grams || 100) * 100, _macroEdit.k / (_macroEdit.grams || 100) * 100, g, (_macroEdit.f || 0) / (_macroEdit.grams || 100) * 100);
+  var per = macroScale(_macroEdit.p / (_macroEdit.grams || 100) * 100, _macroEdit.c / (_macroEdit.grams || 100) * 100, _macroEdit.g / (_macroEdit.grams || 100) * 100, _macroEdit.k / (_macroEdit.grams || 100) * 100, g, (_macroEdit.f || 0) / (_macroEdit.grams || 100) * 100, (_macroEdit.sf || 0) / (_macroEdit.grams || 100) * 100);
   $('macroEditPreview').textContent = macroFmtLine(per);
 }
 function macroSaveEdit() {
@@ -482,6 +500,7 @@ function macroSaveEdit() {
   _macroEdit.c = Math.round(_macroEdit.c * ratio * 10) / 10;
   _macroEdit.g = Math.round(_macroEdit.g * ratio * 10) / 10;
   _macroEdit.f = Math.round((_macroEdit.f || 0) * ratio * 10) / 10;
+  _macroEdit.sf = Math.round((_macroEdit.sf || 0) * ratio * 10) / 10;
   _macroEdit.k = Math.round(_macroEdit.k * ratio);
   macroPersistUpdate(_macroEdit);
   $('macroEditOverlay').classList.remove('open');
@@ -505,7 +524,7 @@ function macroCopyYesterday() {
   JB.confirm('Copiar ontem?', 'Adicionar ' + src.length + ' item(ns) de ' + macroFmtDate(yd) + ' para hoje.', function () {
     var rows = [], date = macroDate();
     src.forEach(function (e) {
-      var n = { id: uuid(), date: date, mealId: e.mealId, name: e.name, grams: e.grams, p: e.p, c: e.c, g: e.g, f: e.f || 0, k: e.k, ref: e.ref, src: e.src };
+      var n = { id: uuid(), date: date, mealId: e.mealId, name: e.name, grams: e.grams, p: e.p, c: e.c, g: e.g, f: e.f || 0, sf: e.sf || 0, k: e.k, ref: e.ref, src: e.src };
       DATA.macrolog.push(n);
       rows.push(macroLogRow(n));
     });
@@ -527,11 +546,13 @@ function renderMacroSettingsPanel() {
   if ($('macroGoalC')) $('macroGoalC').value = g.c;
   if ($('macroGoalG')) $('macroGoalG').value = g.g;
   if ($('macroGoalF')) $('macroGoalF').value = g.f;
+  if ($('macroGoalSF')) $('macroGoalSF').value = g.sf;
   if ($('macroGoalK')) $('macroGoalK').value = g.kcal;
   if ($('macroShowP')) $('macroShowP').classList.toggle('on', s.p);
   if ($('macroShowC')) $('macroShowC').classList.toggle('on', s.c);
   if ($('macroShowG')) $('macroShowG').classList.toggle('on', s.g);
   if ($('macroShowF')) $('macroShowF').classList.toggle('on', s.f);
+  if ($('macroShowSF')) $('macroShowSF').classList.toggle('on', s.sf);
   if ($('macroShowK')) $('macroShowK').classList.toggle('on', s.kcal);
   renderMacroMealsEditor();
   renderMacroCustomList();
@@ -542,6 +563,7 @@ function macroGoalsFromInputs() {
     c: Number($('macroGoalC').value) || 0,
     g: Number($('macroGoalG').value) || 0,
     f: Number($('macroGoalF').value) || 0,
+    sf: Number($('macroGoalSF').value) || 0,
     kcal: Number($('macroGoalK').value) || 0
   };
 }
@@ -606,6 +628,7 @@ function toggleMacroShow(el) {
     c: $('macroShowC').classList.contains('on'),
     g: $('macroShowG').classList.contains('on'),
     f: $('macroShowF').classList.contains('on'),
+    sf: $('macroShowSF').classList.contains('on'),
     kcal: $('macroShowK').classList.contains('on')
   });
   renderMacros();
@@ -625,7 +648,7 @@ function macroOpenCustom(prefill) {
   _macroCustomEdit = null;
   macroCustomUi();
   $('macroCustomName').value = prefill || '';
-  $('macroCustomP').value = ''; $('macroCustomC').value = ''; $('macroCustomG').value = ''; $('macroCustomF').value = ''; $('macroCustomK').value = '';
+  $('macroCustomP').value = ''; $('macroCustomC').value = ''; $('macroCustomG').value = ''; $('macroCustomF').value = ''; $('macroCustomSF').value = ''; $('macroCustomK').value = '';
   $('macroCustomOverlay').classList.add('open');
 }
 function macroEditCustom(id) {
@@ -635,7 +658,7 @@ function macroEditCustom(id) {
   macroCustomUi();
   $('macroCustomName').value = f.name;
   $('macroCustomP').value = f.p100; $('macroCustomC').value = f.c100;
-  $('macroCustomG').value = f.g100; $('macroCustomF').value = f.f100 || 0; $('macroCustomK').value = f.k100;
+  $('macroCustomG').value = f.g100; $('macroCustomF').value = f.f100 || 0; $('macroCustomSF').value = f.sf100 || 0; $('macroCustomK').value = f.k100;
   $('macroCustomOverlay').classList.add('open');
 }
 function macroSyncFavFood(f) {
@@ -643,7 +666,7 @@ function macroSyncFavFood(f) {
   favs = favs.map(function (x) {
     if (x.key !== key) return x;
     changed = true;
-    return { key: key, id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: f.f100 || 0, src: 'custom' };
+    return { key: key, id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: f.f100 || 0, sf100: f.sf100 || 0, src: 'custom' };
   });
   if (changed) macroSaveFavs(favs);
 }
@@ -653,18 +676,19 @@ function macroSaveCustom() {
   var c100 = Number(($('macroCustomC').value || '').replace(',', '.')) || 0;
   var g100 = Number(($('macroCustomG').value || '').replace(',', '.')) || 0;
   var f100 = Number(($('macroCustomF').value || '').replace(',', '.')) || 0;
+  var sf100 = Number(($('macroCustomSF').value || '').replace(',', '.')) || 0;
   var k100 = Number(($('macroCustomK').value || '').replace(',', '.')) || 0;
   if (!name) { toast('Nome obrigatório'); return; }
   DATA.macrofoods = DATA.macrofoods || [];
   if (_macroCustomEdit) {
     var row = DATA.macrofoods.find(function (x) { return x.id === _macroCustomEdit; });
     if (!row) return;
-    row.name = name; row.p100 = p100; row.c100 = c100; row.g100 = g100; row.f100 = f100; row.k100 = k100;
+    row.name = name; row.p100 = p100; row.c100 = c100; row.g100 = g100; row.f100 = f100; row.sf100 = sf100; row.k100 = k100;
     JB.persist({
       run: function () {
         return macroFindFoodRow(row.id).then(function (r) {
           if (r < 0) throw new Error('Alimento não encontrado');
-          return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('MacroFoods!A' + r + ':G' + r) + '?valueInputOption=RAW'), { values: [macroFoodRow(row)] });
+          return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('MacroFoods!A' + r + ':H' + r) + '?valueInputOption=RAW'), { values: [macroFoodRow(row)] });
         });
       },
       onSuccess: function () {
@@ -677,7 +701,7 @@ function macroSaveCustom() {
     });
     return;
   }
-  var id = uuid(), row = { id: id, name: name, p100: p100, c100: c100, g100: g100, f100: f100, k100: k100 };
+  var id = uuid(), row = { id: id, name: name, p100: p100, c100: c100, g100: g100, f100: f100, sf100: sf100, k100: k100 };
   DATA.macrofoods.push(row);
   JB.persist({
     run: function () {
@@ -685,7 +709,7 @@ function macroSaveCustom() {
     },
     onSuccess: function () {
       macroCloseCustom();
-      if (_macroPick) macroSelectFood({ id: id, name: name, p100: p100, c100: c100, g100: g100, f100: f100, k100: k100, src: 'custom', presets: [] });
+      if (_macroPick) macroSelectFood({ id: id, name: name, p100: p100, c100: c100, g100: g100, f100: f100, sf100: sf100, k100: k100, src: 'custom', presets: [] });
       else { renderMacroCustomList(); toast('✓ Alimento salvo'); }
     },
     onError: fitWriteErr
@@ -722,7 +746,7 @@ function renderMacroCustomList() {
   var foods = DATA.macrofoods || [];
   el.innerHTML = foods.length ? foods.map(function (f) {
     return '<div class="mcustom-row" onclick="macroEditCustom(\'' + f.id + '\')">'
-      + '<div class="mcustom-l"><div class="rn">' + esc(f.name) + '</div><div class="rg">P' + f.p100 + ' C' + f.c100 + ' G' + f.g100 + ' F' + (f.f100 || 0) + ' · ' + f.k100 + ' kcal/100g</div></div>'
+      + '<div class="mcustom-l"><div class="rn">' + esc(f.name) + '</div><div class="rg">' + macroFmtFood100(f) + ' · ' + f.k100 + ' kcal/100g</div></div>'
       + '<button class="rm" onclick="event.stopPropagation();macroDeleteCustom(\'' + f.id + '\')">✕</button></div>';
   }).join('') : '<div class="rg">Nenhum alimento custom ainda.</div>';
 }

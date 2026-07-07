@@ -6,7 +6,8 @@
     "c": 28,
     "g": 0.3,
     "k": 130,
-    "f": 0.4
+    "f": 0.4,
+    "fs": 0.08
   },
   {
     "id": "arroz-integral",
@@ -15,7 +16,8 @@
     "c": 23,
     "g": 1,
     "k": 111,
-    "f": 1.8
+    "f": 1.8,
+    "fs": 0.36
   },
   {
     "id": "feijao-preto",
@@ -24,7 +26,8 @@
     "c": 23.7,
     "g": 0.5,
     "k": 132,
-    "f": 8.7
+    "f": 8.7,
+    "fs": 3
   },
   {
     "id": "feijao-carioca",
@@ -33,7 +36,8 @@
     "c": 22,
     "g": 0.5,
     "k": 127,
-    "f": 8.5
+    "f": 8.5,
+    "fs": 2.8
   },
   {
     "id": "lentilha",
@@ -42,7 +46,8 @@
     "c": 20,
     "g": 0.4,
     "k": 116,
-    "f": 7.9
+    "f": 7.9,
+    "fs": 2.5
   },
   {
     "id": "grao-bico",
@@ -51,7 +56,8 @@
     "c": 27,
     "g": 2.6,
     "k": 164,
-    "f": 7.6
+    "f": 7.6,
+    "fs": 2.5
   },
   {
     "id": "macarrao",
@@ -60,7 +66,8 @@
     "c": 31,
     "g": 0.9,
     "k": 158,
-    "f": 1.8
+    "f": 1.8,
+    "fs": 0.3
   },
   {
     "id": "batata",
@@ -69,7 +76,8 @@
     "c": 17,
     "g": 0.1,
     "k": 77,
-    "f": 1.8
+    "f": 1.8,
+    "fs": 0.4
   },
   {
     "id": "batata-doce",
@@ -78,7 +86,8 @@
     "c": 20,
     "g": 0.1,
     "k": 86,
-    "f": 3
+    "f": 3,
+    "fs": 1.5
   },
   {
     "id": "mandioca",
@@ -87,7 +96,8 @@
     "c": 38,
     "g": 0.3,
     "k": 160,
-    "f": 1.8
+    "f": 1.8,
+    "fs": 0.2
   },
   {
     "id": "aveia",
@@ -106,7 +116,8 @@
         "g": 15
       }
     ],
-    "f": 10.6
+    "f": 10.6,
+    "fs": 4.8
   },
   {
     "id": "pao-frances",
@@ -121,7 +132,8 @@
         "g": 50
       }
     ],
-    "f": 2.3
+    "f": 2.3,
+    "fs": 0.5
   },
   {
     "id": "pao-integral",
@@ -136,7 +148,8 @@
         "g": 25
       }
     ],
-    "f": 7
+    "f": 7,
+    "fs": 1.4
   },
   {
     "id": "tapioca",
@@ -151,7 +164,8 @@
         "g": 60
       }
     ],
-    "f": 0.9
+    "f": 0.9,
+    "fs": 0
   },
   {
     "id": "cuscuz",
@@ -160,7 +174,8 @@
     "c": 25,
     "g": 0.7,
     "k": 112,
-    "f": 1.3
+    "f": 1.3,
+    "fs": 0.2
   },
   {
     "id": "milho",
@@ -169,7 +184,8 @@
     "c": 19,
     "g": 1.4,
     "k": 96,
-    "f": 2
+    "f": 2,
+    "fs": 0.4
   },
   {
     "id": "quinoa",
@@ -178,7 +194,8 @@
     "c": 21,
     "g": 1.9,
     "k": 120,
-    "f": 2.8
+    "f": 2.8,
+    "fs": 0.6
   },
   {
     "id": "carne-alcatra",
@@ -193,7 +210,8 @@
       "top sirloin",
       "picanha neighbor"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-contra-file",
@@ -215,7 +233,8 @@
       "ny strip",
       "beef steak"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "file-mignon",
@@ -236,7 +255,8 @@
       "fillet",
       "beef tenderloin"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-picanha",
@@ -257,7 +277,8 @@
       "rump cap",
       "top sirloin"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-maminha",
@@ -277,7 +298,8 @@
       "tri tip",
       "bottom sirloin"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-fraldinha",
@@ -298,7 +320,8 @@
       "bottom sirloin flap",
       "vazio"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-acem",
@@ -319,7 +342,8 @@
       "shoulder",
       "pot roast"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-paleta",
@@ -339,7 +363,8 @@
       "shoulder",
       "chuck"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-cupim",
@@ -359,7 +384,8 @@
       "hump",
       "brazilian cut"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-costela-bovina",
@@ -380,7 +406,8 @@
       "short ribs",
       "bbq"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-lagarto",
@@ -401,7 +428,8 @@
       "silverside",
       "roast beef"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-coxao-mole",
@@ -421,7 +449,8 @@
       "top round",
       "inside round"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-coxao-duro",
@@ -441,7 +470,8 @@
       "bottom round",
       "outside round"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-miolo-alcatra",
@@ -461,7 +491,8 @@
       "top sirloin",
       "sirloin"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-ossobuco",
@@ -482,7 +513,8 @@
       "osso buco",
       "ossobuco"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-bisteca",
@@ -503,7 +535,8 @@
       "porterhouse",
       "steak"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-moida",
@@ -518,7 +551,8 @@
       "minced meat",
       "hamburger meat"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-patinho",
@@ -539,7 +573,8 @@
       "top side",
       "lean beef"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "frango-peito",
@@ -558,7 +593,8 @@
       "chicken",
       "chicken breast"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "frango-coxa",
@@ -572,7 +608,8 @@
       "chicken thigh",
       "thigh"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "frango-sobrecoxa",
@@ -592,7 +629,8 @@
       "chicken leg",
       "drumstick thigh"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "frango-asa",
@@ -612,7 +650,8 @@
       "chicken wing",
       "wings"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "frango-coxa-sobrecoxa",
@@ -631,7 +670,8 @@
       "chicken",
       "leg quarter"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "frango-inteiro",
@@ -651,7 +691,8 @@
       "roast chicken",
       "whole chicken"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "frango-empanado",
@@ -671,7 +712,8 @@
       "breaded chicken",
       "schnitzel"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "porco-lombo",
@@ -685,7 +727,8 @@
       "pork loin",
       "lean pork"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "porco-pernil",
@@ -705,7 +748,8 @@
       "pork shoulder",
       "ham"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "porco-barriga",
@@ -725,7 +769,8 @@
       "pork belly",
       "bacon uncured"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "porco-costela",
@@ -745,7 +790,8 @@
       "pork ribs",
       "bbq ribs"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "bacon",
@@ -764,7 +810,8 @@
       "pork",
       "bacon"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "bisteca-suina",
@@ -784,7 +831,8 @@
       "pork chop",
       "chuleta"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "linguica",
@@ -804,7 +852,8 @@
       "sausage",
       "calabresa"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "linguica-frango",
@@ -823,7 +872,8 @@
       "chicken",
       "sausage"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "linguica-toscana",
@@ -843,7 +893,8 @@
       "sausage",
       "toscana"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "cordeiro-perna",
@@ -862,7 +913,8 @@
       "lamb",
       "lamb leg"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "cordeiro-costela",
@@ -882,7 +934,8 @@
       "lamb ribs",
       "rack of lamb"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carneiro",
@@ -901,7 +954,8 @@
       "lamb",
       "mutton"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "vitela",
@@ -920,7 +974,8 @@
       "veal",
       "beef calf"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "pato",
@@ -939,7 +994,8 @@
       "duck",
       "duck breast"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "peru-assado",
@@ -958,7 +1014,8 @@
       "turkey",
       "roast turkey"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "mortadela",
@@ -978,7 +1035,8 @@
       "deli meat",
       "cold cut"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "salame",
@@ -998,7 +1056,8 @@
       "salami",
       "cold cut"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "roast-beef",
@@ -1019,7 +1078,8 @@
       "deli meat",
       "cold cut"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "presunto",
@@ -1039,7 +1099,8 @@
       "deli meat",
       "cold cut"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "ovo",
@@ -1054,7 +1115,8 @@
         "g": 50
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "clara-ovo",
@@ -1069,7 +1131,8 @@
         "g": 33
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "salmão",
@@ -1078,7 +1141,8 @@
     "c": 0,
     "g": 13,
     "k": 208,
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "atum-lata",
@@ -1093,7 +1157,8 @@
         "g": 120
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "sardinha",
@@ -1102,7 +1167,8 @@
     "c": 0,
     "g": 11,
     "k": 208,
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "tilapia",
@@ -1111,7 +1177,8 @@
     "c": 0,
     "g": 2.7,
     "k": 128,
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "camarao",
@@ -1120,7 +1187,8 @@
     "c": 0.2,
     "g": 0.3,
     "k": 99,
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "whey",
@@ -1135,7 +1203,8 @@
         "g": 30
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "caseina",
@@ -1150,7 +1219,8 @@
         "g": 30
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "tofu",
@@ -1159,7 +1229,8 @@
     "c": 2,
     "g": 4,
     "k": 76,
-    "f": 1.2
+    "f": 1.2,
+    "fs": 0.5
   },
   {
     "id": "leite-integral",
@@ -1174,7 +1245,8 @@
         "g": 200
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "leite-desnatado",
@@ -1189,7 +1261,8 @@
         "g": 200
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "iogurte-natural",
@@ -1204,7 +1277,8 @@
         "g": 170
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "iogurte-grego",
@@ -1219,7 +1293,8 @@
         "g": 150
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "leite-aveia",
@@ -1237,7 +1312,8 @@
     "tags": [
       "oat milk"
     ],
-    "f": 0.8
+    "f": 0.8,
+    "fs": 0.5
   },
   {
     "id": "cream-cheese",
@@ -1255,7 +1331,8 @@
     "tags": [
       "requeijao cremoso"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "hummus",
@@ -1273,7 +1350,8 @@
     "tags": [
       "hummus"
     ],
-    "f": 6
+    "f": 6,
+    "fs": 2.5
   },
   {
     "id": "tortilla",
@@ -1292,7 +1370,8 @@
       "wrap",
       "wrap de trigo"
     ],
-    "f": 3.5
+    "f": 3.5,
+    "fs": 0.8
   },
   {
     "id": "pao-forma",
@@ -1311,7 +1390,8 @@
       "bread",
       "sanduiche"
     ],
-    "f": 2.5
+    "f": 2.5,
+    "fs": 0.6
   },
   {
     "id": "arroz-japones",
@@ -1330,7 +1410,8 @@
       "sushi rice",
       "gohan"
     ],
-    "f": 0.4
+    "f": 0.4,
+    "fs": 0.08
   },
   {
     "id": "salmao-defumado",
@@ -1348,7 +1429,8 @@
     "tags": [
       "smoked salmon"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "atum-enlatado-oleo",
@@ -1363,7 +1445,8 @@
         "g": 120
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "frango-desfiado",
@@ -1378,7 +1461,8 @@
         "g": 100
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "carne-seca",
@@ -1393,7 +1477,8 @@
         "g": 100
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "pepino-japones",
@@ -1411,7 +1496,8 @@
     "tags": [
       "japanese cucumber"
     ],
-    "f": 0.7
+    "f": 0.7,
+    "fs": 0.1
   },
   {
     "id": "edamame",
@@ -1426,7 +1512,8 @@
         "g": 100
       }
     ],
-    "f": 5.2
+    "f": 5.2,
+    "fs": 1.8
   },
   {
     "id": "tofu-grelhado",
@@ -1441,7 +1528,8 @@
         "g": 80
       }
     ],
-    "f": 1.2
+    "f": 1.2,
+    "fs": 0.5
   },
   {
     "id": "queijo-mussarela",
@@ -1456,7 +1544,8 @@
         "g": 25
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "queijo-cottage",
@@ -1471,7 +1560,8 @@
         "g": 30
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "queijo-parmesao",
@@ -1486,7 +1576,8 @@
         "g": 10
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "requeijao",
@@ -1501,7 +1592,8 @@
         "g": 20
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "manteiga",
@@ -1516,7 +1608,8 @@
         "g": 14
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "azeite",
@@ -1531,7 +1624,8 @@
         "g": 13
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "oleo-coco",
@@ -1546,7 +1640,8 @@
         "g": 13
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "abacate",
@@ -1561,7 +1656,8 @@
         "g": 100
       }
     ],
-    "f": 6.7
+    "f": 6.7,
+    "fs": 3
   },
   {
     "id": "amendoim",
@@ -1576,7 +1672,8 @@
         "g": 30
       }
     ],
-    "f": 8.5
+    "f": 8.5,
+    "fs": 1.2
   },
   {
     "id": "castanha-caju",
@@ -1591,7 +1688,8 @@
         "g": 30
       }
     ],
-    "f": 3.3
+    "f": 3.3,
+    "fs": 0.5
   },
   {
     "id": "castanha-pará",
@@ -1606,7 +1704,8 @@
         "g": 5
       }
     ],
-    "f": 7.5
+    "f": 7.5,
+    "fs": 1.5
   },
   {
     "id": "amêndoa",
@@ -1621,7 +1720,8 @@
         "g": 30
       }
     ],
-    "f": 12.5
+    "f": 12.5,
+    "fs": 1.5
   },
   {
     "id": "nozes",
@@ -1636,7 +1736,8 @@
         "g": 30
       }
     ],
-    "f": 6.7
+    "f": 6.7,
+    "fs": 0.8
   },
   {
     "id": "pasta-amendoim",
@@ -1651,7 +1752,8 @@
         "g": 16
       }
     ],
-    "f": 6
+    "f": 6,
+    "fs": 1
   },
   {
     "id": "banana",
@@ -1666,7 +1768,8 @@
         "g": 120
       }
     ],
-    "f": 2.6
+    "f": 2.6,
+    "fs": 1.7
   },
   {
     "id": "maca",
@@ -1681,7 +1784,8 @@
         "g": 150
       }
     ],
-    "f": 2.4
+    "f": 2.4,
+    "fs": 1.5
   },
   {
     "id": "laranja",
@@ -1696,7 +1800,8 @@
         "g": 130
       }
     ],
-    "f": 2.4
+    "f": 2.4,
+    "fs": 1.2
   },
   {
     "id": "mamao",
@@ -1711,7 +1816,8 @@
         "g": 140
       }
     ],
-    "f": 1.7
+    "f": 1.7,
+    "fs": 1
   },
   {
     "id": "manga",
@@ -1726,7 +1832,8 @@
         "g": 200
       }
     ],
-    "f": 1.6
+    "f": 1.6,
+    "fs": 1
   },
   {
     "id": "abacaxi",
@@ -1741,7 +1848,8 @@
         "g": 80
       }
     ],
-    "f": 1.4
+    "f": 1.4,
+    "fs": 0.3
   },
   {
     "id": "melancia",
@@ -1756,7 +1864,8 @@
         "g": 200
       }
     ],
-    "f": 0.4
+    "f": 0.4,
+    "fs": 0.1
   },
   {
     "id": "morango",
@@ -1771,7 +1880,8 @@
         "g": 150
       }
     ],
-    "f": 2
+    "f": 2,
+    "fs": 0.6
   },
   {
     "id": "uva",
@@ -1786,7 +1896,8 @@
         "g": 100
       }
     ],
-    "f": 0.9
+    "f": 0.9,
+    "fs": 0.2
   },
   {
     "id": "melao",
@@ -1795,7 +1906,8 @@
     "c": 8,
     "g": 0.2,
     "k": 34,
-    "f": 0.9
+    "f": 0.9,
+    "fs": 0.2
   },
   {
     "id": "pera",
@@ -1810,7 +1922,8 @@
         "g": 150
       }
     ],
-    "f": 3.1
+    "f": 3.1,
+    "fs": 1.2
   },
   {
     "id": "kiwi",
@@ -1825,7 +1938,8 @@
         "g": 75
       }
     ],
-    "f": 3
+    "f": 3,
+    "fs": 0.8
   },
   {
     "id": "tangerina",
@@ -1848,7 +1962,8 @@
       "bergamota",
       "clementine"
     ],
-    "f": 1.8
+    "f": 1.8,
+    "fs": 1
   },
   {
     "id": "limao",
@@ -1867,7 +1982,8 @@
       "lemon",
       "lima azeda"
     ],
-    "f": 2.8
+    "f": 2.8,
+    "fs": 0.8
   },
   {
     "id": "lima",
@@ -1885,7 +2001,8 @@
     "tags": [
       "lime"
     ],
-    "f": 2.8
+    "f": 2.8,
+    "fs": 0.7
   },
   {
     "id": "pessego",
@@ -1903,7 +2020,8 @@
     "tags": [
       "peach"
     ],
-    "f": 1.5
+    "f": 1.5,
+    "fs": 0.6
   },
   {
     "id": "ameixa",
@@ -1921,7 +2039,8 @@
     "tags": [
       "plum"
     ],
-    "f": 1.4
+    "f": 1.4,
+    "fs": 0.5
   },
   {
     "id": "figo",
@@ -1939,7 +2058,8 @@
     "tags": [
       "fig"
     ],
-    "f": 2.9
+    "f": 2.9,
+    "fs": 1.5
   },
   {
     "id": "cereja",
@@ -1957,7 +2077,8 @@
     "tags": [
       "cherry"
     ],
-    "f": 2.1
+    "f": 2.1,
+    "fs": 0.4
   },
   {
     "id": "mirtilo",
@@ -1975,7 +2096,8 @@
     "tags": [
       "blueberry"
     ],
-    "f": 2.4
+    "f": 2.4,
+    "fs": 0.5
   },
   {
     "id": "framboesa",
@@ -1993,7 +2115,8 @@
     "tags": [
       "raspberry"
     ],
-    "f": 6.5
+    "f": 6.5,
+    "fs": 0.8
   },
   {
     "id": "amora",
@@ -2011,7 +2134,8 @@
     "tags": [
       "blackberry"
     ],
-    "f": 5.3
+    "f": 5.3,
+    "fs": 0.7
   },
   {
     "id": "acerola",
@@ -2026,7 +2150,8 @@
         "g": 100
       }
     ],
-    "f": 1.1
+    "f": 1.1,
+    "fs": 0.2
   },
   {
     "id": "goiaba",
@@ -2044,7 +2169,8 @@
     "tags": [
       "guava"
     ],
-    "f": 5.4
+    "f": 5.4,
+    "fs": 2
   },
   {
     "id": "maracuja",
@@ -2063,7 +2189,8 @@
       "passion fruit",
       "passionfruit"
     ],
-    "f": 10.4
+    "f": 10.4,
+    "fs": 2.5
   },
   {
     "id": "caqui",
@@ -2081,7 +2208,8 @@
     "tags": [
       "persimmon"
     ],
-    "f": 3.6
+    "f": 3.6,
+    "fs": 1
   },
   {
     "id": "coco",
@@ -2099,7 +2227,8 @@
     "tags": [
       "coconut"
     ],
-    "f": 9
+    "f": 9,
+    "fs": 0.5
   },
   {
     "id": "pitaya",
@@ -2118,7 +2247,8 @@
       "dragon fruit",
       "dragonfruit"
     ],
-    "f": 1.8
+    "f": 1.8,
+    "fs": 0.3
   },
   {
     "id": "framboesa-vermelha",
@@ -2137,7 +2267,8 @@
       "mixed berries",
       "berries"
     ],
-    "f": 3.5
+    "f": 3.5,
+    "fs": 0.6
   },
   {
     "id": "datil",
@@ -2156,7 +2287,8 @@
       "date",
       "dates"
     ],
-    "f": 6.7
+    "f": 6.7,
+    "fs": 1.5
   },
   {
     "id": "coco-agua",
@@ -2174,7 +2306,8 @@
     "tags": [
       "coconut water"
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "brocolis",
@@ -2183,7 +2316,8 @@
     "c": 7,
     "g": 0.4,
     "k": 35,
-    "f": 2.6
+    "f": 2.6,
+    "fs": 0.5
   },
   {
     "id": "couve-flor",
@@ -2192,7 +2326,8 @@
     "c": 5,
     "g": 0.3,
     "k": 28,
-    "f": 2.3
+    "f": 2.3,
+    "fs": 0.9
   },
   {
     "id": "espinafre",
@@ -2201,7 +2336,135 @@
     "c": 3.8,
     "g": 0.3,
     "k": 23,
-    "f": 2.4
+    "f": 2.4,
+    "fs": 0.8
+  },
+  {
+    "id": "psyllium",
+    "n": "Farelo de psyllium (pó)",
+    "p": 2,
+    "c": 8,
+    "g": 0.6,
+    "k": 200,
+    "f": 80,
+    "fs": 72,
+    "presets": [
+      { "l": "1 colher sopa (~5 g)", "g": 5 },
+      { "l": "1 colher chá (~2 g)", "g": 2 },
+      { "l": "1 sachê (~7 g)", "g": 7 }
+    ],
+    "tags": ["psyllium", "psilio", "psyllium husk", "ispaghula", "metamucil", "plantago", "farelo de psyllium", "fibra soluvel"]
+  },
+  {
+    "id": "couve-manteiga",
+    "n": "Couve-manteiga refogada",
+    "p": 2.1,
+    "c": 5.2,
+    "g": 0.7,
+    "k": 32,
+    "f": 4,
+    "fs": 0.9,
+    "presets": [
+      { "l": "1 porção", "g": 80 },
+      { "l": "1 concha", "g": 100 }
+    ],
+    "tags": ["collard", "collard greens", "couve refogada", "couve", "leafy greens", "brassica", "verdes cozidos", "couve manteiga"]
+  },
+  {
+    "id": "couve-rabano",
+    "n": "Couve-rábano / kale cozida",
+    "p": 2.9,
+    "c": 8.8,
+    "g": 0.4,
+    "k": 51,
+    "f": 4.1,
+    "fs": 1.2,
+    "presets": [{ "l": "1 porção", "g": 80 }],
+    "tags": ["kale", "couve rabano", "collard family", "leafy greens", "brassica", "verdes cozidos"]
+  },
+  {
+    "id": "couve-bruxelas",
+    "n": "Couve-de-bruxelas cozida",
+    "p": 3.4,
+    "c": 7,
+    "g": 0.5,
+    "k": 36,
+    "f": 3.8,
+    "fs": 1,
+    "presets": [{ "l": "1 porção", "g": 80 }],
+    "tags": ["brussels sprouts", "couve de bruxelas", "brassica", "verdes cozidos"]
+  },
+  {
+    "id": "repolho-cozido",
+    "n": "Repolho cozido",
+    "p": 1.3,
+    "c": 6,
+    "g": 0.1,
+    "k": 29,
+    "f": 2.5,
+    "fs": 0.5,
+    "presets": [{ "l": "1 porção", "g": 100 }],
+    "tags": ["cabbage", "repolho", "brassica", "leafy greens", "verdes cozidos"]
+  },
+  {
+    "id": "acelga-cozida",
+    "n": "Acelga cozida",
+    "p": 1.9,
+    "c": 4,
+    "g": 0.2,
+    "k": 20,
+    "f": 2.1,
+    "fs": 0.6,
+    "presets": [{ "l": "1 porção", "g": 80 }],
+    "tags": ["swiss chard", "acelga", "chard", "leafy greens", "verdes cozidos"]
+  },
+  {
+    "id": "folha-mostarda",
+    "n": "Folha de mostarda cozida",
+    "p": 2.9,
+    "c": 4.7,
+    "g": 0.4,
+    "k": 32,
+    "f": 3.2,
+    "fs": 1,
+    "presets": [{ "l": "1 porção", "g": 80 }],
+    "tags": ["mustard greens", "folha de mostarda", "mostarda verde", "brassica", "leafy greens", "verdes cozidos"]
+  },
+  {
+    "id": "agriao",
+    "n": "Agrião",
+    "p": 2.3,
+    "c": 1.3,
+    "g": 0.1,
+    "k": 11,
+    "f": 0.5,
+    "fs": 0.2,
+    "presets": [{ "l": "1 punhado", "g": 50 }],
+    "tags": ["watercress", "agriao", "leafy greens", "verdes"]
+  },
+  {
+    "id": "nabo-folhas",
+    "n": "Folhas de nabo cozidas",
+    "p": 1.1,
+    "c": 4.4,
+    "g": 0.2,
+    "k": 20,
+    "f": 3.5,
+    "fs": 0.7,
+    "presets": [{ "l": "1 porção", "g": 80 }],
+    "tags": ["turnip greens", "nabo folhas", "brassica", "leafy greens", "verdes cozidos"]
+  },
+  {
+    "id": "couve-chinesa",
+    "n": "Couve-chinesa / bok choy cozida",
+    "p": 1.6,
+    "c": 2.2,
+    "g": 0.2,
+    "k": 14,
+    "f": 1.2,
+    "fs": 0.4,
+    "presets": [{ "l": "1 porção", "g": 100 }],
+    "tags": ["bok choy", "pak choi", "couve chinesa", "brassica", "leafy greens", "verdes cozidos"]
   },
   {
     "id": "alface",
@@ -2210,7 +2473,8 @@
     "c": 2.9,
     "g": 0.2,
     "k": 15,
-    "f": 1.3
+    "f": 1.3,
+    "fs": 0.3
   },
   {
     "id": "tomate",
@@ -2219,7 +2483,8 @@
     "c": 3.9,
     "g": 0.2,
     "k": 18,
-    "f": 1.2
+    "f": 1.2,
+    "fs": 0.3
   },
   {
     "id": "pepino",
@@ -2228,7 +2493,8 @@
     "c": 3.6,
     "g": 0.1,
     "k": 16,
-    "f": 0.5
+    "f": 0.5,
+    "fs": 0.2
   },
   {
     "id": "cenoura",
@@ -2237,7 +2503,8 @@
     "c": 10,
     "g": 0.2,
     "k": 41,
-    "f": 2.8
+    "f": 2.8,
+    "fs": 1.2
   },
   {
     "id": "beterraba",
@@ -2246,7 +2513,8 @@
     "c": 10,
     "g": 0.2,
     "k": 44,
-    "f": 2
+    "f": 2,
+    "fs": 1.5
   },
   {
     "id": "abobrinha",
@@ -2255,7 +2523,8 @@
     "c": 4.9,
     "g": 0.3,
     "k": 24,
-    "f": 1.1
+    "f": 1.1,
+    "fs": 0.4
   },
   {
     "id": "berinjela",
@@ -2264,7 +2533,8 @@
     "c": 6,
     "g": 0.2,
     "k": 35,
-    "f": 3
+    "f": 3,
+    "fs": 0.8
   },
   {
     "id": "pimentao",
@@ -2273,7 +2543,8 @@
     "c": 6,
     "g": 0.3,
     "k": 31,
-    "f": 1.7
+    "f": 1.7,
+    "fs": 0.5
   },
   {
     "id": "cebola",
@@ -2282,7 +2553,8 @@
     "c": 9,
     "g": 0.1,
     "k": 40,
-    "f": 1.7
+    "f": 1.7,
+    "fs": 0.5
   },
   {
     "id": "alho",
@@ -2291,7 +2563,8 @@
     "c": 33,
     "g": 0.5,
     "k": 149,
-    "f": 2.6
+    "f": 2.6,
+    "fs": 0.5
   },
   {
     "id": "cogumelo",
@@ -2300,7 +2573,8 @@
     "c": 3.3,
     "g": 0.3,
     "k": 22,
-    "f": 1
+    "f": 1,
+    "fs": 0.4
   },
   {
     "id": "milho-verde-lata",
@@ -2309,7 +2583,8 @@
     "c": 14,
     "g": 1,
     "k": 79,
-    "f": 2.4
+    "f": 2.4,
+    "fs": 0.5
   },
   {
     "id": "ervilha",
@@ -2318,7 +2593,8 @@
     "c": 14,
     "g": 0.4,
     "k": 84,
-    "f": 5.5
+    "f": 5.5,
+    "fs": 1.5
   },
   {
     "id": "azeitona",
@@ -2333,7 +2609,8 @@
         "g": 30
       }
     ],
-    "f": 3.3
+    "f": 3.3,
+    "fs": 0.3
   },
   {
     "id": "chocolate-70",
@@ -2348,7 +2625,8 @@
         "g": 10
       }
     ],
-    "f": 11
+    "f": 11,
+    "fs": 2
   },
   {
     "id": "mel",
@@ -2363,7 +2641,8 @@
         "g": 21
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "acucar",
@@ -2378,7 +2657,8 @@
         "g": 12
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "granola",
@@ -2393,7 +2673,8 @@
         "g": 15
       }
     ],
-    "f": 8
+    "f": 8,
+    "fs": 2
   },
   {
     "id": "cereal-matinal",
@@ -2408,7 +2689,8 @@
         "g": 40
       }
     ],
-    "f": 8
+    "f": 8,
+    "fs": 1.5
   },
   {
     "id": "pipoca",
@@ -2423,7 +2705,8 @@
         "g": 30
       }
     ],
-    "f": 14.5
+    "f": 14.5,
+    "fs": 0.5
   },
   {
     "id": "suco-laranja",
@@ -2438,7 +2721,8 @@
         "g": 200
       }
     ],
-    "f": 0.2
+    "f": 0.2,
+    "fs": 0.1
   },
   {
     "id": "cafe",
@@ -2453,7 +2737,8 @@
         "g": 240
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "cha",
@@ -2468,7 +2753,8 @@
         "g": 240
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "coca-zero",
@@ -2483,7 +2769,8 @@
         "g": 350
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "cerveja",
@@ -2498,7 +2785,8 @@
         "g": 350
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "vinho-tinto",
@@ -2513,7 +2801,8 @@
         "g": 150
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "pizza-mussarela",
@@ -2528,7 +2817,8 @@
         "g": 100
       }
     ],
-    "f": 2
+    "f": 2,
+    "fs": 0.5
   },
   {
     "id": "hamburger",
@@ -2543,7 +2833,8 @@
         "g": 150
       }
     ],
-    "f": 2
+    "f": 2,
+    "fs": 0.7
   },
   {
     "id": "batata-frita",
@@ -2558,7 +2849,8 @@
         "g": 100
       }
     ],
-    "f": 3.2
+    "f": 3.2,
+    "fs": 1.1
   },
   {
     "id": "nuggets-frango",
@@ -2573,7 +2865,8 @@
         "g": 90
       }
     ],
-    "f": 1.5
+    "f": 1.5,
+    "fs": 0.5
   },
   {
     "id": "sushi-salmao",
@@ -2588,7 +2881,8 @@
         "g": 200
       }
     ],
-    "f": 1
+    "f": 1,
+    "fs": 0.4
   },
   {
     "id": "lasanha",
@@ -2603,7 +2897,8 @@
         "g": 200
       }
     ],
-    "f": 1.5
+    "f": 1.5,
+    "fs": 0.5
   },
   {
     "id": "risoto",
@@ -2618,7 +2913,8 @@
         "g": 200
       }
     ],
-    "f": 0.8
+    "f": 0.8,
+    "fs": 0.2
   },
   {
     "id": "sopa-legumes",
@@ -2633,7 +2929,8 @@
         "g": 250
       }
     ],
-    "f": 1.5
+    "f": 1.5,
+    "fs": 0.5
   },
   {
     "id": "salada-verde",
@@ -2648,7 +2945,8 @@
         "g": 150
       }
     ],
-    "f": 2
+    "f": 2,
+    "fs": 0.6
   },
   {
     "id": "maionese",
@@ -2663,7 +2961,8 @@
         "g": 15
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "ketchup",
@@ -2678,7 +2977,8 @@
         "g": 17
       }
     ],
-    "f": 0.3
+    "f": 0.3,
+    "fs": 0.1
   },
   {
     "id": "mostarda",
@@ -2693,7 +2993,8 @@
         "g": 15
       }
     ],
-    "f": 3.3
+    "f": 3.3,
+    "fs": 1.2
   },
   {
     "id": "molho-tomate",
@@ -2708,7 +3009,8 @@
         "g": 30
       }
     ],
-    "f": 1.5
+    "f": 1.5,
+    "fs": 0.5
   },
   {
     "id": "creme-ricota",
@@ -2723,7 +3025,8 @@
         "g": 30
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "protein-bar",
@@ -2738,7 +3041,8 @@
         "g": 60
       }
     ],
-    "f": 5
+    "f": 5,
+    "fs": 1.5
   },
   {
     "id": "creatina",
@@ -2753,7 +3057,8 @@
         "g": 5
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "bcaa",
@@ -2768,7 +3073,8 @@
         "g": 10
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "isotônico",
@@ -2783,7 +3089,8 @@
         "g": 500
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "shake-banana",
@@ -2798,7 +3105,8 @@
         "g": 300
       }
     ],
-    "f": 1.5
+    "f": 1.5,
+    "fs": 0.8
   },
   {
     "id": "acai",
@@ -2813,7 +3121,8 @@
         "g": 200
       }
     ],
-    "f": 2.5
+    "f": 2.5,
+    "fs": 1.5
   },
   {
     "id": "paçoca",
@@ -2828,7 +3137,8 @@
         "g": 15
       }
     ],
-    "f": 3
+    "f": 3,
+    "fs": 1
   },
   {
     "id": "brigadeiro",
@@ -2843,7 +3153,8 @@
         "g": 20
       }
     ],
-    "f": 1
+    "f": 1,
+    "fs": 0.4
   },
   {
     "id": "pao-de-queijo",
@@ -2858,7 +3169,8 @@
         "g": 25
       }
     ],
-    "f": 0.5
+    "f": 0.5,
+    "fs": 0.2
   },
   {
     "id": "coxinha",
@@ -2873,7 +3185,8 @@
         "g": 80
       }
     ],
-    "f": 1.5
+    "f": 1.5,
+    "fs": 0.5
   },
   {
     "id": "pastel",
@@ -2888,7 +3201,8 @@
         "g": 100
       }
     ],
-    "f": 2
+    "f": 2,
+    "fs": 0.7
   },
   {
     "id": "empada",
@@ -2903,7 +3217,8 @@
         "g": 70
       }
     ],
-    "f": 1.5
+    "f": 1.5,
+    "fs": 0.5
   },
   {
     "id": "strogonoff",
@@ -2918,7 +3233,8 @@
         "g": 200
       }
     ],
-    "f": 1
+    "f": 1,
+    "fs": 0.4
   },
   {
     "id": "feijoada",
@@ -2933,7 +3249,8 @@
         "g": 250
       }
     ],
-    "f": 4
+    "f": 4,
+    "fs": 1.5
   },
   {
     "id": "farofa",
@@ -2948,7 +3265,8 @@
         "g": 15
       }
     ],
-    "f": 4
+    "f": 4,
+    "fs": 0.5
   },
   {
     "id": "vinagrete",
@@ -2963,7 +3281,8 @@
         "g": 30
       }
     ],
-    "f": 1
+    "f": 1,
+    "fs": 0.4
   },
   {
     "id": "peito-peru",
@@ -2978,7 +3297,8 @@
         "g": 60
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "sushi-atum",
@@ -2993,7 +3313,8 @@
         "g": 120
       }
     ],
-    "f": 0
+    "f": 0,
+    "fs": 0
   },
   {
     "id": "wrap-frango",
@@ -3008,7 +3329,8 @@
         "g": 180
       }
     ],
-    "f": 3
+    "f": 3,
+    "fs": 1
   },
   {
     "id": "overnight-oats",
@@ -3023,7 +3345,8 @@
         "g": 200
       }
     ],
-    "f": 6.5
+    "f": 6.5,
+    "fs": 3
   },
   {
     "id": "smoothie-proteico",
@@ -3038,6 +3361,7 @@
         "g": 300
       }
     ],
-    "f": 1
+    "f": 1,
+    "fs": 0.5
   }
 ]

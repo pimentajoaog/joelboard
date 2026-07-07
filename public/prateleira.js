@@ -31,9 +31,9 @@ var MEDIA_FILTER_TYPES = [
   { id: 'movie', label: 'Filmes', icon: '🎬' },
   { id: 'tv', label: 'Séries', icon: '📺' },
   { id: 'game', label: 'Jogos', icon: '🎮' },
-  { id: 'music', label: 'Música', icon: '🎵', soon: true }
+  { id: 'music', label: 'Música', icon: '🎵' }
 ];
-var libFilters = { movie: true, tv: true, game: true, music: false };
+var libFilters = { movie: true, tv: true, game: true, music: true };
 var libSort = 'recent';
 
 function esc(s) {
@@ -82,7 +82,20 @@ function gamesFetch(params) {
     return r.json();
   });
 }
+function musicUrl(params) {
+  var qs = new URLSearchParams(params || {});
+  return '/api/music?' + qs.toString();
+}
+function musicFetch(params) {
+  return fetch(musicUrl(params)).then(function (r) {
+    if (!r.ok) throw new Error('music-' + r.status);
+    return r.json();
+  });
+}
 function isCatalogGameId(id) { return /^\d+$/.test(String(id || '')); }
+function isCatalogMusicId(id) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ''));
+}
 function parseSheetIdInput(raw) {
   raw = String(raw || '').trim();
   if (!raw) return '';
@@ -326,8 +339,14 @@ function findGameByTitle(title) {
   return media.find(function (m) { return m.type === 'game' && m.title.toLowerCase() === t; }) || null;
 }
 
+function findMusicByTitle(title) {
+  var t = String(title || '').trim().toLowerCase();
+  if (!t) return null;
+  return media.find(function (m) { return m.type === 'music' && m.title.toLowerCase() === t; }) || null;
+}
+
 function setSearchMode(mode) {
-  searchMode = mode === 'game' ? 'game' : 'screen';
+  searchMode = mode === 'game' ? 'game' : (mode === 'music' ? 'music' : 'screen');
   renderMain();
 }
 
@@ -538,12 +557,15 @@ function migrateLegacyRatings(avaliacoesRows) {
 function refreshAllPosters() {
   var todo = media.filter(function (m) {
     if (m.type === 'game') return isCatalogGameId(parseMediaId(m.key).id);
+    if (m.type === 'music') return isCatalogMusicId(parseMediaId(m.key).id);
     return !!tmdbKey();
   });
   if (!todo.length) return Promise.resolve();
   return todo.reduce(function (chain, m) {
     return chain.then(function () {
-      return m.type === 'game' ? fetchPosterFromCatalog(m) : fetchPosterFromTmdb(m);
+      if (m.type === 'game') return fetchPosterFromCatalog(m);
+      if (m.type === 'music') return fetchPosterFromMusic(m);
+      return fetchPosterFromTmdb(m);
     });
   }, Promise.resolve());
 }
@@ -564,9 +586,25 @@ function fetchPosterFromCatalog(m) {
     .catch(function () {});
 }
 
+function fetchPosterFromMusic(m) {
+  var parsed = parseMediaId(m.key);
+  if (parsed.type !== 'music' || !isCatalogMusicId(parsed.id)) return Promise.resolve();
+  return musicFetch({ album: parsed.id })
+    .then(function (item) {
+      var poster = item.cover || '';
+      if (!poster) return;
+      m.poster = poster;
+      posterCache[m.key] = poster;
+      if (!m.sheetRow) return;
+      var col = m.layout === 'new' ? 'E' : 'D';
+      return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Filmes!' + col + m.sheetRow) + '?valueInputOption=RAW'), { values: [[poster]] });
+    })
+    .catch(function () {});
+}
+
 function fetchPosterFromTmdb(m) {
   var parsed = parseMediaId(m.key);
-  if (parsed.type === 'game') return Promise.resolve();
+  if (parsed.type === 'game' || parsed.type === 'music') return Promise.resolve();
   var apiPath = parsed.type === 'tv' ? ('/tv/' + parsed.id) : ('/movie/' + parsed.id);
   return fetch('https://api.themoviedb.org/3' + apiPath + '?api_key=' + encodeURIComponent(tmdbKey()) + '&language=pt-BR')
     .then(function (r) { return r.json(); })
@@ -837,7 +875,8 @@ function renderMain() {
   var el = document.getElementById('main');
   if (curTab === 'search') {
     var pills = '<div class="search-modes"><button type="button" class="smode' + (searchMode === 'screen' ? ' on' : '') + '" onclick="setSearchMode(\'screen\')">Filmes & séries</button>'
-      + '<button type="button" class="smode' + (searchMode === 'game' ? ' on' : '') + '" onclick="setSearchMode(\'game\')">Jogos</button></div>';
+      + '<button type="button" class="smode' + (searchMode === 'game' ? ' on' : '') + '" onclick="setSearchMode(\'game\')">Jogos</button>'
+      + '<button type="button" class="smode' + (searchMode === 'music' ? ' on' : '') + '" onclick="setSearchMode(\'music\')">Música</button></div>';
     if (searchMode === 'game') {
       el.innerHTML = pills
         + '<div class="searchbar"><input type="search" id="gameSearch" placeholder="Buscar jogo no catálogo…" autocomplete="off"></div>'
@@ -849,6 +888,19 @@ function renderMain() {
         searchTimer = setTimeout(function () { runGameSearch(ginp.value); }, 200);
       };
       if (JB.searchFocus) JB.searchFocus(ginp);
+      return;
+    }
+    if (searchMode === 'music') {
+      el.innerHTML = pills
+        + '<div class="searchbar"><input type="search" id="musicSearch" placeholder="Buscar álbum no MusicBrainz…" autocomplete="off"></div>'
+        + '<div class="game-add-row"><input class="field" id="musicYear" placeholder="Ano (só ao adicionar manual)" inputmode="numeric" maxlength="4"></div>'
+        + '<div id="searchOut"><div class="empty">Digite para buscar no catálogo.</div></div>';
+      var minp = document.getElementById('musicSearch');
+      minp.oninput = function () {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () { runMusicSearch(minp.value); }, 350);
+      };
+      if (JB.searchFocus) JB.searchFocus(minp);
       return;
     }
     el.innerHTML = pills
@@ -863,7 +915,7 @@ function renderMain() {
     return;
   }
   if (!libraryMedia().length) {
-    el.innerHTML = JB.emptyState({ icon: '📚', title: 'Prateleira vazia', body: 'Busque filmes, séries ou jogos e registrem quando assistirem/jogarem.', btn: 'Buscar', onclick: 'prateleiraTab(\'search\')' });
+    el.innerHTML = JB.emptyState({ icon: '📚', title: 'Prateleira vazia', body: 'Busque filmes, séries, jogos ou álbuns e registrem quando assistirem/jogarem/ouvirem.', btn: 'Buscar', onclick: 'prateleiraTab(\'search\')' });
     return;
   }
   var items = sortedFilteredMedia();
@@ -1016,6 +1068,117 @@ function addManualGame() {
     .finally(function () { unlockAdd(lockId); });
 }
 
+function musicSearchRowHtml(m) {
+  var tag = onShelf(m.key) ? ' · na prateleira' : ' · registrar';
+  return '<div class="srow" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
+    + '<div class="sposter">' + posterVisual(posterPathFor(m), '🎵') + '</div>'
+    + '<div class="info"><div class="t">' + esc(m.title) + '</div><div class="y">Música' + (m.year ? ' · ' + esc(m.year) : '') + tag + '</div></div></div>';
+}
+
+function runMusicSearch(q) {
+  var out = document.getElementById('searchOut');
+  q = (q || '').trim();
+  var ql = q.toLowerCase();
+  var local = media.filter(function (m) {
+    return m.type === 'music' && (!ql || m.title.toLowerCase().indexOf(ql) >= 0);
+  });
+  if (!q) {
+    if (local.length) {
+      out.innerHTML = '<div class="sresults">' + local.map(musicSearchRowHtml).join('') + '</div>';
+    } else {
+      out.innerHTML = '<div class="empty">Digite para buscar no MusicBrainz.</div>';
+    }
+    return;
+  }
+  out.innerHTML = '<div class="empty">Buscando…</div>';
+  musicFetch({ search: q })
+    .then(function (data) {
+      var list = data.results || [];
+      var html = '';
+      if (local.length) {
+        html += '<div class="sresults">' + local.map(musicSearchRowHtml).join('') + '</div>';
+      }
+      if (list.length) {
+        html += '<div class="sresults">' + list.map(function (item) {
+          var key = mediaKey('music', item.id);
+          var inSheet = media.some(function (x) { return x.key === key; });
+          var shelf = onShelf(key);
+          var year = String(item.released || '').slice(0, 4) || '—';
+          var artist = String(item.artist || '').trim();
+          var tag = shelf ? ' · na prateleira' : (inSheet ? ' · registrar' : '');
+          var poster = item.cover || '';
+          var sub = 'Música' + (artist ? ' · ' + esc(artist) : '') + ' · ' + esc(year) + tag;
+          return '<div class="srow" onclick="addFromMusicBrainz(\'' + attrEsc(item.id) + '\')">'
+            + '<div class="sposter">' + posterVisual(poster, '🎵') + '</div>'
+            + '<div class="info"><div class="t">' + esc(item.name || '') + '</div><div class="y">' + sub + '</div></div></div>';
+        }).join('') + '</div>';
+      } else if (!local.length) {
+        html += '<div class="empty">Nada encontrado no MusicBrainz.</div>';
+      }
+      if (!findMusicByTitle(q) && !list.some(function (item) { return String(item.name || '').trim().toLowerCase() === ql; })) {
+        html += '<button type="button" class="btn-primary game-add-btn" onclick="addManualMusic()">+ Adicionar manualmente “' + esc(q) + '”</button>';
+      }
+      out.innerHTML = html || '<div class="empty">Nada encontrado.</div>';
+    })
+    .catch(function () {
+      var html = '';
+      if (local.length) {
+        html += '<div class="sresults">' + local.map(musicSearchRowHtml).join('') + '</div>';
+      } else {
+        html += '<div class="empty">MusicBrainz indisponível — adicione manualmente.</div>';
+      }
+      if (!findMusicByTitle(q)) {
+        html += '<button type="button" class="btn-primary game-add-btn" onclick="addManualMusic()">+ Adicionar “' + esc(q) + '”</button>';
+      }
+      out.innerHTML = html;
+    });
+}
+
+function addFromMusicBrainz(mbid) {
+  var key = mediaKey('music', mbid);
+  if (media.some(function (m) { return m.key === key; })) {
+    openDetail(key);
+    return;
+  }
+  if (!lockAdd(key)) return;
+  musicFetch({ album: String(mbid) })
+    .then(function (item) {
+      if (media.some(function (m) { return m.key === key; })) {
+        openDetail(key);
+        return;
+      }
+      var title = item.name || '';
+      var year = String(item.released || '').slice(0, 4);
+      var poster = item.cover || '';
+      if (poster) posterCache[key] = poster;
+      var row = [key, 'Música', title, year, poster, JB.fmtDate(new Date())];
+      return JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
+        .then(function () { return loadAll(); })
+        .then(function () { JB.toast('✓ Registre quando ouvirem'); openDetail(key); });
+    })
+    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
+    .finally(function () { unlockAdd(key); });
+}
+
+function addManualMusic() {
+  var titleEl = document.getElementById('musicSearch');
+  var yearEl = document.getElementById('musicYear');
+  var title = titleEl ? (titleEl.value || '').trim() : '';
+  var year = yearEl ? (yearEl.value || '').trim().slice(0, 4) : '';
+  if (!title) { JB.toast('Digite o nome do álbum'); return; }
+  var existing = findMusicByTitle(title);
+  if (existing) { openDetail(existing.key); return; }
+  var lockId = 'manual:' + title.toLowerCase();
+  if (!lockAdd(lockId)) return;
+  var key = mediaKey('music', gameId());
+  var row = [key, 'Música', title, year, '', JB.fmtDate(new Date())];
+  JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
+    .then(function () { return loadAll(); })
+    .then(function () { JB.toast('✓ Registre quando ouvirem'); openDetail(key); })
+    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
+    .finally(function () { unlockAdd(lockId); });
+}
+
 function addFromTmdb(type, tmdbId) {
   var key = mediaKey(type, tmdbId);
   if (media.some(function (m) { return m.key === key; })) {
@@ -1130,7 +1293,9 @@ function logFormHtml(m) {
 }
 
 function logVerb(type) {
-  return type === 'game' ? 'jogada' : 'assistida';
+  if (type === 'game') return 'jogada';
+  if (type === 'music') return 'ouvida';
+  return 'assistida';
 }
 
 function openDetail(id) {

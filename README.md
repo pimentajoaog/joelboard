@@ -61,6 +61,7 @@ Open the URL Vite prints (usually `http://localhost:5173`). Google Sign-In works
 | `TWITCH_CLIENT_ID` | Game search via IGDB (primary, `/api/games`) |
 | `TWITCH_CLIENT_SECRET` | IGDB OAuth (server-side only) |
 | `RAWG_API_KEY` | Optional game search fallback if IGDB fails |
+| `MUSICBRAINZ_CONTACT` | Optional — contact URL or email in MusicBrainz User-Agent (`/api/music`). No API key. Defaults to `joelboard.vercel.app`. |
 
 Each deploy bumps the service-worker cache id (`scripts/bump-sw.mjs`). Core assets (`/joelboard.js`, `/joelboard.css`, `/themes.css`, `/<app>.js`) are served at **unhashed URLs**; the PWA uses network-first revalidation. If a change does not appear after deploy, hard-refresh or wait for the new service worker.
 

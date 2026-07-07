@@ -322,15 +322,26 @@ function saveSheetId() {
 }
 
 function openMoviesSet() {
+  moviesSetTab('tema');
   document.getElementById('sheetInfo').textContent = JB.getSheetId('movies') ? ('ID: ' + JB.getSheetId('movies')) : 'Nenhuma planilha vinculada.';
   document.getElementById('sheetIdIn').value = JB.getSheetId('movies') || '';
+  JB.renderSkinPicker('movies', document.getElementById('moviesSkins'));
   document.getElementById('setOverlay').classList.add('open');
+}
+function moviesSetTab(name) {
+  document.querySelectorAll('#setOverlay .set-tab').forEach(function (b) {
+    b.classList.toggle('active', b.getAttribute('data-st') === name);
+  });
+  document.querySelectorAll('#setOverlay .set-pane').forEach(function (p) {
+    var on = p.getAttribute('data-pane') === name;
+    p.style.display = on ? '' : 'none';
+  });
 }
 function closeMoviesSet() { document.getElementById('setOverlay').classList.remove('open'); }
 
 function moviesSignIn() { JB.signIn({ onSuccess: boot }); }
 function moviesSignOut() { try { localStorage.removeItem('jb_julioel'); } catch (_) {} JB.signOut(); location.href = '/'; }
 
-JB.applySkin('hub');
+JB.applySkin('movies');
 if (JB.hasSession()) JB.ensureToken(false).then(boot).catch(boot);
 else boot();

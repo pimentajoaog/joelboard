@@ -27,53 +27,53 @@
     </div>
     <div class="acct"><span id="greet">Olá 👋</span><button class="authbtn" id="authbtn">Entrar</button><button class="gear" id="gearBtn" onclick="openHubSet()" aria-label="Ajustes" title="Ajustes">⚙</button></div>
   </div>
-  <div class="sub">Seus apps, num lugar só.</div>
+  <div class="sub" id="hubSub">Seus apps, num lugar só.</div>
 
   <div class="hub-body">
   <div class="grid">
-    <a class="tile" href="/finance">
+    <a class="tile joelboard-tile" href="/finance">
       <div class="ico" style="background:#2a2f52"><svg width="30" height="30" viewBox="0 0 64 64"><rect x="14" y="46" width="36" height="3" rx="1.5" fill="#818cf8" opacity="0.4"/><rect x="15" y="33" width="8" height="13" rx="3" fill="#818cf8" opacity="0.55"/><rect x="28" y="26" width="8" height="20" rx="3" fill="#818cf8" opacity="0.8"/><rect x="41" y="20" width="8" height="26" rx="3" fill="#818cf8"/><circle cx="45" cy="17" r="9" fill="#34d399"/><text x="45" y="20.6" text-anchor="middle" font-family="Hanken Grotesk,sans-serif" font-size="9" font-weight="800" fill="#fff">R$</text></svg></div>
       <div class="suite" data-suite-label>Joelboard</div>
       <div class="name" style="color:var(--primary)">Finance</div>
       <div class="desc">Receitas, contas, metas e poupança.</div>
       <div class="open">Abrir →</div>
     </a>
-    <a class="tile" href="/fit">
+    <a class="tile joelboard-tile" href="/fit">
       <div class="ico" style="background:#3a2530"><svg width="30" height="30" viewBox="0 0 64 64"><rect x="16" y="29" width="6" height="6" rx="2" fill="#fb7185"/><rect x="42" y="29" width="6" height="6" rx="2" fill="#fb7185"/><rect x="13" y="26" width="5" height="12" rx="2" fill="#fb7185"/><rect x="46" y="26" width="5" height="12" rx="2" fill="#fb7185"/><rect x="22" y="30.5" width="20" height="3" rx="1.5" fill="#fb7185"/></svg></div>
       <div class="suite" data-suite-label>Joelboard</div>
       <div class="name" style="color:var(--fit)">Fit</div>
       <div class="desc">Treinos e progressão de carga.</div>
       <div class="open" style="color:var(--fit)">Abrir →</div>
     </a>
-    <a class="tile" href="/study">
+    <a class="tile joelboard-tile" href="/study">
       <div class="ico" style="background:#241f3a"><svg width="30" height="30" viewBox="0 0 64 64"><path d="M32 15 54 25 32 35 10 25Z" fill="#a78bfa"/><path d="M20 30v9c0 3 5.4 6 12 6s12-3 12-6v-9" fill="none" stroke="#a78bfa" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="54" y1="25" x2="54" y2="39" stroke="#a78bfa" stroke-width="3" stroke-linecap="round"/></svg></div>
       <div class="suite" data-suite-label>Joelboard</div>
       <div class="name" style="color:var(--study)">Study</div>
       <div class="desc">Provas, trabalhos e matérias.</div>
       <div class="open" style="color:var(--study)">Abrir →</div>
     </a>
-    <a class="tile" href="/notas">
+    <a class="tile joelboard-tile" href="/notas">
       <div class="ico" style="background:#33280f"><svg width="30" height="30" viewBox="0 0 64 64"><rect x="16" y="12" width="32" height="40" rx="5" fill="none" stroke="#f59e0b" stroke-width="3.5"/><path d="M24 24h12" stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round"/><path d="M24 32h16" stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round"/><path d="M24 40h9" stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round"/><path d="M40.5 39.5l3 3 6-6.5" fill="none" stroke="#34d399" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div class="suite" data-suite-label>Joelboard</div>
       <div class="name" style="color:var(--notas)">Notas</div>
       <div class="desc">Listas, tarefas e compras que você marca.</div>
       <div class="open" style="color:var(--notas)">Abrir →</div>
     </a>
-    <div class="tile clickable" id="miniTile" onclick="openMini()">
+    <div class="tile clickable joelboard-tile" id="miniTile" onclick="openMini()">
       <div class="ico" style="background:#0f2a32"><svg width="30" height="30" viewBox="0 0 64 64"><path d="M18 32h20" stroke="#22d3ee" stroke-width="4" stroke-linecap="round"/><path d="M32 18v20" stroke="#22d3ee" stroke-width="4" stroke-linecap="round"/><path d="M40 40l8 8" stroke="#34d399" stroke-width="3.5" stroke-linecap="round"/><rect x="14" y="14" width="36" height="36" rx="8" fill="none" stroke="#22d3ee" stroke-width="3" opacity=".5"/></svg></div>
       <div class="suite" data-suite-label>Joelboard</div>
       <div class="name" style="color:var(--mini)">Mini</div>
       <div class="desc">Extensões Chrome — Replace, Refresh e mais.</div>
       <div class="open" style="color:var(--mini)">Abrir →</div>
     </div>
-    <div class="tile clickable" id="fbTile" onclick="openFB()" style="display:none">
+    <div class="tile clickable joelboard-tile" id="fbTile" onclick="openFB()" style="display:none">
       <div class="ico" style="background:#3a3320"><svg width="30" height="30" viewBox="0 0 64 64"><path d="M16 18h32a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H30l-10 8v-8h-4a4 4 0 0 1-4-4V22a4 4 0 0 1 4-4Z" fill="none" stroke="#fbbf24" stroke-width="3.5" stroke-linejoin="round"/><circle cx="26" cy="31" r="2.2" fill="#fbbf24"/><circle cx="34" cy="31" r="2.2" fill="#fbbf24"/><circle cx="42" cy="31" r="2.2" fill="#fbbf24"/></svg></div>
       <div class="suite" data-suite-label>Joelboard</div>
       <div class="name" style="color:#fbbf24">Feedback</div>
       <div class="desc">Bugs e ideias dos apps.</div>
       <div class="open" style="color:#fbbf24">Abrir →</div>
     </div>
-    <a class="tile julioel-only" id="moviesTile" href="/movies" style="display:none" aria-hidden="true">
+    <a class="tile julioel-only" id="moviesTile" href="/movies" aria-hidden="true">
       <div class="ico" style="background:#2a1f3a"><svg width="30" height="30" viewBox="0 0 64 64"><rect x="12" y="18" width="40" height="28" rx="4" fill="none" stroke="#e879f9" stroke-width="3.5"/><path d="M26 28l12 8-12 8V28Z" fill="#e879f9"/><circle cx="48" cy="16" r="6" fill="none" stroke="#f472b6" stroke-width="3"/></svg></div>
       <div class="suite" data-suite-label>Julioelboard</div>
       <div class="name" style="color:#e879f9">Movies</div>

@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="/themes.css">
 <meta name="theme-color" content="#0d0f18">
 <meta name="robots" content="noindex">
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Chakra+Petch:wght@500;600;700&family=Cormorant+Garamond:wght@500;600&family=Darker+Grotesque:wght@500;700;900&family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../src/movies.css">
 </head>
 <body>
@@ -45,11 +45,20 @@
 <div class="overlay" id="setOverlay" onclick="if(event.target===this)closeMoviesSet()">
   <div class="modal">
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeMoviesSet()">✕</button></div>
-    <div class="fg"><label class="fl">Planilha compartilhada</label>
-      <p class="rg" id="sheetInfo">—</p>
-      <input class="field" id="sheetIdIn" placeholder="ID da planilha (opcional)">
-      <button class="btn ghost" style="width:100%;margin-top:8px" onclick="saveSheetId()">Usar este ID</button>
-      <button class="btn ghost" style="width:100%;margin-top:8px" onclick="createSharedSheet()">Criar planilha nova</button>
+    <div class="set-tabs">
+      <button class="set-tab active" data-st="tema" onclick="moviesSetTab('tema')">Tema</button>
+      <button class="set-tab" data-st="sheet" onclick="moviesSetTab('sheet')">Planilha</button>
+    </div>
+    <div class="set-pane" data-pane="tema">
+      <div class="fg"><label class="fl">Tema do app</label><div id="moviesSkins"></div></div>
+    </div>
+    <div class="set-pane" data-pane="sheet" style="display:none">
+      <div class="fg"><label class="fl">Planilha compartilhada</label>
+        <p class="rg" id="sheetInfo">—</p>
+        <input class="field" id="sheetIdIn" placeholder="ID da planilha (opcional)">
+        <button class="btn ghost" style="width:100%;margin-top:8px" onclick="saveSheetId()">Usar este ID</button>
+        <button class="btn ghost" style="width:100%;margin-top:8px" onclick="createSharedSheet()">Criar planilha nova</button>
+      </div>
     </div>
     <button class="btn-primary" onclick="closeMoviesSet()">Pronto</button>
   </div>

@@ -198,16 +198,39 @@ function parseLegacyRatings(rows) {
       email: String(r[1] || '').toLowerCase(),
       stars: parseInt(r[2], 10) || 0,
       review: String(r[3] || ''),
-      updated: parseSheetDate(r[4] || '')
+      updated: parseSheetDate(r[4] || ''),
+      sheetRow: i + 1
     });
   }
   return out;
 }
 
+function legacyMigrateKey() {
+  return 'jb_pr_av_migrated_' + (JB.getSheetId(APP) || '');
+}
+
+function markLegacyMigrated() {
+  try { localStorage.setItem(legacyMigrateKey(), '1'); } catch (_) {}
+}
+
+function legacyAlreadyMigrated() {
+  try { return localStorage.getItem(legacyMigrateKey()) === '1'; } catch (_) { return false; }
+}
+
+function deleteSheetRows(tab, rowNums) {
+  if (!sheetGrid || sheetGrid[tab] == null || !rowNums.length) return Promise.resolve();
+  var reqs = rowNums.slice().sort(function (a, b) { return b - a; }).map(function (row) {
+    return { deleteDimension: { range: { sheetId: sheetGrid[tab], dimension: 'ROWS', startIndex: row - 1, endIndex: row } } };
+  });
+  return JB.api('POST', ssUrl(':batchUpdate'), { requests: reqs });
+}
+
 function migrateLegacyRatings(avaliacoesRows) {
+  if (legacyAlreadyMigrated()) return Promise.resolve();
   var legacy = parseLegacyRatings(avaliacoesRows || []);
-  if (!legacy.length) return Promise.resolve();
+  if (!legacy.length) { markLegacyMigrated(); return Promise.resolve(); }
   var toAppend = [];
+  var avRowsToDelete = [];
   legacy.forEach(function (rt) {
     if (!rt.stars && !rt.review) return;
     var has = sessions.some(function (s) {
@@ -215,13 +238,21 @@ function migrateLegacyRatings(avaliacoesRows) {
     });
     if (has) return;
     toAppend.push([rt.updated || todayISO(), rt.mediaId, rt.email, String(rt.stars || ''), rt.review || '']);
+    if (rt.sheetRow) avRowsToDelete.push(rt.sheetRow);
   });
-  if (!toAppend.length) return Promise.resolve();
+  if (!toAppend.length) {
+    var staleAv = legacy.map(function (rt) { return rt.sheetRow; }).filter(Boolean);
+    return deleteSheetRows('Avaliacoes', staleAv).then(function () { markLegacyMigrated(); });
+  }
   return JB.api('POST', ssUrl('/values/' + encodeURIComponent('Assistidos') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: toAppend })
+    .then(function () { return deleteSheetRows('Avaliacoes', avRowsToDelete); })
     .then(function () {
       return JB.api('GET', ssUrl('/values/' + encodeURIComponent('Assistidos') + '?valueRenderOption=FORMATTED_VALUE'));
     })
-    .then(function (res) { sessions = parseSessions(res.values || []); });
+    .then(function (res) {
+      sessions = parseSessions(res.values || []);
+      markLegacyMigrated();
+    });
 }
 
 function refreshAllPosters() {

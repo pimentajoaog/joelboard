@@ -21,7 +21,9 @@ var detailId = null;
 var editSessionRow = null;
 var sessHistOpen = false;
 var searchTimer = null;
-var searchMode = 'screen';
+var searchGen = 0;
+var SEARCH_FILTERS_KEY = 'jb_pr_search_filters';
+var searchFilters = { movie: true, tv: true, game: true, music: true };
 var posterCache = {};
 var userIcons = {};
 var addBusy = {};
@@ -269,7 +271,52 @@ function loadLibPrefs() {
     }
     var s = localStorage.getItem(LIB_SORT_KEY);
     if (s) libSort = s;
+    var sf = localStorage.getItem(SEARCH_FILTERS_KEY);
+    if (sf) {
+      var sp = JSON.parse(sf);
+      MEDIA_FILTER_TYPES.forEach(function (t) {
+        if (sp[t.id] != null) searchFilters[t.id] = !!sp[t.id];
+      });
+    }
   } catch (_) {}
+}
+
+function saveSearchPrefs() {
+  try { localStorage.setItem(SEARCH_FILTERS_KEY, JSON.stringify(searchFilters)); } catch (_) {}
+}
+
+function activeSearchFilterTypes() {
+  var active = MEDIA_FILTER_TYPES.filter(function (t) { return searchFilters[t.id]; }).map(function (t) { return t.id; });
+  return active.length ? active : MEDIA_FILTER_TYPES.map(function (t) { return t.id; });
+}
+
+function searchQueryValue() {
+  var el = document.getElementById('universalSearch');
+  return el ? (el.value || '').trim() : '';
+}
+
+function searchToolbarHtml() {
+  var chips = MEDIA_FILTER_TYPES.map(function (t) {
+    var on = searchFilters[t.id];
+    return '<button type="button" class="lib-chip' + (on ? ' on' : '') + '" data-filter="' + t.id + '" onclick="toggleSearchFilter(\'' + t.id + '\')">'
+      + t.icon + ' ' + esc(t.label) + '</button>';
+  }).join('');
+  return '<div class="lib-toolbar search-toolbar"><div class="lib-filters">'
+    + '<span class="lib-tb-label">Buscar em</span><div class="lib-chips">' + chips + '</div></div></div>';
+}
+
+function syncSearchFilterChips() {
+  document.querySelectorAll('.search-toolbar .lib-chip[data-filter]').forEach(function (btn) {
+    btn.classList.toggle('on', !!searchFilters[btn.getAttribute('data-filter')]);
+  });
+}
+
+function toggleSearchFilter(type) {
+  if (!MEDIA_FILTER_TYPES.some(function (t) { return t.id === type; })) return;
+  searchFilters[type] = !searchFilters[type];
+  saveSearchPrefs();
+  syncSearchFilterChips();
+  runUniversalSearch(searchQueryValue());
 }
 
 function saveLibPrefs() {
@@ -425,9 +472,12 @@ function findMusicByTitle(title) {
   return media.find(function (m) { return m.type === 'music' && m.title.toLowerCase() === t; }) || null;
 }
 
-function setSearchMode(mode) {
-  searchMode = mode === 'game' ? 'game' : (mode === 'music' ? 'music' : 'screen');
-  renderMain();
+function localSearchRowHtml(m) {
+  var tag = onShelf(m.key) ? ' · na prateleira' : ' · registrar';
+  return '<div class="srow" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
+    + '<div class="sposter">' + posterVisual(posterPathFor(m), typeIcon(m.type)) + '</div>'
+    + '<div class="info"><div class="t">' + esc(m.title) + '</div><div class="y">' + esc(typeLabel(m.type))
+    + (m.year ? ' · ' + esc(m.year) : '') + tag + '</div></div></div>';
 }
 
 function migrateAppKeys() {
@@ -776,6 +826,103 @@ function reloadSessions() {
   });
 }
 
+function loadSessionsQuiet() {
+  return JB.api('GET', ssUrl('/values/' + encodeURIComponent('Assistidos') + '?valueRenderOption=FORMATTED_VALUE'))
+    .then(function (res) {
+      sessions = parseSessions(res.values || []);
+    });
+}
+
+var tempSessionRow = 0;
+function allocTempSessionRow() {
+  tempSessionRow -= 1;
+  return tempSessionRow;
+}
+
+function applySessionLocal(data) {
+  var sess = {
+    date: data.date,
+    mediaId: String(data.mediaId),
+    email: data.email,
+    stars: data.stars | 0,
+    review: data.review || '',
+    legacyJboe: false,
+    sheetRow: data.sheetRow | 0
+  };
+  if (data.replaceRow) {
+    var existing = sessionByRow(data.replaceRow);
+    if (existing) {
+      existing.date = sess.date;
+      existing.stars = sess.stars;
+      existing.review = sess.review;
+      return existing;
+    }
+  }
+  sessions.push(sess);
+  return sess;
+}
+
+function removeSessionLocal(sheetRow) {
+  sessions = sessions.filter(function (s) { return s.sheetRow !== sheetRow; });
+}
+
+function applyJlboLocal(mediaId, em, on) {
+  var m = media.find(function (x) { return x.key === String(mediaId); });
+  if (!m) return;
+  if (!m.jlbo) m.jlbo = {};
+  m.jlbo[em] = !!on;
+}
+
+function shelfItemEl(key) {
+  var nodes = document.querySelectorAll('.shelf-item[data-key]');
+  for (var i = 0; i < nodes.length; i++) {
+    if (nodes[i].getAttribute('data-key') === String(key)) return nodes[i];
+  }
+  return null;
+}
+
+function patchShelfItem(key) {
+  if (curTab !== 'lib') return;
+  var m = media.find(function (x) { return x.key === String(key); });
+  if (!m || !sessionsFor(key).length) return;
+  var items = sortedFilteredMedia();
+  var idx = -1;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].key === String(key)) { idx = i; break; }
+  }
+  if (idx < 0) { renderMain(); return; }
+  var el = shelfItemEl(key);
+  if (!el) { renderMain(); return; }
+  var wrap = document.createElement('div');
+  wrap.innerHTML = shelfItemHtml(m, idx);
+  el.replaceWith(wrap.firstChild);
+}
+
+function patchDetailPanels(key) {
+  if (!detailId || String(detailId) !== String(key)) return;
+  var m = media.find(function (x) { return x.key === String(key); });
+  if (!m) return;
+  var hero = document.querySelector('#detailBody .dhero');
+  if (hero) hero.classList.toggle('jlbo-glow', mediaHasFullJlbo(key));
+  var oldJlbo = document.querySelector('#detailBody .jlbo-block');
+  if (oldJlbo) {
+    var jlboWrap = document.createElement('div');
+    jlboWrap.innerHTML = jlboBlockHtml(m);
+    oldJlbo.replaceWith(jlboWrap.firstChild);
+  }
+  var oldSess = document.querySelector('#detailBody .sess-block');
+  if (oldSess) {
+    var sessWrap = document.createElement('div');
+    sessWrap.innerHTML = sessionBlockHtml(key);
+    oldSess.replaceWith(sessWrap.firstChild);
+  }
+}
+
+function syncMediaUi(key) {
+  patchShelfItem(key);
+  patchDetailPanels(key);
+}
+
 function refreshPrateleiraUi() {
   renderMain();
   if (detailId) openDetail(detailId);
@@ -1025,42 +1172,14 @@ function renderShelfStack(items) {
 function renderMain() {
   var el = document.getElementById('main');
   if (curTab === 'search') {
-    var pills = '<div class="search-modes"><button type="button" class="smode' + (searchMode === 'screen' ? ' on' : '') + '" onclick="setSearchMode(\'screen\')">Filmes & séries</button>'
-      + '<button type="button" class="smode' + (searchMode === 'game' ? ' on' : '') + '" onclick="setSearchMode(\'game\')">Jogos</button>'
-      + '<button type="button" class="smode' + (searchMode === 'music' ? ' on' : '') + '" onclick="setSearchMode(\'music\')">Música</button></div>';
-    if (searchMode === 'game') {
-      el.innerHTML = pills
-        + '<div class="searchbar"><input type="search" id="gameSearch" placeholder="Buscar jogo no catálogo…" autocomplete="off"></div>'
-        + '<div class="game-add-row"><input class="field" id="gameYear" placeholder="Ano (só ao adicionar manual)" inputmode="numeric" maxlength="4"></div>'
-        + '<div id="searchOut"><div class="empty">Digite para buscar no catálogo.</div></div>';
-      var ginp = document.getElementById('gameSearch');
-      ginp.oninput = function () {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(function () { runGameSearch(ginp.value); }, 200);
-      };
-      if (JB.searchFocus) JB.searchFocus(ginp);
-      return;
-    }
-    if (searchMode === 'music') {
-      el.innerHTML = pills
-        + '<div class="searchbar"><input type="search" id="musicSearch" placeholder="Buscar álbum no MusicBrainz…" autocomplete="off"></div>'
-        + '<div class="game-add-row"><input class="field" id="musicYear" placeholder="Ano (só ao adicionar manual)" inputmode="numeric" maxlength="4"></div>'
-        + '<div id="searchOut"><div class="empty">Digite para buscar no catálogo.</div></div>';
-      var minp = document.getElementById('musicSearch');
-      minp.oninput = function () {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(function () { runMusicSearch(minp.value); }, 350);
-      };
-      if (JB.searchFocus) JB.searchFocus(minp);
-      return;
-    }
-    el.innerHTML = pills
-      + '<div class="searchbar"><input type="search" id="mvSearch" placeholder="Buscar filme ou série…" autocomplete="off"></div>'
-      + '<div id="searchOut"><div class="empty">Digite para buscar no catálogo.</div></div>';
-    var inp = document.getElementById('mvSearch');
+    el.innerHTML = searchToolbarHtml()
+      + '<div class="searchbar"><input type="search" id="universalSearch" placeholder="Buscar filmes, séries, jogos, álbuns…" autocomplete="off"></div>'
+      + '<div class="game-add-row"><input class="field" id="manualYear" placeholder="Ano (só ao adicionar manual)" inputmode="numeric" maxlength="4"></div>'
+      + '<div id="searchOut"><div class="empty">Digite para buscar em todos os catálogos.</div></div>';
+    var inp = document.getElementById('universalSearch');
     inp.oninput = function () {
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(function () { runSearch(inp.value); }, 350);
+      searchTimer = setTimeout(function () { runUniversalSearch(inp.value); }, 300);
     };
     if (JB.searchFocus) JB.searchFocus(inp);
     return;
@@ -1082,96 +1201,173 @@ function prateleiraTab(tab) {
   renderMain();
 }
 
-function runSearch(q) {
-  var out = document.getElementById('searchOut');
-  q = (q || '').trim();
-  if (!q) { out.innerHTML = '<div class="empty">Digite para buscar no catálogo.</div>'; return; }
-  if (!tmdbKey()) { out.innerHTML = '<div class="empty">Chave TMDb não configurada (VITE_TMDB_API_KEY).</div>'; return; }
-  out.innerHTML = '<div class="empty">Buscando…</div>';
-  fetch('https://api.themoviedb.org/3/search/multi?api_key=' + encodeURIComponent(tmdbKey()) + '&language=pt-BR&query=' + encodeURIComponent(q))
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      var list = (data.results || []).filter(function (x) { return x.media_type === 'movie' || x.media_type === 'tv'; });
-      if (!list.length) { out.innerHTML = '<div class="empty">Nada encontrado.</div>'; return; }
-      out.innerHTML = '<div class="sresults">' + list.slice(0, 14).map(function (item) {
-        var type = item.media_type === 'tv' ? 'tv' : 'movie';
-        var key = mediaKey(type, item.id);
-        var inSheet = media.some(function (x) { return x.key === key; });
-        var shelf = onShelf(key);
-        var title = type === 'tv' ? (item.name || '') : (item.title || '');
-        var year = String((type === 'tv' ? item.first_air_date : item.release_date) || '').slice(0, 4) || '—';
-        var tag = shelf ? ' · na prateleira' : (inSheet ? ' · registrar' : '');
-        return '<div class="srow" onclick="addFromTmdb(\'' + type + '\',' + item.id + ')">'
-          + '<div class="sposter">' + posterVisual(item.poster_path || '', typeIcon(type)) + '</div>'
-          + '<div class="info"><div class="t">' + esc(title) + '</div><div class="y">'
-          + esc(typeLabel(type)) + ' · ' + esc(year) + tag + '</div></div></div>';
-      }).join('') + '</div>';
-    })
-    .catch(function () { out.innerHTML = '<div class="empty">Erro na busca.</div>'; });
+function searchSectionHtml(label, rows) {
+  if (!rows) return '';
+  return '<div class="search-sect-label">' + esc(label) + '</div><div class="sresults">' + rows + '</div>';
 }
 
-function gameSearchRowHtml(m) {
-  var tag = onShelf(m.key) ? ' · na prateleira' : ' · registrar';
-  return '<div class="srow" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
-    + '<div class="sposter">' + posterVisual(posterPathFor(m), '🎮') + '</div>'
-    + '<div class="info"><div class="t">' + esc(m.title) + '</div><div class="y">Jogo' + (m.year ? ' · ' + esc(m.year) : '') + tag + '</div></div></div>';
+function tmdbCatalogRowHtml(item) {
+  var type = item.media_type === 'tv' ? 'tv' : 'movie';
+  var key = mediaKey(type, item.id);
+  var shelf = onShelf(key);
+  var inSheet = media.some(function (x) { return x.key === key; });
+  var title = type === 'tv' ? (item.name || '') : (item.title || '');
+  var year = String((type === 'tv' ? item.first_air_date : item.release_date) || '').slice(0, 4) || '—';
+  var tag = shelf ? ' · na prateleira' : (inSheet ? ' · registrar' : '');
+  return '<div class="srow" onclick="addFromTmdb(\'' + type + '\',' + item.id + ')">'
+    + '<div class="sposter">' + posterVisual(item.poster_path || '', typeIcon(type)) + '</div>'
+    + '<div class="info"><div class="t">' + esc(title) + '</div><div class="y">' + esc(typeLabel(type)) + ' · ' + esc(year) + tag + '</div></div></div>';
 }
 
-function runGameSearch(q) {
+function gameCatalogRowHtml(item) {
+  var key = mediaKey('game', item.id);
+  var shelf = onShelf(key);
+  var inSheet = media.some(function (x) { return x.key === key; });
+  var year = String(item.released || '').slice(0, 4) || '—';
+  var tag = shelf ? ' · na prateleira' : (inSheet ? ' · registrar' : '');
+  return '<div class="srow" onclick="addFromCatalog(' + item.id + ')">'
+    + '<div class="sposter">' + posterVisual(item.background_image || '', '🎮') + '</div>'
+    + '<div class="info"><div class="t">' + esc(item.name || '') + '</div><div class="y">Jogo · ' + esc(year) + tag + '</div></div></div>';
+}
+
+function musicCatalogRowHtml(item) {
+  var key = mediaKey('music', item.id);
+  var shelf = onShelf(key);
+  var inSheet = media.some(function (x) { return x.key === key; });
+  var year = String(item.released || '').slice(0, 4) || '—';
+  var artist = String(item.artist || '').trim();
+  var tag = shelf ? ' · na prateleira' : (inSheet ? ' · registrar' : '');
+  var sub = 'Música' + (artist ? ' · ' + esc(artist) : '') + ' · ' + esc(year) + tag;
+  return '<div class="srow" onclick="addFromMusicBrainz(\'' + attrEsc(item.id) + '\')">'
+    + '<div class="sposter">' + posterVisual(item.cover || '', '🎵') + '</div>'
+    + '<div class="info"><div class="t">' + esc(item.name || '') + '</div><div class="y">' + sub + '</div></div></div>';
+}
+
+function localMatchesForSearch(q) {
+  var allowed = activeSearchFilterTypes();
+  var ql = (q || '').trim().toLowerCase();
+  return media.filter(function (m) {
+    return allowed.indexOf(m.type) >= 0 && (!ql || m.title.toLowerCase().indexOf(ql) >= 0);
+  });
+}
+
+function runUniversalSearch(q) {
+  var gen = ++searchGen;
   var out = document.getElementById('searchOut');
+  if (!out) return;
   q = (q || '').trim();
   var ql = q.toLowerCase();
-  var local = media.filter(function (m) {
-    return m.type === 'game' && (!ql || m.title.toLowerCase().indexOf(ql) >= 0);
-  });
+  var local = localMatchesForSearch(q);
+
   if (!q) {
     if (local.length) {
-      out.innerHTML = '<div class="sresults">' + local.map(gameSearchRowHtml).join('') + '</div>';
+      out.innerHTML = searchSectionHtml('Na sua lista', local.map(localSearchRowHtml).join(''));
     } else {
-      out.innerHTML = '<div class="empty">Digite para buscar no catálogo.</div>';
+      out.innerHTML = '<div class="empty">Digite para buscar em todos os catálogos.</div>';
     }
     return;
   }
+
   out.innerHTML = '<div class="empty">Buscando…</div>';
-  gamesFetch({ search: q, page_size: '14' })
-    .then(function (data) {
-      var list = data.results || [];
-      var html = '';
-      if (local.length) {
-        html += '<div class="sresults">' + local.map(gameSearchRowHtml).join('') + '</div>';
-      }
-      if (list.length) {
-        html += '<div class="sresults">' + list.map(function (item) {
-          var key = mediaKey('game', item.id);
-          var inSheet = media.some(function (x) { return x.key === key; });
-          var shelf = onShelf(key);
-          var year = String(item.released || '').slice(0, 4) || '—';
-          var tag = shelf ? ' · na prateleira' : (inSheet ? ' · registrar' : '');
-          var poster = item.background_image || '';
-          return '<div class="srow" onclick="addFromCatalog(' + item.id + ')">'
-            + '<div class="sposter">' + posterVisual(poster, '🎮') + '</div>'
-            + '<div class="info"><div class="t">' + esc(item.name || '') + '</div><div class="y">Jogo · ' + esc(year) + tag + '</div></div></div>';
-        }).join('') + '</div>';
-      } else if (!local.length) {
-        html += '<div class="empty">Nada encontrado no catálogo.</div>';
-      }
-      if (!findGameByTitle(q) && !list.some(function (item) { return String(item.name || '').trim().toLowerCase() === ql; })) {
-        html += '<button type="button" class="btn-primary game-add-btn" onclick="addManualGame()">+ Adicionar manualmente “' + esc(q) + '”</button>';
-      }
-      out.innerHTML = html || '<div class="empty">Nada encontrado.</div>';
-    })
-    .catch(function () {
-      var html = '';
-      if (local.length) {
-        html += '<div class="sresults">' + local.map(gameSearchRowHtml).join('') + '</div>';
-      } else {
-        html += '<div class="empty">Catálogo indisponível — adicione manualmente.</div>';
-      }
-      if (!findGameByTitle(q)) {
-        html += '<button type="button" class="btn-primary game-add-btn" onclick="addManualGame()">+ Adicionar “' + esc(q) + '”</button>';
-      }
-      out.innerHTML = html;
+  var jobs = [];
+  var wantScreen = searchFilters.movie || searchFilters.tv;
+
+  if (wantScreen && tmdbKey()) {
+    jobs.push(
+      fetch('https://api.themoviedb.org/3/search/multi?api_key=' + encodeURIComponent(tmdbKey()) + '&language=pt-BR&query=' + encodeURIComponent(q))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var list = (data.results || []).filter(function (x) {
+            if (x.media_type === 'movie') return searchFilters.movie;
+            if (x.media_type === 'tv') return searchFilters.tv;
+            return false;
+          }).slice(0, 8);
+          return { kind: 'tmdb', list: list };
+        })
+        .catch(function () { return { kind: 'tmdb', error: true, list: [] }; })
+    );
+  } else if (wantScreen) {
+    jobs.push(Promise.resolve({ kind: 'tmdb', noKey: true, list: [] }));
+  }
+
+  if (searchFilters.game) {
+    jobs.push(
+      gamesFetch({ search: q, page_size: '8' })
+        .then(function (data) { return { kind: 'game', list: data.results || [] }; })
+        .catch(function () { return { kind: 'game', error: true, list: [] }; })
+    );
+  }
+
+  if (searchFilters.music) {
+    jobs.push(
+      musicFetch({ search: q })
+        .then(function (data) { return { kind: 'music', list: (data.results || []).slice(0, 8) }; })
+        .catch(function () { return { kind: 'music', error: true, list: [] }; })
+    );
+  }
+
+  if (!jobs.length) {
+    out.innerHTML = '<div class="empty">Ative pelo menos um tipo acima.</div>';
+    return;
+  }
+
+  Promise.all(jobs).then(function (parts) {
+    if (gen !== searchGen) return;
+    var html = '';
+    if (local.length) {
+      html += searchSectionHtml('Na sua lista', local.map(localSearchRowHtml).join(''));
+    }
+
+    var tmdbPart = null;
+    var gamePart = null;
+    var musicPart = null;
+    parts.forEach(function (p) {
+      if (p.kind === 'tmdb') tmdbPart = p;
+      if (p.kind === 'game') gamePart = p;
+      if (p.kind === 'music') musicPart = p;
     });
+
+    if (tmdbPart) {
+      if (tmdbPart.noKey) {
+        html += '<div class="empty">TMDb não configurado — filmes e séries indisponíveis.</div>';
+      } else if (tmdbPart.list.length) {
+        html += searchSectionHtml('Filmes & séries', tmdbPart.list.map(tmdbCatalogRowHtml).join(''));
+      } else if (!tmdbPart.error && wantScreen) {
+        html += '<div class="empty">Nada em filmes & séries.</div>';
+      }
+    }
+
+    if (gamePart) {
+      if (gamePart.list.length) {
+        html += searchSectionHtml('Jogos', gamePart.list.map(gameCatalogRowHtml).join(''));
+      } else if (!gamePart.error) {
+        html += '<div class="empty">Nada em jogos.</div>';
+      } else {
+        html += '<div class="empty">Catálogo de jogos indisponível.</div>';
+      }
+    }
+
+    if (musicPart) {
+      if (musicPart.list.length) {
+        html += searchSectionHtml('Música', musicPart.list.map(musicCatalogRowHtml).join(''));
+      } else if (!musicPart.error) {
+        html += '<div class="empty">Nada em música.</div>';
+      } else {
+        html += '<div class="empty">MusicBrainz indisponível.</div>';
+      }
+    }
+
+    var gameExact = gamePart && gamePart.list.some(function (item) { return String(item.name || '').trim().toLowerCase() === ql; });
+    var musicExact = musicPart && musicPart.list.some(function (item) { return String(item.name || '').trim().toLowerCase() === ql; });
+    if (searchFilters.game && !findGameByTitle(q) && !gameExact) {
+      html += '<button type="button" class="btn-primary game-add-btn" onclick="addManualGame()">+ Jogo manual “' + esc(q) + '”</button>';
+    }
+    if (searchFilters.music && !findMusicByTitle(q) && !musicExact) {
+      html += '<button type="button" class="btn-primary game-add-btn" onclick="addManualMusic()">+ Álbum manual “' + esc(q) + '”</button>';
+    }
+
+    out.innerHTML = html || '<div class="empty">Nada encontrado.</div>';
+  });
 }
 
 function addFromCatalog(catalogId) {
@@ -1201,8 +1397,8 @@ function addFromCatalog(catalogId) {
 }
 
 function addManualGame() {
-  var titleEl = document.getElementById('gameSearch');
-  var yearEl = document.getElementById('gameYear');
+  var titleEl = document.getElementById('universalSearch');
+  var yearEl = document.getElementById('manualYear');
   var title = titleEl ? (titleEl.value || '').trim() : '';
   var year = yearEl ? (yearEl.value || '').trim().slice(0, 4) : '';
   if (!title) { JB.toast('Digite o nome do jogo'); return; }
@@ -1217,72 +1413,6 @@ function addManualGame() {
     .then(function () { JB.toast('✓ Registre quando jogarem'); openDetail(key); })
     .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
     .finally(function () { unlockAdd(lockId); });
-}
-
-function musicSearchRowHtml(m) {
-  var tag = onShelf(m.key) ? ' · na prateleira' : ' · registrar';
-  return '<div class="srow" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
-    + '<div class="sposter">' + posterVisual(posterPathFor(m), '🎵') + '</div>'
-    + '<div class="info"><div class="t">' + esc(m.title) + '</div><div class="y">Música' + (m.year ? ' · ' + esc(m.year) : '') + tag + '</div></div></div>';
-}
-
-function runMusicSearch(q) {
-  var out = document.getElementById('searchOut');
-  q = (q || '').trim();
-  var ql = q.toLowerCase();
-  var local = media.filter(function (m) {
-    return m.type === 'music' && (!ql || m.title.toLowerCase().indexOf(ql) >= 0);
-  });
-  if (!q) {
-    if (local.length) {
-      out.innerHTML = '<div class="sresults">' + local.map(musicSearchRowHtml).join('') + '</div>';
-    } else {
-      out.innerHTML = '<div class="empty">Digite para buscar no MusicBrainz.</div>';
-    }
-    return;
-  }
-  out.innerHTML = '<div class="empty">Buscando…</div>';
-  musicFetch({ search: q })
-    .then(function (data) {
-      var list = data.results || [];
-      var html = '';
-      if (local.length) {
-        html += '<div class="sresults">' + local.map(musicSearchRowHtml).join('') + '</div>';
-      }
-      if (list.length) {
-        html += '<div class="sresults">' + list.map(function (item) {
-          var key = mediaKey('music', item.id);
-          var inSheet = media.some(function (x) { return x.key === key; });
-          var shelf = onShelf(key);
-          var year = String(item.released || '').slice(0, 4) || '—';
-          var artist = String(item.artist || '').trim();
-          var tag = shelf ? ' · na prateleira' : (inSheet ? ' · registrar' : '');
-          var poster = item.cover || '';
-          var sub = 'Música' + (artist ? ' · ' + esc(artist) : '') + ' · ' + esc(year) + tag;
-          return '<div class="srow" onclick="addFromMusicBrainz(\'' + attrEsc(item.id) + '\')">'
-            + '<div class="sposter">' + posterVisual(poster, '🎵') + '</div>'
-            + '<div class="info"><div class="t">' + esc(item.name || '') + '</div><div class="y">' + sub + '</div></div></div>';
-        }).join('') + '</div>';
-      } else if (!local.length) {
-        html += '<div class="empty">Nada encontrado no MusicBrainz.</div>';
-      }
-      if (!findMusicByTitle(q) && !list.some(function (item) { return String(item.name || '').trim().toLowerCase() === ql; })) {
-        html += '<button type="button" class="btn-primary game-add-btn" onclick="addManualMusic()">+ Adicionar manualmente “' + esc(q) + '”</button>';
-      }
-      out.innerHTML = html || '<div class="empty">Nada encontrado.</div>';
-    })
-    .catch(function () {
-      var html = '';
-      if (local.length) {
-        html += '<div class="sresults">' + local.map(musicSearchRowHtml).join('') + '</div>';
-      } else {
-        html += '<div class="empty">MusicBrainz indisponível — adicione manualmente.</div>';
-      }
-      if (!findMusicByTitle(q)) {
-        html += '<button type="button" class="btn-primary game-add-btn" onclick="addManualMusic()">+ Adicionar “' + esc(q) + '”</button>';
-      }
-      out.innerHTML = html;
-    });
 }
 
 function addFromMusicBrainz(mbid) {
@@ -1312,8 +1442,8 @@ function addFromMusicBrainz(mbid) {
 }
 
 function addManualMusic() {
-  var titleEl = document.getElementById('musicSearch');
-  var yearEl = document.getElementById('musicYear');
+  var titleEl = document.getElementById('universalSearch');
+  var yearEl = document.getElementById('manualYear');
   var title = titleEl ? (titleEl.value || '').trim() : '';
   var year = yearEl ? (yearEl.value || '').trim().slice(0, 4) : '';
   if (!title) { JB.toast('Digite o nome do álbum'); return; }
@@ -1390,11 +1520,22 @@ function sessionBlockHtml(key) {
 function deleteSession(sheetRow) {
   if (!sheetRow || !sheetGrid || sheetGrid.Assistidos == null) return;
   JB.confirm('Excluir este registro?', 'A data e avaliação serão removidas.', function () {
+    var key = detailId;
+    var snapshot = sessions.slice();
+    removeSessionLocal(sheetRow);
+    if (key) syncMediaUi(key);
     JB.api('POST', ssUrl(':batchUpdate'), {
       requests: [{ deleteDimension: { range: { sheetId: sheetGrid.Assistidos, dimension: 'ROWS', startIndex: sheetRow - 1, endIndex: sheetRow } } }]
-    }).then(function () { return reloadSessions(); })
-      .then(function () { JB.toast('✓ Removido'); })
-      .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
+    }).then(function () { return loadSessionsQuiet(); })
+      .then(function () {
+        if (key) syncMediaUi(key);
+        JB.toast('✓ Removido');
+      })
+      .catch(function (e) {
+        sessions = snapshot;
+        if (key) syncMediaUi(key);
+        JB.toast('Erro: ' + (e.message || ''));
+      });
   }, { yes: 'Excluir', no: 'Cancelar', danger: true });
 }
 
@@ -1523,10 +1664,15 @@ function toggleJlboManage() {
   var m = media.find(function (x) { return x.key === String(detailId); });
   if (!m || !userCanStampMedia(m, em)) return;
   var on = btn.getAttribute('data-on') !== '1';
-  updateMediaJlbo(detailId, em, on).then(function () {
-    refreshPrateleiraUi();
-    JB.toast(on ? '✓ Título selado com JLBOE™' : '✓ Selo removido');
-  }).catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
+  var key = detailId;
+  applyJlboLocal(key, em, on);
+  syncMediaUi(key);
+  JB.toast(on ? '✓ Título selado com JLBOE™' : '✓ Selo removido');
+  updateMediaJlbo(key, em, on).catch(function (e) {
+    applyJlboLocal(key, em, !on);
+    syncMediaUi(key);
+    JB.toast('Erro: ' + (e.message || ''));
+  });
 }
 
 function editSession(sheetRow) {
@@ -1611,19 +1757,41 @@ function saveSession() {
   var stampOn = stars === 5 && jlboBtn && !jlboBtn.closest('.hidden') && jlboBtn.getAttribute('data-on') === '1';
   var row = [iso, String(detailId), em, String(stars), review];
   var editing = editSessionRow;
+  var key = detailId;
+  var saveBtn = document.getElementById('sessSaveBtn');
+  if (saveBtn) saveBtn.disabled = true;
+
+  var snapshot = { sessions: sessions.slice(), jlbo: null };
+  var m = media.find(function (x) { return x.key === String(key); });
+  if (m && m.jlbo) snapshot.jlbo = Object.assign({}, m.jlbo);
+
+  if (editing) {
+    applySessionLocal({ date: iso, mediaId: key, email: em, stars: stars, review: review, replaceRow: editing });
+  } else {
+    applySessionLocal({ date: iso, mediaId: key, email: em, stars: stars, review: review, sheetRow: allocTempSessionRow() });
+  }
+  if (stampOn) applyJlboLocal(key, em, true);
+
+  syncMediaUi(key);
+  JB.toast(editing ? '✓ Atualizado' : (stampOn ? '✓ Título selado com JLBOE™' : '✓ Registrado'));
+  editSessionRow = null;
+  resetSessionForm();
+
   var req = editing
-    ? JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Assistidos!A' + editSessionRow + ':E' + editSessionRow) + '?valueInputOption=RAW'), { values: [row] })
+    ? JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Assistidos!A' + editing + ':E' + editing) + '?valueInputOption=RAW'), { values: [row] })
     : JB.api('POST', ssUrl('/values/' + encodeURIComponent('Assistidos') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] });
-  req.then(function () {
-    if (stars !== 5 || !jlboBtn || jlboBtn.closest('.hidden')) return Promise.resolve();
-    return updateMediaJlbo(detailId, em, stampOn);
-  }).then(function () { return reloadSessions(); })
-    .then(function () {
-      JB.toast(editing ? '✓ Atualizado' : (stampOn ? '✓ Título selado com JLBOE™' : '✓ Registrado'));
-      editSessionRow = null;
-      resetSessionForm();
+  var jlboReq = stampOn ? updateMediaJlbo(key, em, true) : Promise.resolve();
+
+  Promise.all([req, jlboReq])
+    .then(function () { return loadSessionsQuiet(); })
+    .then(function () { syncMediaUi(key); })
+    .catch(function (e) {
+      sessions = snapshot.sessions;
+      if (m && snapshot.jlbo) m.jlbo = snapshot.jlbo;
+      syncMediaUi(key);
+      JB.toast('Erro: ' + (e.message || ''));
     })
-    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
+    .finally(function () { if (saveBtn) saveBtn.disabled = false; });
 }
 
 function createSharedSheet() {

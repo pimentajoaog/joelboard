@@ -34,12 +34,12 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .searchbar input{ width:100%; padding:12px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:12px; color:var(--text); font-size:14px; outline:none; }
 .searchbar input:focus{ border-color:var(--primary); }
 
-.search-modes{ display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
-.smode{
-  background:var(--surface2); border:1px solid var(--border); color:var(--muted);
-  font-size:12px; font-weight:700; padding:8px 14px; border-radius:99px; cursor:pointer; font-family:inherit;
+.search-toolbar{ margin-bottom:14px; }
+.search-sect-label{
+  font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;
+  letter-spacing:.05em; margin:14px 0 8px;
 }
-.smode.on{ background:var(--primary); color:var(--on-brand); border-color:var(--primary); }
+.search-sect-label:first-child{ margin-top:0; }
 .game-add-row{ margin-bottom:12px; }
 .game-add-row .field{ width:100%; }
 .game-add-btn{ margin-top:12px; }

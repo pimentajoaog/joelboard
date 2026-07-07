@@ -159,6 +159,11 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .shelf-jlbo-corner .jlbo-tm{ font-size:5px; }
 .shelf-jlbo-corner.half .jlbo-tm{ display:none; }
 .shelf-item.is-game .shelf-cover{ aspect-ratio:3/4; border-radius:4px; }
+.shelf-item.is-music .shelf-cover{
+  aspect-ratio:1/1; border-radius:4px;
+}
+.shelf-item.is-music .shelf-cover .poster-bg,
+.shelf-item.is-music .shelf-cover .ph{ border-radius:4px; }
 .shelf-cover .poster-bg{ border-radius:inherit; }
 .shelf-cover .ph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:26px; }
 .shelf-hover{
@@ -231,6 +236,7 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .poster-bg{ position:absolute; inset:0; background-size:cover; background-position:center; background-repeat:no-repeat; background-color:var(--surface2); }
 .mbadge{ position:absolute; top:8px; right:8px; font-size:14px; background:rgba(0,0,0,.55); border-radius:8px; padding:3px 6px; backdrop-filter:blur(4px); }
 .dhero-poster{ width:110px; aspect-ratio:2/3; border-radius:12px; background:var(--surface2); flex:none; position:relative; overflow:hidden; }
+.dhero-poster.is-music{ aspect-ratio:1/1; }
 .dhero-poster .poster-bg{ border-radius:12px; }
 .dhero-poster .ph{ font-size:32px; }
 .mstar{ color:#3d4460; font-size:12px; }
@@ -310,6 +316,7 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .srow:hover{ border-color:var(--primary); transform:translateX(3px); }
 .srow img{ width:48px; height:72px; object-fit:cover; border-radius:8px; background:var(--surface2); flex:none; }
 .sposter{ width:48px; height:72px; border-radius:8px; background:var(--surface2); flex:none; position:relative; overflow:hidden; }
+.sposter.is-music{ width:48px; height:48px; }
 .sposter .poster-bg{ border-radius:8px; }
 .sposter .ph{ font-size:18px; }
 .srow .ph{ width:48px; height:72px; border-radius:8px; background:var(--surface2); flex:none; display:flex; align-items:center; justify-content:center; color:var(--muted); }

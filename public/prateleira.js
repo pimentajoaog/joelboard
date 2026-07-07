@@ -476,7 +476,7 @@ function findMusicByTitle(title) {
 function localSearchRowHtml(m) {
   var tag = onShelf(m.key) ? ' · na prateleira' : ' · registrar';
   return '<div class="srow" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
-    + '<div class="sposter">' + posterVisual(posterPathFor(m), typeIcon(m.type)) + '</div>'
+    + '<div class="sposter' + (m.type === 'music' ? ' is-music' : '') + '">' + posterVisual(posterPathFor(m), typeIcon(m.type)) + '</div>'
     + '<div class="info"><div class="t">' + esc(m.title) + '</div><div class="y">' + esc(typeLabel(m.type))
     + (m.year ? ' · ' + esc(m.year) : '') + tag + '</div></div></div>';
 }
@@ -1160,7 +1160,7 @@ function shelfItemHtml(m, idx) {
       + (starsMini ? '<div class="shelf-ratings">' + starsMini + '</div>' : '')
       + '</div>';
   }
-  return '<div class="shelf-item' + (jlboState === 'full' ? ' jlbo-glow' : '') + (m.type === 'game' ? ' is-game' : '') + '"'
+  return '<div class="shelf-item' + (jlboState === 'full' ? ' jlbo-glow' : '') + (m.type === 'game' ? ' is-game' : '') + (m.type === 'music' ? ' is-music' : '') + '"'
     + ' style="--tilt:' + shelfTilt(idx) + 'deg;--si:' + idx + '" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
     + hover
     + '<div class="shelf-tilt"><div class="shelf-cover' + (jlboState !== 'none' ? ' has-jlbo' : '') + '">' + posterVisual(posterPathFor(m), typeIcon(m.type))
@@ -1253,7 +1253,7 @@ function musicCatalogRowHtml(item) {
   var tag = shelf ? ' · na prateleira' : (inSheet ? ' · registrar' : '');
   var sub = 'Música' + (artist ? ' · ' + esc(artist) : '') + ' · ' + esc(year) + tag;
   return '<div class="srow" onclick="addFromMusicBrainz(\'' + attrEsc(item.id) + '\')">'
-    + '<div class="sposter">' + posterVisual(item.cover || '', '🎵') + '</div>'
+    + '<div class="sposter is-music">' + posterVisual(item.cover || '', '🎵') + '</div>'
     + '<div class="info"><div class="t">' + esc(item.name || '') + '</div><div class="y">' + sub + '</div></div></div>';
 }
 
@@ -1633,8 +1633,8 @@ function openDetail(id) {
   var m = media.find(function (x) { return x.key === String(id); });
   if (!m) return;
   document.getElementById('detailTitle').textContent = m.title;
-  document.getElementById('detailBody').innerHTML = '<div class="dhero' + (mediaHasFullJlbo(m.key) ? ' jlbo-glow' : '') + '">'
-    + '<div class="mposter dhero-poster">' + posterVisual(posterPathFor(m), typeIcon(m.type)) + '</div>'
+  document.getElementById('detailBody').innerHTML = '<div class="dhero' + (mediaHasFullJlbo(m.key) ? ' jlbo-glow' : '') + (m.type === 'music' ? ' is-music' : '') + '">'
+    + '<div class="mposter dhero-poster' + (m.type === 'music' ? ' is-music' : '') + '">' + posterVisual(posterPathFor(m), typeIcon(m.type)) + '</div>'
     + '<div class="dmeta"><h2>' + esc(m.title) + '</h2><p>' + esc(typeLabel(m.type)) + ' · ' + esc(m.year) + '</p></div></div>'
     + jlboBlockHtml(m) + sessionBlockHtml(m.key) + logFormHtml(m);
   resetSessionForm();

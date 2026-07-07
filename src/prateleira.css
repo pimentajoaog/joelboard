@@ -106,9 +106,25 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
   filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));
 }
 .shelf-jlbo-corner.full .jlbo-stamp{ margin:0; min-width:22px; height:19px; animation:jlbo-wobble 2.8s ease-in-out infinite; }
-.shelf-jlbo-corner.half{ width:11px; height:19px; overflow:hidden; filter:drop-shadow(0 1px 4px rgba(0,0,0,.35)); }
-.shelf-jlbo-corner.half .jlbo-stamp{ margin:0; min-width:22px; height:19px; animation:none; opacity:.92; flex-shrink:0; transform:rotate(-14deg); }
-.shelf-jlbo-corner.half-julia{ display:flex; justify-content:flex-end; }
+.shelf-jlbo-corner.half{
+  width:22px; height:19px; overflow:visible;
+  filter:drop-shadow(0 1px 4px rgba(0,0,0,.35));
+}
+.shelf-jlbo-corner.half .jlbo-stamp{
+  position:absolute; top:0; left:0;
+  margin:0; min-width:22px; height:19px; animation:none; opacity:.92; flex-shrink:0;
+  transform:rotate(-14deg); transform-origin:50% 50%;
+}
+.shelf-jlbo-corner.half-joel .jlbo-stamp{ clip-path:polygon(0 0, 50% 0, 50% 100%, 0 100%); }
+.shelf-jlbo-corner.half-julia .jlbo-stamp{ clip-path:polygon(50% 0, 100% 0, 100% 100%, 50% 100%); }
+.shelf-jlbo-corner.half::after{
+  content:''; position:absolute; inset:0; border-radius:999px;
+  border:1.5px dashed color-mix(in srgb, #fbbf24 52%, transparent);
+  box-sizing:border-box; transform:rotate(-14deg); transform-origin:50% 50%;
+  opacity:.72; pointer-events:none;
+}
+.shelf-jlbo-corner.half-joel::after{ clip-path:polygon(50% 0, 100% 0, 100% 100%, 50% 100%); }
+.shelf-jlbo-corner.half-julia::after{ clip-path:polygon(0 0, 50% 0, 50% 100%, 0 100%); }
 .shelf-jlbo-corner .jlbo-jl{ font-size:8px; }
 .shelf-jlbo-corner .jlbo-tm{ font-size:5px; }
 .shelf-jlbo-corner.half .jlbo-tm{ display:none; }

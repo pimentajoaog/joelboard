@@ -42,7 +42,25 @@ function gamesFetch(params) {
   });
 }
 function isCatalogGameId(id) { return /^\d+$/.test(String(id || '')); }
+function parseSheetIdInput(raw) {
+  raw = String(raw || '').trim();
+  if (!raw) return '';
+  var m = raw.match(/\/spreadsheets\/([a-zA-Z0-9_-]{20,})/);
+  if (m) return m[1];
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(raw)) return raw;
+  m = raw.match(/[a-zA-Z0-9_-]{30,}/);
+  return m ? m[0] : '';
+}
+function sheetAccessErr(e) {
+  var m = String((e && e.message) || '');
+  var hm = m.match(/HTTP (\d+)/);
+  var st = hm ? +hm[1] : 0;
+  if (st === 403 || m.indexOf('403') > -1) return 'Sem acesso a esta planilha. Peça pro Joel compartilhar com ' + (JB.email() || 'você') + ' como Editor.';
+  if (st === 404 || m.indexOf('404') > -1) return 'Planilha não encontrada. Confira o link ou ID.';
+  return m || 'Erro ao abrir planilha';
+}
 function ssUrl(p) { return 'https://sheets.googleapis.com/v4/spreadsheets/' + JB.getSheetId(APP) + p; }
+
 function todayISO() {
   var d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -154,7 +172,6 @@ function boot() {
     return;
   }
   document.getElementById('acctEmail').textContent = userLabel(JB.email());
-  if (PRATELEIRA_SHARED_SHEET) JB.setSheetId(APP, PRATELEIRA_SHARED_SHEET);
   loadingHtml(JB.skeletonHtml('prateleira'));
   whenTmdbReady(function () {
     resolveSheet()
@@ -178,13 +195,22 @@ function handleBootErr(e) {
 }
 
 function resolveSheet() {
-  if (PRATELEIRA_SHARED_SHEET) JB.setSheetId(APP, PRATELEIRA_SHARED_SHEET);
-  return JB.resolveSheet({ app: APP, namePart: 'Julioelboard', requiredTabs: ['Filmes', 'Assistidos'] })
-    .catch(function (e) {
-      if (String((e && e.message) || '') !== 'JB_NEED_SHEET' || !JB.getSheetId(APP)) throw e;
-      return JB.sheetTabs(JB.getSheetId(APP)).then(function (grid) { return ensureTabs(grid).then(function (g) { return { id: JB.getSheetId(APP), grid: g }; }); });
-    })
-    .then(function (ctx) { sheetGrid = ctx.grid; return ensureTabs(sheetGrid).then(function (g) { sheetGrid = g; return ensureHeaders(); }); });
+  var id = (JB.getSheetId(APP) || '').trim();
+  if (!id && PRATELEIRA_SHARED_SHEET) {
+    id = PRATELEIRA_SHARED_SHEET;
+    JB.setSheetId(APP, id);
+  }
+  if (!id) return Promise.reject(new Error('JB_NEED_SHEET'));
+  return JB.sheetTabs(id).then(function (grid) {
+    return ensureTabs(grid).then(function (g) {
+      sheetGrid = g;
+      JB.setSheetId(APP, id);
+      return ensureHeaders();
+    });
+  }).catch(function (e) {
+    if (String((e && e.message) || '') === 'JB_NEED_SHEET') throw e;
+    throw new Error(sheetAccessErr(e));
+  });
 }
 
 function ensureTabs(grid) {
@@ -792,12 +818,22 @@ function createSharedSheet() {
 }
 
 function saveSheetId() {
-  var id = (document.getElementById('sheetIdIn').value || '').trim();
-  if (!id) return;
-  JB.setSheetId(APP, id);
-  JB.toast('ID salvo');
-  closePrateleiraSet();
-  boot();
+  var id = parseSheetIdInput(document.getElementById('sheetIdIn').value);
+  if (!id) { JB.toast('Cole o link ou ID da planilha'); return; }
+  JB.sheetTabs(id).then(function () {
+    JB.setSheetId(APP, id);
+    document.getElementById('sheetIdIn').value = id;
+    document.getElementById('sheetInfo').textContent = 'ID: ' + id;
+    JB.toast('✓ Planilha vinculada');
+    closePrateleiraSet();
+    boot();
+  }).catch(function (e) { JB.toast(sheetAccessErr(e)); });
+}
+
+function useDefaultSheet() {
+  if (!PRATELEIRA_SHARED_SHEET) return;
+  document.getElementById('sheetIdIn').value = PRATELEIRA_SHARED_SHEET;
+  saveSheetId();
 }
 
 function openPrateleiraSet() {

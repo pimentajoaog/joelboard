@@ -55,8 +55,10 @@
     <div class="set-pane" data-pane="sheet" style="display:none">
       <div class="fg"><label class="fl">Planilha compartilhada</label>
         <p class="rg" id="sheetInfo">—</p>
-        <input class="field" id="sheetIdIn" placeholder="ID da planilha (opcional)">
+        <p class="rg" style="font-size:11px;margin-bottom:8px">Cole o <b>link</b> ou ID da planilha do Joel. Vocês dois precisam usar a mesma — compartilhe no Google Sheets como Editor.</p>
+        <input class="field" id="sheetIdIn" placeholder="Link ou ID da planilha">
         <button class="btn ghost" style="width:100%;margin-top:8px" onclick="saveSheetId()">Usar este ID</button>
+        <button class="btn ghost" style="width:100%;margin-top:8px" onclick="useDefaultSheet()">Usar planilha padrão (Joel)</button>
         <button class="btn ghost" style="width:100%;margin-top:8px" onclick="createSharedSheet()">Criar planilha nova</button>
       </div>
     </div>

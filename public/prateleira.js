@@ -14,6 +14,7 @@ var media = [];
 var sessions = [];
 var curTab = 'lib';
 var detailId = null;
+var editSessionRow = null;
 var sessHistOpen = false;
 var searchTimer = null;
 var searchMode = 'screen';
@@ -249,7 +250,7 @@ function ensureHeaders() {
     valueInputOption: 'RAW',
     data: [
       { range: 'Filmes!A1:F1', values: [['ID', 'Tipo', 'Título', 'Ano', 'Poster', 'Adicionado']] },
-      { range: 'Assistidos!A1:E1', values: [['Data', 'MediaID', 'Email', 'Estrelas', 'Resenha']] }
+      { range: 'Assistidos!A1:F1', values: [['Data', 'MediaID', 'Email', 'Estrelas', 'Resenha', 'JBOE']] }
     ]
   }).catch(function () {});
 }
@@ -319,7 +320,7 @@ function migrateLegacyRatings(avaliacoesRows) {
       return s.mediaId === rt.mediaId && s.email === rt.email && (s.stars || s.review);
     });
     if (has) return;
-    toAppend.push([rt.updated || todayISO(), rt.mediaId, rt.email, String(rt.stars || ''), rt.review || '']);
+    toAppend.push([rt.updated || todayISO(), rt.mediaId, rt.email, String(rt.stars || ''), rt.review || '', '']);
     if (rt.sheetRow) avRowsToDelete.push(rt.sheetRow);
   });
   if (!toAppend.length) {
@@ -419,12 +420,18 @@ function parseMedia(rows) {
   return out;
 }
 
+function jboeTruthy(v) {
+  var s = String(v == null ? '' : v).trim().toLowerCase();
+  return s === '1' || s === 'sim' || s === 'true' || s === 'yes' || s === 'jboe' || s === '✓';
+}
+
 function parseSessions(rows) {
   var out = [];
   var header = rows[0] || [];
   var h3 = String(header[3] || '').toLowerCase();
   var hasStarsCol = h3 === 'estrelas';
   var legacyNote = h3 === 'nota';
+  var hasJboeCol = String(header[5] || '').toLowerCase() === 'jboe';
   for (var i = 1; i < rows.length; i++) {
     var r = rows[i] || [];
     if (!r[0] || !r[1]) continue;
@@ -435,6 +442,7 @@ function parseSessions(rows) {
       email: String(r[2] || '').toLowerCase(),
       stars: hasStarsCol ? (parseInt(r[3], 10) || 0) : 0,
       review: hasStarsCol ? String(r[4] || '') : (legacyNote ? String(r[3] || '') : String(r[4] || '')),
+      jboe: hasJboeCol ? jboeTruthy(r[5]) : false,
       sheetRow: i + 1
     });
   }
@@ -460,6 +468,18 @@ function latestStarsByUser(mediaId) {
   return map;
 }
 
+function mediaHasJboe(mediaId) {
+  var byUser = latestStarsByUser(mediaId);
+  return JULIOEL_EMAILS.some(function (em) {
+    var s = byUser[em];
+    return s && s.stars === 5 && s.jboe;
+  });
+}
+
+function sessionByRow(sheetRow) {
+  return sessions.find(function (s) { return s.sheetRow === sheetRow; });
+}
+
 function sortedMedia() {
   return libraryMedia().slice().sort(function (a, b) {
     var la = latestSession(a.key), lb = latestSession(b.key);
@@ -470,10 +490,15 @@ function sortedMedia() {
   });
 }
 
-function starsHtml(n) {
+function jboeSealHtml(title) {
+  return '<span class="jboe-stamp" title="' + attrEsc(title || 'Julioel Brand Of Excellence™') + '"><span class="jboe-j">J</span><span class="jboe-tm">™</span></span>';
+}
+
+function starsHtml(n, jboe) {
   n = Math.max(0, Math.min(5, n | 0));
   var h = '';
   for (var i = 1; i <= 5; i++) h += '<span class="mstar' + (i <= n ? ' on' : '') + '">★</span>';
+  if (jboe && n === 5) h += jboeSealHtml();
   return h;
 }
 
@@ -516,10 +541,10 @@ function renderMain() {
     var blocks = JULIOEL_EMAILS.map(function (em) {
       var s = byUser[em];
       if (!s || !s.stars) return '';
-      return '<div class="who">' + esc(userLabel(em)) + '</div><div class="row">' + starsHtml(s.stars) + '</div>';
+      return '<div class="who">' + esc(userLabel(em)) + '</div><div class="row">' + starsHtml(s.stars, s.jboe) + '</div>';
     }).join('');
     var latest = latestSession(m.key);
-    html += '<div class="mcard" style="animation-delay:' + (idx * 0.04) + 's" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
+    html += '<div class="mcard' + (mediaHasJboe(m.key) ? ' jboe-glow' : '') + '" style="animation-delay:' + (idx * 0.04) + 's" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
       + '<div class="mposter">' + posterVisual(posterPathFor(m), typeIcon(m.type))
       + '<span class="mbadge">' + typeIcon(m.type) + '</span></div>'
       + '<div class="mbody"><div class="mtitle">' + esc(m.title) + '</div><div class="myear">' + esc(m.year) + '</div>'
@@ -703,12 +728,15 @@ function addFromTmdb(type, tmdbId) {
 }
 
 function sessRowHtml(s, isLatest) {
-  var del = canEditPrateleira() ? '<button type="button" class="sess-del" onclick="event.stopPropagation();deleteSession(' + s.sheetRow + ')" title="Excluir registro">✕</button>' : '';
-  return '<div class="sess-row' + (isLatest ? ' latest' : '') + '">'
+  var myEm = (JB.email() || '').toLowerCase();
+  var mine = canEditPrateleira() && s.email === myEm;
+  var edit = mine ? '<button type="button" class="sess-edit" onclick="event.stopPropagation();editSession(' + s.sheetRow + ')" title="Editar registro">✎</button>' : '';
+  var del = mine ? '<button type="button" class="sess-del" onclick="event.stopPropagation();deleteSession(' + s.sheetRow + ')" title="Excluir registro">✕</button>' : '';
+  return '<div class="sess-row' + (isLatest ? ' latest' : '') + (editSessionRow === s.sheetRow ? ' editing' : '') + '" data-sheet-row="' + s.sheetRow + '">'
     + '<div class="sr-main"><span class="sr-date">' + esc(JB.fmtDate(s.date)) + '</span><span class="sr-who">' + esc(userLabel(s.email)) + '</span></div>'
-    + (s.stars ? '<div class="sr-stars">' + starsHtml(s.stars) + '</div>' : '')
+    + (s.stars ? '<div class="sr-stars">' + starsHtml(s.stars, s.jboe) + '</div>' : '')
     + (s.review ? '<span class="sr-note">' + esc(s.review) + '</span>' : '')
-    + del + '</div>';
+    + '<div class="sr-actions">' + edit + del + '</div></div>';
 }
 
 function canEditPrateleira() {
@@ -751,9 +779,16 @@ function logFormHtml(m) {
     + '<div class="fg"><label class="fl">Data</label>'
     + '<button type="button" class="field datebtn empty" id="sessDate" data-iso="" data-ph="Escolher data…" onclick="JB.dpOpen(\'sessDate\')">Escolher data…</button></div>'
     + '<div class="fg"><label class="fl">Estrelas</label><div class="star-pick" id="logStars" data-val="0">' + stars + '</div></div>'
+    + '<div class="jboe-pick hidden" id="jboePick"><button type="button" class="jboe-btn" id="jboeBtn" data-on="0" onclick="toggleJboe()">'
+    + '<span class="jboe-seal-preview">' + jboeSealHtml() + '</span>'
+    + '<span class="jboe-btn-txt"><span class="jboe-btn-label">Julioel Brand Of Excellence™</span>'
+    + '<span class="jboe-btn-sub">toque para selar · só com 5 estrelas</span></span></button></div>'
     + '<textarea class="review-in" id="sessReview" maxlength="' + REVIEW_MAX + '" placeholder="Resenha curta (opcional)" oninput="revCount(this)"></textarea>'
     + '<div class="rev-count"><span class="rc">0</span>/' + REVIEW_MAX + '</div>'
-    + '<button type="button" class="btn-primary" onclick="saveSession()">Registrar</button></div>';
+    + '<div class="sess-form-actions">'
+    + '<button type="button" class="btn-primary" id="sessSaveBtn" onclick="saveSession()">Registrar</button>'
+    + '<button type="button" class="btn-ghost hidden" id="sessCancelEdit" onclick="cancelSessionEdit()">Cancelar edição</button>'
+    + '</div></div>';
 }
 
 function logVerb(type) {
@@ -762,16 +797,85 @@ function logVerb(type) {
 
 function openDetail(id) {
   detailId = id;
+  editSessionRow = null;
   sessHistOpen = false;
   var m = media.find(function (x) { return x.key === String(id); });
   if (!m) return;
   document.getElementById('detailTitle').textContent = m.title;
-  document.getElementById('detailBody').innerHTML = '<div class="dhero">'
+  document.getElementById('detailBody').innerHTML = '<div class="dhero' + (mediaHasJboe(m.key) ? ' jboe-glow' : '') + '">'
     + '<div class="mposter dhero-poster">' + posterVisual(posterPathFor(m), typeIcon(m.type)) + '</div>'
     + '<div class="dmeta"><h2>' + esc(m.title) + '</h2><p>' + esc(typeLabel(m.type)) + ' · ' + esc(m.year) + '</p></div></div>'
     + sessionBlockHtml(m.key) + logFormHtml(m);
-  JB.dpSet('sessDate', todayISO());
+  resetSessionForm();
   document.getElementById('detailOv').classList.add('open');
+}
+
+function resetSessionForm() {
+  var m = media.find(function (x) { return x.key === String(detailId); });
+  JB.dpSet('sessDate', todayISO());
+  var starsWrap = document.getElementById('logStars');
+  if (starsWrap) {
+    starsWrap.setAttribute('data-val', '0');
+    starsWrap.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); });
+  }
+  syncJboePick(0);
+  var reviewEl = document.getElementById('sessReview');
+  if (reviewEl) {
+    reviewEl.value = '';
+    revCount(reviewEl);
+  }
+  syncSessionFormUi(m);
+}
+
+function syncSessionFormUi(m) {
+  var log = document.querySelector('.sess-log');
+  if (!log) return;
+  var label = log.querySelector('.sess-label');
+  var saveBtn = document.getElementById('sessSaveBtn');
+  var cancelBtn = document.getElementById('sessCancelEdit');
+  var editing = !!editSessionRow;
+  if (label) label.textContent = editing ? 'Editar registro' : ('Registrar ' + logVerb(m && m.type));
+  if (saveBtn) saveBtn.textContent = editing ? 'Salvar alterações' : 'Registrar';
+  if (cancelBtn) cancelBtn.classList.toggle('hidden', !editing);
+}
+
+function fillSessionForm(s) {
+  if (!s) return;
+  JB.dpSet('sessDate', s.date);
+  pickLogStar(s.stars || 0);
+  var reviewEl = document.getElementById('sessReview');
+  if (reviewEl) {
+    reviewEl.value = s.review || '';
+    revCount(reviewEl);
+  }
+  var jboeBtn = document.getElementById('jboeBtn');
+  if (jboeBtn) {
+    var on = !!(s.jboe && s.stars === 5);
+    jboeBtn.setAttribute('data-on', on ? '1' : '0');
+    jboeBtn.classList.toggle('on', on);
+  }
+}
+
+function editSession(sheetRow) {
+  var s = sessionByRow(sheetRow);
+  if (!s) return;
+  var em = (JB.email() || '').toLowerCase();
+  if (s.email !== em) return;
+  editSessionRow = sheetRow;
+  fillSessionForm(s);
+  var m = media.find(function (x) { return x.key === String(detailId); });
+  syncSessionFormUi(m);
+  document.querySelectorAll('.sess-row').forEach(function (row) {
+    row.classList.toggle('editing', parseInt(row.getAttribute('data-sheet-row'), 10) === sheetRow);
+  });
+  var log = document.querySelector('.sess-log');
+  if (log) log.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelSessionEdit() {
+  editSessionRow = null;
+  resetSessionForm();
+  document.querySelectorAll('.sess-row.editing').forEach(function (row) { row.classList.remove('editing'); });
 }
 
 function toggleSessHist() {
@@ -780,7 +884,20 @@ function toggleSessHist() {
   if (el) el.classList.toggle('hidden', !sessHistOpen);
 }
 
-function closeDetail() { document.getElementById('detailOv').classList.remove('open'); detailId = null; sessHistOpen = false; }
+function closeDetail() { document.getElementById('detailOv').classList.remove('open'); detailId = null; editSessionRow = null; sessHistOpen = false; }
+
+function syncJboePick(stars) {
+  var pick = document.getElementById('jboePick');
+  var btn = document.getElementById('jboeBtn');
+  if (!pick || !btn) return;
+  if (stars === 5) {
+    pick.classList.remove('hidden');
+    return;
+  }
+  pick.classList.add('hidden');
+  btn.setAttribute('data-on', '0');
+  btn.classList.remove('on');
+}
 
 function pickLogStar(n) {
   var wrap = document.getElementById('logStars');
@@ -789,6 +906,15 @@ function pickLogStar(n) {
   wrap.querySelectorAll('button').forEach(function (b) {
     b.classList.toggle('on', parseInt(b.getAttribute('data-star'), 10) <= n);
   });
+  syncJboePick(n);
+}
+
+function toggleJboe() {
+  var btn = document.getElementById('jboeBtn');
+  if (!btn) return;
+  var on = btn.getAttribute('data-on') !== '1';
+  btn.setAttribute('data-on', on ? '1' : '0');
+  btn.classList.toggle('on', on);
 }
 
 function revCount(ta) {
@@ -806,16 +932,18 @@ function saveSession() {
   var stars = parseInt(starsWrap && starsWrap.getAttribute('data-val'), 10) || 0;
   var reviewEl = document.getElementById('sessReview');
   var review = reviewEl ? (reviewEl.value || '').trim().slice(0, REVIEW_MAX) : '';
-  var row = [iso, String(detailId), em, String(stars), review];
-  JB.api('POST', ssUrl('/values/' + encodeURIComponent('Assistidos') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
-    .then(function () { return reloadAll(); })
+  var jboeBtn = document.getElementById('jboeBtn');
+  var jboe = stars === 5 && jboeBtn && jboeBtn.getAttribute('data-on') === '1';
+  var row = [iso, String(detailId), em, String(stars), review, jboe ? '1' : ''];
+  var editing = editSessionRow;
+  var req = editing
+    ? JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Assistidos!A' + editSessionRow + ':F' + editSessionRow) + '?valueInputOption=RAW'), { values: [row] })
+    : JB.api('POST', ssUrl('/values/' + encodeURIComponent('Assistidos') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] });
+  req.then(function () { return reloadAll(); })
     .then(function () {
-      JB.toast('✓ Registrado');
-      if (reviewEl) reviewEl.value = '';
-      if (starsWrap) {
-        starsWrap.setAttribute('data-val', '0');
-        starsWrap.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); });
-      }
+      JB.toast(editing ? '✓ Atualizado' : (jboe ? '✓ Selado com JBOE™' : '✓ Registrado'));
+      editSessionRow = null;
+      resetSessionForm();
     })
     .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
 }

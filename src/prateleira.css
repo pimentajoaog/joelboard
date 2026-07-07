@@ -44,6 +44,32 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .game-add-row .field{ width:100%; }
 .game-add-btn{ margin-top:12px; }
 
+.lib-toolbar{
+  display:flex; flex-wrap:wrap; gap:14px 20px; align-items:flex-end;
+  margin-bottom:18px; padding:12px 14px; background:var(--surface);
+  border:1px solid var(--border); border-radius:14px;
+}
+.lib-filters{ flex:1; min-width:min(100%, 260px); }
+.lib-sort{ flex:0 1 220px; min-width:180px; }
+.lib-tb-label{
+  display:block; font-size:11px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;
+}
+.lib-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.lib-chip{
+  background:var(--surface2); border:1px solid var(--border); color:var(--muted);
+  font-size:12px; font-weight:700; padding:7px 12px; border-radius:99px; cursor:pointer; font-family:inherit;
+  transition:border-color .15s ease, background .15s ease, color .15s ease, transform .09s ease;
+}
+.lib-chip.on{ background:var(--primary); color:var(--on-brand); border-color:var(--primary); }
+.lib-chip:active:not(:disabled){ transform:scale(.97); }
+.lib-chip.soon{
+  cursor:not-allowed; opacity:.55; border-style:dashed;
+  color:color-mix(in srgb, var(--muted) 85%, var(--text));
+}
+.lib-soon{ font-size:10px; font-weight:600; opacity:.85; }
+.lib-sort-sel{ margin:0; padding:9px 12px; font-size:13px; font-weight:600; }
+
 /* ===== Biblioteca shelf ===== */
 .shelf-stack{ display:flex; flex-direction:column; gap:32px; padding:4px 0 12px; }
 .shelf-row{ width:100%; }

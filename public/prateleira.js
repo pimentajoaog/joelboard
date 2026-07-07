@@ -25,6 +25,17 @@ var searchMode = 'screen';
 var posterCache = {};
 var addBusy = {};
 
+var LIB_FILTERS_KEY = 'jb_pr_lib_filters';
+var LIB_SORT_KEY = 'jb_pr_lib_sort';
+var MEDIA_FILTER_TYPES = [
+  { id: 'movie', label: 'Filmes', icon: '🎬' },
+  { id: 'tv', label: 'Séries', icon: '📺' },
+  { id: 'game', label: 'Jogos', icon: '🎮' },
+  { id: 'music', label: 'Música', icon: '🎵', soon: true }
+];
+var libFilters = { movie: true, tv: true, game: true, music: false };
+var libSort = 'recent';
+
 function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -109,10 +120,21 @@ function parseMediaId(raw) {
   if (s.indexOf('tv:') === 0) return { type: 'tv', id: s.slice(3), key: s };
   if (s.indexOf('movie:') === 0) return { type: 'movie', id: s.slice(6), key: s };
   if (s.indexOf('game:') === 0) return { type: 'game', id: s.slice(5), key: s };
+  if (s.indexOf('music:') === 0) return { type: 'music', id: s.slice(6), key: s };
   return { type: 'movie', id: s, key: 'movie:' + s };
 }
-function typeIcon(type) { return type === 'tv' ? '📺' : (type === 'game' ? '🎮' : '🎬'); }
-function typeLabel(type) { return type === 'tv' ? 'Série' : (type === 'game' ? 'Jogo' : 'Filme'); }
+function typeIcon(type) {
+  if (type === 'tv') return '📺';
+  if (type === 'game') return '🎮';
+  if (type === 'music') return '🎵';
+  return '🎬';
+}
+function typeLabel(type) {
+  if (type === 'tv') return 'Série';
+  if (type === 'game') return 'Jogo';
+  if (type === 'music') return 'Música';
+  return 'Filme';
+}
 
 /** Movies-style poster URL — keep this dead simple. */
 function tmdbPosterSrc(path) {
@@ -141,6 +163,150 @@ function libraryMedia() {
     seen[m.key] = true;
     return true;
   });
+}
+
+function loadLibPrefs() {
+  try {
+    var f = localStorage.getItem(LIB_FILTERS_KEY);
+    if (f) {
+      var parsed = JSON.parse(f);
+      MEDIA_FILTER_TYPES.forEach(function (t) {
+        if (!t.soon && parsed[t.id] != null) libFilters[t.id] = !!parsed[t.id];
+      });
+    }
+    var s = localStorage.getItem(LIB_SORT_KEY);
+    if (s) libSort = s;
+  } catch (_) {}
+}
+
+function saveLibPrefs() {
+  try {
+    localStorage.setItem(LIB_FILTERS_KEY, JSON.stringify(libFilters));
+    localStorage.setItem(LIB_SORT_KEY, libSort);
+  } catch (_) {}
+}
+
+function activeLibFilterTypes() {
+  var active = MEDIA_FILTER_TYPES.filter(function (t) {
+    return !t.soon && libFilters[t.id];
+  }).map(function (t) { return t.id; });
+  if (!active.length) {
+    return MEDIA_FILTER_TYPES.filter(function (t) { return !t.soon; }).map(function (t) { return t.id; });
+  }
+  return active;
+}
+
+function filteredLibraryMedia() {
+  var allowed = activeLibFilterTypes();
+  return libraryMedia().filter(function (m) { return allowed.indexOf(m.type) >= 0; });
+}
+
+function mediaRatingScore(m) {
+  var byUser = latestStarsByUser(m.key);
+  var nums = JULIOEL_EMAILS.map(function (em) {
+    var s = byUser[em];
+    return s && s.stars ? s.stars : 0;
+  }).filter(function (n) { return n > 0; });
+  if (!nums.length) return 0;
+  return nums.reduce(function (a, b) { return a + b; }, 0) / nums.length;
+}
+
+function jlboSortRank(m) {
+  var st = jlboShelfState(m);
+  if (st === 'full') return 2;
+  if (st !== 'none') return 1;
+  return 0;
+}
+
+function sortedFilteredMedia() {
+  var list = filteredLibraryMedia().slice();
+  var cmpTitle = function (a, b) {
+    return String(a.title || '').localeCompare(String(b.title || ''), 'pt', { sensitivity: 'base' });
+  };
+  if (libSort === 'alpha') return list.sort(function (a, b) { return cmpTitle(a, b); });
+  if (libSort === 'alpha-desc') return list.sort(function (a, b) { return cmpTitle(b, a); });
+  if (libSort === 'rating') {
+    return list.sort(function (a, b) {
+      return mediaRatingScore(b) - mediaRatingScore(a) || cmpTitle(a, b);
+    });
+  }
+  if (libSort === 'type') {
+    return list.sort(function (a, b) {
+      var ta = typeLabel(a.type), tb = typeLabel(b.type);
+      if (ta !== tb) return ta.localeCompare(tb, 'pt');
+      return cmpTitle(a, b);
+    });
+  }
+  if (libSort === 'year') {
+    return list.sort(function (a, b) {
+      return String(b.year || '').localeCompare(String(a.year || '')) || cmpTitle(a, b);
+    });
+  }
+  if (libSort === 'year-asc') {
+    return list.sort(function (a, b) {
+      return String(a.year || '').localeCompare(String(b.year || '')) || cmpTitle(a, b);
+    });
+  }
+  if (libSort === 'added') {
+    return list.sort(function (a, b) {
+      return String(b.added || '').localeCompare(String(a.added || '')) || cmpTitle(a, b);
+    });
+  }
+  if (libSort === 'jlbo') {
+    return list.sort(function (a, b) {
+      return jlboSortRank(b) - jlboSortRank(a) || cmpTitle(a, b);
+    });
+  }
+  return list.sort(function (a, b) {
+    var la = latestSession(a.key), lb = latestSession(b.key);
+    if (la && lb) return String(lb.date).localeCompare(String(la.date));
+    if (la) return -1;
+    if (lb) return 1;
+    return String(b.added || '').localeCompare(String(a.added || ''));
+  });
+}
+
+function libToolbarHtml() {
+  var chips = MEDIA_FILTER_TYPES.map(function (t) {
+    var on = !t.soon && libFilters[t.id];
+    var cls = 'lib-chip' + (on ? ' on' : '') + (t.soon ? ' soon' : '');
+    var extra = t.soon ? ' disabled title="Em breve"' : (' onclick="toggleLibFilter(\'' + t.id + '\')"');
+    return '<button type="button" class="' + cls + '" data-ft="' + t.id + '"' + extra + '>'
+      + t.icon + ' ' + esc(t.label) + (t.soon ? ' <span class="lib-soon">em breve</span>' : '') + '</button>';
+  }).join('');
+  var sorts = [
+    { id: 'recent', label: 'Último registro' },
+    { id: 'alpha', label: 'A → Z' },
+    { id: 'alpha-desc', label: 'Z → A' },
+    { id: 'rating', label: 'Melhor avaliação' },
+    { id: 'type', label: 'Tipo' },
+    { id: 'year', label: 'Ano (novo → antigo)' },
+    { id: 'year-asc', label: 'Ano (antigo → novo)' },
+    { id: 'added', label: 'Adicionados recentemente' },
+    { id: 'jlbo', label: 'JLBOE™ primeiro' }
+  ];
+  var opts = sorts.map(function (s) {
+    return '<option value="' + s.id + '"' + (libSort === s.id ? ' selected' : '') + '>' + esc(s.label) + '</option>';
+  }).join('');
+  return '<div class="lib-toolbar">'
+    + '<div class="lib-filters"><span class="lib-tb-label">Filtrar</span><div class="lib-chips">' + chips + '</div></div>'
+    + '<div class="lib-sort"><label class="lib-tb-label" for="libSortSel">Ordenar</label>'
+    + '<select class="field lib-sort-sel" id="libSortSel" onchange="setLibSort(this.value)">' + opts + '</select></div>'
+    + '</div>';
+}
+
+function toggleLibFilter(type) {
+  var meta = MEDIA_FILTER_TYPES.find(function (t) { return t.id === type; });
+  if (!meta || meta.soon) return;
+  libFilters[type] = !libFilters[type];
+  saveLibPrefs();
+  if (curTab === 'lib') renderMain();
+}
+
+function setLibSort(val) {
+  libSort = val || 'recent';
+  saveLibPrefs();
+  if (curTab === 'lib') renderMain();
 }
 function lockAdd(id) {
   if (addBusy[id]) return false;
@@ -440,9 +606,9 @@ function parseMedia(rows) {
   for (var i = 1; i < rows.length; i++) {
     var r = rows[i] || [];
     if (!r[0]) continue;
-    var useNew = hasTipoCol && (r[1] === 'Filme' || r[1] === 'Série' || r[1] === 'Jogo');
+    var useNew = hasTipoCol && (r[1] === 'Filme' || r[1] === 'Série' || r[1] === 'Jogo' || r[1] === 'Música');
     if (useNew) {
-      var typeN = r[1] === 'Série' ? 'tv' : (r[1] === 'Jogo' ? 'game' : 'movie');
+      var typeN = r[1] === 'Série' ? 'tv' : (r[1] === 'Jogo' ? 'game' : (r[1] === 'Música' ? 'music' : 'movie'));
       var jlbo = {};
       if (hasJlboCols) {
         jlbo[JULIOEL_EMAILS[0]] = jlboTruthy(r[6]);
@@ -597,13 +763,7 @@ function sessionByRow(sheetRow) {
 }
 
 function sortedMedia() {
-  return libraryMedia().slice().sort(function (a, b) {
-    var la = latestSession(a.key), lb = latestSession(b.key);
-    if (la && lb) return String(lb.date).localeCompare(String(la.date));
-    if (la) return -1;
-    if (lb) return 1;
-    return String(b.added).localeCompare(String(a.added));
-  });
+  return sortedFilteredMedia();
 }
 
 function jlboSealHtml(title) {
@@ -706,8 +866,11 @@ function renderMain() {
     el.innerHTML = JB.emptyState({ icon: '📚', title: 'Prateleira vazia', body: 'Busque filmes, séries ou jogos e registrem quando assistirem/jogarem.', btn: 'Buscar', onclick: 'prateleiraTab(\'search\')' });
     return;
   }
-  var items = sortedMedia();
-  el.innerHTML = renderShelfStack(items);
+  var items = sortedFilteredMedia();
+  var body = items.length
+    ? renderShelfStack(items)
+    : '<div class="empty">Nada neste filtro — ligue outro tipo acima.</div>';
+  el.innerHTML = libToolbarHtml() + body;
 }
 
 function prateleiraTab(tab) {
@@ -1233,6 +1396,7 @@ function prateleiraSignIn() { JB.signIn({ onSuccess: boot }); }
 function prateleiraSignOut() { try { localStorage.removeItem('jb_julioel'); } catch (_) {} JB.signOut(); location.href = '/'; }
 
 function startPrateleira() {
+  loadLibPrefs();
   if (!JB.hasSession()) { boot(); return; }
   JB.ensureToken(false).then(function () {
     boot();

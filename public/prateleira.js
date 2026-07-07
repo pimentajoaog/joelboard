@@ -28,6 +28,11 @@ var posterCache = {};
 var userIcons = {};
 var addBusy = {};
 var refreshBusy = false;
+var lastLocalWriteAt = 0;
+var lastDataFingerprint = '';
+var autoRefreshTimer = null;
+var AUTO_REFRESH_MS = 30000;
+var LOCAL_WRITE_GRACE_MS = 10000;
 
 var LIB_FILTERS_KEY = 'jb_pr_lib_filters';
 var LIB_SORT_KEY = 'jb_pr_lib_sort';
@@ -145,6 +150,7 @@ function saveUserIconToSheet(em, icon) {
   var val = String(icon || '').trim().slice(0, 8) || DEFAULT_USER_ICONS[em] || '👤';
   userIcons[em] = val;
   persistUserIconLocal(em, val);
+  markPrateleiraLocalWrite();
   return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Perfil!A' + row + ':B' + row) + '?valueInputOption=RAW'), { values: [[em, val]] });
 }
 
@@ -539,7 +545,14 @@ function boot() {
   whenTmdbReady(function () {
     resolveSheet()
       .then(loadAll)
-      .then(function () { showApp(); renderMain(); refreshMissingPosters(); JB.watchSheet(APP, reloadAll); })
+      .then(function () {
+        lastDataFingerprint = dataFingerprint();
+        showApp();
+        renderMain();
+        refreshMissingPosters();
+        initPrateleiraAutoRefresh();
+        JB.watchSheet(APP, refreshPrateleiraQuiet);
+      })
       .catch(handleBootErr);
   });
 }
@@ -807,6 +820,7 @@ function fetchPosterFromTmdb(m) {
 
 function reloadAll() {
   return loadAll().then(function () {
+    lastDataFingerprint = dataFingerprint();
     renderMain();
     if (detailId && !media.find(function (m) { return m.key === String(detailId); })) closeDetail();
     else if (detailId) openDetail(detailId);
@@ -924,13 +938,69 @@ function syncMediaUi(key) {
   patchDetailPanels(key);
 }
 
+function markPrateleiraLocalWrite() {
+  lastLocalWriteAt = Date.now();
+  lastDataFingerprint = dataFingerprint();
+}
+
+function dataFingerprint() {
+  return JSON.stringify({
+    media: media.map(function (m) {
+      var j = m.jlbo || {};
+      return m.key + '|' + m.title + '|' + (j[JULIOEL_EMAILS[0]] ? 1 : 0) + (j[JULIOEL_EMAILS[1]] ? 1 : 0);
+    }),
+    sessions: sessions.map(function (s) {
+      return s.sheetRow + '|' + s.mediaId + '|' + s.email + '|' + s.date + '|' + s.stars + '|' + s.review;
+    }),
+    icons: userIcons
+  });
+}
+
+function prateleiraAutoRefreshAllowed() {
+  if (refreshBusy) return false;
+  if (document.getElementById('app').classList.contains('hidden')) return false;
+  if (document.visibilityState !== 'visible') return false;
+  if (document.querySelector('#setOverlay.open')) return false;
+  if (editSessionRow) return false;
+  if (Date.now() - lastLocalWriteAt < LOCAL_WRITE_GRACE_MS) return false;
+  return true;
+}
+
+function refreshPrateleiraQuiet() {
+  if (!prateleiraAutoRefreshAllowed()) return Promise.resolve();
+  var detailOpen = !!document.querySelector('#detailOv.open');
+  return loadAll().then(function () {
+    var fp = dataFingerprint();
+    if (fp === lastDataFingerprint) return;
+    lastDataFingerprint = fp;
+    renderMain();
+    if (detailOpen && detailId) {
+      var m = media.find(function (x) { return x.key === String(detailId); });
+      if (!m) closeDetail();
+      else patchDetailPanels(detailId);
+    }
+    refreshMissingPosters();
+  }).catch(function () {});
+}
+
+function initPrateleiraAutoRefresh() {
+  if (window._jbPrAutoRefresh) return;
+  window._jbPrAutoRefresh = 1;
+  JB.onTabVisible(function () { refreshPrateleiraQuiet(); }, { intervalMs: 15000 });
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(function () { refreshPrateleiraQuiet(); }, AUTO_REFRESH_MS);
+}
+
 function refreshPrateleira() {
   if (refreshBusy) return;
   refreshBusy = true;
   var btn = document.getElementById('prRefreshBtn');
   if (btn) btn.classList.add('spin');
   reloadAll()
-    .then(function () { JB.toast('✓ Atualizado'); })
+    .then(function () {
+      lastDataFingerprint = dataFingerprint();
+      JB.toast('✓ Atualizado');
+    })
     .finally(function () {
       refreshBusy = false;
       if (btn) btn.classList.remove('spin');
@@ -1086,6 +1156,7 @@ function updateMediaJlbo(mediaId, em, on) {
   if (!col) return Promise.resolve();
   if (!m.jlbo) m.jlbo = {};
   m.jlbo[em] = !!on;
+  markPrateleiraLocalWrite();
   return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Filmes!' + col + m.sheetRow) + '?valueInputOption=RAW'), { values: [[on ? '1' : '']] });
 }
 
@@ -1556,6 +1627,7 @@ function sessionBlockHtml(key) {
 function deleteSession(sheetRow) {
   if (!sheetRow || !sheetGrid || sheetGrid.Assistidos == null) return;
   JB.confirm('Excluir este registro?', 'A data e avaliação serão removidas.', function () {
+    markPrateleiraLocalWrite();
     var key = detailId;
     var snapshot = sessions.slice();
     removeSessionLocal(sheetRow);
@@ -1564,6 +1636,7 @@ function deleteSession(sheetRow) {
       requests: [{ deleteDimension: { range: { sheetId: sheetGrid.Assistidos, dimension: 'ROWS', startIndex: sheetRow - 1, endIndex: sheetRow } } }]
     }).then(function () { return loadSessionsQuiet(); })
       .then(function () {
+        lastDataFingerprint = dataFingerprint();
         if (key) syncMediaUi(key);
         JB.toast('✓ Removido');
       })
@@ -1796,6 +1869,7 @@ function saveSession() {
   var key = detailId;
   var saveBtn = document.getElementById('sessSaveBtn');
   if (saveBtn) saveBtn.disabled = true;
+  markPrateleiraLocalWrite();
 
   var snapshot = { sessions: sessions.slice(), jlbo: null };
   var m = media.find(function (x) { return x.key === String(key); });
@@ -1820,7 +1894,10 @@ function saveSession() {
 
   Promise.all([req, jlboReq])
     .then(function () { return loadSessionsQuiet(); })
-    .then(function () { syncMediaUi(key); })
+    .then(function () {
+      lastDataFingerprint = dataFingerprint();
+      syncMediaUi(key);
+    })
     .catch(function (e) {
       sessions = snapshot.sessions;
       if (m && snapshot.jlbo) m.jlbo = snapshot.jlbo;

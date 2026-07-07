@@ -426,9 +426,10 @@ function logFormHtml() {
   var myEm = (JB.email() || '').toLowerCase();
   if (JULIOEL_EMAILS.indexOf(myEm) < 0) return '';
   return '<div class="sess-log"><div class="sess-label">Registrar assistida</div>'
-    + '<button type="button" class="dp-btn empty" id="sessDate" data-ph="Data…" onclick="JB.dpOpen(\'sessDate\')">Data…</button>'
+    + '<div class="fg"><label class="fl">Data</label>'
+    + '<button type="button" class="field datebtn empty" id="sessDate" data-iso="" data-ph="Escolher data…" onclick="JB.dpOpen(\'sessDate\')">Escolher data…</button></div>'
     + '<textarea class="review-in sess-note" id="sessNote" maxlength="' + NOTE_MAX + '" placeholder="Nota opcional"></textarea>'
-    + '<button class="btn ghost" style="width:100%;margin-top:8px" onclick="saveSession()">+ Registrar data</button></div>';
+    + '<button type="button" class="btn-primary" onclick="saveSession()">+ Registrar data</button></div>';
 }
 
 function openDetail(id) {

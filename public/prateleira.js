@@ -18,6 +18,7 @@ var sessHistOpen = false;
 var searchTimer = null;
 var searchMode = 'screen';
 var posterCache = {};
+var addBusy = {};
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -86,8 +87,19 @@ function posterVisual(path, icon) {
 }
 
 function libraryMedia() {
-  return media.filter(function (m) { return sessionsFor(m.key).length > 0; });
+  var seen = {};
+  return media.filter(function (m) {
+    if (!sessionsFor(m.key).length || seen[m.key]) return false;
+    seen[m.key] = true;
+    return true;
+  });
 }
+function lockAdd(id) {
+  if (addBusy[id]) return false;
+  addBusy[id] = true;
+  return true;
+}
+function unlockAdd(id) { delete addBusy[id]; }
 function onShelf(key) { return sessionsFor(key).length > 0; }
 
 function gameId() {
@@ -577,8 +589,13 @@ function addFromCatalog(catalogId) {
     openDetail(key);
     return;
   }
+  if (!lockAdd(key)) return;
   gamesFetch({ game: String(catalogId) })
     .then(function (item) {
+      if (media.some(function (m) { return m.key === key; })) {
+        openDetail(key);
+        return;
+      }
       var title = item.name || '';
       var year = String(item.released || '').slice(0, 4);
       var poster = item.background_image || '';
@@ -588,7 +605,8 @@ function addFromCatalog(catalogId) {
         .then(function () { return loadAll(); })
         .then(function () { JB.toast('✓ Registre quando jogarem'); openDetail(key); });
     })
-    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
+    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
+    .finally(function () { unlockAdd(key); });
 }
 
 function addManualGame() {
@@ -599,12 +617,15 @@ function addManualGame() {
   if (!title) { JB.toast('Digite o nome do jogo'); return; }
   var existing = findGameByTitle(title);
   if (existing) { openDetail(existing.key); return; }
+  var lockId = 'manual:' + title.toLowerCase();
+  if (!lockAdd(lockId)) return;
   var key = mediaKey('game', gameId());
   var row = [key, 'Jogo', title, year, '', JB.fmtDate(new Date())];
   JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
     .then(function () { return loadAll(); })
     .then(function () { JB.toast('✓ Registre quando jogarem'); openDetail(key); })
-    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
+    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
+    .finally(function () { unlockAdd(lockId); });
 }
 
 function addFromTmdb(type, tmdbId) {
@@ -613,11 +634,16 @@ function addFromTmdb(type, tmdbId) {
     openDetail(key);
     return;
   }
-  if (!tmdbKey()) return;
+  if (!lockAdd(key)) return;
+  if (!tmdbKey()) { unlockAdd(key); return; }
   var path = type === 'tv' ? ('/tv/' + tmdbId) : ('/movie/' + tmdbId);
   fetch('https://api.themoviedb.org/3' + path + '?api_key=' + encodeURIComponent(tmdbKey()) + '&language=pt-BR')
     .then(function (r) { return r.json(); })
     .then(function (item) {
+      if (media.some(function (m) { return m.key === key; })) {
+        openDetail(key);
+        return;
+      }
       var title = type === 'tv' ? (item.name || '') : (item.title || '');
       var year = String((type === 'tv' ? item.first_air_date : item.release_date) || '').slice(0, 4);
       if (item.poster_path) posterCache[key] = item.poster_path;
@@ -626,7 +652,8 @@ function addFromTmdb(type, tmdbId) {
         .then(function () { return loadAll(); })
         .then(function () { JB.toast('✓ Registre quando assistirem'); openDetail(key); });
     })
-    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
+    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
+    .finally(function () { unlockAdd(key); });
 }
 
 function sessRowHtml(s, isLatest) {

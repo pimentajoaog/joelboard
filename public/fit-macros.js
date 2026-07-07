@@ -118,7 +118,7 @@ function loadBundledFoods(cb) {
   if (_bundledFoods) { cb(_bundledFoods); return; }
   fetch('/fit-foods.json').then(function (r) { return r.json(); }).then(function (j) {
     _bundledFoods = (j || []).map(function (f) {
-      return { id: f.id, name: f.n, p100: f.p, c100: f.c, g100: f.g, k100: f.k, src: 'bundled', presets: f.presets || [] };
+      return { id: f.id, name: f.n, p100: f.p, c100: f.c, g100: f.g, k100: f.k, src: 'bundled', presets: f.presets || [], tags: f.tags || [] };
     });
     cb(_bundledFoods);
   }).catch(function () { _bundledFoods = []; cb([]); });
@@ -130,10 +130,18 @@ function macroCustomFoods() {
   });
 }
 
+function macroNorm(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function macroFoodHaystack(f) {
+  return macroNorm([f.name].concat(f.tags || []).concat(f.id ? [String(f.id).replace(/-/g, ' ')] : []).join(' '));
+}
+
 function macroSearchBundled(q, list) {
-  q = (q || '').toLowerCase().trim();
+  q = macroNorm(q).trim();
   if (!q) return list.slice(0, 24);
-  return list.filter(function (f) { return f.name.toLowerCase().indexOf(q) > -1; }).slice(0, 24);
+  return list.filter(function (f) { return macroFoodHaystack(f).indexOf(q) > -1; }).slice(0, 24);
 }
 
 function macroSearchOff(q, cb) {

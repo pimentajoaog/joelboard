@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<!-- Joelboard Replace — isolated variable prompt frame. © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Variável</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: transparent; }
+  body {
+    font-family: "Hanken Grotesk", system-ui, sans-serif;
+    background: #1b1f32;
+    color: #e7eaf3;
+    border: 1px solid #2b3147;
+    border-radius: 16px;
+    padding: 20px;
+  }
+  .title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+  .hint { font-size: 12px; color: #7b85a0; margin-bottom: 12px; }
+  input {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    background: #252a40;
+    border: 1px solid #2b3147;
+    border-radius: 10px;
+    color: #e7eaf3;
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+  }
+  input:focus { border-color: #22d3ee; }
+  .btns { display: flex; gap: 8px; margin-top: 14px; }
+  button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+  }
+  .primary { background: #22d3ee; color: #06222b; }
+  .ghost { background: #252a40; color: #e7eaf3; border: 1px solid #2b3147; }
+</style>
+</head>
+<body>
+  <div class="title" id="title">Variável</div>
+  <div class="hint">Preencha para expandir o template.</div>
+  <input id="value" type="text" autocomplete="off" spellcheck="false" placeholder="Digite o valor…">
+  <div class="btns">
+    <button type="button" class="ghost" id="skip">Pular</button>
+    <button type="button" class="primary" id="ok">OK</button>
+  </div>
+<script src="prompt-frame.js"></script>
+</body>
+</html>

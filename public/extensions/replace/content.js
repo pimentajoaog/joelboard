@@ -152,109 +152,73 @@
     return navigator.clipboard.readText().catch(function () { return ''; });
   }
 
-  function stopBubble(ev) {
-    ev.stopPropagation();
+  function blurActiveField() {
+    var ae = document.activeElement;
+    if (!ae || ae === document.body || ae === document.documentElement) return;
+    try { ae.blur(); } catch (_) {}
   }
-
-  var PROMPT_CSS = ''
-    + ':host{all:initial;position:fixed;inset:0;z-index:2147483647;display:block;pointer-events:auto}'
-    + '.jbr-prompt-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:18px;font-family:"Hanken Grotesk",system-ui,sans-serif}'
-    + '.jbr-prompt{background:#1b1f32;border:1px solid #2b3147;border-radius:16px;padding:20px;width:100%;max-width:340px;color:#e7eaf3;box-sizing:border-box}'
-    + '.jbr-prompt-title{font-size:16px;font-weight:800;margin-bottom:4px}'
-    + '.jbr-prompt-hint{font-size:12px;color:#7b85a0;margin-bottom:12px}'
-    + '.jbr-prompt-input{display:block;box-sizing:border-box;width:100%;padding:10px 12px;background:#252a40;border:1px solid #2b3147;border-radius:10px;color:#e7eaf3;font-size:14px;outline:none;font-family:inherit;-webkit-appearance:none;appearance:none}'
-    + '.jbr-prompt-input:focus{border-color:#22d3ee}'
-    + '.jbr-prompt-btns{display:flex;gap:8px;margin-top:14px}'
-    + '.jbr-btn{flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit}'
-    + '.jbr-btn.primary{background:#22d3ee;color:#06222b}'
-    + '.jbr-btn.ghost{background:#252a40;color:#e7eaf3;border:1px solid #2b3147}';
 
   function promptVars(missing, vars) {
     return new Promise(function (resolve) {
       if (!missing.length) { resolve(vars); return; }
       if (pendingPrompt) { resolve(null); return; }
+
       var key = missing[0];
+      var preset = vars[key] != null ? vars[key] : vars[key.toLowerCase()];
+      blurActiveField();
+
       var host = document.createElement('div');
       host.id = 'jbr-prompt-root';
-      var shadow = host.attachShadow({ mode: 'closed' });
-      var style = document.createElement('style');
-      style.textContent = PROMPT_CSS;
-      shadow.appendChild(style);
+      host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);padding:18px;box-sizing:border-box';
 
-      var ov = document.createElement('div');
-      ov.className = 'jbr-prompt-overlay';
-      ov.addEventListener('mousedown', stopBubble);
-      ov.addEventListener('mouseup', stopBubble);
+      var iframe = document.createElement('iframe');
+      iframe.src = chrome.runtime.getURL('prompt.html');
+      iframe.title = 'Variável: {{' + key + '}}';
+      iframe.setAttribute('aria-label', 'Variável: {{' + key + '}}');
+      iframe.style.cssText = 'border:0;width:100%;max-width:380px;height:220px;background:transparent;color-scheme:dark';
 
-      var box = document.createElement('div');
-      box.className = 'jbr-prompt';
-
-      var title = document.createElement('div');
-      title.className = 'jbr-prompt-title';
-      title.textContent = 'Variável: {{' + key + '}}';
-
-      var hint = document.createElement('div');
-      hint.className = 'jbr-prompt-hint';
-      hint.textContent = 'Preencha para expandir o template.';
-
-      var inp = document.createElement('input');
-      inp.className = 'jbr-prompt-input';
-      inp.type = 'text';
-      inp.placeholder = 'Digite o valor…';
-      inp.autocomplete = 'off';
-      inp.spellcheck = false;
-      inp.setAttribute('aria-label', 'Valor para {{' + key + '}}');
-      var preset = vars[key] != null ? vars[key] : vars[key.toLowerCase()];
-      if (preset != null && String(preset) !== '') inp.value = String(preset);
-
-      var btns = document.createElement('div');
-      btns.className = 'jbr-prompt-btns';
-
-      var skipBtn = document.createElement('button');
-      skipBtn.type = 'button';
-      skipBtn.className = 'jbr-btn ghost';
-      skipBtn.setAttribute('data-act', 'skip');
-      skipBtn.textContent = 'Pular';
-
-      var okBtn = document.createElement('button');
-      okBtn.type = 'button';
-      okBtn.className = 'jbr-btn primary';
-      okBtn.setAttribute('data-act', 'ok');
-      okBtn.textContent = 'OK';
-
-      btns.appendChild(skipBtn);
-      btns.appendChild(okBtn);
-      box.appendChild(title);
-      box.appendChild(hint);
-      box.appendChild(inp);
-      box.appendChild(btns);
-      ov.appendChild(box);
-      shadow.appendChild(ov);
+      host.appendChild(iframe);
       document.documentElement.appendChild(host);
       pendingPrompt = host;
 
-      function close() {
+      function cleanup() {
+        window.removeEventListener('message', onMsg);
         if (host.parentNode) host.parentNode.removeChild(host);
         pendingPrompt = null;
       }
-      skipBtn.onclick = function () {
-        close();
+
+      function closeAndNext(value) {
+        cleanup();
+        if (value) vars[key] = value;
         resolve(promptVars(missing.slice(1), vars));
-      };
-      okBtn.onclick = function () {
-        var v = (inp.value || '').trim();
-        if (v) vars[key] = v;
-        close();
-        resolve(promptVars(missing.slice(1), vars));
-      };
-      inp.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); okBtn.click(); }
-        if (e.key === 'Escape') { e.preventDefault(); close(); resolve(null); }
-      });
-      requestAnimationFrame(function () {
-        inp.focus();
-        try { inp.select(); } catch (_) {}
-      });
+      }
+
+      function onMsg(ev) {
+        if (ev.source !== iframe.contentWindow || !ev.data || ev.data.type !== 'jbr-prompt') return;
+        if (ev.data.action === 'ready') {
+          iframe.contentWindow.postMessage({
+            type: 'jbr-prompt-init',
+            key: key,
+            preset: preset != null && String(preset) !== '' ? String(preset) : ''
+          }, '*');
+          return;
+        }
+        if (ev.data.action === 'ok') {
+          var v = (ev.data.value || '').trim();
+          closeAndNext(v || null);
+          return;
+        }
+        if (ev.data.action === 'skip') {
+          closeAndNext(null);
+          return;
+        }
+        if (ev.data.action === 'cancel') {
+          cleanup();
+          resolve(null);
+        }
+      }
+
+      window.addEventListener('message', onMsg);
     });
   }
 

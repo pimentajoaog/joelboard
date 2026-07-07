@@ -55,3 +55,21 @@ describe('findSnippetMatch', () => {
     assert.equal(JB_REPLACE.findSnippetMatch(snippets, 'test/testtest,', false), null);
   });
 });
+
+describe('template variables', () => {
+  it('collects user vars from snippet bodies', () => {
+    const list = [
+      { body: 'Hi {{name}}, from {{empresa}} on {{date}}' },
+      { body: 'Again {{name}} and {{clipboard}}' }
+    ];
+    assert.equal(JSON.stringify(JB_REPLACE.collectVarKeys(list)), JSON.stringify(['empresa', 'name']));
+  });
+
+  it('merges stored vars with template vars', () => {
+    const keys = JB_REPLACE.mergedVarKeys(
+      [{ body: '{{foo}}' }],
+      { bar: 'x', foo: '' }
+    );
+    assert.equal(JSON.stringify(keys), JSON.stringify(['bar', 'foo']));
+  });
+});

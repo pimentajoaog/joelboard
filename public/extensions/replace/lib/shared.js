@@ -130,6 +130,35 @@ var JB_REPLACE = (function () {
     return String(body || '').replace(/\{\{clipboard\}\}/gi, c).replace(/%clip%/gi, c);
   }
 
+  var BUILTIN_NAMES = { date: 1, time: 1, datetime: 1, ano: 1, clipboard: 1 };
+
+  function isUserVar(key) {
+    return !BUILTIN_NAMES[String(key || '').toLowerCase()];
+  }
+
+  function collectVarKeys(snippets) {
+    var keys = {};
+    var re = /\{\{([a-zA-Z0-9_]+)\}\}/g;
+    (snippets || []).forEach(function (s) {
+      var m;
+      while ((m = re.exec(String(s.body || '')))) {
+        if (isUserVar(m[1])) keys[m[1]] = true;
+      }
+    });
+    return Object.keys(keys).sort(function (a, b) {
+      return a.toLowerCase().localeCompare(b.toLowerCase());
+    });
+  }
+
+  function mergedVarKeys(snippets, vars) {
+    var map = {};
+    collectVarKeys(snippets).forEach(function (k) { map[k] = true; });
+    Object.keys(vars || {}).forEach(function (k) { map[k] = true; });
+    return Object.keys(map).sort(function (a, b) {
+      return a.toLowerCase().localeCompare(b.toLowerCase());
+    });
+  }
+
   function missingVars(body, vars, builtins) {
     builtins = builtins || {};
     var missing = [];
@@ -337,6 +366,8 @@ var JB_REPLACE = (function () {
     needsClipboard: needsClipboard,
     applyClipboard: applyClipboard,
     missingVars: missingVars,
+    collectVarKeys: collectVarKeys,
+    mergedVarKeys: mergedVarKeys,
     exportJson: exportJson,
     exportCsv: exportCsv,
     importJson: importJson,

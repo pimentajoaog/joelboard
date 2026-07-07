@@ -152,6 +152,10 @@
     return navigator.clipboard.readText().catch(function () { return ''; });
   }
 
+  function stopBubble(ev) {
+    ev.stopPropagation();
+  }
+
   function promptVars(missing, vars) {
     return new Promise(function (resolve) {
       if (!missing.length) { resolve(vars); return; }
@@ -159,36 +163,78 @@
       var key = missing[0];
       var ov = document.createElement('div');
       ov.className = 'jbr-prompt-overlay';
-      ov.innerHTML = '<div class="jbr-prompt">'
-        + '<div class="jbr-prompt-title">Variável: {{' + key + '}}</div>'
-        + '<div class="jbr-prompt-hint">Preencha para expandir o template.</div>'
-        + '<input class="jbr-prompt-input" type="text" placeholder="' + key + '">'
-        + '<div class="jbr-prompt-btns">'
-        + '<button type="button" class="jbr-btn ghost" data-act="skip">Pular</button>'
-        + '<button type="button" class="jbr-btn primary" data-act="ok">OK</button>'
-        + '</div></div>';
+      ['keydown', 'keypress', 'keyup', 'input'].forEach(function (type) {
+        ov.addEventListener(type, stopBubble, true);
+      });
+
+      var box = document.createElement('div');
+      box.className = 'jbr-prompt';
+
+      var title = document.createElement('div');
+      title.className = 'jbr-prompt-title';
+      title.textContent = 'Variável: {{' + key + '}}';
+
+      var hint = document.createElement('div');
+      hint.className = 'jbr-prompt-hint';
+      hint.textContent = 'Preencha para expandir o template.';
+
+      var inp = document.createElement('input');
+      inp.className = 'jbr-prompt-input';
+      inp.type = 'text';
+      inp.placeholder = 'Digite o valor…';
+      inp.autocomplete = 'off';
+      inp.spellcheck = false;
+      var preset = vars[key] != null ? vars[key] : vars[key.toLowerCase()];
+      if (preset != null && String(preset) !== '') inp.value = String(preset);
+
+      var btns = document.createElement('div');
+      btns.className = 'jbr-prompt-btns';
+
+      var skipBtn = document.createElement('button');
+      skipBtn.type = 'button';
+      skipBtn.className = 'jbr-btn ghost';
+      skipBtn.setAttribute('data-act', 'skip');
+      skipBtn.textContent = 'Pular';
+
+      var okBtn = document.createElement('button');
+      okBtn.type = 'button';
+      okBtn.className = 'jbr-btn primary';
+      okBtn.setAttribute('data-act', 'ok');
+      okBtn.textContent = 'OK';
+
+      btns.appendChild(skipBtn);
+      btns.appendChild(okBtn);
+      box.appendChild(title);
+      box.appendChild(hint);
+      box.appendChild(inp);
+      box.appendChild(btns);
+      ov.appendChild(box);
       document.documentElement.appendChild(ov);
       pendingPrompt = ov;
-      var inp = ov.querySelector('.jbr-prompt-input');
-      inp.focus();
+
       function close() {
         if (ov.parentNode) ov.parentNode.removeChild(ov);
         pendingPrompt = null;
       }
-      ov.querySelector('[data-act="skip"]').onclick = function () {
+      skipBtn.onclick = function () {
         close();
         resolve(promptVars(missing.slice(1), vars));
       };
-      ov.querySelector('[data-act="ok"]').onclick = function () {
+      okBtn.onclick = function () {
         var v = (inp.value || '').trim();
         if (v) vars[key] = v;
         close();
         resolve(promptVars(missing.slice(1), vars));
       };
       inp.onkeydown = function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); ov.querySelector('[data-act="ok"]').click(); }
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); okBtn.click(); }
         if (e.key === 'Escape') { e.preventDefault(); close(); resolve(null); }
       };
+      requestAnimationFrame(function () {
+        inp.focus();
+        inp.select();
+      });
     });
   }
 
@@ -225,6 +271,7 @@
   }
 
   document.addEventListener('keydown', function (e) {
+    if (pendingPrompt) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     var key = e.key;
     if (key !== ' ' && key !== 'Tab' && key !== 'Enter') return;
@@ -255,7 +302,7 @@
       + '.jbr-prompt{background:#1b1f32;border:1px solid #2b3147;border-radius:16px;padding:20px;width:100%;max-width:340px;color:#e7eaf3}'
       + '.jbr-prompt-title{font-size:16px;font-weight:800;margin-bottom:4px}'
       + '.jbr-prompt-hint{font-size:12px;color:#7b85a0;margin-bottom:12px}'
-      + '.jbr-prompt-input{width:100%;padding:10px 12px;background:#252a40;border:1px solid #2b3147;border-radius:10px;color:#e7eaf3;font-size:14px;outline:none;font-family:inherit}'
+      + '.jbr-prompt-input{display:block;box-sizing:border-box;width:100%;padding:10px 12px;background:#252a40!important;border:1px solid #2b3147;border-radius:10px;color:#e7eaf3!important;-webkit-text-fill-color:#e7eaf3!important;font-size:14px;outline:none;font-family:inherit;pointer-events:auto!important;opacity:1!important}'
       + '.jbr-prompt-input:focus{border-color:#22d3ee}'
       + '.jbr-prompt-btns{display:flex;gap:8px;margin-top:14px}'
       + '.jbr-btn{flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit}'

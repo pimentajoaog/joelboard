@@ -55,8 +55,9 @@ function renderSnippets() {
 }
 
 function renderVars() {
-  var vars = DATA.vars || {};
-  var keys = Object.keys(vars);
+  if (!DATA.vars) DATA.vars = {};
+  var vars = DATA.vars;
+  var keys = JB_REPLACE.mergedVarKeys(DATA.snippets, vars);
   var el = $('varList');
   el.innerHTML = keys.map(function (k) {
     return '<div class="var-row" data-key="' + esc(k) + '">'
@@ -132,6 +133,7 @@ function saveEditor() {
   persist().then(function () {
     closeEditor();
     renderSnippets();
+    renderVars();
     toast('✓ Salvo');
   });
 }

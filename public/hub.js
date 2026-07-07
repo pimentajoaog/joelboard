@@ -52,9 +52,80 @@ function applyJulioelUI(animate){
 }
 function toggleJulioel(){
   if(!julioelAllowed()) return;
+  if(document.body.classList.contains('julioel-hint-on')){
+    endJulioelHint(true);
+    julioelConfetti();
+  }
   setJulioel(!julioelActive());
 }
-function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); applyJulioelUI(false); if(on && !_hbooted){ _hbooted=true; if(!JB.tourDone('hub')) setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 700); } }
+function julioelConfetti(){
+  var colors=['#e879f9','#f472b6','#a78bfa','#22d3ee','#fbbf24','#34d399'];
+  for(var i=0;i<90;i++){
+    var p=document.createElement('div'); p.className='julioel-confetti';
+    var sz=6+Math.random()*9;
+    p.style.left=(Math.random()*100)+'vw'; p.style.width=sz+'px'; p.style.height=(sz*0.6)+'px';
+    p.style.background=colors[Math.floor(Math.random()*colors.length)];
+    var dur=2.1+Math.random()*1.8;
+    p.style.animation='julioel-confetti-fall '+dur+'s linear '+(Math.random()*0.4)+'s forwards';
+    document.body.appendChild(p);
+    (function(el,ms){ setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, ms); })(p,(dur+0.8)*1000);
+  }
+}
+function endJulioelHint(markDone){
+  document.body.classList.remove('julioel-hint-on');
+  var ov=document.getElementById('julioelHint'); if(ov) ov.classList.remove('on');
+  var brand=document.getElementById('hubBrand'); if(brand) brand.classList.remove('julioel-hint-pulse');
+  if(markDone) try{ localStorage.setItem('jb_tour_julioel','1'); }catch(_){}
+}
+function positionJulioelHint(){
+  var ov=document.getElementById('julioelHint'); if(!ov||!ov.classList.contains('on')) return;
+  var brand=document.getElementById('hubBrand'); if(!brand) return;
+  var hole=ov.querySelector('.jbt-hole'); var pop=ov.querySelector('.jh-pop');
+  var rect=brand.getBoundingClientRect(); var pad=8;
+  if(hole){
+    hole.style.display='block';
+    hole.style.left=(rect.left-pad)+'px'; hole.style.top=(rect.top-pad)+'px';
+    hole.style.width=(rect.width+pad*2)+'px'; hole.style.height=(rect.height+pad*2)+'px';
+  }
+  if(pop){
+    var ph=pop.offsetHeight||120, pw=pop.offsetWidth||280;
+    var top=rect.bottom+14;
+    if(top+ph>window.innerHeight-8) top=Math.max(8, rect.top-ph-14);
+    var left=Math.min(Math.max(8, rect.left), window.innerWidth-pw-8);
+    pop.style.top=top+'px'; pop.style.left=left+'px';
+  }
+}
+function showJulioelHint(){
+  if(!julioelAllowed()||!JB.isSignedIn()||JB.tourDone('julioel')||julioelActive()) return;
+  var brand=document.getElementById('hubBrand'); if(!brand) return;
+  var ov=document.getElementById('julioelHint');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='julioelHint';
+    ov.innerHTML='<div class="jbt-block"></div><div class="jbt-hole"></div><div class="jh-pop"><div class="jh-body">hmmm, acho que tem uma surpresa ali pra você. clica!</div><button type="button" class="jh-skip">Depois</button></div>';
+    ov.querySelector('.jh-skip').onclick=function(e){ e.stopPropagation(); endJulioelHint(true); };
+    document.body.appendChild(ov);
+    window.addEventListener('resize', positionJulioelHint);
+  }
+  document.body.classList.add('julioel-hint-on');
+  brand.classList.add('julioel-hint-pulse');
+  ov.classList.add('on');
+  positionJulioelHint();
+}
+function maybeJulioelHint(){
+  if(!julioelAllowed()||!JB.isSignedIn()) return;
+  if(julioelActive()){ if(!JB.tourDone('julioel')) endJulioelHint(true); return; }
+  if(JB.tourDone('julioel')) return;
+  setTimeout(showJulioelHint, 600);
+}
+function bootHubTours(){
+  if(!JB.isSignedIn()) return;
+  if(!JB.tourDone('hub')){
+    setTimeout(function(){ JB.tour('hub', HUB_TOUR, { onDone: maybeJulioelHint }); }, 700);
+    return;
+  }
+  maybeJulioelHint();
+}
+function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); applyJulioelUI(false); if(on && !_hbooted){ _hbooted=true; bootHubTours(); } }
 function doIn(){ JB.signIn({ onSuccess: function(){ setGreet(); } }); }
 function doOut(){ try{ localStorage.removeItem(JULIOEL_KEY); }catch(_){} JB.signOut(); setGreet(); }
 /* ---- Feedback viewer (owner-only; reads the form-response sheet via Sheets API) ---- */

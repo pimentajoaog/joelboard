@@ -30,6 +30,9 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .tab{ background:transparent; border:0; color:var(--muted); font-size:13px; font-weight:700; padding:8px 18px; border-radius:99px; cursor:pointer; font-family:inherit; }
 .tab.on{ background:var(--primary); color:var(--on-brand); }
 
+.lnk.spin{ animation:pr-spin .8s linear infinite; }
+@keyframes pr-spin{ to{ transform:rotate(360deg); } }
+
 .searchbar{ margin-bottom:16px; }
 .searchbar input{ width:100%; padding:12px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:12px; color:var(--text); font-size:14px; outline:none; }
 .searchbar input:focus{ border-color:var(--primary); }

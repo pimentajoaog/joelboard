@@ -21,7 +21,7 @@
 <div id="app" class="hidden">
   <div class="header">
     <div class="hl"><img src="/icon-192.png" alt=""><h1>Prateleira</h1></div>
-    <div class="acct"><span id="acctEmail"></span><button class="lnk" onclick="openPrateleiraSet()" title="Ajustes">⚙</button><button class="lnk" onclick="prateleiraSignOut()">Sair</button></div>
+    <div class="acct"><span id="acctEmail"></span><button class="lnk" id="prRefreshBtn" onclick="refreshPrateleira()" title="Atualizar">↻</button><button class="lnk" onclick="openPrateleiraSet()" title="Ajustes">⚙</button><button class="lnk" onclick="prateleiraSignOut()">Sair</button></div>
   </div>
   <div class="tabs" id="mainTabs">
     <button class="tab on" data-tab="lib" onclick="prateleiraTab('lib')">Biblioteca</button>

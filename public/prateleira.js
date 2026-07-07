@@ -27,6 +27,7 @@ var searchFilters = { movie: true, tv: true, game: true, music: true };
 var posterCache = {};
 var userIcons = {};
 var addBusy = {};
+var refreshBusy = false;
 
 var LIB_FILTERS_KEY = 'jb_pr_lib_filters';
 var LIB_SORT_KEY = 'jb_pr_lib_sort';
@@ -923,6 +924,19 @@ function syncMediaUi(key) {
   patchDetailPanels(key);
 }
 
+function refreshPrateleira() {
+  if (refreshBusy) return;
+  refreshBusy = true;
+  var btn = document.getElementById('prRefreshBtn');
+  if (btn) btn.classList.add('spin');
+  reloadAll()
+    .then(function () { JB.toast('✓ Atualizado'); })
+    .finally(function () {
+      refreshBusy = false;
+      if (btn) btn.classList.remove('spin');
+    });
+}
+
 function refreshPrateleiraUi() {
   renderMain();
   if (detailId) openDetail(detailId);
@@ -1504,17 +1518,39 @@ function canEditPrateleira() {
   return JULIOEL_EMAILS.indexOf((JB.email() || '').toLowerCase()) > -1;
 }
 
+function featuredSessions(key) {
+  var byUser = latestStarsByUser(key);
+  var featured = [];
+  var seen = {};
+  JULIOEL_EMAILS.forEach(function (em) {
+    var s = byUser[em];
+    if (s) {
+      featured.push(s);
+      seen[s.sheetRow] = true;
+    }
+  });
+  featured.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+  return {
+    featured: featured,
+    hist: sessionsFor(key).filter(function (s) { return !seen[s.sheetRow]; })
+  };
+}
+
 function sessionBlockHtml(key) {
-  var list = sessionsFor(key);
-  if (!list.length) {
+  var parts = featuredSessions(key);
+  if (!parts.featured.length) {
     return '<div class="sess-block"><div class="sess-label">Registros</div><p class="rg">Nenhum registro ainda.</p></div>';
   }
-  var hist = list.slice(1);
-  return '<div class="sess-block"><div class="sess-label">Registros</div>'
-    + sessRowHtml(list[0], true)
-    + (hist.length ? '<div class="sl-hint tap" onclick="toggleSessHist()">' + hist.length + ' data' + (hist.length > 1 ? 's' : '') + ' anterior' + (hist.length > 1 ? 'es' : '') + ' · toque para ver</div>' : '')
-    + (hist.length ? '<div id="sessHist" class="sess-hist' + (sessHistOpen ? '' : ' hidden') + '">' + hist.map(function (s) { return sessRowHtml(s, false); }).join('') + '</div>' : '')
-    + '</div>';
+  var topRow = parts.featured[0] && parts.featured[0].sheetRow;
+  var html = '<div class="sess-block"><div class="sess-label">Registros</div>';
+  parts.featured.forEach(function (s) {
+    html += sessRowHtml(s, s.sheetRow === topRow);
+  });
+  if (parts.hist.length) {
+    html += '<div class="sl-hint tap" onclick="toggleSessHist()">Ver anteriores · ' + parts.hist.length + ' registro' + (parts.hist.length > 1 ? 's' : '') + '</div>'
+      + '<div id="sessHist" class="sess-hist' + (sessHistOpen ? '' : ' hidden') + '">' + parts.hist.map(function (s) { return sessRowHtml(s, false); }).join('') + '</div>';
+  }
+  return html + '</div>';
 }
 
 function deleteSession(sheetRow) {

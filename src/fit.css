@@ -275,6 +275,35 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .mcustom-l{ flex:1; min-width:0; }
 .mcustom-row .rm{ flex:0 0 auto; width:28px; height:28px; border:0; border-radius:8px; background:transparent; color:var(--muted); cursor:pointer; font-size:14px; font-family:inherit; }
 
+#macroSearchList{
+  min-height:220px;
+  max-height:280px;
+  overflow-y:auto;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:4px;
+  background:var(--surface2);
+}
+#macroAddOverlay #macroStep1{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+@media (max-width:540px){
+  #macroAddOverlay .modal{
+    display:flex;
+    flex-direction:column;
+    height:min(520px,88dvh);
+    max-height:88dvh;
+  }
+  #macroAddOverlay #macroStep1{ flex:1; }
+  #macroAddOverlay #macroSearchList{
+    flex:1;
+    min-height:0;
+    max-height:none;
+  }
+}
+
 /* motion */
 .btn{ transition: transform 0.09s ease; }
 .btn:active{ transform: scale(0.96); }

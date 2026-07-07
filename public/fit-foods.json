@@ -1,199 +1,3043 @@
 [
-  {"id":"arroz-branco","n":"Arroz branco cozido","p":2.7,"c":28,"g":0.3,"k":130},
-  {"id":"arroz-integral","n":"Arroz integral cozido","p":2.6,"c":23,"g":1,"k":111},
-  {"id":"feijao-preto","n":"Feijão preto cozido","p":8.7,"c":23.7,"g":0.5,"k":132},
-  {"id":"feijao-carioca","n":"Feijão carioca cozido","p":8,"c":22,"g":0.5,"k":127},
-  {"id":"lentilha","n":"Lentilha cozida","p":9,"c":20,"g":0.4,"k":116},
-  {"id":"grao-bico","n":"Grão-de-bico cozido","p":8.9,"c":27,"g":2.6,"k":164},
-  {"id":"macarrao","n":"Macarrão cozido","p":5.8,"c":31,"g":0.9,"k":158},
-  {"id":"batata","n":"Batata cozida","p":2,"c":17,"g":0.1,"k":77},
-  {"id":"batata-doce","n":"Batata-doce cozida","p":1.6,"c":20,"g":0.1,"k":86},
-  {"id":"mandioca","n":"Mandioca cozida","p":1.4,"c":38,"g":0.3,"k":160},
-  {"id":"aveia","n":"Aveia em flocos","p":13.5,"c":66,"g":7,"k":389,"presets":[{"l":"1 scoop","g":30},{"l":"1 colher sopa","g":15}]},
-  {"id":"pao-frances","n":"Pão francês","p":8,"c":58,"g":3.1,"k":300,"presets":[{"l":"1 unidade","g":50}]},
-  {"id":"pao-integral","n":"Pão integral","p":13,"c":41,"g":4.2,"k":247,"presets":[{"l":"1 fatia","g":25}]},
-  {"id":"tapioca","n":"Tapioca (goma hidratada)","p":0.2,"c":26,"g":0.2,"k":112,"presets":[{"l":"1 discos médio","g":60}]},
-  {"id":"cuscuz","n":"Cuscuz de milho cozido","p":2.2,"c":25,"g":0.7,"k":112},
-  {"id":"milho","n":"Milho cozido","p":3.3,"c":19,"g":1.4,"k":96},
-  {"id":"quinoa","n":"Quinoa cozida","p":4.4,"c":21,"g":1.9,"k":120},
-  {"id":"carne-alcatra","n":"Alcatra grelhada","p":27,"c":0,"g":14,"k":240,"tags":["beef","rump","top sirloin","picanha neighbor"]},
-  {"id":"carne-contra-file","n":"Contra filé grelhado","p":26,"c":0,"g":8,"k":177,"presets":[{"l":"1 bife","g":120}],"tags":["tenderloin","contra file","strip loin","ny strip","beef steak"]},
-  {"id":"file-mignon","n":"Filé mignon","p":26,"c":0,"g":7,"k":170,"presets":[{"l":"1 medalhão","g":100}],"tags":["tenderloin","filet mignon","fillet","beef tenderloin"]},
-  {"id":"carne-picanha","n":"Picanha grelhada","p":27,"c":0,"g":15,"k":250,"presets":[{"l":"1 fatia","g":100}],"tags":["beef","sirloin cap","rump cap","top sirloin"]},
-  {"id":"carne-maminha","n":"Maminha grelhada","p":26,"c":0,"g":10,"k":200,"presets":[{"l":"1 fatia","g":100}],"tags":["beef","tri tip","bottom sirloin"]},
-  {"id":"carne-fraldinha","n":"Fraldinha grelhada","p":28,"c":0,"g":12,"k":220,"presets":[{"l":"1 fatia","g":100}],"tags":["beef","flap meat","bottom sirloin flap","vazio"]},
-  {"id":"carne-acem","n":"Acém (paleta bovina)","p":27,"c":0,"g":12,"k":230,"presets":[{"l":"1 bife","g":100}],"tags":["beef","chuck","shoulder","pot roast"]},
-  {"id":"carne-paleta","n":"Paleta bovina cozida","p":26,"c":0,"g":13,"k":235,"presets":[{"l":"1 porção","g":100}],"tags":["beef","shoulder","chuck"]},
-  {"id":"carne-cupim","n":"Cupim assado","p":24,"c":0,"g":18,"k":260,"presets":[{"l":"1 fatia","g":80}],"tags":["beef","hump","brazilian cut"]},
-  {"id":"carne-costela-bovina","n":"Costela bovina assada","p":22,"c":0,"g":20,"k":280,"presets":[{"l":"1 costela","g":80}],"tags":["beef","ribs","short ribs","bbq"]},
-  {"id":"carne-lagarto","n":"Lagarto cozido","p":28,"c":0,"g":6,"k":170,"presets":[{"l":"1 fatia","g":100}],"tags":["beef","eye of round","silverside","roast beef"]},
-  {"id":"carne-coxao-mole","n":"Coxão mole grelhado","p":28,"c":0,"g":7,"k":175,"presets":[{"l":"1 bife","g":100}],"tags":["beef","top round","inside round"]},
-  {"id":"carne-coxao-duro","n":"Coxão duro cozido","p":27,"c":0,"g":9,"k":190,"presets":[{"l":"1 bife","g":100}],"tags":["beef","bottom round","outside round"]},
-  {"id":"carne-miolo-alcatra","n":"Miolo de alcatra","p":27,"c":0,"g":11,"k":210,"presets":[{"l":"1 bife","g":100}],"tags":["beef","top sirloin","sirloin"]},
-  {"id":"carne-ossobuco","n":"Ossobuco cozido","p":24,"c":0,"g":14,"k":220,"presets":[{"l":"1 rodela","g":120}],"tags":["beef","shank","osso buco","ossobuco"]},
-  {"id":"carne-bisteca","n":"Bisteca bovina","p":25,"c":0,"g":16,"k":250,"presets":[{"l":"1 bisteca","g":150}],"tags":["beef","t bone","porterhouse","steak"]},
-  {"id":"carne-moida","n":"Carne moída magra","p":26,"c":0,"g":15,"k":250,"tags":["beef","ground beef","minced meat","hamburger meat"]},
-  {"id":"carne-patinho","n":"Carne bovina (patinho)","p":26,"c":0,"g":7,"k":176,"presets":[{"l":"1 bife","g":100}],"tags":["beef","round","top side","lean beef"]},
-  {"id":"frango-peito","n":"Peito de frango grelhado","p":31,"c":0,"g":3.6,"k":165,"presets":[{"l":"1 filé médio","g":120}],"tags":["chicken","chicken breast"]},
-  {"id":"frango-coxa","n":"Coxa de frango assada","p":26,"c":0,"g":11,"k":209,"tags":["chicken","chicken thigh","thigh"]},
-  {"id":"frango-sobrecoxa","n":"Sobrecoxa de frango assada","p":24,"c":0,"g":13,"k":215,"presets":[{"l":"1 unidade","g":90}],"tags":["chicken","chicken leg","drumstick thigh"]},
-  {"id":"frango-asa","n":"Asa de frango assada","p":23,"c":0,"g":15,"k":220,"presets":[{"l":"2 unidades","g":80}],"tags":["chicken","chicken wing","wings"]},
-  {"id":"frango-coxa-sobrecoxa","n":"Coxa e sobrecoxa de frango","p":25,"c":0,"g":12,"k":210,"presets":[{"l":"1 unidade","g":100}],"tags":["chicken","leg quarter"]},
-  {"id":"frango-inteiro","n":"Frango assado (carne)","p":27,"c":0,"g":8,"k":190,"presets":[{"l":"1 porção","g":120}],"tags":["chicken","roast chicken","whole chicken"]},
-  {"id":"frango-empanado","n":"Peito de frango empanado","p":20,"c":12,"g":12,"k":240,"presets":[{"l":"1 filé","g":120}],"tags":["chicken","breaded chicken","schnitzel"]},
-  {"id":"porco-lombo","n":"Lombo de porco","p":27,"c":0,"g":14,"k":242,"tags":["pork","pork loin","lean pork"]},
-  {"id":"porco-pernil","n":"Pernil de porco assado","p":26,"c":0,"g":12,"k":220,"presets":[{"l":"1 fatia","g":100}],"tags":["pork","pork shoulder","ham"]},
-  {"id":"porco-barriga","n":"Barriga de porco (pancetta)","p":16,"c":0,"g":32,"k":350,"presets":[{"l":"1 fatia","g":50}],"tags":["pork","pork belly","bacon uncured"]},
-  {"id":"porco-costela","n":"Costela de porco assada","p":21,"c":0,"g":22,"k":290,"presets":[{"l":"1 costela","g":80}],"tags":["pork","pork ribs","bbq ribs"]},
-  {"id":"bacon","n":"Bacon frito","p":20,"c":1,"g":32,"k":360,"presets":[{"l":"2 fatias","g":20}],"tags":["pork","bacon"]},
-  {"id":"bisteca-suina","n":"Bisteca suína grelhada","p":25,"c":0,"g":14,"k":230,"presets":[{"l":"1 bisteca","g":120}],"tags":["pork","pork chop","chuleta"]},
-  {"id":"linguica","n":"Linguiça calabresa","p":14,"c":2,"g":28,"k":310,"presets":[{"l":"1 unidade","g":40}],"tags":["pork","sausage","calabresa"]},
-  {"id":"linguica-frango","n":"Linguiça de frango","p":15,"c":2,"g":18,"k":230,"presets":[{"l":"1 unidade","g":40}],"tags":["chicken","sausage"]},
-  {"id":"linguica-toscana","n":"Linguiça toscana","p":13,"c":2,"g":26,"k":290,"presets":[{"l":"1 unidade","g":40}],"tags":["pork","sausage","toscana"]},
-  {"id":"cordeiro-perna","n":"Pernil de cordeiro","p":25,"c":0,"g":14,"k":230,"presets":[{"l":"1 fatia","g":100}],"tags":["lamb","lamb leg"]},
-  {"id":"cordeiro-costela","n":"Costela de cordeiro","p":22,"c":0,"g":18,"k":260,"presets":[{"l":"1 costela","g":80}],"tags":["lamb","lamb ribs","rack of lamb"]},
-  {"id":"carneiro","n":"Carne de carneiro","p":25,"c":0,"g":13,"k":225,"presets":[{"l":"1 porção","g":100}],"tags":["lamb","mutton"]},
-  {"id":"vitela","n":"Carne de vitela","p":24,"c":0,"g":8,"k":172,"presets":[{"l":"1 bife","g":100}],"tags":["veal","beef calf"]},
-  {"id":"pato","n":"Peito de pato grelhado","p":19,"c":0,"g":15,"k":220,"presets":[{"l":"1 fatia","g":100}],"tags":["duck","duck breast"]},
-  {"id":"peru-assado","n":"Peru assado","p":29,"c":0,"g":3,"k":160,"presets":[{"l":"1 fatia","g":90}],"tags":["turkey","roast turkey"]},
-  {"id":"mortadela","n":"Mortadela","p":12,"c":2,"g":22,"k":260,"presets":[{"l":"2 fatias","g":30}],"tags":["pork","deli meat","cold cut"]},
-  {"id":"salame","n":"Salame","p":22,"c":1,"g":26,"k":320,"presets":[{"l":"4 fatias","g":30}],"tags":["pork","salami","cold cut"]},
-  {"id":"roast-beef","n":"Rosbife fatiado","p":26,"c":1,"g":5,"k":150,"presets":[{"l":"3 fatias","g":60}],"tags":["beef","roast beef","deli meat","cold cut"]},
-  {"id":"presunto","n":"Presunto","p":18,"c":1.5,"g":6,"k":145,"presets":[{"l":"1 fatia","g":20}],"tags":["ham","deli meat","cold cut"]},
-  {"id":"ovo","n":"Ovo cozido","p":13,"c":1.1,"g":11,"k":155,"presets":[{"l":"1 unidade","g":50}]},
-  {"id":"clara-ovo","n":"Clara de ovo","p":11,"c":0.7,"g":0.2,"k":52,"presets":[{"l":"1 unidade","g":33}]},
-  {"id":"salmão","n":"Salmão grelhado","p":20,"c":0,"g":13,"k":208},
-  {"id":"atum-lata","n":"Atum em lata (água)","p":26,"c":0,"g":0.8,"k":116,"presets":[{"l":"1 lata escorrida","g":120}]},
-  {"id":"sardinha","n":"Sardinha em lata","p":25,"c":0,"g":11,"k":208},
-  {"id":"tilapia","n":"Tilápia grelhada","p":26,"c":0,"g":2.7,"k":128},
-  {"id":"camarao","n":"Camarão cozido","p":24,"c":0.2,"g":0.3,"k":99},
-  {"id":"whey","n":"Whey protein (pó)","p":75,"c":8,"g":5,"k":380,"presets":[{"l":"1 scoop","g":30}]},
-  {"id":"caseina","n":"Caseína (pó)","p":72,"c":6,"g":4,"k":350,"presets":[{"l":"1 scoop","g":30}]},
-  {"id":"tofu","n":"Tofu firme","p":8,"c":2,"g":4,"k":76},
-  {"id":"leite-integral","n":"Leite integral","p":3.2,"c":4.8,"g":3.3,"k":61,"presets":[{"l":"1 copo","g":200}]},
-  {"id":"leite-desnatado","n":"Leite desnatado","p":3.4,"c":5,"g":0.1,"k":35,"presets":[{"l":"1 copo","g":200}]},
-  {"id":"iogurte-natural","n":"Iogurte natural","p":3.5,"c":4.7,"g":3.3,"k":61,"presets":[{"l":"1 pote","g":170}]},
-  {"id":"iogurte-grego","n":"Iogurte grego","p":10,"c":3.6,"g":0.4,"k":59,"presets":[{"l":"1 pote","g":150}]},
-  {"id":"leite-aveia","n":"Leite de aveia","p":1,"c":7,"g":1.5,"k":45,"presets":[{"l":"1 copo","g":200}],"tags":["oat milk"]},
-  {"id":"cream-cheese","n":"Cream cheese","p":6,"c":4,"g":34,"k":342,"presets":[{"l":"1 colher sopa","g":15}],"tags":["requeijao cremoso"]},
-  {"id":"hummus","n":"Homus","p":8,"c":14,"g":10,"k":166,"presets":[{"l":"2 colheres sopa","g":30}],"tags":["hummus"]},
-  {"id":"tortilla","n":"Tortilla de trigo","p":8,"c":49,"g":7,"k":304,"presets":[{"l":"1 unidade","g":45}],"tags":["wrap","wrap de trigo"]},
-  {"id":"pao-forma","n":"Pão de forma","p":9,"c":49,"g":3.5,"k":265,"presets":[{"l":"1 fatia","g":25}],"tags":["bread","sanduiche"]},
-  {"id":"arroz-japones","n":"Arroz japonês cozido","p":2.4,"c":28,"g":0.2,"k":130,"presets":[{"l":"1 prato","g":150}],"tags":["sushi rice","gohan"]},
-  {"id":"salmao-defumado","n":"Salmão defumado","p":18,"c":0,"g":4,"k":117,"presets":[{"l":"3 fatias","g":60}],"tags":["smoked salmon"]},
-  {"id":"atum-enlatado-oleo","n":"Atum em lata (óleo)","p":25,"c":0,"g":8,"k":198,"presets":[{"l":"1 lata escorrida","g":120}]},
-  {"id":"frango-desfiado","n":"Frango desfiado cozido","p":27,"c":0,"g":3,"k":143,"presets":[{"l":"1 concha","g":100}]},
-  {"id":"carne-seca","n":"Carne seca dessalgada","p":26,"c":0,"g":12,"k":220,"presets":[{"l":"1 porção","g":100}]},
-  {"id":"pepino-japones","n":"Pepino japonês","p":0.7,"c":3,"g":0.1,"k":15,"presets":[{"l":"1/2 unidade","g":150}],"tags":["japanese cucumber"]},
-  {"id":"edamame","n":"Edamame cozido","p":11,"c":8.9,"g":5.2,"k":122,"presets":[{"l":"1 xícara","g":100}]},
-  {"id":"tofu-grelhado","n":"Tofu grelhado","p":9,"c":2,"g":5,"k":94,"presets":[{"l":"1 fatia","g":80}]},
-  {"id":"queijo-mussarela","n":"Queijo mussarela","p":22,"c":2.2,"g":22,"k":280,"presets":[{"l":"1 fatia","g":25}]},
-  {"id":"queijo-cottage","n":"Queijo cottage","p":11,"c":3.4,"g":4.3,"k":98,"presets":[{"l":"1 colher sopa","g":30}]},
-  {"id":"queijo-parmesao","n":"Queijo parmesão","p":38,"c":4,"g":29,"k":431,"presets":[{"l":"1 colher sopa ralado","g":10}]},
-  {"id":"requeijao","n":"Requeijão","p":9,"c":2,"g":20,"k":220,"presets":[{"l":"1 colher sopa","g":20}]},
-  {"id":"manteiga","n":"Manteiga","p":0.9,"c":0.1,"g":81,"k":717,"presets":[{"l":"1 colher sopa","g":14}]},
-  {"id":"azeite","n":"Azeite de oliva","p":0,"c":0,"g":100,"k":884,"presets":[{"l":"1 colher sopa","g":13}]},
-  {"id":"oleo-coco","n":"Óleo de coco","p":0,"c":0,"g":100,"k":862,"presets":[{"l":"1 colher sopa","g":13}]},
-  {"id":"abacate","n":"Abacate","p":2,"c":8.5,"g":15,"k":160,"presets":[{"l":"1/2 unidade","g":100}]},
-  {"id":"amendoim","n":"Amendoim torrado","p":26,"c":16,"g":49,"k":567,"presets":[{"l":"1 punhado","g":30}]},
-  {"id":"castanha-caju","n":"Castanha de caju","p":18,"c":30,"g":44,"k":553,"presets":[{"l":"1 punhado","g":30}]},
-  {"id":"castanha-pará","n":"Castanha-do-pará","p":14,"c":12,"g":67,"k":656,"presets":[{"l":"1 unidade","g":5}]},
-  {"id":"amêndoa","n":"Amêndoa","p":21,"c":22,"g":50,"k":579,"presets":[{"l":"1 punhado","g":30}]},
-  {"id":"nozes","n":"Nozes","p":15,"c":14,"g":65,"k":654,"presets":[{"l":"1 punhado","g":30}]},
-  {"id":"pasta-amendoim","n":"Pasta de amendoim","p":25,"c":20,"g":50,"k":588,"presets":[{"l":"1 colher sopa","g":16}]},
-  {"id":"banana","n":"Banana","p":1.1,"c":23,"g":0.3,"k":89,"presets":[{"l":"1 unidade média","g":120}]},
-  {"id":"maca","n":"Maçã","p":0.3,"c":14,"g":0.2,"k":52,"presets":[{"l":"1 unidade","g":150}]},
-  {"id":"laranja","n":"Laranja","p":0.9,"c":12,"g":0.1,"k":47,"presets":[{"l":"1 unidade","g":130}]},
-  {"id":"mamao","n":"Mamão","p":0.5,"c":11,"g":0.3,"k":43,"presets":[{"l":"1 fatia","g":140}]},
-  {"id":"manga","n":"Manga","p":0.8,"c":15,"g":0.4,"k":60,"presets":[{"l":"1 unidade pequena","g":200}]},
-  {"id":"abacaxi","n":"Abacaxi","p":0.5,"c":13,"g":0.1,"k":50,"presets":[{"l":"1 fatia","g":80}]},
-  {"id":"melancia","n":"Melancia","p":0.6,"c":8,"g":0.2,"k":30,"presets":[{"l":"1 fatia","g":200}]},
-  {"id":"morango","n":"Morango","p":0.7,"c":8,"g":0.3,"k":32,"presets":[{"l":"10 unidades","g":150}]},
-  {"id":"uva","n":"Uva","p":0.7,"c":18,"g":0.2,"k":69,"presets":[{"l":"1 cacho pequeno","g":100}]},
-  {"id":"melao","n":"Melão","p":0.8,"c":8,"g":0.2,"k":34},
-  {"id":"pera","n":"Pêra","p":0.4,"c":15,"g":0.1,"k":57,"presets":[{"l":"1 unidade","g":150}]},
-  {"id":"kiwi","n":"Kiwi","p":1.1,"c":15,"g":0.5,"k":61,"presets":[{"l":"1 unidade","g":75}]},
-  {"id":"tangerina","n":"Tangerina","p":0.8,"c":13.3,"g":0.3,"k":53,"presets":[{"l":"1 unidade","g":120}],"tags":["tangerine","mandarin","mandarina","mexerica","bergamota","clementine"]},
-  {"id":"limao","n":"Limão","p":0.4,"c":9,"g":0.2,"k":29,"presets":[{"l":"1 unidade","g":60}],"tags":["lemon","lima azeda"]},
-  {"id":"lima","n":"Lima","p":0.7,"c":11,"g":0.2,"k":30,"presets":[{"l":"1 unidade","g":70}],"tags":["lime"]},
-  {"id":"pessego","n":"Pêssego","p":0.9,"c":10,"g":0.3,"k":39,"presets":[{"l":"1 unidade","g":150}],"tags":["peach"]},
-  {"id":"ameixa","n":"Ameixa","p":0.7,"c":11,"g":0.3,"k":46,"presets":[{"l":"1 unidade","g":65}],"tags":["plum"]},
-  {"id":"figo","n":"Figo","p":0.8,"c":19,"g":0.3,"k":74,"presets":[{"l":"1 unidade","g":50}],"tags":["fig"]},
-  {"id":"cereja","n":"Cereja","p":1.1,"c":16,"g":0.2,"k":63,"presets":[{"l":"10 unidades","g":80}],"tags":["cherry"]},
-  {"id":"mirtilo","n":"Mirtilo","p":0.7,"c":14,"g":0.3,"k":57,"presets":[{"l":"1 punhado","g":75}],"tags":["blueberry"]},
-  {"id":"framboesa","n":"Framboesa","p":1.2,"c":12,"g":0.7,"k":52,"presets":[{"l":"1 punhado","g":75}],"tags":["raspberry"]},
-  {"id":"amora","n":"Amora","p":1.4,"c":10,"g":0.5,"k":43,"presets":[{"l":"1 punhado","g":75}],"tags":["blackberry"]},
-  {"id":"acerola","n":"Acerola","p":0.4,"c":8,"g":0.3,"k":32,"presets":[{"l":"10 unidades","g":100}]},
-  {"id":"goiaba","n":"Goiaba","p":2.6,"c":14,"g":1,"k":68,"presets":[{"l":"1 unidade","g":165}],"tags":["guava"]},
-  {"id":"maracuja","n":"Maracujá","p":2.2,"c":23,"g":0.7,"k":97,"presets":[{"l":"1 unidade","g":90}],"tags":["passion fruit","passionfruit"]},
-  {"id":"caqui","n":"Caqui","p":0.6,"c":18,"g":0.2,"k":70,"presets":[{"l":"1 unidade","g":150}],"tags":["persimmon"]},
-  {"id":"coco","n":"Coco (polpa)","p":3.3,"c":15,"g":33,"k":354,"presets":[{"l":"1 fatia","g":50}],"tags":["coconut"]},
-  {"id":"pitaya","n":"Pitaya","p":1.2,"c":13,"g":0.4,"k":60,"presets":[{"l":"1/2 unidade","g":100}],"tags":["dragon fruit","dragonfruit"]},
-  {"id":"framboesa-vermelha","n":"Frutas vermelhas congeladas","p":0.9,"c":12,"g":0.4,"k":52,"presets":[{"l":"1 xícara","g":140}],"tags":["mixed berries","berries"]},
-  {"id":"datil","n":"Tâmara","p":2.5,"c":75,"g":0.4,"k":282,"presets":[{"l":"1 unidade","g":24}],"tags":["date","dates"]},
-  {"id":"coco-agua","n":"Água de coco","p":0.2,"c":3.7,"g":0.2,"k":19,"presets":[{"l":"1 copo","g":200}],"tags":["coconut water"]},
-  {"id":"brocolis","n":"Brócolis cozido","p":2.8,"c":7,"g":0.4,"k":35},
-  {"id":"couve-flor","n":"Couve-flor cozida","p":1.9,"c":5,"g":0.3,"k":28},
-  {"id":"espinafre","n":"Espinafre cozido","p":3,"c":3.8,"g":0.3,"k":23},
-  {"id":"alface","n":"Alface","p":1.4,"c":2.9,"g":0.2,"k":15},
-  {"id":"tomate","n":"Tomate","p":0.9,"c":3.9,"g":0.2,"k":18},
-  {"id":"pepino","n":"Pepino","p":0.7,"c":3.6,"g":0.1,"k":16},
-  {"id":"cenoura","n":"Cenoura crua","p":0.9,"c":10,"g":0.2,"k":41},
-  {"id":"beterraba","n":"Beterraba cozida","p":1.7,"c":10,"g":0.2,"k":44},
-  {"id":"abobrinha","n":"Abobrinha cozida","p":1.2,"c":4.9,"g":0.3,"k":24},
-  {"id":"berinjela","n":"Berinjela cozida","p":0.8,"c":6,"g":0.2,"k":35},
-  {"id":"pimentao","n":"Pimentão","p":1,"c":6,"g":0.3,"k":31},
-  {"id":"cebola","n":"Cebola","p":1.1,"c":9,"g":0.1,"k":40},
-  {"id":"alho","n":"Alho","p":6.4,"c":33,"g":0.5,"k":149},
-  {"id":"cogumelo","n":"Cogumelo","p":3.1,"c":3.3,"g":0.3,"k":22},
-  {"id":"milho-verde-lata","n":"Milho verde em conserva","p":2.5,"c":14,"g":1,"k":79},
-  {"id":"ervilha","n":"Ervilha cozida","p":5.4,"c":14,"g":0.4,"k":84},
-  {"id":"azeitona","n":"Azeitona verde","p":1,"c":4,"g":11,"k":115,"presets":[{"l":"10 unidades","g":30}]},
-  {"id":"chocolate-70","n":"Chocolate 70% cacau","p":8,"c":46,"g":42,"k":550,"presets":[{"l":"1 quadradinho","g":10}]},
-  {"id":"mel","n":"Mel","p":0.3,"c":82,"g":0,"k":304,"presets":[{"l":"1 colher sopa","g":21}]},
-  {"id":"acucar","n":"Açúcar","p":0,"c":100,"g":0,"k":387,"presets":[{"l":"1 colher sopa","g":12}]},
-  {"id":"granola","n":"Granola","p":10,"c":64,"g":20,"k":471,"presets":[{"l":"1 colher sopa","g":15}]},
-  {"id":"cereal-matinal","n":"Cereal matinal","p":7,"c":84,"g":4,"k":380,"presets":[{"l":"1 tigela","g":40}]},
-  {"id":"pipoca","n":"Pipoca (sem manteiga)","p":11,"c":74,"g":4.5,"k":387,"presets":[{"l":"1 tigela","g":30}]},
-  {"id":"suco-laranja","n":"Suco de laranja natural","p":0.7,"c":10,"g":0.2,"k":45,"presets":[{"l":"1 copo","g":200}]},
-  {"id":"cafe","n":"Café preto","p":0.1,"c":0,"g":0,"k":1,"presets":[{"l":"1 xícara","g":240}]},
-  {"id":"cha","n":"Chá (sem açúcar)","p":0,"c":0,"g":0,"k":1,"presets":[{"l":"1 xícara","g":240}]},
-  {"id":"coca-zero","n":"Refrigerante zero","p":0,"c":0,"g":0,"k":1,"presets":[{"l":"1 lata","g":350}]},
-  {"id":"cerveja","n":"Cerveja","p":0.5,"c":3.6,"g":0,"k":43,"presets":[{"l":"1 lata","g":350}]},
-  {"id":"vinho-tinto","n":"Vinho tinto","p":0.1,"c":2.6,"g":0,"k":85,"presets":[{"l":"1 taça","g":150}]},
-  {"id":"pizza-mussarela","n":"Pizza mussarela","p":11,"c":33,"g":10,"k":266,"presets":[{"l":"1 fatia","g":100}]},
-  {"id":"hamburger","n":"Hambúrguer artesanal","p":17,"c":24,"g":14,"k":295,"presets":[{"l":"1 unidade","g":150}]},
-  {"id":"batata-frita","n":"Batata frita","p":3.4,"c":41,"g":15,"k":312,"presets":[{"l":"1 porção média","g":100}]},
-  {"id":"nuggets-frango","n":"Nuggets de frango","p":14,"c":18,"g":14,"k":260,"presets":[{"l":"6 unidades","g":90}]},
-  {"id":"sushi-salmao","n":"Sushi salmão (1 peça)","p":9,"c":26,"g":3,"k":180,"presets":[{"l":"8 peças","g":200}]},
-  {"id":"lasanha","n":"Lasanha à bolonhesa","p":8,"c":15,"g":7,"k":150,"presets":[{"l":"1 fatia","g":200}]},
-  {"id":"risoto","n":"Risoto","p":4,"c":28,"g":6,"k":180,"presets":[{"l":"1 prato","g":200}]},
-  {"id":"sopa-legumes","n":"Sopa de legumes","p":1.5,"c":8,"g":0.5,"k":40,"presets":[{"l":"1 tigela","g":250}]},
-  {"id":"salada-verde","n":"Salada verde mista","p":1.5,"c":3,"g":0.2,"k":20,"presets":[{"l":"1 prato","g":150}]},
-  {"id":"maionese","n":"Maionese","p":1,"c":3,"g":75,"k":680,"presets":[{"l":"1 colher sopa","g":15}]},
-  {"id":"ketchup","n":"Ketchup","p":1.3,"c":27,"g":0.1,"k":112,"presets":[{"l":"1 colher sopa","g":17}]},
-  {"id":"mostarda","n":"Mostarda","p":4.4,"c":6,"g":3.7,"k":66,"presets":[{"l":"1 colher sopa","g":15}]},
-  {"id":"molho-tomate","n":"Molho de tomate","p":1.5,"c":6,"g":0.2,"k":32,"presets":[{"l":"1 colher sopa","g":30}]},
-  {"id":"creme-ricota","n":"Creme de ricota light","p":10,"c":4,"g":8,"k":130,"presets":[{"l":"1 colher sopa","g":30}]},
-  {"id":"protein-bar","n":"Barra de proteína","p":30,"c":35,"g":12,"k":350,"presets":[{"l":"1 barra","g":60}]},
-  {"id":"creatina","n":"Creatina (pó)","p":0,"c":0,"g":0,"k":0,"presets":[{"l":"1 dose","g":5}]},
-  {"id":"bcaa","n":"BCAA (pó)","p":80,"c":0,"g":0,"k":320,"presets":[{"l":"1 dose","g":10}]},
-  {"id":"isotônico","n":"Bebida isotônica","p":0,"c":6,"g":0,"k":24,"presets":[{"l":"1 garrafa","g":500}]},
-  {"id":"shake-banana","n":"Vitamina banana + leite","p":3.5,"c":12,"g":2,"k":80,"presets":[{"l":"1 copo","g":300}]},
-  {"id":"acai","n":"Açaí (puro)","p":1,"c":6,"g":5,"k":58,"presets":[{"l":"1 tigela","g":200}]},
-  {"id":"paçoca","n":"Paçoca","p":16,"c":52,"g":24,"k":470,"presets":[{"l":"1 unidade","g":15}]},
-  {"id":"brigadeiro","n":"Brigadeiro","p":4,"c":58,"g":18,"k":400,"presets":[{"l":"1 unidade","g":20}]},
-  {"id":"pao-de-queijo","n":"Pão de queijo","p":8,"c":35,"g":15,"k":310,"presets":[{"l":"1 unidade","g":25}]},
-  {"id":"coxinha","n":"Coxinha de frango","p":9,"c":28,"g":14,"k":280,"presets":[{"l":"1 unidade","g":80}]},
-  {"id":"pastel","n":"Pastel frito","p":7,"c":32,"g":18,"k":310,"presets":[{"l":"1 unidade","g":100}]},
-  {"id":"empada","n":"Empada de frango","p":8,"c":26,"g":16,"k":280,"presets":[{"l":"1 unidade","g":70}]},
-  {"id":"strogonoff","n":"Strogonoff de frango","p":9,"c":6,"g":8,"k":130,"presets":[{"l":"1 prato","g":200}]},
-  {"id":"feijoada","n":"Feijoada completa","p":12,"c":14,"g":14,"k":230,"presets":[{"l":"1 prato","g":250}]},
-  {"id":"farofa","n":"Farofa","p":2,"c":65,"g":18,"k":420,"presets":[{"l":"1 colher sopa","g":15}]},
-  {"id":"vinagrete","n":"Vinagrete","p":0.5,"c":4,"g":0.1,"k":20,"presets":[{"l":"1 colher sopa","g":30}]},
-  {"id":"peito-peru","n":"Peito de peru fatiado","p":18,"c":2,"g":1,"k":95,"presets":[{"l":"3 fatias","g":60}]},
-  {"id":"sushi-atum","n":"Temaki atum","p":10,"c":28,"g":2,"k":175,"presets":[{"l":"1 unidade","g":120}]},
-  {"id":"wrap-frango","n":"Wrap de frango","p":12,"c":30,"g":8,"k":240,"presets":[{"l":"1 unidade","g":180}]},
-  {"id":"overnight-oats","n":"Overnight oats","p":8,"c":45,"g":8,"k":280,"presets":[{"l":"1 pote","g":200}]},
-  {"id":"smoothie-proteico","n":"Smoothie proteico","p":12,"c":15,"g":3,"k":150,"presets":[{"l":"1 copo","g":300}]}
+  {
+    "id": "arroz-branco",
+    "n": "Arroz branco cozido",
+    "p": 2.7,
+    "c": 28,
+    "g": 0.3,
+    "k": 130,
+    "f": 0.4
+  },
+  {
+    "id": "arroz-integral",
+    "n": "Arroz integral cozido",
+    "p": 2.6,
+    "c": 23,
+    "g": 1,
+    "k": 111,
+    "f": 1.8
+  },
+  {
+    "id": "feijao-preto",
+    "n": "Feijão preto cozido",
+    "p": 8.7,
+    "c": 23.7,
+    "g": 0.5,
+    "k": 132,
+    "f": 8.7
+  },
+  {
+    "id": "feijao-carioca",
+    "n": "Feijão carioca cozido",
+    "p": 8,
+    "c": 22,
+    "g": 0.5,
+    "k": 127,
+    "f": 8.5
+  },
+  {
+    "id": "lentilha",
+    "n": "Lentilha cozida",
+    "p": 9,
+    "c": 20,
+    "g": 0.4,
+    "k": 116,
+    "f": 7.9
+  },
+  {
+    "id": "grao-bico",
+    "n": "Grão-de-bico cozido",
+    "p": 8.9,
+    "c": 27,
+    "g": 2.6,
+    "k": 164,
+    "f": 7.6
+  },
+  {
+    "id": "macarrao",
+    "n": "Macarrão cozido",
+    "p": 5.8,
+    "c": 31,
+    "g": 0.9,
+    "k": 158,
+    "f": 1.8
+  },
+  {
+    "id": "batata",
+    "n": "Batata cozida",
+    "p": 2,
+    "c": 17,
+    "g": 0.1,
+    "k": 77,
+    "f": 1.8
+  },
+  {
+    "id": "batata-doce",
+    "n": "Batata-doce cozida",
+    "p": 1.6,
+    "c": 20,
+    "g": 0.1,
+    "k": 86,
+    "f": 3
+  },
+  {
+    "id": "mandioca",
+    "n": "Mandioca cozida",
+    "p": 1.4,
+    "c": 38,
+    "g": 0.3,
+    "k": 160,
+    "f": 1.8
+  },
+  {
+    "id": "aveia",
+    "n": "Aveia em flocos",
+    "p": 13.5,
+    "c": 66,
+    "g": 7,
+    "k": 389,
+    "presets": [
+      {
+        "l": "1 scoop",
+        "g": 30
+      },
+      {
+        "l": "1 colher sopa",
+        "g": 15
+      }
+    ],
+    "f": 10.6
+  },
+  {
+    "id": "pao-frances",
+    "n": "Pão francês",
+    "p": 8,
+    "c": 58,
+    "g": 3.1,
+    "k": 300,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 50
+      }
+    ],
+    "f": 2.3
+  },
+  {
+    "id": "pao-integral",
+    "n": "Pão integral",
+    "p": 13,
+    "c": 41,
+    "g": 4.2,
+    "k": 247,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 25
+      }
+    ],
+    "f": 7
+  },
+  {
+    "id": "tapioca",
+    "n": "Tapioca (goma hidratada)",
+    "p": 0.2,
+    "c": 26,
+    "g": 0.2,
+    "k": 112,
+    "presets": [
+      {
+        "l": "1 discos médio",
+        "g": 60
+      }
+    ],
+    "f": 0.9
+  },
+  {
+    "id": "cuscuz",
+    "n": "Cuscuz de milho cozido",
+    "p": 2.2,
+    "c": 25,
+    "g": 0.7,
+    "k": 112,
+    "f": 1.3
+  },
+  {
+    "id": "milho",
+    "n": "Milho cozido",
+    "p": 3.3,
+    "c": 19,
+    "g": 1.4,
+    "k": 96,
+    "f": 2
+  },
+  {
+    "id": "quinoa",
+    "n": "Quinoa cozida",
+    "p": 4.4,
+    "c": 21,
+    "g": 1.9,
+    "k": 120,
+    "f": 2.8
+  },
+  {
+    "id": "carne-alcatra",
+    "n": "Alcatra grelhada",
+    "p": 27,
+    "c": 0,
+    "g": 14,
+    "k": 240,
+    "tags": [
+      "beef",
+      "rump",
+      "top sirloin",
+      "picanha neighbor"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-contra-file",
+    "n": "Contra filé grelhado",
+    "p": 26,
+    "c": 0,
+    "g": 8,
+    "k": 177,
+    "presets": [
+      {
+        "l": "1 bife",
+        "g": 120
+      }
+    ],
+    "tags": [
+      "tenderloin",
+      "contra file",
+      "strip loin",
+      "ny strip",
+      "beef steak"
+    ],
+    "f": 0
+  },
+  {
+    "id": "file-mignon",
+    "n": "Filé mignon",
+    "p": 26,
+    "c": 0,
+    "g": 7,
+    "k": 170,
+    "presets": [
+      {
+        "l": "1 medalhão",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "tenderloin",
+      "filet mignon",
+      "fillet",
+      "beef tenderloin"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-picanha",
+    "n": "Picanha grelhada",
+    "p": 27,
+    "c": 0,
+    "g": 15,
+    "k": 250,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "beef",
+      "sirloin cap",
+      "rump cap",
+      "top sirloin"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-maminha",
+    "n": "Maminha grelhada",
+    "p": 26,
+    "c": 0,
+    "g": 10,
+    "k": 200,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "beef",
+      "tri tip",
+      "bottom sirloin"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-fraldinha",
+    "n": "Fraldinha grelhada",
+    "p": 28,
+    "c": 0,
+    "g": 12,
+    "k": 220,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "beef",
+      "flap meat",
+      "bottom sirloin flap",
+      "vazio"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-acem",
+    "n": "Acém (paleta bovina)",
+    "p": 27,
+    "c": 0,
+    "g": 12,
+    "k": 230,
+    "presets": [
+      {
+        "l": "1 bife",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "beef",
+      "chuck",
+      "shoulder",
+      "pot roast"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-paleta",
+    "n": "Paleta bovina cozida",
+    "p": 26,
+    "c": 0,
+    "g": 13,
+    "k": 235,
+    "presets": [
+      {
+        "l": "1 porção",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "beef",
+      "shoulder",
+      "chuck"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-cupim",
+    "n": "Cupim assado",
+    "p": 24,
+    "c": 0,
+    "g": 18,
+    "k": 260,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 80
+      }
+    ],
+    "tags": [
+      "beef",
+      "hump",
+      "brazilian cut"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-costela-bovina",
+    "n": "Costela bovina assada",
+    "p": 22,
+    "c": 0,
+    "g": 20,
+    "k": 280,
+    "presets": [
+      {
+        "l": "1 costela",
+        "g": 80
+      }
+    ],
+    "tags": [
+      "beef",
+      "ribs",
+      "short ribs",
+      "bbq"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-lagarto",
+    "n": "Lagarto cozido",
+    "p": 28,
+    "c": 0,
+    "g": 6,
+    "k": 170,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "beef",
+      "eye of round",
+      "silverside",
+      "roast beef"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-coxao-mole",
+    "n": "Coxão mole grelhado",
+    "p": 28,
+    "c": 0,
+    "g": 7,
+    "k": 175,
+    "presets": [
+      {
+        "l": "1 bife",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "beef",
+      "top round",
+      "inside round"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-coxao-duro",
+    "n": "Coxão duro cozido",
+    "p": 27,
+    "c": 0,
+    "g": 9,
+    "k": 190,
+    "presets": [
+      {
+        "l": "1 bife",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "beef",
+      "bottom round",
+      "outside round"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-miolo-alcatra",
+    "n": "Miolo de alcatra",
+    "p": 27,
+    "c": 0,
+    "g": 11,
+    "k": 210,
+    "presets": [
+      {
+        "l": "1 bife",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "beef",
+      "top sirloin",
+      "sirloin"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-ossobuco",
+    "n": "Ossobuco cozido",
+    "p": 24,
+    "c": 0,
+    "g": 14,
+    "k": 220,
+    "presets": [
+      {
+        "l": "1 rodela",
+        "g": 120
+      }
+    ],
+    "tags": [
+      "beef",
+      "shank",
+      "osso buco",
+      "ossobuco"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-bisteca",
+    "n": "Bisteca bovina",
+    "p": 25,
+    "c": 0,
+    "g": 16,
+    "k": 250,
+    "presets": [
+      {
+        "l": "1 bisteca",
+        "g": 150
+      }
+    ],
+    "tags": [
+      "beef",
+      "t bone",
+      "porterhouse",
+      "steak"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-moida",
+    "n": "Carne moída magra",
+    "p": 26,
+    "c": 0,
+    "g": 15,
+    "k": 250,
+    "tags": [
+      "beef",
+      "ground beef",
+      "minced meat",
+      "hamburger meat"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-patinho",
+    "n": "Carne bovina (patinho)",
+    "p": 26,
+    "c": 0,
+    "g": 7,
+    "k": 176,
+    "presets": [
+      {
+        "l": "1 bife",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "beef",
+      "round",
+      "top side",
+      "lean beef"
+    ],
+    "f": 0
+  },
+  {
+    "id": "frango-peito",
+    "n": "Peito de frango grelhado",
+    "p": 31,
+    "c": 0,
+    "g": 3.6,
+    "k": 165,
+    "presets": [
+      {
+        "l": "1 filé médio",
+        "g": 120
+      }
+    ],
+    "tags": [
+      "chicken",
+      "chicken breast"
+    ],
+    "f": 0
+  },
+  {
+    "id": "frango-coxa",
+    "n": "Coxa de frango assada",
+    "p": 26,
+    "c": 0,
+    "g": 11,
+    "k": 209,
+    "tags": [
+      "chicken",
+      "chicken thigh",
+      "thigh"
+    ],
+    "f": 0
+  },
+  {
+    "id": "frango-sobrecoxa",
+    "n": "Sobrecoxa de frango assada",
+    "p": 24,
+    "c": 0,
+    "g": 13,
+    "k": 215,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 90
+      }
+    ],
+    "tags": [
+      "chicken",
+      "chicken leg",
+      "drumstick thigh"
+    ],
+    "f": 0
+  },
+  {
+    "id": "frango-asa",
+    "n": "Asa de frango assada",
+    "p": 23,
+    "c": 0,
+    "g": 15,
+    "k": 220,
+    "presets": [
+      {
+        "l": "2 unidades",
+        "g": 80
+      }
+    ],
+    "tags": [
+      "chicken",
+      "chicken wing",
+      "wings"
+    ],
+    "f": 0
+  },
+  {
+    "id": "frango-coxa-sobrecoxa",
+    "n": "Coxa e sobrecoxa de frango",
+    "p": 25,
+    "c": 0,
+    "g": 12,
+    "k": 210,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "chicken",
+      "leg quarter"
+    ],
+    "f": 0
+  },
+  {
+    "id": "frango-inteiro",
+    "n": "Frango assado (carne)",
+    "p": 27,
+    "c": 0,
+    "g": 8,
+    "k": 190,
+    "presets": [
+      {
+        "l": "1 porção",
+        "g": 120
+      }
+    ],
+    "tags": [
+      "chicken",
+      "roast chicken",
+      "whole chicken"
+    ],
+    "f": 0
+  },
+  {
+    "id": "frango-empanado",
+    "n": "Peito de frango empanado",
+    "p": 20,
+    "c": 12,
+    "g": 12,
+    "k": 240,
+    "presets": [
+      {
+        "l": "1 filé",
+        "g": 120
+      }
+    ],
+    "tags": [
+      "chicken",
+      "breaded chicken",
+      "schnitzel"
+    ],
+    "f": 0
+  },
+  {
+    "id": "porco-lombo",
+    "n": "Lombo de porco",
+    "p": 27,
+    "c": 0,
+    "g": 14,
+    "k": 242,
+    "tags": [
+      "pork",
+      "pork loin",
+      "lean pork"
+    ],
+    "f": 0
+  },
+  {
+    "id": "porco-pernil",
+    "n": "Pernil de porco assado",
+    "p": 26,
+    "c": 0,
+    "g": 12,
+    "k": 220,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "pork",
+      "pork shoulder",
+      "ham"
+    ],
+    "f": 0
+  },
+  {
+    "id": "porco-barriga",
+    "n": "Barriga de porco (pancetta)",
+    "p": 16,
+    "c": 0,
+    "g": 32,
+    "k": 350,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 50
+      }
+    ],
+    "tags": [
+      "pork",
+      "pork belly",
+      "bacon uncured"
+    ],
+    "f": 0
+  },
+  {
+    "id": "porco-costela",
+    "n": "Costela de porco assada",
+    "p": 21,
+    "c": 0,
+    "g": 22,
+    "k": 290,
+    "presets": [
+      {
+        "l": "1 costela",
+        "g": 80
+      }
+    ],
+    "tags": [
+      "pork",
+      "pork ribs",
+      "bbq ribs"
+    ],
+    "f": 0
+  },
+  {
+    "id": "bacon",
+    "n": "Bacon frito",
+    "p": 20,
+    "c": 1,
+    "g": 32,
+    "k": 360,
+    "presets": [
+      {
+        "l": "2 fatias",
+        "g": 20
+      }
+    ],
+    "tags": [
+      "pork",
+      "bacon"
+    ],
+    "f": 0
+  },
+  {
+    "id": "bisteca-suina",
+    "n": "Bisteca suína grelhada",
+    "p": 25,
+    "c": 0,
+    "g": 14,
+    "k": 230,
+    "presets": [
+      {
+        "l": "1 bisteca",
+        "g": 120
+      }
+    ],
+    "tags": [
+      "pork",
+      "pork chop",
+      "chuleta"
+    ],
+    "f": 0
+  },
+  {
+    "id": "linguica",
+    "n": "Linguiça calabresa",
+    "p": 14,
+    "c": 2,
+    "g": 28,
+    "k": 310,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 40
+      }
+    ],
+    "tags": [
+      "pork",
+      "sausage",
+      "calabresa"
+    ],
+    "f": 0
+  },
+  {
+    "id": "linguica-frango",
+    "n": "Linguiça de frango",
+    "p": 15,
+    "c": 2,
+    "g": 18,
+    "k": 230,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 40
+      }
+    ],
+    "tags": [
+      "chicken",
+      "sausage"
+    ],
+    "f": 0
+  },
+  {
+    "id": "linguica-toscana",
+    "n": "Linguiça toscana",
+    "p": 13,
+    "c": 2,
+    "g": 26,
+    "k": 290,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 40
+      }
+    ],
+    "tags": [
+      "pork",
+      "sausage",
+      "toscana"
+    ],
+    "f": 0
+  },
+  {
+    "id": "cordeiro-perna",
+    "n": "Pernil de cordeiro",
+    "p": 25,
+    "c": 0,
+    "g": 14,
+    "k": 230,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "lamb",
+      "lamb leg"
+    ],
+    "f": 0
+  },
+  {
+    "id": "cordeiro-costela",
+    "n": "Costela de cordeiro",
+    "p": 22,
+    "c": 0,
+    "g": 18,
+    "k": 260,
+    "presets": [
+      {
+        "l": "1 costela",
+        "g": 80
+      }
+    ],
+    "tags": [
+      "lamb",
+      "lamb ribs",
+      "rack of lamb"
+    ],
+    "f": 0
+  },
+  {
+    "id": "carneiro",
+    "n": "Carne de carneiro",
+    "p": 25,
+    "c": 0,
+    "g": 13,
+    "k": 225,
+    "presets": [
+      {
+        "l": "1 porção",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "lamb",
+      "mutton"
+    ],
+    "f": 0
+  },
+  {
+    "id": "vitela",
+    "n": "Carne de vitela",
+    "p": 24,
+    "c": 0,
+    "g": 8,
+    "k": 172,
+    "presets": [
+      {
+        "l": "1 bife",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "veal",
+      "beef calf"
+    ],
+    "f": 0
+  },
+  {
+    "id": "pato",
+    "n": "Peito de pato grelhado",
+    "p": 19,
+    "c": 0,
+    "g": 15,
+    "k": 220,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "duck",
+      "duck breast"
+    ],
+    "f": 0
+  },
+  {
+    "id": "peru-assado",
+    "n": "Peru assado",
+    "p": 29,
+    "c": 0,
+    "g": 3,
+    "k": 160,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 90
+      }
+    ],
+    "tags": [
+      "turkey",
+      "roast turkey"
+    ],
+    "f": 0
+  },
+  {
+    "id": "mortadela",
+    "n": "Mortadela",
+    "p": 12,
+    "c": 2,
+    "g": 22,
+    "k": 260,
+    "presets": [
+      {
+        "l": "2 fatias",
+        "g": 30
+      }
+    ],
+    "tags": [
+      "pork",
+      "deli meat",
+      "cold cut"
+    ],
+    "f": 0
+  },
+  {
+    "id": "salame",
+    "n": "Salame",
+    "p": 22,
+    "c": 1,
+    "g": 26,
+    "k": 320,
+    "presets": [
+      {
+        "l": "4 fatias",
+        "g": 30
+      }
+    ],
+    "tags": [
+      "pork",
+      "salami",
+      "cold cut"
+    ],
+    "f": 0
+  },
+  {
+    "id": "roast-beef",
+    "n": "Rosbife fatiado",
+    "p": 26,
+    "c": 1,
+    "g": 5,
+    "k": 150,
+    "presets": [
+      {
+        "l": "3 fatias",
+        "g": 60
+      }
+    ],
+    "tags": [
+      "beef",
+      "roast beef",
+      "deli meat",
+      "cold cut"
+    ],
+    "f": 0
+  },
+  {
+    "id": "presunto",
+    "n": "Presunto",
+    "p": 18,
+    "c": 1.5,
+    "g": 6,
+    "k": 145,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 20
+      }
+    ],
+    "tags": [
+      "ham",
+      "deli meat",
+      "cold cut"
+    ],
+    "f": 0
+  },
+  {
+    "id": "ovo",
+    "n": "Ovo cozido",
+    "p": 13,
+    "c": 1.1,
+    "g": 11,
+    "k": 155,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 50
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "clara-ovo",
+    "n": "Clara de ovo",
+    "p": 11,
+    "c": 0.7,
+    "g": 0.2,
+    "k": 52,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 33
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "salmão",
+    "n": "Salmão grelhado",
+    "p": 20,
+    "c": 0,
+    "g": 13,
+    "k": 208,
+    "f": 0
+  },
+  {
+    "id": "atum-lata",
+    "n": "Atum em lata (água)",
+    "p": 26,
+    "c": 0,
+    "g": 0.8,
+    "k": 116,
+    "presets": [
+      {
+        "l": "1 lata escorrida",
+        "g": 120
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "sardinha",
+    "n": "Sardinha em lata",
+    "p": 25,
+    "c": 0,
+    "g": 11,
+    "k": 208,
+    "f": 0
+  },
+  {
+    "id": "tilapia",
+    "n": "Tilápia grelhada",
+    "p": 26,
+    "c": 0,
+    "g": 2.7,
+    "k": 128,
+    "f": 0
+  },
+  {
+    "id": "camarao",
+    "n": "Camarão cozido",
+    "p": 24,
+    "c": 0.2,
+    "g": 0.3,
+    "k": 99,
+    "f": 0
+  },
+  {
+    "id": "whey",
+    "n": "Whey protein (pó)",
+    "p": 75,
+    "c": 8,
+    "g": 5,
+    "k": 380,
+    "presets": [
+      {
+        "l": "1 scoop",
+        "g": 30
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "caseina",
+    "n": "Caseína (pó)",
+    "p": 72,
+    "c": 6,
+    "g": 4,
+    "k": 350,
+    "presets": [
+      {
+        "l": "1 scoop",
+        "g": 30
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "tofu",
+    "n": "Tofu firme",
+    "p": 8,
+    "c": 2,
+    "g": 4,
+    "k": 76,
+    "f": 1.2
+  },
+  {
+    "id": "leite-integral",
+    "n": "Leite integral",
+    "p": 3.2,
+    "c": 4.8,
+    "g": 3.3,
+    "k": 61,
+    "presets": [
+      {
+        "l": "1 copo",
+        "g": 200
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "leite-desnatado",
+    "n": "Leite desnatado",
+    "p": 3.4,
+    "c": 5,
+    "g": 0.1,
+    "k": 35,
+    "presets": [
+      {
+        "l": "1 copo",
+        "g": 200
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "iogurte-natural",
+    "n": "Iogurte natural",
+    "p": 3.5,
+    "c": 4.7,
+    "g": 3.3,
+    "k": 61,
+    "presets": [
+      {
+        "l": "1 pote",
+        "g": 170
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "iogurte-grego",
+    "n": "Iogurte grego",
+    "p": 10,
+    "c": 3.6,
+    "g": 0.4,
+    "k": 59,
+    "presets": [
+      {
+        "l": "1 pote",
+        "g": 150
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "leite-aveia",
+    "n": "Leite de aveia",
+    "p": 1,
+    "c": 7,
+    "g": 1.5,
+    "k": 45,
+    "presets": [
+      {
+        "l": "1 copo",
+        "g": 200
+      }
+    ],
+    "tags": [
+      "oat milk"
+    ],
+    "f": 0.8
+  },
+  {
+    "id": "cream-cheese",
+    "n": "Cream cheese",
+    "p": 6,
+    "c": 4,
+    "g": 34,
+    "k": 342,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 15
+      }
+    ],
+    "tags": [
+      "requeijao cremoso"
+    ],
+    "f": 0
+  },
+  {
+    "id": "hummus",
+    "n": "Homus",
+    "p": 8,
+    "c": 14,
+    "g": 10,
+    "k": 166,
+    "presets": [
+      {
+        "l": "2 colheres sopa",
+        "g": 30
+      }
+    ],
+    "tags": [
+      "hummus"
+    ],
+    "f": 6
+  },
+  {
+    "id": "tortilla",
+    "n": "Tortilla de trigo",
+    "p": 8,
+    "c": 49,
+    "g": 7,
+    "k": 304,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 45
+      }
+    ],
+    "tags": [
+      "wrap",
+      "wrap de trigo"
+    ],
+    "f": 3.5
+  },
+  {
+    "id": "pao-forma",
+    "n": "Pão de forma",
+    "p": 9,
+    "c": 49,
+    "g": 3.5,
+    "k": 265,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 25
+      }
+    ],
+    "tags": [
+      "bread",
+      "sanduiche"
+    ],
+    "f": 2.5
+  },
+  {
+    "id": "arroz-japones",
+    "n": "Arroz japonês cozido",
+    "p": 2.4,
+    "c": 28,
+    "g": 0.2,
+    "k": 130,
+    "presets": [
+      {
+        "l": "1 prato",
+        "g": 150
+      }
+    ],
+    "tags": [
+      "sushi rice",
+      "gohan"
+    ],
+    "f": 0.4
+  },
+  {
+    "id": "salmao-defumado",
+    "n": "Salmão defumado",
+    "p": 18,
+    "c": 0,
+    "g": 4,
+    "k": 117,
+    "presets": [
+      {
+        "l": "3 fatias",
+        "g": 60
+      }
+    ],
+    "tags": [
+      "smoked salmon"
+    ],
+    "f": 0
+  },
+  {
+    "id": "atum-enlatado-oleo",
+    "n": "Atum em lata (óleo)",
+    "p": 25,
+    "c": 0,
+    "g": 8,
+    "k": 198,
+    "presets": [
+      {
+        "l": "1 lata escorrida",
+        "g": 120
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "frango-desfiado",
+    "n": "Frango desfiado cozido",
+    "p": 27,
+    "c": 0,
+    "g": 3,
+    "k": 143,
+    "presets": [
+      {
+        "l": "1 concha",
+        "g": 100
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "carne-seca",
+    "n": "Carne seca dessalgada",
+    "p": 26,
+    "c": 0,
+    "g": 12,
+    "k": 220,
+    "presets": [
+      {
+        "l": "1 porção",
+        "g": 100
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "pepino-japones",
+    "n": "Pepino japonês",
+    "p": 0.7,
+    "c": 3,
+    "g": 0.1,
+    "k": 15,
+    "presets": [
+      {
+        "l": "1/2 unidade",
+        "g": 150
+      }
+    ],
+    "tags": [
+      "japanese cucumber"
+    ],
+    "f": 0.7
+  },
+  {
+    "id": "edamame",
+    "n": "Edamame cozido",
+    "p": 11,
+    "c": 8.9,
+    "g": 5.2,
+    "k": 122,
+    "presets": [
+      {
+        "l": "1 xícara",
+        "g": 100
+      }
+    ],
+    "f": 5.2
+  },
+  {
+    "id": "tofu-grelhado",
+    "n": "Tofu grelhado",
+    "p": 9,
+    "c": 2,
+    "g": 5,
+    "k": 94,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 80
+      }
+    ],
+    "f": 1.2
+  },
+  {
+    "id": "queijo-mussarela",
+    "n": "Queijo mussarela",
+    "p": 22,
+    "c": 2.2,
+    "g": 22,
+    "k": 280,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 25
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "queijo-cottage",
+    "n": "Queijo cottage",
+    "p": 11,
+    "c": 3.4,
+    "g": 4.3,
+    "k": 98,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 30
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "queijo-parmesao",
+    "n": "Queijo parmesão",
+    "p": 38,
+    "c": 4,
+    "g": 29,
+    "k": 431,
+    "presets": [
+      {
+        "l": "1 colher sopa ralado",
+        "g": 10
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "requeijao",
+    "n": "Requeijão",
+    "p": 9,
+    "c": 2,
+    "g": 20,
+    "k": 220,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 20
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "manteiga",
+    "n": "Manteiga",
+    "p": 0.9,
+    "c": 0.1,
+    "g": 81,
+    "k": 717,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 14
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "azeite",
+    "n": "Azeite de oliva",
+    "p": 0,
+    "c": 0,
+    "g": 100,
+    "k": 884,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 13
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "oleo-coco",
+    "n": "Óleo de coco",
+    "p": 0,
+    "c": 0,
+    "g": 100,
+    "k": 862,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 13
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "abacate",
+    "n": "Abacate",
+    "p": 2,
+    "c": 8.5,
+    "g": 15,
+    "k": 160,
+    "presets": [
+      {
+        "l": "1/2 unidade",
+        "g": 100
+      }
+    ],
+    "f": 6.7
+  },
+  {
+    "id": "amendoim",
+    "n": "Amendoim torrado",
+    "p": 26,
+    "c": 16,
+    "g": 49,
+    "k": 567,
+    "presets": [
+      {
+        "l": "1 punhado",
+        "g": 30
+      }
+    ],
+    "f": 8.5
+  },
+  {
+    "id": "castanha-caju",
+    "n": "Castanha de caju",
+    "p": 18,
+    "c": 30,
+    "g": 44,
+    "k": 553,
+    "presets": [
+      {
+        "l": "1 punhado",
+        "g": 30
+      }
+    ],
+    "f": 3.3
+  },
+  {
+    "id": "castanha-pará",
+    "n": "Castanha-do-pará",
+    "p": 14,
+    "c": 12,
+    "g": 67,
+    "k": 656,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 5
+      }
+    ],
+    "f": 7.5
+  },
+  {
+    "id": "amêndoa",
+    "n": "Amêndoa",
+    "p": 21,
+    "c": 22,
+    "g": 50,
+    "k": 579,
+    "presets": [
+      {
+        "l": "1 punhado",
+        "g": 30
+      }
+    ],
+    "f": 12.5
+  },
+  {
+    "id": "nozes",
+    "n": "Nozes",
+    "p": 15,
+    "c": 14,
+    "g": 65,
+    "k": 654,
+    "presets": [
+      {
+        "l": "1 punhado",
+        "g": 30
+      }
+    ],
+    "f": 6.7
+  },
+  {
+    "id": "pasta-amendoim",
+    "n": "Pasta de amendoim",
+    "p": 25,
+    "c": 20,
+    "g": 50,
+    "k": 588,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 16
+      }
+    ],
+    "f": 6
+  },
+  {
+    "id": "banana",
+    "n": "Banana",
+    "p": 1.1,
+    "c": 23,
+    "g": 0.3,
+    "k": 89,
+    "presets": [
+      {
+        "l": "1 unidade média",
+        "g": 120
+      }
+    ],
+    "f": 2.6
+  },
+  {
+    "id": "maca",
+    "n": "Maçã",
+    "p": 0.3,
+    "c": 14,
+    "g": 0.2,
+    "k": 52,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 150
+      }
+    ],
+    "f": 2.4
+  },
+  {
+    "id": "laranja",
+    "n": "Laranja",
+    "p": 0.9,
+    "c": 12,
+    "g": 0.1,
+    "k": 47,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 130
+      }
+    ],
+    "f": 2.4
+  },
+  {
+    "id": "mamao",
+    "n": "Mamão",
+    "p": 0.5,
+    "c": 11,
+    "g": 0.3,
+    "k": 43,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 140
+      }
+    ],
+    "f": 1.7
+  },
+  {
+    "id": "manga",
+    "n": "Manga",
+    "p": 0.8,
+    "c": 15,
+    "g": 0.4,
+    "k": 60,
+    "presets": [
+      {
+        "l": "1 unidade pequena",
+        "g": 200
+      }
+    ],
+    "f": 1.6
+  },
+  {
+    "id": "abacaxi",
+    "n": "Abacaxi",
+    "p": 0.5,
+    "c": 13,
+    "g": 0.1,
+    "k": 50,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 80
+      }
+    ],
+    "f": 1.4
+  },
+  {
+    "id": "melancia",
+    "n": "Melancia",
+    "p": 0.6,
+    "c": 8,
+    "g": 0.2,
+    "k": 30,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 200
+      }
+    ],
+    "f": 0.4
+  },
+  {
+    "id": "morango",
+    "n": "Morango",
+    "p": 0.7,
+    "c": 8,
+    "g": 0.3,
+    "k": 32,
+    "presets": [
+      {
+        "l": "10 unidades",
+        "g": 150
+      }
+    ],
+    "f": 2
+  },
+  {
+    "id": "uva",
+    "n": "Uva",
+    "p": 0.7,
+    "c": 18,
+    "g": 0.2,
+    "k": 69,
+    "presets": [
+      {
+        "l": "1 cacho pequeno",
+        "g": 100
+      }
+    ],
+    "f": 0.9
+  },
+  {
+    "id": "melao",
+    "n": "Melão",
+    "p": 0.8,
+    "c": 8,
+    "g": 0.2,
+    "k": 34,
+    "f": 0.9
+  },
+  {
+    "id": "pera",
+    "n": "Pêra",
+    "p": 0.4,
+    "c": 15,
+    "g": 0.1,
+    "k": 57,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 150
+      }
+    ],
+    "f": 3.1
+  },
+  {
+    "id": "kiwi",
+    "n": "Kiwi",
+    "p": 1.1,
+    "c": 15,
+    "g": 0.5,
+    "k": 61,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 75
+      }
+    ],
+    "f": 3
+  },
+  {
+    "id": "tangerina",
+    "n": "Tangerina",
+    "p": 0.8,
+    "c": 13.3,
+    "g": 0.3,
+    "k": 53,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 120
+      }
+    ],
+    "tags": [
+      "tangerine",
+      "mandarin",
+      "mandarina",
+      "mexerica",
+      "bergamota",
+      "clementine"
+    ],
+    "f": 1.8
+  },
+  {
+    "id": "limao",
+    "n": "Limão",
+    "p": 0.4,
+    "c": 9,
+    "g": 0.2,
+    "k": 29,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 60
+      }
+    ],
+    "tags": [
+      "lemon",
+      "lima azeda"
+    ],
+    "f": 2.8
+  },
+  {
+    "id": "lima",
+    "n": "Lima",
+    "p": 0.7,
+    "c": 11,
+    "g": 0.2,
+    "k": 30,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 70
+      }
+    ],
+    "tags": [
+      "lime"
+    ],
+    "f": 2.8
+  },
+  {
+    "id": "pessego",
+    "n": "Pêssego",
+    "p": 0.9,
+    "c": 10,
+    "g": 0.3,
+    "k": 39,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 150
+      }
+    ],
+    "tags": [
+      "peach"
+    ],
+    "f": 1.5
+  },
+  {
+    "id": "ameixa",
+    "n": "Ameixa",
+    "p": 0.7,
+    "c": 11,
+    "g": 0.3,
+    "k": 46,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 65
+      }
+    ],
+    "tags": [
+      "plum"
+    ],
+    "f": 1.4
+  },
+  {
+    "id": "figo",
+    "n": "Figo",
+    "p": 0.8,
+    "c": 19,
+    "g": 0.3,
+    "k": 74,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 50
+      }
+    ],
+    "tags": [
+      "fig"
+    ],
+    "f": 2.9
+  },
+  {
+    "id": "cereja",
+    "n": "Cereja",
+    "p": 1.1,
+    "c": 16,
+    "g": 0.2,
+    "k": 63,
+    "presets": [
+      {
+        "l": "10 unidades",
+        "g": 80
+      }
+    ],
+    "tags": [
+      "cherry"
+    ],
+    "f": 2.1
+  },
+  {
+    "id": "mirtilo",
+    "n": "Mirtilo",
+    "p": 0.7,
+    "c": 14,
+    "g": 0.3,
+    "k": 57,
+    "presets": [
+      {
+        "l": "1 punhado",
+        "g": 75
+      }
+    ],
+    "tags": [
+      "blueberry"
+    ],
+    "f": 2.4
+  },
+  {
+    "id": "framboesa",
+    "n": "Framboesa",
+    "p": 1.2,
+    "c": 12,
+    "g": 0.7,
+    "k": 52,
+    "presets": [
+      {
+        "l": "1 punhado",
+        "g": 75
+      }
+    ],
+    "tags": [
+      "raspberry"
+    ],
+    "f": 6.5
+  },
+  {
+    "id": "amora",
+    "n": "Amora",
+    "p": 1.4,
+    "c": 10,
+    "g": 0.5,
+    "k": 43,
+    "presets": [
+      {
+        "l": "1 punhado",
+        "g": 75
+      }
+    ],
+    "tags": [
+      "blackberry"
+    ],
+    "f": 5.3
+  },
+  {
+    "id": "acerola",
+    "n": "Acerola",
+    "p": 0.4,
+    "c": 8,
+    "g": 0.3,
+    "k": 32,
+    "presets": [
+      {
+        "l": "10 unidades",
+        "g": 100
+      }
+    ],
+    "f": 1.1
+  },
+  {
+    "id": "goiaba",
+    "n": "Goiaba",
+    "p": 2.6,
+    "c": 14,
+    "g": 1,
+    "k": 68,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 165
+      }
+    ],
+    "tags": [
+      "guava"
+    ],
+    "f": 5.4
+  },
+  {
+    "id": "maracuja",
+    "n": "Maracujá",
+    "p": 2.2,
+    "c": 23,
+    "g": 0.7,
+    "k": 97,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 90
+      }
+    ],
+    "tags": [
+      "passion fruit",
+      "passionfruit"
+    ],
+    "f": 10.4
+  },
+  {
+    "id": "caqui",
+    "n": "Caqui",
+    "p": 0.6,
+    "c": 18,
+    "g": 0.2,
+    "k": 70,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 150
+      }
+    ],
+    "tags": [
+      "persimmon"
+    ],
+    "f": 3.6
+  },
+  {
+    "id": "coco",
+    "n": "Coco (polpa)",
+    "p": 3.3,
+    "c": 15,
+    "g": 33,
+    "k": 354,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 50
+      }
+    ],
+    "tags": [
+      "coconut"
+    ],
+    "f": 9
+  },
+  {
+    "id": "pitaya",
+    "n": "Pitaya",
+    "p": 1.2,
+    "c": 13,
+    "g": 0.4,
+    "k": 60,
+    "presets": [
+      {
+        "l": "1/2 unidade",
+        "g": 100
+      }
+    ],
+    "tags": [
+      "dragon fruit",
+      "dragonfruit"
+    ],
+    "f": 1.8
+  },
+  {
+    "id": "framboesa-vermelha",
+    "n": "Frutas vermelhas congeladas",
+    "p": 0.9,
+    "c": 12,
+    "g": 0.4,
+    "k": 52,
+    "presets": [
+      {
+        "l": "1 xícara",
+        "g": 140
+      }
+    ],
+    "tags": [
+      "mixed berries",
+      "berries"
+    ],
+    "f": 3.5
+  },
+  {
+    "id": "datil",
+    "n": "Tâmara",
+    "p": 2.5,
+    "c": 75,
+    "g": 0.4,
+    "k": 282,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 24
+      }
+    ],
+    "tags": [
+      "date",
+      "dates"
+    ],
+    "f": 6.7
+  },
+  {
+    "id": "coco-agua",
+    "n": "Água de coco",
+    "p": 0.2,
+    "c": 3.7,
+    "g": 0.2,
+    "k": 19,
+    "presets": [
+      {
+        "l": "1 copo",
+        "g": 200
+      }
+    ],
+    "tags": [
+      "coconut water"
+    ],
+    "f": 0
+  },
+  {
+    "id": "brocolis",
+    "n": "Brócolis cozido",
+    "p": 2.8,
+    "c": 7,
+    "g": 0.4,
+    "k": 35,
+    "f": 2.6
+  },
+  {
+    "id": "couve-flor",
+    "n": "Couve-flor cozida",
+    "p": 1.9,
+    "c": 5,
+    "g": 0.3,
+    "k": 28,
+    "f": 2.3
+  },
+  {
+    "id": "espinafre",
+    "n": "Espinafre cozido",
+    "p": 3,
+    "c": 3.8,
+    "g": 0.3,
+    "k": 23,
+    "f": 2.4
+  },
+  {
+    "id": "alface",
+    "n": "Alface",
+    "p": 1.4,
+    "c": 2.9,
+    "g": 0.2,
+    "k": 15,
+    "f": 1.3
+  },
+  {
+    "id": "tomate",
+    "n": "Tomate",
+    "p": 0.9,
+    "c": 3.9,
+    "g": 0.2,
+    "k": 18,
+    "f": 1.2
+  },
+  {
+    "id": "pepino",
+    "n": "Pepino",
+    "p": 0.7,
+    "c": 3.6,
+    "g": 0.1,
+    "k": 16,
+    "f": 0.5
+  },
+  {
+    "id": "cenoura",
+    "n": "Cenoura crua",
+    "p": 0.9,
+    "c": 10,
+    "g": 0.2,
+    "k": 41,
+    "f": 2.8
+  },
+  {
+    "id": "beterraba",
+    "n": "Beterraba cozida",
+    "p": 1.7,
+    "c": 10,
+    "g": 0.2,
+    "k": 44,
+    "f": 2
+  },
+  {
+    "id": "abobrinha",
+    "n": "Abobrinha cozida",
+    "p": 1.2,
+    "c": 4.9,
+    "g": 0.3,
+    "k": 24,
+    "f": 1.1
+  },
+  {
+    "id": "berinjela",
+    "n": "Berinjela cozida",
+    "p": 0.8,
+    "c": 6,
+    "g": 0.2,
+    "k": 35,
+    "f": 3
+  },
+  {
+    "id": "pimentao",
+    "n": "Pimentão",
+    "p": 1,
+    "c": 6,
+    "g": 0.3,
+    "k": 31,
+    "f": 1.7
+  },
+  {
+    "id": "cebola",
+    "n": "Cebola",
+    "p": 1.1,
+    "c": 9,
+    "g": 0.1,
+    "k": 40,
+    "f": 1.7
+  },
+  {
+    "id": "alho",
+    "n": "Alho",
+    "p": 6.4,
+    "c": 33,
+    "g": 0.5,
+    "k": 149,
+    "f": 2.6
+  },
+  {
+    "id": "cogumelo",
+    "n": "Cogumelo",
+    "p": 3.1,
+    "c": 3.3,
+    "g": 0.3,
+    "k": 22,
+    "f": 1
+  },
+  {
+    "id": "milho-verde-lata",
+    "n": "Milho verde em conserva",
+    "p": 2.5,
+    "c": 14,
+    "g": 1,
+    "k": 79,
+    "f": 2.4
+  },
+  {
+    "id": "ervilha",
+    "n": "Ervilha cozida",
+    "p": 5.4,
+    "c": 14,
+    "g": 0.4,
+    "k": 84,
+    "f": 5.5
+  },
+  {
+    "id": "azeitona",
+    "n": "Azeitona verde",
+    "p": 1,
+    "c": 4,
+    "g": 11,
+    "k": 115,
+    "presets": [
+      {
+        "l": "10 unidades",
+        "g": 30
+      }
+    ],
+    "f": 3.3
+  },
+  {
+    "id": "chocolate-70",
+    "n": "Chocolate 70% cacau",
+    "p": 8,
+    "c": 46,
+    "g": 42,
+    "k": 550,
+    "presets": [
+      {
+        "l": "1 quadradinho",
+        "g": 10
+      }
+    ],
+    "f": 11
+  },
+  {
+    "id": "mel",
+    "n": "Mel",
+    "p": 0.3,
+    "c": 82,
+    "g": 0,
+    "k": 304,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 21
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "acucar",
+    "n": "Açúcar",
+    "p": 0,
+    "c": 100,
+    "g": 0,
+    "k": 387,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 12
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "granola",
+    "n": "Granola",
+    "p": 10,
+    "c": 64,
+    "g": 20,
+    "k": 471,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 15
+      }
+    ],
+    "f": 8
+  },
+  {
+    "id": "cereal-matinal",
+    "n": "Cereal matinal",
+    "p": 7,
+    "c": 84,
+    "g": 4,
+    "k": 380,
+    "presets": [
+      {
+        "l": "1 tigela",
+        "g": 40
+      }
+    ],
+    "f": 8
+  },
+  {
+    "id": "pipoca",
+    "n": "Pipoca (sem manteiga)",
+    "p": 11,
+    "c": 74,
+    "g": 4.5,
+    "k": 387,
+    "presets": [
+      {
+        "l": "1 tigela",
+        "g": 30
+      }
+    ],
+    "f": 14.5
+  },
+  {
+    "id": "suco-laranja",
+    "n": "Suco de laranja natural",
+    "p": 0.7,
+    "c": 10,
+    "g": 0.2,
+    "k": 45,
+    "presets": [
+      {
+        "l": "1 copo",
+        "g": 200
+      }
+    ],
+    "f": 0.2
+  },
+  {
+    "id": "cafe",
+    "n": "Café preto",
+    "p": 0.1,
+    "c": 0,
+    "g": 0,
+    "k": 1,
+    "presets": [
+      {
+        "l": "1 xícara",
+        "g": 240
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "cha",
+    "n": "Chá (sem açúcar)",
+    "p": 0,
+    "c": 0,
+    "g": 0,
+    "k": 1,
+    "presets": [
+      {
+        "l": "1 xícara",
+        "g": 240
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "coca-zero",
+    "n": "Refrigerante zero",
+    "p": 0,
+    "c": 0,
+    "g": 0,
+    "k": 1,
+    "presets": [
+      {
+        "l": "1 lata",
+        "g": 350
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "cerveja",
+    "n": "Cerveja",
+    "p": 0.5,
+    "c": 3.6,
+    "g": 0,
+    "k": 43,
+    "presets": [
+      {
+        "l": "1 lata",
+        "g": 350
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "vinho-tinto",
+    "n": "Vinho tinto",
+    "p": 0.1,
+    "c": 2.6,
+    "g": 0,
+    "k": 85,
+    "presets": [
+      {
+        "l": "1 taça",
+        "g": 150
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "pizza-mussarela",
+    "n": "Pizza mussarela",
+    "p": 11,
+    "c": 33,
+    "g": 10,
+    "k": 266,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 100
+      }
+    ],
+    "f": 2
+  },
+  {
+    "id": "hamburger",
+    "n": "Hambúrguer artesanal",
+    "p": 17,
+    "c": 24,
+    "g": 14,
+    "k": 295,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 150
+      }
+    ],
+    "f": 2
+  },
+  {
+    "id": "batata-frita",
+    "n": "Batata frita",
+    "p": 3.4,
+    "c": 41,
+    "g": 15,
+    "k": 312,
+    "presets": [
+      {
+        "l": "1 porção média",
+        "g": 100
+      }
+    ],
+    "f": 3.2
+  },
+  {
+    "id": "nuggets-frango",
+    "n": "Nuggets de frango",
+    "p": 14,
+    "c": 18,
+    "g": 14,
+    "k": 260,
+    "presets": [
+      {
+        "l": "6 unidades",
+        "g": 90
+      }
+    ],
+    "f": 1.5
+  },
+  {
+    "id": "sushi-salmao",
+    "n": "Sushi salmão (1 peça)",
+    "p": 9,
+    "c": 26,
+    "g": 3,
+    "k": 180,
+    "presets": [
+      {
+        "l": "8 peças",
+        "g": 200
+      }
+    ],
+    "f": 1
+  },
+  {
+    "id": "lasanha",
+    "n": "Lasanha à bolonhesa",
+    "p": 8,
+    "c": 15,
+    "g": 7,
+    "k": 150,
+    "presets": [
+      {
+        "l": "1 fatia",
+        "g": 200
+      }
+    ],
+    "f": 1.5
+  },
+  {
+    "id": "risoto",
+    "n": "Risoto",
+    "p": 4,
+    "c": 28,
+    "g": 6,
+    "k": 180,
+    "presets": [
+      {
+        "l": "1 prato",
+        "g": 200
+      }
+    ],
+    "f": 0.8
+  },
+  {
+    "id": "sopa-legumes",
+    "n": "Sopa de legumes",
+    "p": 1.5,
+    "c": 8,
+    "g": 0.5,
+    "k": 40,
+    "presets": [
+      {
+        "l": "1 tigela",
+        "g": 250
+      }
+    ],
+    "f": 1.5
+  },
+  {
+    "id": "salada-verde",
+    "n": "Salada verde mista",
+    "p": 1.5,
+    "c": 3,
+    "g": 0.2,
+    "k": 20,
+    "presets": [
+      {
+        "l": "1 prato",
+        "g": 150
+      }
+    ],
+    "f": 2
+  },
+  {
+    "id": "maionese",
+    "n": "Maionese",
+    "p": 1,
+    "c": 3,
+    "g": 75,
+    "k": 680,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 15
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "ketchup",
+    "n": "Ketchup",
+    "p": 1.3,
+    "c": 27,
+    "g": 0.1,
+    "k": 112,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 17
+      }
+    ],
+    "f": 0.3
+  },
+  {
+    "id": "mostarda",
+    "n": "Mostarda",
+    "p": 4.4,
+    "c": 6,
+    "g": 3.7,
+    "k": 66,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 15
+      }
+    ],
+    "f": 3.3
+  },
+  {
+    "id": "molho-tomate",
+    "n": "Molho de tomate",
+    "p": 1.5,
+    "c": 6,
+    "g": 0.2,
+    "k": 32,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 30
+      }
+    ],
+    "f": 1.5
+  },
+  {
+    "id": "creme-ricota",
+    "n": "Creme de ricota light",
+    "p": 10,
+    "c": 4,
+    "g": 8,
+    "k": 130,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 30
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "protein-bar",
+    "n": "Barra de proteína",
+    "p": 30,
+    "c": 35,
+    "g": 12,
+    "k": 350,
+    "presets": [
+      {
+        "l": "1 barra",
+        "g": 60
+      }
+    ],
+    "f": 5
+  },
+  {
+    "id": "creatina",
+    "n": "Creatina (pó)",
+    "p": 0,
+    "c": 0,
+    "g": 0,
+    "k": 0,
+    "presets": [
+      {
+        "l": "1 dose",
+        "g": 5
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "bcaa",
+    "n": "BCAA (pó)",
+    "p": 80,
+    "c": 0,
+    "g": 0,
+    "k": 320,
+    "presets": [
+      {
+        "l": "1 dose",
+        "g": 10
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "isotônico",
+    "n": "Bebida isotônica",
+    "p": 0,
+    "c": 6,
+    "g": 0,
+    "k": 24,
+    "presets": [
+      {
+        "l": "1 garrafa",
+        "g": 500
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "shake-banana",
+    "n": "Vitamina banana + leite",
+    "p": 3.5,
+    "c": 12,
+    "g": 2,
+    "k": 80,
+    "presets": [
+      {
+        "l": "1 copo",
+        "g": 300
+      }
+    ],
+    "f": 1.5
+  },
+  {
+    "id": "acai",
+    "n": "Açaí (puro)",
+    "p": 1,
+    "c": 6,
+    "g": 5,
+    "k": 58,
+    "presets": [
+      {
+        "l": "1 tigela",
+        "g": 200
+      }
+    ],
+    "f": 2.5
+  },
+  {
+    "id": "paçoca",
+    "n": "Paçoca",
+    "p": 16,
+    "c": 52,
+    "g": 24,
+    "k": 470,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 15
+      }
+    ],
+    "f": 3
+  },
+  {
+    "id": "brigadeiro",
+    "n": "Brigadeiro",
+    "p": 4,
+    "c": 58,
+    "g": 18,
+    "k": 400,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 20
+      }
+    ],
+    "f": 1
+  },
+  {
+    "id": "pao-de-queijo",
+    "n": "Pão de queijo",
+    "p": 8,
+    "c": 35,
+    "g": 15,
+    "k": 310,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 25
+      }
+    ],
+    "f": 0.5
+  },
+  {
+    "id": "coxinha",
+    "n": "Coxinha de frango",
+    "p": 9,
+    "c": 28,
+    "g": 14,
+    "k": 280,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 80
+      }
+    ],
+    "f": 1.5
+  },
+  {
+    "id": "pastel",
+    "n": "Pastel frito",
+    "p": 7,
+    "c": 32,
+    "g": 18,
+    "k": 310,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 100
+      }
+    ],
+    "f": 2
+  },
+  {
+    "id": "empada",
+    "n": "Empada de frango",
+    "p": 8,
+    "c": 26,
+    "g": 16,
+    "k": 280,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 70
+      }
+    ],
+    "f": 1.5
+  },
+  {
+    "id": "strogonoff",
+    "n": "Strogonoff de frango",
+    "p": 9,
+    "c": 6,
+    "g": 8,
+    "k": 130,
+    "presets": [
+      {
+        "l": "1 prato",
+        "g": 200
+      }
+    ],
+    "f": 1
+  },
+  {
+    "id": "feijoada",
+    "n": "Feijoada completa",
+    "p": 12,
+    "c": 14,
+    "g": 14,
+    "k": 230,
+    "presets": [
+      {
+        "l": "1 prato",
+        "g": 250
+      }
+    ],
+    "f": 4
+  },
+  {
+    "id": "farofa",
+    "n": "Farofa",
+    "p": 2,
+    "c": 65,
+    "g": 18,
+    "k": 420,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 15
+      }
+    ],
+    "f": 4
+  },
+  {
+    "id": "vinagrete",
+    "n": "Vinagrete",
+    "p": 0.5,
+    "c": 4,
+    "g": 0.1,
+    "k": 20,
+    "presets": [
+      {
+        "l": "1 colher sopa",
+        "g": 30
+      }
+    ],
+    "f": 1
+  },
+  {
+    "id": "peito-peru",
+    "n": "Peito de peru fatiado",
+    "p": 18,
+    "c": 2,
+    "g": 1,
+    "k": 95,
+    "presets": [
+      {
+        "l": "3 fatias",
+        "g": 60
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "sushi-atum",
+    "n": "Temaki atum",
+    "p": 10,
+    "c": 28,
+    "g": 2,
+    "k": 175,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 120
+      }
+    ],
+    "f": 0
+  },
+  {
+    "id": "wrap-frango",
+    "n": "Wrap de frango",
+    "p": 12,
+    "c": 30,
+    "g": 8,
+    "k": 240,
+    "presets": [
+      {
+        "l": "1 unidade",
+        "g": 180
+      }
+    ],
+    "f": 3
+  },
+  {
+    "id": "overnight-oats",
+    "n": "Overnight oats",
+    "p": 8,
+    "c": 45,
+    "g": 8,
+    "k": 280,
+    "presets": [
+      {
+        "l": "1 pote",
+        "g": 200
+      }
+    ],
+    "f": 6.5
+  },
+  {
+    "id": "smoothie-proteico",
+    "n": "Smoothie proteico",
+    "p": 12,
+    "c": 15,
+    "g": 3,
+    "k": 150,
+    "presets": [
+      {
+        "l": "1 copo",
+        "g": 300
+      }
+    ],
+    "f": 1
+  }
 ]

@@ -98,7 +98,7 @@
     <div id="macroStep1">
       <div class="fg"><input class="field" id="macroSearch" placeholder="🔎 Buscar alimento…" oninput="onMacroSearch(this.value)"></div>
       <div id="macroFavQuick" class="mfav-row" style="margin-bottom:10px"></div>
-      <div id="macroSearchList" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;padding:4px;background:var(--surface2)"></div>
+      <div id="macroSearchList"></div>
     </div>
     <div id="macroStep2" style="display:none">
       <div class="fg"><label class="fl">Quantidade (gramas)</label><input class="field" id="macroGrams" type="number" inputmode="decimal" oninput="macroUpdatePreview()"></div>
@@ -125,6 +125,7 @@
     <div class="fg"><label class="fl">Proteína / 100g</label><input class="field" id="macroCustomP" type="number" inputmode="decimal"></div>
     <div class="fg"><label class="fl">Carboidratos / 100g</label><input class="field" id="macroCustomC" type="number" inputmode="decimal"></div>
     <div class="fg"><label class="fl">Gordura / 100g</label><input class="field" id="macroCustomG" type="number" inputmode="decimal"></div>
+    <div class="fg"><label class="fl">Fibra / 100g</label><input class="field" id="macroCustomF" type="number" inputmode="decimal"></div>
     <div class="fg"><label class="fl">Kcal / 100g</label><input class="field" id="macroCustomK" type="number" inputmode="decimal"></div>
     <button class="btn ghost" id="macroCustomDel" style="display:none;width:100%;margin-bottom:8px" onclick="macroDeleteCustom()">Excluir alimento</button>
     <button class="btn-primary" id="macroCustomSave" onclick="macroSaveCustom()">Salvar</button>
@@ -161,6 +162,7 @@
           <div><span class="fl">Proteína (g)</span><input class="field" id="macroGoalP" type="number" onchange="macroSaveGoalsFromInputs()"></div>
           <div><span class="fl">Carbs (g)</span><input class="field" id="macroGoalC" type="number" onchange="macroSaveGoalsFromInputs()"></div>
           <div><span class="fl">Gordura (g)</span><input class="field" id="macroGoalG" type="number" onchange="macroSaveGoalsFromInputs()"></div>
+          <div><span class="fl">Fibra (g)</span><input class="field" id="macroGoalF" type="number" onchange="macroSaveGoalsFromInputs()"></div>
           <div><span class="fl">Kcal</span><input class="field" id="macroGoalK" type="number" onchange="macroSaveGoalsFromInputs()"></div>
         </div>
       </div>
@@ -170,6 +172,7 @@
           <button class="mtoggle on" id="macroShowP" onclick="toggleMacroShow(this)">Proteína</button>
           <button class="mtoggle on" id="macroShowC" onclick="toggleMacroShow(this)">Carbs</button>
           <button class="mtoggle on" id="macroShowG" onclick="toggleMacroShow(this)">Gordura</button>
+          <button class="mtoggle on" id="macroShowF" onclick="toggleMacroShow(this)">Fibra</button>
         </div>
       </div>
       <div class="fg"><label class="fl">Refeições</label><div class="rg" style="font-size:11px;margin-bottom:8px">Arraste ⠿ para reordenar — a ordem aparece na aba Macros.</div><div id="macroMealsEdit"></div><button class="btn ghost" style="width:100%;margin-top:8px" onclick="macroAddMeal()">+ Nova refeição</button></div>

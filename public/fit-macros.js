@@ -5,13 +5,13 @@ var MACRO_MEALS_DEFAULT = [
   { id: 'dinner', name: 'Jantar', order: 2 },
   { id: 'snacks', name: 'Lanches', order: 3 }
 ];
-var MACRO_GOALS_DEFAULT = { p: 150, c: 200, g: 65, kcal: 2200 };
-var MACRO_SHOW_DEFAULT = { p: true, c: true, g: true, kcal: true };
+var MACRO_GOALS_DEFAULT = { p: 150, c: 200, g: 65, f: 25, kcal: 2200 };
+var MACRO_SHOW_DEFAULT = { p: true, c: true, g: true, f: true, kcal: true };
 var MACRO_PRESETS_GLOBAL = [
   { l: '100 g', g: 100 }, { l: '50 g', g: 50 }, { l: '30 g', g: 30 },
   { l: '1 colher sopa (~15 g)', g: 15 }, { l: '1 colher chá (~5 g)', g: 5 }
 ];
-var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _macroMealsSortable = null, _offCache = {}, _stMacros = false;
+var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _macroMealsSortable = null, _offCache = {}, _stMacros = false, _macroVpBound = false;
 
 function macroToday() { return new Date().toISOString().slice(0, 10); }
 function macroDate() { return _macroDate || macroToday(); }
@@ -24,11 +24,11 @@ function macroMeals() {
 }
 function macroGoals() {
   var g = (DATA.config && DATA.config.macrogoals) || {};
-  return { p: Number(g.p) || MACRO_GOALS_DEFAULT.p, c: Number(g.c) || MACRO_GOALS_DEFAULT.c, g: Number(g.g) || MACRO_GOALS_DEFAULT.g, kcal: Number(g.kcal) || MACRO_GOALS_DEFAULT.kcal };
+  return { p: Number(g.p) || MACRO_GOALS_DEFAULT.p, c: Number(g.c) || MACRO_GOALS_DEFAULT.c, g: Number(g.g) || MACRO_GOALS_DEFAULT.g, f: Number(g.f) || MACRO_GOALS_DEFAULT.f, kcal: Number(g.kcal) || MACRO_GOALS_DEFAULT.kcal };
 }
 function macroShow() {
   var s = (DATA.config && DATA.config.macroshow) || {};
-  return { p: s.p !== false, c: s.c !== false, g: s.g !== false, kcal: s.kcal !== false };
+  return { p: s.p !== false, c: s.c !== false, g: s.g !== false, f: s.f !== false, kcal: s.kcal !== false };
 }
 function macroFavs() { return (DATA.config && DATA.config.macrofavs) || []; }
 
@@ -54,40 +54,63 @@ function macroSaveFavs(f) {
 }
 
 function macroLogRow(e) {
-  return [e.date, e.mealId, e.name, e.grams, e.p, e.c, e.g, e.k, e.ref, e.src, e.id];
+  return [e.date, e.mealId, e.name, e.grams, e.p, e.c, e.g, e.f, e.k, e.ref, e.src, e.id];
 }
 function macroFoodRow(f) {
-  return [f.name, f.p100, f.c100, f.g100, f.k100, f.id];
+  return [f.name, f.p100, f.c100, f.g100, f.k100, f.f100, f.id];
 }
 function macroParseLog(r) {
-  return { id: r[10], date: String(r[0]), mealId: String(r[1]), name: r[2], grams: Number(r[3]) || 0, p: Number(r[4]) || 0, c: Number(r[5]) || 0, g: Number(r[6]) || 0, k: Number(r[7]) || 0, ref: String(r[8] || ''), src: r[9] || 'bundled' };
+  if (r.length >= 12) {
+    return { id: r[11], date: String(r[0]), mealId: String(r[1]), name: r[2], grams: Number(r[3]) || 0, p: Number(r[4]) || 0, c: Number(r[5]) || 0, g: Number(r[6]) || 0, f: Number(r[7]) || 0, k: Number(r[8]) || 0, ref: String(r[9] || ''), src: r[10] || 'bundled' };
+  }
+  return { id: r[10], date: String(r[0]), mealId: String(r[1]), name: r[2], grams: Number(r[3]) || 0, p: Number(r[4]) || 0, c: Number(r[5]) || 0, g: Number(r[6]) || 0, f: 0, k: Number(r[7]) || 0, ref: String(r[8] || ''), src: r[9] || 'bundled' };
 }
 function macroParseFood(r) {
-  return { id: r[5], name: r[0], p100: Number(r[1]) || 0, c100: Number(r[2]) || 0, g100: Number(r[3]) || 0, k100: Number(r[4]) || 0 };
+  if (r.length >= 7) {
+    return { id: r[6], name: r[0], p100: Number(r[1]) || 0, c100: Number(r[2]) || 0, g100: Number(r[3]) || 0, k100: Number(r[4]) || 0, f100: Number(r[5]) || 0 };
+  }
+  return { id: r[5], name: r[0], p100: Number(r[1]) || 0, c100: Number(r[2]) || 0, g100: Number(r[3]) || 0, k100: Number(r[4]) || 0, f100: 0 };
+}
+function macroFindLogRow(id) {
+  return fitFindRow('MacroLog', 11, id).then(function (r) {
+    if (r >= 0) return r;
+    return fitFindRow('MacroLog', 10, id);
+  });
+}
+function macroFindFoodRow(id) {
+  return fitFindRow('MacroFoods', 6, id).then(function (r) {
+    if (r >= 0) return r;
+    return fitFindRow('MacroFoods', 5, id);
+  });
 }
 
 function macroEntriesFor(date) {
   return (DATA.macrolog || []).filter(function (e) { return e.date === date; });
 }
 function macroTotals(entries) {
-  var t = { p: 0, c: 0, g: 0, k: 0 };
+  var t = { p: 0, c: 0, g: 0, f: 0, k: 0 };
   (entries || []).forEach(function (e) {
-    t.p += e.p; t.c += e.c; t.g += e.g; t.k += e.k;
+    t.p += e.p; t.c += e.c; t.g += e.g; t.f += e.f || 0; t.k += e.k;
   });
   t.p = Math.round(t.p * 10) / 10;
   t.c = Math.round(t.c * 10) / 10;
   t.g = Math.round(t.g * 10) / 10;
+  t.f = Math.round(t.f * 10) / 10;
   t.k = Math.round(t.k);
   return t;
 }
-function macroScale(p100, c100, g100, k100, grams) {
+function macroScale(p100, c100, g100, k100, grams, f100) {
   var f = (Number(grams) || 0) / 100;
   return {
     p: Math.round((Number(p100) || 0) * f * 10) / 10,
     c: Math.round((Number(c100) || 0) * f * 10) / 10,
     g: Math.round((Number(g100) || 0) * f * 10) / 10,
+    f: Math.round((Number(f100) || 0) * f * 10) / 10,
     k: Math.round((Number(k100) || 0) * f)
   };
+}
+function macroFmtLine(t) {
+  return 'P ' + t.p + ' · C ' + t.c + ' · G ' + t.g + ' · F ' + (t.f || 0) + ' · ' + t.k + ' kcal';
 }
 
 function macroRing(pct, color, label, val, goal, unit) {
@@ -118,7 +141,7 @@ function loadBundledFoods(cb) {
   if (_bundledFoods) { cb(_bundledFoods); return; }
   fetch('/fit-foods.json').then(function (r) { return r.json(); }).then(function (j) {
     _bundledFoods = (j || []).map(function (f) {
-      return { id: f.id, name: f.n, p100: f.p, c100: f.c, g100: f.g, k100: f.k, src: 'bundled', presets: f.presets || [], tags: f.tags || [] };
+      return { id: f.id, name: f.n, p100: f.p, c100: f.c, g100: f.g, k100: f.k, f100: Number(f.f) || 0, src: 'bundled', presets: f.presets || [], tags: f.tags || [] };
     });
     cb(_bundledFoods);
   }).catch(function () { _bundledFoods = []; cb([]); });
@@ -126,7 +149,7 @@ function loadBundledFoods(cb) {
 
 function macroCustomFoods() {
   return (DATA.macrofoods || []).map(function (f) {
-    return { id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, src: 'custom', presets: [] };
+    return { id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: Number(f.f100) || 0, src: 'custom', presets: [] };
   });
 }
 
@@ -155,11 +178,12 @@ function macroSearchOff(q, cb) {
       var n = p.nutriments || {};
       var p100 = Number(n['proteins_100g']); var c100 = Number(n['carbohydrates_100g']);
       var g100 = Number(n['fat_100g']); var k100 = Number(n['energy-kcal_100g']);
+      var f100 = Number(n['fiber_100g'] || n['fibers_100g']);
       if (!(p100 >= 0) && !(c100 >= 0) && !(g100 >= 0) && !(k100 > 0)) return;
       var name = (p.product_name || '').trim();
       if (p.brands) name += (name ? ' · ' : '') + String(p.brands).split(',')[0].trim();
       if (!name) return;
-      out.push({ id: 'off:' + p.code, name: name, p100: p100 || 0, c100: c100 || 0, g100: g100 || 0, k100: k100 || 0, src: 'off', presets: [] });
+      out.push({ id: 'off:' + p.code, name: name, p100: p100 || 0, c100: c100 || 0, g100: g100 || 0, k100: k100 || 0, f100: f100 >= 0 ? f100 : 0, src: 'off', presets: [] });
     });
     _offCache[q] = out;
     cb(out);
@@ -175,17 +199,18 @@ function renderMacros() {
   if (show.p) rings += '<div class="mring-wrap">' + macroRing(totals.p / goals.p, '#60a5fa', 'Proteína', totals.p, goals.p, 'g') + '</div>';
   if (show.c) rings += '<div class="mring-wrap">' + macroRing(totals.c / goals.c, '#fbbf24', 'Carbs', totals.c, goals.c, 'g') + '</div>';
   if (show.g) rings += '<div class="mring-wrap">' + macroRing(totals.g / goals.g, '#34d399', 'Gordura', totals.g, goals.g, 'g') + '</div>';
+  if (show.f) rings += '<div class="mring-wrap">' + macroRing(totals.f / goals.f, '#c084fc', 'Fibra', totals.f, goals.f, 'g') + '</div>';
 
   var mealHtml = meals.map(function (m) {
     var items = entries.filter(function (e) { return e.mealId === m.id; });
     var mt = macroTotals(items);
     var lines = items.length ? items.map(function (it) {
       return '<div class="mline" onclick="macroEditEntry(\'' + it.id + '\')">'
-        + '<div class="mline-l"><div class="mline-n">' + esc(it.name) + '</div><div class="mline-g">' + it.grams + ' g · P ' + it.p + ' · C ' + it.c + ' · G ' + it.g + ' · ' + it.k + ' kcal</div></div>'
+        + '<div class="mline-l"><div class="mline-n">' + esc(it.name) + '</div><div class="mline-g">' + it.grams + ' g · ' + macroFmtLine(it) + '</div></div>'
         + '<button class="rm" onclick="event.stopPropagation();macroDelEntry(\'' + it.id + '\')">✕</button></div>';
     }).join('') : '<div class="rg" style="padding:6px 2px">Nenhum alimento ainda.</div>';
     return '<div class="mmeal"><div class="mmeal-h"><span class="mmeal-t">' + esc(m.name) + '</span>'
-      + '<span class="mmeal-sum">P ' + mt.p + ' · C ' + mt.c + ' · G ' + mt.g + ' · ' + mt.k + ' kcal</span></div>'
+      + '<span class="mmeal-sum">' + macroFmtLine(mt) + '</span></div>'
       + lines
       + '<button class="madd" onclick="macroOpenAdd(\'' + m.id + '\')">+ Adicionar alimento</button></div>';
   }).join('');
@@ -222,6 +247,34 @@ function macroPickDate() {
   JB.datePicker(macroDate(), function (iso) { if (iso) macroSetDate(iso); });
 }
 
+function macroBindAddViewport() {
+  if (_macroVpBound || !window.visualViewport) return;
+  _macroVpBound = true;
+  window.visualViewport.addEventListener('resize', macroSyncAddSheet);
+  window.visualViewport.addEventListener('scroll', macroSyncAddSheet);
+  var ov = $('macroAddOverlay');
+  if (ov) ov.addEventListener('focusin', macroSyncAddSheet);
+}
+function macroSyncAddSheet() {
+  var ov = $('macroAddOverlay');
+  if (!ov || !ov.classList.contains('open')) return;
+  var modal = ov.querySelector('.modal');
+  if (!modal) return;
+  if (window.innerWidth > 540 || !window.visualViewport) {
+    modal.style.marginBottom = '';
+    modal.style.maxHeight = '';
+    return;
+  }
+  var vv = window.visualViewport;
+  var kbGap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+  modal.style.marginBottom = kbGap ? kbGap + 'px' : '';
+  modal.style.maxHeight = Math.max(240, vv.height - 16) + 'px';
+}
+function macroResetAddSheet() {
+  var modal = $('macroAddOverlay') && $('macroAddOverlay').querySelector('.modal');
+  if (modal) { modal.style.marginBottom = ''; modal.style.maxHeight = ''; }
+}
+
 function macroOpenAdd(mealId) {
   _macroPick = { mealId: mealId, food: null, grams: 100 };
   $('macroSearch').value = '';
@@ -231,9 +284,21 @@ function macroOpenAdd(mealId) {
   renderMacroSearch('');
   renderMacroFavQuick();
   $('macroAddOverlay').classList.add('open');
-  setTimeout(function () { var i = $('macroSearch'); if (i) i.focus(); }, 60);
+  macroBindAddViewport();
+  macroSyncAddSheet();
+  setTimeout(function () {
+    var i = $('macroSearch');
+    if (i) {
+      try { i.focus({ preventScroll: true }); } catch (e) { i.focus(); }
+      macroSyncAddSheet();
+    }
+  }, 60);
 }
-function macroCloseAdd() { $('macroAddOverlay').classList.remove('open'); _macroPick = null; }
+function macroCloseAdd() {
+  macroResetAddSheet();
+  $('macroAddOverlay').classList.remove('open');
+  _macroPick = null;
+}
 
 function renderMacroFavQuick() {
   var el = $('macroFavQuick'); if (!el) return;
@@ -244,7 +309,7 @@ function renderMacroFavQuick() {
 }
 function macroSelectFavIdx(i) {
   var f = macroFavs()[i];
-  if (f) macroSelectFood({ id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, src: f.src, presets: [] });
+  if (f) macroSelectFood({ id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: f.f100 || 0, src: f.src, presets: [] });
 }
 
 function onMacroSearch(v) {
@@ -254,7 +319,8 @@ function onMacroSearch(v) {
 
 function renderMacroSearch(q) {
   var el = $('macroSearchList'); if (!el) return;
-  el.innerHTML = '<div class="rg" style="padding:10px">Buscando…</div>';
+  var loading = !el.querySelector('.addrow');
+  if (loading) el.innerHTML = '<div class="rg" style="padding:10px">Buscando…</div>';
   loadBundledFoods(function (bundled) {
     var custom = macroCustomFoods();
     var local = macroSearchBundled(q, bundled.concat(custom));
@@ -264,20 +330,22 @@ function renderMacroSearch(q) {
       off.forEach(function (f) { if (!seen[f.id]) { seen[f.id] = 1; rows.push(f); } });
       if (!rows.length) {
         el.innerHTML = '<div class="rg" style="padding:10px">Nada encontrado. <button class="lnk" onclick="macroOpenCustom()">Criar alimento custom</button></div>';
+        macroSyncAddSheet();
         return;
       }
       el.innerHTML = rows.map(function (f) {
         return '<div class="addrow" onclick="macroSelectFoodById(\'' + escAttr(f.id) + '\',\'' + escAttr(f.src) + '\')">'
           + '<span>' + esc(f.name) + (f.src === 'off' ? ' <span class="modebadge">OFF</span>' : '') + '</span>'
-          + '<span class="plus">P' + f.p100 + ' C' + f.c100 + ' G' + f.g100 + '</span></div>';
+          + '<span class="plus">P' + f.p100 + ' C' + f.c100 + ' G' + f.g100 + ' F' + (f.f100 || 0) + '</span></div>';
       }).join('') + (q ? '<div class="addrow create" onclick="macroOpenCustom(\'' + escAttr(q) + '\')"><span>Criar “' + esc(q) + '” como custom</span><span class="plus">＋</span></div>' : '');
+      macroSyncAddSheet();
     });
   });
 }
 
 function macroFindFood(id, src) {
   var custom = (DATA.macrofoods || []).find(function (f) { return f.id === id; });
-  if (custom) return { id: custom.id, name: custom.name, p100: custom.p100, c100: custom.c100, g100: custom.g100, k100: custom.k100, src: 'custom', presets: [] };
+  if (custom) return { id: custom.id, name: custom.name, p100: custom.p100, c100: custom.c100, g100: custom.g100, k100: custom.k100, f100: Number(custom.f100) || 0, src: 'custom', presets: [] };
   if (_bundledFoods) {
     var b = _bundledFoods.find(function (f) { return f.id === id; });
     if (b) return b;
@@ -315,21 +383,22 @@ function macroSelectFood(f) {
   }).join('');
   $('macroGrams').value = 100;
   macroUpdatePreview();
+  macroSyncAddSheet();
 }
 function macroSetGrams(g) { $('macroGrams').value = g; macroUpdatePreview(); }
 function macroUpdatePreview() {
   if (!_macroPick || !_macroPick.food) return;
   var g = Number(($('macroGrams').value || '').replace(',', '.')) || 0;
-  var s = macroScale(_macroPick.food.p100, _macroPick.food.c100, _macroPick.food.g100, _macroPick.food.k100, g);
-  $('macroPreview').textContent = 'P ' + s.p + ' g · C ' + s.c + ' g · G ' + s.g + ' g · ' + s.k + ' kcal';
+  var s = macroScale(_macroPick.food.p100, _macroPick.food.c100, _macroPick.food.g100, _macroPick.food.k100, g, _macroPick.food.f100);
+  $('macroPreview').textContent = macroFmtLine(s);
 }
 
 function macroConfirmAdd() {
   if (!_macroPick || !_macroPick.food) return;
   var g = Number(($('macroGrams').value || '').replace(',', '.')) || 0;
   if (!(g > 0)) { toast('Informe a quantidade em gramas'); return; }
-  var f = _macroPick.food, s = macroScale(f.p100, f.c100, f.g100, f.k100, g);
-  var entry = { id: uuid(), date: macroDate(), mealId: _macroPick.mealId, name: f.name, grams: g, p: s.p, c: s.c, g: s.g, k: s.k, ref: f.id, src: f.src };
+  var f = _macroPick.food, s = macroScale(f.p100, f.c100, f.g100, f.k100, g, f.f100);
+  var entry = { id: uuid(), date: macroDate(), mealId: _macroPick.mealId, name: f.name, grams: g, p: s.p, c: s.c, g: s.g, f: s.f, k: s.k, ref: f.id, src: f.src };
   DATA.macrolog = DATA.macrolog || [];
   DATA.macrolog.push(entry);
   macroPersistAppend(entry);
@@ -350,9 +419,9 @@ function macroPersistAppend(entry) {
 function macroPersistUpdate(entry) {
   JB.persist({
     run: function () {
-      return fitFindRow('MacroLog', 10, entry.id).then(function (row) {
+      return macroFindLogRow(entry.id).then(function (row) {
         if (row < 0) throw new Error('Registro não encontrado');
-        return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('MacroLog!A' + row + ':K' + row) + '?valueInputOption=RAW'), { values: [macroLogRow(entry)] });
+        return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('MacroLog!A' + row + ':L' + row) + '?valueInputOption=RAW'), { values: [macroLogRow(entry)] });
       });
     },
     onError: fitWriteErr
@@ -361,7 +430,7 @@ function macroPersistUpdate(entry) {
 function macroPersistDelete(id) {
   JB.persist({
     run: function () {
-      return fitFindRow('MacroLog', 10, id).then(function (row) {
+      return macroFindLogRow(id).then(function (row) {
         if (row < 0) throw new Error('Registro não encontrado');
         return JB.api('POST', ssUrl(':batchUpdate'), { requests: [{ deleteDimension: { range: { sheetId: fitGrid['MacroLog'], dimension: 'ROWS', startIndex: row - 1, endIndex: row } } }] });
       });
@@ -373,7 +442,7 @@ function macroPersistDelete(id) {
 function macroAddFav(f) {
   var favs = macroFavs(), key = f.src + ':' + f.id;
   favs = favs.filter(function (x) { return x.key !== key; });
-  favs.unshift({ key: key, id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, src: f.src });
+  favs.unshift({ key: key, id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: f.f100 || 0, src: f.src });
   if (favs.length > 24) favs = favs.slice(0, 24);
   macroSaveFavs(favs);
 }
@@ -384,7 +453,7 @@ function macroQuickFav(key) {
   var meals = macroMeals();
   macroOpenAdd(meals[0] ? meals[0].id : 'breakfast');
   setTimeout(function () {
-    macroSelectFood({ id: fav.id, name: fav.name, p100: fav.p100, c100: fav.c100, g100: fav.g100, k100: fav.k100, src: fav.src, presets: [] });
+    macroSelectFood({ id: fav.id, name: fav.name, p100: fav.p100, c100: fav.c100, g100: fav.g100, k100: fav.k100, f100: fav.f100 || 0, src: fav.src, presets: [] });
   }, 80);
 }
 
@@ -400,8 +469,8 @@ function macroEditEntry(id) {
 function macroEditPreview() {
   if (!_macroEdit) return;
   var g = Number(($('macroEditGrams').value || '').replace(',', '.')) || 0;
-  var per = macroScale(_macroEdit.p / (_macroEdit.grams || 100) * 100, _macroEdit.c / (_macroEdit.grams || 100) * 100, _macroEdit.g / (_macroEdit.grams || 100) * 100, _macroEdit.k / (_macroEdit.grams || 100) * 100, g);
-  $('macroEditPreview').textContent = 'P ' + per.p + ' · C ' + per.c + ' · G ' + per.g + ' · ' + per.k + ' kcal';
+  var per = macroScale(_macroEdit.p / (_macroEdit.grams || 100) * 100, _macroEdit.c / (_macroEdit.grams || 100) * 100, _macroEdit.g / (_macroEdit.grams || 100) * 100, _macroEdit.k / (_macroEdit.grams || 100) * 100, g, (_macroEdit.f || 0) / (_macroEdit.grams || 100) * 100);
+  $('macroEditPreview').textContent = macroFmtLine(per);
 }
 function macroSaveEdit() {
   if (!_macroEdit) return;
@@ -412,6 +481,7 @@ function macroSaveEdit() {
   _macroEdit.p = Math.round(_macroEdit.p * ratio * 10) / 10;
   _macroEdit.c = Math.round(_macroEdit.c * ratio * 10) / 10;
   _macroEdit.g = Math.round(_macroEdit.g * ratio * 10) / 10;
+  _macroEdit.f = Math.round((_macroEdit.f || 0) * ratio * 10) / 10;
   _macroEdit.k = Math.round(_macroEdit.k * ratio);
   macroPersistUpdate(_macroEdit);
   $('macroEditOverlay').classList.remove('open');
@@ -435,7 +505,7 @@ function macroCopyYesterday() {
   JB.confirm('Copiar ontem?', 'Adicionar ' + src.length + ' item(ns) de ' + macroFmtDate(yd) + ' para hoje.', function () {
     var rows = [], date = macroDate();
     src.forEach(function (e) {
-      var n = { id: uuid(), date: date, mealId: e.mealId, name: e.name, grams: e.grams, p: e.p, c: e.c, g: e.g, k: e.k, ref: e.ref, src: e.src };
+      var n = { id: uuid(), date: date, mealId: e.mealId, name: e.name, grams: e.grams, p: e.p, c: e.c, g: e.g, f: e.f || 0, k: e.k, ref: e.ref, src: e.src };
       DATA.macrolog.push(n);
       rows.push(macroLogRow(n));
     });
@@ -456,10 +526,12 @@ function renderMacroSettingsPanel() {
   if ($('macroGoalP')) $('macroGoalP').value = g.p;
   if ($('macroGoalC')) $('macroGoalC').value = g.c;
   if ($('macroGoalG')) $('macroGoalG').value = g.g;
+  if ($('macroGoalF')) $('macroGoalF').value = g.f;
   if ($('macroGoalK')) $('macroGoalK').value = g.kcal;
   if ($('macroShowP')) $('macroShowP').classList.toggle('on', s.p);
   if ($('macroShowC')) $('macroShowC').classList.toggle('on', s.c);
   if ($('macroShowG')) $('macroShowG').classList.toggle('on', s.g);
+  if ($('macroShowF')) $('macroShowF').classList.toggle('on', s.f);
   if ($('macroShowK')) $('macroShowK').classList.toggle('on', s.kcal);
   renderMacroMealsEditor();
   renderMacroCustomList();
@@ -469,6 +541,7 @@ function macroGoalsFromInputs() {
     p: Number($('macroGoalP').value) || 0,
     c: Number($('macroGoalC').value) || 0,
     g: Number($('macroGoalG').value) || 0,
+    f: Number($('macroGoalF').value) || 0,
     kcal: Number($('macroGoalK').value) || 0
   };
 }
@@ -532,6 +605,7 @@ function toggleMacroShow(el) {
     p: $('macroShowP').classList.contains('on'),
     c: $('macroShowC').classList.contains('on'),
     g: $('macroShowG').classList.contains('on'),
+    f: $('macroShowF').classList.contains('on'),
     kcal: $('macroShowK').classList.contains('on')
   });
   renderMacros();
@@ -551,7 +625,7 @@ function macroOpenCustom(prefill) {
   _macroCustomEdit = null;
   macroCustomUi();
   $('macroCustomName').value = prefill || '';
-  $('macroCustomP').value = ''; $('macroCustomC').value = ''; $('macroCustomG').value = ''; $('macroCustomK').value = '';
+  $('macroCustomP').value = ''; $('macroCustomC').value = ''; $('macroCustomG').value = ''; $('macroCustomF').value = ''; $('macroCustomK').value = '';
   $('macroCustomOverlay').classList.add('open');
 }
 function macroEditCustom(id) {
@@ -561,7 +635,7 @@ function macroEditCustom(id) {
   macroCustomUi();
   $('macroCustomName').value = f.name;
   $('macroCustomP').value = f.p100; $('macroCustomC').value = f.c100;
-  $('macroCustomG').value = f.g100; $('macroCustomK').value = f.k100;
+  $('macroCustomG').value = f.g100; $('macroCustomF').value = f.f100 || 0; $('macroCustomK').value = f.k100;
   $('macroCustomOverlay').classList.add('open');
 }
 function macroSyncFavFood(f) {
@@ -569,7 +643,7 @@ function macroSyncFavFood(f) {
   favs = favs.map(function (x) {
     if (x.key !== key) return x;
     changed = true;
-    return { key: key, id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, src: 'custom' };
+    return { key: key, id: f.id, name: f.name, p100: f.p100, c100: f.c100, g100: f.g100, k100: f.k100, f100: f.f100 || 0, src: 'custom' };
   });
   if (changed) macroSaveFavs(favs);
 }
@@ -578,18 +652,19 @@ function macroSaveCustom() {
   var p100 = Number(($('macroCustomP').value || '').replace(',', '.')) || 0;
   var c100 = Number(($('macroCustomC').value || '').replace(',', '.')) || 0;
   var g100 = Number(($('macroCustomG').value || '').replace(',', '.')) || 0;
+  var f100 = Number(($('macroCustomF').value || '').replace(',', '.')) || 0;
   var k100 = Number(($('macroCustomK').value || '').replace(',', '.')) || 0;
   if (!name) { toast('Nome obrigatório'); return; }
   DATA.macrofoods = DATA.macrofoods || [];
   if (_macroCustomEdit) {
     var row = DATA.macrofoods.find(function (x) { return x.id === _macroCustomEdit; });
     if (!row) return;
-    row.name = name; row.p100 = p100; row.c100 = c100; row.g100 = g100; row.k100 = k100;
+    row.name = name; row.p100 = p100; row.c100 = c100; row.g100 = g100; row.f100 = f100; row.k100 = k100;
     JB.persist({
       run: function () {
-        return fitFindRow('MacroFoods', 5, row.id).then(function (r) {
+        return macroFindFoodRow(row.id).then(function (r) {
           if (r < 0) throw new Error('Alimento não encontrado');
-          return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('MacroFoods!A' + r + ':F' + r) + '?valueInputOption=RAW'), { values: [macroFoodRow(row)] });
+          return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('MacroFoods!A' + r + ':G' + r) + '?valueInputOption=RAW'), { values: [macroFoodRow(row)] });
         });
       },
       onSuccess: function () {
@@ -602,7 +677,7 @@ function macroSaveCustom() {
     });
     return;
   }
-  var id = uuid(), row = { id: id, name: name, p100: p100, c100: c100, g100: g100, k100: k100 };
+  var id = uuid(), row = { id: id, name: name, p100: p100, c100: c100, g100: g100, f100: f100, k100: k100 };
   DATA.macrofoods.push(row);
   JB.persist({
     run: function () {
@@ -610,7 +685,7 @@ function macroSaveCustom() {
     },
     onSuccess: function () {
       macroCloseCustom();
-      if (_macroPick) macroSelectFood({ id: id, name: name, p100: p100, c100: c100, g100: g100, k100: k100, src: 'custom', presets: [] });
+      if (_macroPick) macroSelectFood({ id: id, name: name, p100: p100, c100: c100, g100: g100, f100: f100, k100: k100, src: 'custom', presets: [] });
       else { renderMacroCustomList(); toast('✓ Alimento salvo'); }
     },
     onError: fitWriteErr
@@ -628,7 +703,7 @@ function macroDeleteCustom(id) {
     if (favs.length !== macroFavs().length) macroSaveFavs(favs);
     JB.persist({
       run: function () {
-        return fitFindRow('MacroFoods', 5, id).then(function (r) {
+        return macroFindFoodRow(id).then(function (r) {
           if (r < 0) throw new Error('Alimento não encontrado');
           return JB.api('POST', ssUrl(':batchUpdate'), { requests: [{ deleteDimension: { range: { sheetId: fitGrid['MacroFoods'], dimension: 'ROWS', startIndex: r - 1, endIndex: r } } }] });
         });
@@ -647,7 +722,7 @@ function renderMacroCustomList() {
   var foods = DATA.macrofoods || [];
   el.innerHTML = foods.length ? foods.map(function (f) {
     return '<div class="mcustom-row" onclick="macroEditCustom(\'' + f.id + '\')">'
-      + '<div class="mcustom-l"><div class="rn">' + esc(f.name) + '</div><div class="rg">P' + f.p100 + ' C' + f.c100 + ' G' + f.g100 + ' · ' + f.k100 + ' kcal/100g</div></div>'
+      + '<div class="mcustom-l"><div class="rn">' + esc(f.name) + '</div><div class="rg">P' + f.p100 + ' C' + f.c100 + ' G' + f.g100 + ' F' + (f.f100 || 0) + ' · ' + f.k100 + ' kcal/100g</div></div>'
       + '<button class="rm" onclick="event.stopPropagation();macroDeleteCustom(\'' + f.id + '\')">✕</button></div>';
   }).join('') : '<div class="rg">Nenhum alimento custom ainda.</div>';
 }

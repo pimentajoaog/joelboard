@@ -249,8 +249,8 @@ function ensureHeaders() {
   return JB.api('POST', ssUrl('/values:batchUpdate'), {
     valueInputOption: 'RAW',
     data: [
-      { range: 'Filmes!A1:F1', values: [['ID', 'Tipo', 'Título', 'Ano', 'Poster', 'Adicionado']] },
-      { range: 'Assistidos!A1:F1', values: [['Data', 'MediaID', 'Email', 'Estrelas', 'Resenha', 'JBOE']] }
+      { range: 'Filmes!A1:H1', values: [['ID', 'Tipo', 'Título', 'Ano', 'Poster', 'Adicionado', 'JLBOE Joel', 'JLBOE Julia']] },
+      { range: 'Assistidos!A1:E1', values: [['Data', 'MediaID', 'Email', 'Estrelas', 'Resenha']] }
     ]
   }).catch(function () {});
 }
@@ -265,6 +265,8 @@ function loadAll() {
     media = parseMedia(res[0].values || []);
     sessions = parseSessions(res[1].values || []);
     return migrateLegacyRatings(res[2].values || []);
+  }).then(function () {
+    return migrateSessionJboeToMedia();
   }).then(function () {
     return refreshAllPosters();
   });
@@ -320,7 +322,7 @@ function migrateLegacyRatings(avaliacoesRows) {
       return s.mediaId === rt.mediaId && s.email === rt.email && (s.stars || s.review);
     });
     if (has) return;
-    toAppend.push([rt.updated || todayISO(), rt.mediaId, rt.email, String(rt.stars || ''), rt.review || '', '']);
+    toAppend.push([rt.updated || todayISO(), rt.mediaId, rt.email, String(rt.stars || ''), rt.review || '']);
     if (rt.sheetRow) avRowsToDelete.push(rt.sheetRow);
   });
   if (!toAppend.length) {
@@ -395,32 +397,44 @@ function reloadAll() {
   });
 }
 
+function jlboEmailCol(em) {
+  if (em === JULIOEL_EMAILS[0]) return 'G';
+  if (em === JULIOEL_EMAILS[1]) return 'H';
+  return null;
+}
+
 function parseMedia(rows) {
   var out = [];
   var header = rows[0] || [];
   var hasTipoCol = String(header[1] || '').toLowerCase() === 'tipo';
+  var hasJlboCols = String(header[6] || '').toLowerCase().indexOf('jlbo') >= 0;
   for (var i = 1; i < rows.length; i++) {
     var r = rows[i] || [];
     if (!r[0]) continue;
     var useNew = hasTipoCol && (r[1] === 'Filme' || r[1] === 'Série' || r[1] === 'Jogo');
     if (useNew) {
       var typeN = r[1] === 'Série' ? 'tv' : (r[1] === 'Jogo' ? 'game' : 'movie');
+      var jlbo = {};
+      if (hasJlboCols) {
+        jlbo[JULIOEL_EMAILS[0]] = jlboTruthy(r[6]);
+        jlbo[JULIOEL_EMAILS[1]] = jlboTruthy(r[7]);
+      }
       out.push({
         key: String(r[0]), type: typeN, title: String(r[2] || ''), year: String(r[3] || ''),
-        poster: String(r[4] || ''), added: String(r[5] || ''), sheetRow: i + 1, layout: 'new'
+        poster: String(r[4] || ''), added: String(r[5] || ''), jlbo: jlbo, sheetRow: i + 1, layout: 'new'
       });
     } else {
       var parsed = parseMediaId(r[0]);
       out.push({
         key: parsed.key, type: parsed.type, title: String(r[1] || ''), year: String(r[2] || ''),
-        poster: String(r[3] || ''), added: String(r[4] || ''), sheetRow: i + 1, layout: 'old'
+        poster: String(r[3] || ''), added: String(r[4] || ''), jlbo: {}, sheetRow: i + 1, layout: 'old'
       });
     }
   }
   return out;
 }
 
-function jboeTruthy(v) {
+function jlboTruthy(v) {
   var s = String(v == null ? '' : v).trim().toLowerCase();
   return s === '1' || s === 'sim' || s === 'true' || s === 'yes' || s === 'jboe' || s === '✓';
 }
@@ -442,11 +456,75 @@ function parseSessions(rows) {
       email: String(r[2] || '').toLowerCase(),
       stars: hasStarsCol ? (parseInt(r[3], 10) || 0) : 0,
       review: hasStarsCol ? String(r[4] || '') : (legacyNote ? String(r[3] || '') : String(r[4] || '')),
-      jboe: hasJboeCol ? jboeTruthy(r[5]) : false,
+      legacyJboe: hasJboeCol ? jlboTruthy(r[5]) : false,
       sheetRow: i + 1
     });
   }
   return out;
+}
+
+function sessionJboeMigrateKey() {
+  return 'jb_pr_jlbo_migrated_' + (JB.getSheetId(APP) || '');
+}
+
+function markSessionJboeMigrated() {
+  try { localStorage.setItem(sessionJboeMigrateKey(), '1'); } catch (_) {}
+}
+
+function sessionJboeAlreadyMigrated() {
+  try { return localStorage.getItem(sessionJboeMigrateKey()) === '1'; } catch (_) { return false; }
+}
+
+function migrateSessionJboeToMedia() {
+  if (sessionJboeAlreadyMigrated()) return Promise.resolve();
+  var updates = [];
+  media.forEach(function (m) {
+    if (m.layout !== 'new' || !m.sheetRow) return;
+    JULIOEL_EMAILS.forEach(function (em) {
+      if (m.jlbo && m.jlbo[em]) return;
+      var stamped = sessions.some(function (s) {
+        return s.mediaId === m.key && s.email === em && s.legacyJboe;
+      });
+      if (!stamped) return;
+      var col = jlboEmailCol(em);
+      if (!col) return;
+      if (!m.jlbo) m.jlbo = {};
+      m.jlbo[em] = true;
+      updates.push(
+        JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Filmes!' + col + m.sheetRow) + '?valueInputOption=RAW'), { values: [['1']] })
+      );
+    });
+  });
+  if (!updates.length) {
+    markSessionJboeMigrated();
+    return Promise.resolve();
+  }
+  return Promise.all(updates).then(function () { markSessionJboeMigrated(); });
+}
+
+function userHasJlbo(m, em) {
+  return !!(m && m.jlbo && m.jlbo[(em || '').toLowerCase()]);
+}
+
+function mediaHasFullJlbo(mediaId) {
+  var m = media.find(function (x) { return x.key === String(mediaId); });
+  if (!m) return false;
+  return JULIOEL_EMAILS.every(function (em) { return userHasJlbo(m, em); });
+}
+
+function userCanStampMedia(m, em) {
+  var s = latestStarsByUser(m.key)[(em || '').toLowerCase()];
+  return !!(s && s.stars === 5);
+}
+
+function updateMediaJlbo(mediaId, em, on) {
+  var m = media.find(function (x) { return x.key === String(mediaId); });
+  if (!m || m.layout !== 'new' || !m.sheetRow) return Promise.resolve();
+  var col = jlboEmailCol(em);
+  if (!col) return Promise.resolve();
+  if (!m.jlbo) m.jlbo = {};
+  m.jlbo[em] = !!on;
+  return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Filmes!' + col + m.sheetRow) + '?valueInputOption=RAW'), { values: [[on ? '1' : '']] });
 }
 
 function sessionsFor(mediaId) {
@@ -468,14 +546,6 @@ function latestStarsByUser(mediaId) {
   return map;
 }
 
-function mediaHasJboe(mediaId) {
-  var byUser = latestStarsByUser(mediaId);
-  return JULIOEL_EMAILS.some(function (em) {
-    var s = byUser[em];
-    return s && s.stars === 5 && s.jboe;
-  });
-}
-
 function sessionByRow(sheetRow) {
   return sessions.find(function (s) { return s.sheetRow === sheetRow; });
 }
@@ -490,15 +560,15 @@ function sortedMedia() {
   });
 }
 
-function jboeSealHtml(title) {
-  return '<span class="jboe-stamp" title="' + attrEsc(title || 'Julioel Brand Of Excellence™') + '"><span class="jboe-j">J</span><span class="jboe-tm">™</span></span>';
+function jlboSealHtml(title) {
+  return '<span class="jlbo-stamp" title="' + attrEsc(title || 'Julioel Brand Of Excellence™') + '"><span class="jlbo-jl">JL</span><span class="jlbo-tm">™</span></span>';
 }
 
-function starsHtml(n, jboe) {
+function starsHtml(n, showJlbo) {
   n = Math.max(0, Math.min(5, n | 0));
   var h = '';
   for (var i = 1; i <= 5; i++) h += '<span class="mstar' + (i <= n ? ' on' : '') + '">★</span>';
-  if (jboe && n === 5) h += jboeSealHtml();
+  if (showJlbo) h += jlboSealHtml();
   return h;
 }
 
@@ -541,10 +611,10 @@ function renderMain() {
     var blocks = JULIOEL_EMAILS.map(function (em) {
       var s = byUser[em];
       if (!s || !s.stars) return '';
-      return '<div class="who">' + esc(userLabel(em)) + '</div><div class="row">' + starsHtml(s.stars, s.jboe) + '</div>';
+      return '<div class="who">' + esc(userLabel(em)) + '</div><div class="row">' + starsHtml(s.stars, userHasJlbo(m, em)) + '</div>';
     }).join('');
     var latest = latestSession(m.key);
-    html += '<div class="mcard' + (mediaHasJboe(m.key) ? ' jboe-glow' : '') + '" style="animation-delay:' + (idx * 0.04) + 's" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
+    html += '<div class="mcard' + (mediaHasFullJlbo(m.key) ? ' jlbo-glow' : '') + '" style="animation-delay:' + (idx * 0.04) + 's" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
       + '<div class="mposter">' + posterVisual(posterPathFor(m), typeIcon(m.type))
       + '<span class="mbadge">' + typeIcon(m.type) + '</span></div>'
       + '<div class="mbody"><div class="mtitle">' + esc(m.title) + '</div><div class="myear">' + esc(m.year) + '</div>'
@@ -734,7 +804,7 @@ function sessRowHtml(s, isLatest) {
   var del = mine ? '<button type="button" class="sess-del" onclick="event.stopPropagation();deleteSession(' + s.sheetRow + ')" title="Excluir registro">✕</button>' : '';
   return '<div class="sess-row' + (isLatest ? ' latest' : '') + (editSessionRow === s.sheetRow ? ' editing' : '') + '" data-sheet-row="' + s.sheetRow + '">'
     + '<div class="sr-main"><span class="sr-date">' + esc(JB.fmtDate(s.date)) + '</span><span class="sr-who">' + esc(userLabel(s.email)) + '</span></div>'
-    + (s.stars ? '<div class="sr-stars">' + starsHtml(s.stars, s.jboe) + '</div>' : '')
+    + (s.stars ? '<div class="sr-stars">' + starsHtml(s.stars) + '</div>' : '')
     + (s.review ? '<span class="sr-note">' + esc(s.review) + '</span>' : '')
     + '<div class="sr-actions">' + edit + del + '</div></div>';
 }
@@ -767,6 +837,27 @@ function deleteSession(sheetRow) {
   }, { yes: 'Excluir', no: 'Cancelar', danger: true });
 }
 
+function jlboBlockHtml(m) {
+  if (!canEditPrateleira()) return '';
+  var myEm = (JB.email() || '').toLowerCase();
+  var rows = JULIOEL_EMAILS.map(function (em) {
+    var sealed = userHasJlbo(m, em);
+    return '<div class="jlbo-who"><span>' + esc(userLabel(em)) + '</span>' + (sealed ? jlboSealHtml() : '<span class="jlbo-pending">—</span>') + '</div>';
+  }).join('');
+  var canStamp = userCanStampMedia(m, myEm);
+  var mineOn = userHasJlbo(m, myEm);
+  var manage = '';
+  if (canStamp) {
+    manage = '<button type="button" class="jlbo-manage' + (mineOn ? ' on' : '') + '" id="jlboManageBtn" data-on="' + (mineOn ? '1' : '0') + '" onclick="toggleJlboManage()">'
+      + jlboSealHtml() + '<span>' + (mineOn ? 'Selado · toque para remover' : 'Selar este título com JLBOE™') + '</span></button>';
+  } else if (!mineOn) {
+    manage = '<p class="jlbo-hint">Dê 5 estrelas no seu último registro para poder selar.</p>';
+  } else {
+    manage = '<p class="jlbo-hint">Você selou este título. Julia ainda não — sem glow completo.</p>';
+  }
+  return '<div class="jlbo-block"><div class="sess-label">JLBOE™ no título</div><div class="jlbo-status">' + rows + '</div>' + manage + '</div>';
+}
+
 function logFormHtml(m) {
   var myEm = (JB.email() || '').toLowerCase();
   if (JULIOEL_EMAILS.indexOf(myEm) < 0) return '';
@@ -779,10 +870,10 @@ function logFormHtml(m) {
     + '<div class="fg"><label class="fl">Data</label>'
     + '<button type="button" class="field datebtn empty" id="sessDate" data-iso="" data-ph="Escolher data…" onclick="JB.dpOpen(\'sessDate\')">Escolher data…</button></div>'
     + '<div class="fg"><label class="fl">Estrelas</label><div class="star-pick" id="logStars" data-val="0">' + stars + '</div></div>'
-    + '<div class="jboe-pick hidden" id="jboePick"><button type="button" class="jboe-btn" id="jboeBtn" data-on="0" onclick="toggleJboe()">'
-    + '<span class="jboe-seal-preview">' + jboeSealHtml() + '</span>'
-    + '<span class="jboe-btn-txt"><span class="jboe-btn-label">Julioel Brand Of Excellence™</span>'
-    + '<span class="jboe-btn-sub">toque para selar · só com 5 estrelas</span></span></button></div>'
+    + '<div class="jlbo-pick hidden" id="jlboPick"><button type="button" class="jlbo-btn" id="jlboBtn" data-on="0" onclick="toggleJlbo()">'
+    + '<span class="jlbo-seal-preview">' + jlboSealHtml() + '</span>'
+    + '<span class="jlbo-btn-txt"><span class="jlbo-btn-label">Julioel Brand Of Excellence™</span>'
+    + '<span class="jlbo-btn-sub">sela o título · não o registro · só com 5 estrelas</span></span></button></div>'
     + '<textarea class="review-in" id="sessReview" maxlength="' + REVIEW_MAX + '" placeholder="Resenha curta (opcional)" oninput="revCount(this)"></textarea>'
     + '<div class="rev-count"><span class="rc">0</span>/' + REVIEW_MAX + '</div>'
     + '<div class="sess-form-actions">'
@@ -802,10 +893,10 @@ function openDetail(id) {
   var m = media.find(function (x) { return x.key === String(id); });
   if (!m) return;
   document.getElementById('detailTitle').textContent = m.title;
-  document.getElementById('detailBody').innerHTML = '<div class="dhero' + (mediaHasJboe(m.key) ? ' jboe-glow' : '') + '">'
+  document.getElementById('detailBody').innerHTML = '<div class="dhero' + (mediaHasFullJlbo(m.key) ? ' jlbo-glow' : '') + '">'
     + '<div class="mposter dhero-poster">' + posterVisual(posterPathFor(m), typeIcon(m.type)) + '</div>'
     + '<div class="dmeta"><h2>' + esc(m.title) + '</h2><p>' + esc(typeLabel(m.type)) + ' · ' + esc(m.year) + '</p></div></div>'
-    + sessionBlockHtml(m.key) + logFormHtml(m);
+    + jlboBlockHtml(m) + sessionBlockHtml(m.key) + logFormHtml(m);
   resetSessionForm();
   document.getElementById('detailOv').classList.add('open');
 }
@@ -818,7 +909,7 @@ function resetSessionForm() {
     starsWrap.setAttribute('data-val', '0');
     starsWrap.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); });
   }
-  syncJboePick(0);
+  syncJlboPick(0);
   var reviewEl = document.getElementById('sessReview');
   if (reviewEl) {
     reviewEl.value = '';
@@ -848,12 +939,32 @@ function fillSessionForm(s) {
     reviewEl.value = s.review || '';
     revCount(reviewEl);
   }
-  var jboeBtn = document.getElementById('jboeBtn');
-  if (jboeBtn) {
-    var on = !!(s.jboe && s.stars === 5);
-    jboeBtn.setAttribute('data-on', on ? '1' : '0');
-    jboeBtn.classList.toggle('on', on);
+}
+
+function setJlboToggle(on) {
+  var btn = document.getElementById('jlboBtn');
+  if (!btn) return;
+  btn.setAttribute('data-on', on ? '1' : '0');
+  btn.classList.toggle('on', !!on);
+  var manage = document.getElementById('jlboManageBtn');
+  if (manage) {
+    manage.setAttribute('data-on', on ? '1' : '0');
+    manage.classList.toggle('on', !!on);
   }
+}
+
+function toggleJlboManage() {
+  var btn = document.getElementById('jlboManageBtn');
+  if (!btn || !detailId) return;
+  var em = (JB.email() || '').toLowerCase();
+  var m = media.find(function (x) { return x.key === String(detailId); });
+  if (!m || !userCanStampMedia(m, em)) return;
+  var on = btn.getAttribute('data-on') !== '1';
+  updateMediaJlbo(detailId, em, on).then(function () {
+    return reloadAll();
+  }).then(function () {
+    JB.toast(on ? '✓ Título selado com JLBOE™' : '✓ Selo removido');
+  }).catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
 }
 
 function editSession(sheetRow) {
@@ -886,12 +997,15 @@ function toggleSessHist() {
 
 function closeDetail() { document.getElementById('detailOv').classList.remove('open'); detailId = null; editSessionRow = null; sessHistOpen = false; }
 
-function syncJboePick(stars) {
-  var pick = document.getElementById('jboePick');
-  var btn = document.getElementById('jboeBtn');
+function syncJlboPick(stars) {
+  var pick = document.getElementById('jlboPick');
+  var btn = document.getElementById('jlboBtn');
   if (!pick || !btn) return;
-  if (stars === 5) {
+  var m = media.find(function (x) { return x.key === String(detailId); });
+  var em = (JB.email() || '').toLowerCase();
+  if (stars === 5 && m && userCanStampMedia(m, em)) {
     pick.classList.remove('hidden');
+    setJlboToggle(userHasJlbo(m, em));
     return;
   }
   pick.classList.add('hidden');
@@ -906,15 +1020,14 @@ function pickLogStar(n) {
   wrap.querySelectorAll('button').forEach(function (b) {
     b.classList.toggle('on', parseInt(b.getAttribute('data-star'), 10) <= n);
   });
-  syncJboePick(n);
+  syncJlboPick(n);
 }
 
-function toggleJboe() {
-  var btn = document.getElementById('jboeBtn');
+function toggleJlbo() {
+  var btn = document.getElementById('jlboBtn');
   if (!btn) return;
   var on = btn.getAttribute('data-on') !== '1';
-  btn.setAttribute('data-on', on ? '1' : '0');
-  btn.classList.toggle('on', on);
+  setJlboToggle(on);
 }
 
 function revCount(ta) {
@@ -932,16 +1045,19 @@ function saveSession() {
   var stars = parseInt(starsWrap && starsWrap.getAttribute('data-val'), 10) || 0;
   var reviewEl = document.getElementById('sessReview');
   var review = reviewEl ? (reviewEl.value || '').trim().slice(0, REVIEW_MAX) : '';
-  var jboeBtn = document.getElementById('jboeBtn');
-  var jboe = stars === 5 && jboeBtn && jboeBtn.getAttribute('data-on') === '1';
-  var row = [iso, String(detailId), em, String(stars), review, jboe ? '1' : ''];
+  var jlboBtn = document.getElementById('jlboBtn');
+  var stampOn = stars === 5 && jlboBtn && !jlboBtn.closest('.hidden') && jlboBtn.getAttribute('data-on') === '1';
+  var row = [iso, String(detailId), em, String(stars), review];
   var editing = editSessionRow;
   var req = editing
-    ? JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Assistidos!A' + editSessionRow + ':F' + editSessionRow) + '?valueInputOption=RAW'), { values: [row] })
+    ? JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Assistidos!A' + editSessionRow + ':E' + editSessionRow) + '?valueInputOption=RAW'), { values: [row] })
     : JB.api('POST', ssUrl('/values/' + encodeURIComponent('Assistidos') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] });
-  req.then(function () { return reloadAll(); })
+  req.then(function () {
+    if (stars !== 5 || !jlboBtn || jlboBtn.closest('.hidden')) return Promise.resolve();
+    return updateMediaJlbo(detailId, em, stampOn);
+  }).then(function () { return reloadAll(); })
     .then(function () {
-      JB.toast(editing ? '✓ Atualizado' : (jboe ? '✓ Selado com JBOE™' : '✓ Registrado'));
+      JB.toast(editing ? '✓ Atualizado' : (stampOn ? '✓ Título selado com JLBOE™' : '✓ Registrado'));
       editSessionRow = null;
       resetSessionForm();
     })

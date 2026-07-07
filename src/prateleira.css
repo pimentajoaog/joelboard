@@ -119,9 +119,10 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .shelf-jlbo-corner.half-julia .jlbo-stamp{ clip-path:polygon(50% 0, 100% 0, 100% 100%, 50% 100%); }
 .shelf-jlbo-corner.half::after{
   content:''; position:absolute; inset:0; border-radius:999px;
-  border:1.5px dashed color-mix(in srgb, #fbbf24 52%, transparent);
+  border:2px dashed rgba(251,191,36,.88);
   box-sizing:border-box; transform:rotate(-14deg); transform-origin:50% 50%;
-  opacity:.72; pointer-events:none;
+  opacity:1; pointer-events:none;
+  box-shadow:0 0 5px rgba(251,191,36,.28);
 }
 .shelf-jlbo-corner.half-joel::after{ clip-path:polygon(50% 0, 100% 0, 100% 100%, 50% 100%); }
 .shelf-jlbo-corner.half-julia::after{ clip-path:polygon(0 0, 50% 0, 50% 100%, 0 100%); }

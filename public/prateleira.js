@@ -23,6 +23,7 @@ var sessHistOpen = false;
 var searchTimer = null;
 var searchMode = 'screen';
 var posterCache = {};
+var userIcons = {};
 var addBusy = {};
 
 var LIB_FILTERS_KEY = 'jb_pr_lib_filters';
@@ -50,19 +51,98 @@ function userIconKey(em) {
 
 function getUserIcon(em) {
   em = (em || '').toLowerCase();
-  try {
-    var saved = localStorage.getItem(userIconKey(em));
-    if (saved) return saved.slice(0, 8);
-  } catch (_) {}
-  return DEFAULT_USER_ICONS[em] || '👤';
+  return userIcons[em] || DEFAULT_USER_ICONS[em] || '👤';
 }
 
-function setUserIcon(em, icon) {
+function persistUserIconLocal(em, icon) {
   try {
     var val = String(icon || '').trim().slice(0, 8);
     if (val) localStorage.setItem(userIconKey(em), val);
     else localStorage.removeItem(userIconKey(em));
   } catch (_) {}
+}
+
+function parseUserIcons(rows) {
+  var map = {};
+  for (var i = 1; i < (rows || []).length; i++) {
+    var r = rows[i] || [];
+    var em = String(r[0] || '').toLowerCase();
+    var icon = String(r[1] || '').trim().slice(0, 8);
+    if (em && icon) map[em] = icon;
+  }
+  return map;
+}
+
+function applyUserIconsFromSheet(rows) {
+  userIcons = parseUserIcons(rows || []);
+  JULIOEL_EMAILS.forEach(function (em) {
+    if (!userIcons[em] && DEFAULT_USER_ICONS[em]) userIcons[em] = DEFAULT_USER_ICONS[em];
+  });
+}
+
+function perfilRowFor(em) {
+  var idx = JULIOEL_EMAILS.indexOf((em || '').toLowerCase());
+  return idx < 0 ? null : idx + 2;
+}
+
+function perfilSeedValues() {
+  var rows = [['Email', 'Ícone']];
+  JULIOEL_EMAILS.forEach(function (em) {
+    var icon = DEFAULT_USER_ICONS[em] || '👤';
+    try {
+      var local = localStorage.getItem(userIconKey(em));
+      if (local) icon = local.slice(0, 8);
+    } catch (_) {}
+    rows.push([em, icon]);
+  });
+  return rows;
+}
+
+function migrateLocalIconForUser() {
+  var em = (JB.email() || '').toLowerCase();
+  if (JULIOEL_EMAILS.indexOf(em) < 0) return Promise.resolve();
+  var row = perfilRowFor(em);
+  if (!row) return Promise.resolve();
+  if (userIcons[em] && userIcons[em] !== DEFAULT_USER_ICONS[em]) return Promise.resolve();
+  try {
+    var local = localStorage.getItem(userIconKey(em));
+    if (!local || local === userIcons[em]) return Promise.resolve();
+    userIcons[em] = local.slice(0, 8);
+    persistUserIconLocal(em, userIcons[em]);
+    return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Perfil!A' + row + ':B' + row) + '?valueInputOption=RAW'), { values: [[em, userIcons[em]]] });
+  } catch (_) { return Promise.resolve(); }
+}
+
+function ensurePerfilSheet(rows) {
+  rows = rows || [];
+  var hasHeader = rows.length && String(rows[0][0] || '').toLowerCase() === 'email';
+  if (hasHeader && rows.length > 1) {
+    applyUserIconsFromSheet(rows);
+    return migrateLocalIconForUser();
+  }
+  var seed = perfilSeedValues();
+  applyUserIconsFromSheet(seed);
+  return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Perfil!A1:B' + seed.length) + '?valueInputOption=RAW'), { values: seed })
+    .then(function () { return migrateLocalIconForUser(); });
+}
+
+function loadPerfil() {
+  return JB.api('GET', ssUrl('/values/' + encodeURIComponent('Perfil') + '?valueRenderOption=FORMATTED_VALUE'))
+    .catch(function () { return { values: [] }; })
+    .then(function (res) {
+      return ensurePerfilSheet(res.values || []);
+    });
+}
+
+function saveUserIconToSheet(em, icon) {
+  em = (em || '').toLowerCase();
+  if (JULIOEL_EMAILS.indexOf(em) < 0) return Promise.reject(new Error('Sem permissão'));
+  var row = perfilRowFor(em);
+  if (!row) return Promise.resolve();
+  var val = String(icon || '').trim().slice(0, 8) || DEFAULT_USER_ICONS[em] || '👤';
+  userIcons[em] = val;
+  persistUserIconLocal(em, val);
+  return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Perfil!A' + row + ':B' + row) + '?valueInputOption=RAW'), { values: [[em, val]] });
 }
 
 function userIconHtml(em) {
@@ -408,7 +488,7 @@ function boot() {
   whenTmdbReady(function () {
     resolveSheet()
       .then(loadAll)
-      .then(function () { showApp(); renderMain(); JB.watchSheet(APP, reloadAll); })
+      .then(function () { showApp(); renderMain(); refreshMissingPosters(); JB.watchSheet(APP, reloadAll); })
       .catch(handleBootErr);
   });
 }
@@ -447,7 +527,7 @@ function resolveSheet() {
 
 function ensureTabs(grid) {
   grid = grid || {};
-  var missing = ['Filmes', 'Assistidos'].filter(function (t) { return grid[t] == null; });
+  var missing = ['Filmes', 'Assistidos', 'Perfil'].filter(function (t) { return grid[t] == null; });
   if (!missing.length) return Promise.resolve(grid);
   return JB.api('POST', ssUrl(':batchUpdate'), {
     requests: missing.map(function (title) { return { addSheet: { properties: { title: title } } }; })
@@ -464,26 +544,97 @@ function ensureHeaders() {
     valueInputOption: 'RAW',
     data: [
       { range: 'Filmes!A1:H1', values: [['ID', 'Tipo', 'Título', 'Ano', 'Poster', 'Adicionado', 'JLBOE Joel', 'JLBOE Julia']] },
-      { range: 'Assistidos!A1:E1', values: [['Data', 'MediaID', 'Email', 'Estrelas', 'Resenha']] }
+      { range: 'Assistidos!A1:E1', values: [['Data', 'MediaID', 'Email', 'Estrelas', 'Resenha']] },
+      { range: 'Perfil!A1:B1', values: [['Email', 'Ícone']] }
     ]
   }).catch(function () {});
 }
 
 function loadAll() {
-  posterCache = {};
-  return Promise.all([
-    JB.api('GET', ssUrl('/values/' + encodeURIComponent('Filmes') + '?valueRenderOption=FORMATTED_VALUE')),
-    JB.api('GET', ssUrl('/values/' + encodeURIComponent('Assistidos') + '?valueRenderOption=FORMATTED_VALUE')).catch(function () { return { values: [] }; }),
-    JB.api('GET', ssUrl('/values/' + encodeURIComponent('Avaliacoes') + '?valueRenderOption=FORMATTED_VALUE')).catch(function () { return { values: [] }; })
-  ]).then(function (res) {
-    media = parseMedia(res[0].values || []);
-    sessions = parseSessions(res[1].values || []);
-    return migrateLegacyRatings(res[2].values || []);
-  }).then(function () {
-    return migrateSessionJboeToMedia();
-  }).then(function () {
-    return refreshAllPosters();
+  return JB.api('GET', ssUrl('/values:batchGet?ranges=' + encodeURIComponent('Filmes') + '&ranges=' + encodeURIComponent('Assistidos') + '&valueRenderOption=FORMATTED_VALUE'))
+    .then(function (res) {
+      var ranges = res.valueRanges || [];
+      media = parseMedia((ranges[0] && ranges[0].values) || []);
+      sessions = parseSessions((ranges[1] && ranges[1].values) || []);
+      syncPosterCache();
+    })
+    .then(function () {
+      return JB.api('GET', ssUrl('/values/' + encodeURIComponent('Avaliacoes') + '?valueRenderOption=FORMATTED_VALUE'))
+        .catch(function () { return { values: [] }; });
+    })
+    .then(function (res) {
+      return migrateLegacyRatings((res && res.values) || []);
+    }).then(function () {
+      return migrateSessionJboeToMedia();
+    }).then(function () {
+      return loadPerfil();
+    });
+}
+
+function loadFilmes() {
+  return JB.api('GET', ssUrl('/values/' + encodeURIComponent('Filmes') + '?valueRenderOption=FORMATTED_VALUE'))
+    .then(function (res) {
+      media = parseMedia(res.values || []);
+      syncPosterCache();
+    });
+}
+
+function loadSessions() {
+  return JB.api('GET', ssUrl('/values/' + encodeURIComponent('Assistidos') + '?valueRenderOption=FORMATTED_VALUE'))
+    .then(function (res) {
+      sessions = parseSessions(res.values || []);
+    });
+}
+
+function syncPosterCache() {
+  media.forEach(function (m) {
+    if (m.poster) posterCache[m.key] = m.poster;
   });
+}
+
+function mediaNeedsPoster(m) {
+  return !String(m.poster || posterCache[m.key] || '').trim();
+}
+
+function musicCoverUrl(mbid) {
+  if (!mbid) return '';
+  return 'https://coverartarchive.org/release-group/' + encodeURIComponent(mbid) + '/front-500';
+}
+
+var posterRefreshGen = 0;
+function refreshMissingPosters() {
+  var gen = ++posterRefreshGen;
+  var todo = media.filter(function (m) {
+    if (!mediaNeedsPoster(m)) return false;
+    if (m.type === 'game') return isCatalogGameId(parseMediaId(m.key).id);
+    if (m.type === 'music') return isCatalogMusicId(parseMediaId(m.key).id);
+    return !!tmdbKey();
+  });
+  if (!todo.length) return Promise.resolve();
+  var CONC = 4;
+  var idx = 0;
+  function pump() {
+    if (gen !== posterRefreshGen) return Promise.resolve();
+    var batch = [];
+    while (batch.length < CONC && idx < todo.length) batch.push(todo[idx++]);
+    if (!batch.length) return Promise.resolve();
+    return Promise.all(batch.map(fetchPosterFor)).then(pump).then(function () {
+      if (gen !== posterRefreshGen) return;
+      if (curTab === 'lib') renderMain();
+      if (detailId) {
+        var m = media.find(function (x) { return x.key === String(detailId); });
+        var ph = document.querySelector('.dhero-poster');
+        if (m && ph) ph.innerHTML = posterVisual(posterPathFor(m), typeIcon(m.type));
+      }
+    });
+  }
+  return pump();
+}
+
+function fetchPosterFor(m) {
+  if (m.type === 'game') return fetchPosterFromCatalog(m);
+  if (m.type === 'music') return fetchPosterFromMusic(m);
+  return fetchPosterFromTmdb(m);
 }
 
 function parseLegacyRatings(rows) {
@@ -555,19 +706,7 @@ function migrateLegacyRatings(avaliacoesRows) {
 }
 
 function refreshAllPosters() {
-  var todo = media.filter(function (m) {
-    if (m.type === 'game') return isCatalogGameId(parseMediaId(m.key).id);
-    if (m.type === 'music') return isCatalogMusicId(parseMediaId(m.key).id);
-    return !!tmdbKey();
-  });
-  if (!todo.length) return Promise.resolve();
-  return todo.reduce(function (chain, m) {
-    return chain.then(function () {
-      if (m.type === 'game') return fetchPosterFromCatalog(m);
-      if (m.type === 'music') return fetchPosterFromMusic(m);
-      return fetchPosterFromTmdb(m);
-    });
-  }, Promise.resolve());
+  return refreshMissingPosters();
 }
 
 function fetchPosterFromCatalog(m) {
@@ -589,16 +728,12 @@ function fetchPosterFromCatalog(m) {
 function fetchPosterFromMusic(m) {
   var parsed = parseMediaId(m.key);
   if (parsed.type !== 'music' || !isCatalogMusicId(parsed.id)) return Promise.resolve();
-  return musicFetch({ album: parsed.id })
-    .then(function (item) {
-      var poster = item.cover || '';
-      if (!poster) return;
-      m.poster = poster;
-      posterCache[m.key] = poster;
-      if (!m.sheetRow) return;
-      var col = m.layout === 'new' ? 'E' : 'D';
-      return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Filmes!' + col + m.sheetRow) + '?valueInputOption=RAW'), { values: [[poster]] });
-    })
+  var poster = musicCoverUrl(parsed.id);
+  m.poster = poster;
+  posterCache[m.key] = poster;
+  if (!m.sheetRow) return Promise.resolve();
+  var col = m.layout === 'new' ? 'E' : 'D';
+  return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Filmes!' + col + m.sheetRow) + '?valueInputOption=RAW'), { values: [[poster]] })
     .catch(function () {});
 }
 
@@ -624,10 +759,26 @@ function reloadAll() {
     renderMain();
     if (detailId && !media.find(function (m) { return m.key === String(detailId); })) closeDetail();
     else if (detailId) openDetail(detailId);
+    refreshMissingPosters();
   }).catch(function (e) {
     if (isAuthErr(e)) showAuthGate();
     else JB.toast('Erro ao atualizar: ' + (e.message || ''));
   });
+}
+
+function reloadSessions() {
+  return loadSessions().then(function () {
+    renderMain();
+    if (detailId) openDetail(detailId);
+  }).catch(function (e) {
+    if (isAuthErr(e)) showAuthGate();
+    else JB.toast('Erro ao atualizar: ' + (e.message || ''));
+  });
+}
+
+function refreshPrateleiraUi() {
+  renderMain();
+  if (detailId) openDetail(detailId);
 }
 
 function jlboEmailCol(em) {
@@ -1042,7 +1193,7 @@ function addFromCatalog(catalogId) {
       if (poster) posterCache[key] = poster;
       var row = [key, 'Jogo', title, year, poster, JB.fmtDate(new Date())];
       return JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
-        .then(function () { return loadAll(); })
+        .then(function () { return loadFilmes(); })
         .then(function () { JB.toast('✓ Registre quando jogarem'); openDetail(key); });
     })
     .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
@@ -1062,7 +1213,7 @@ function addManualGame() {
   var key = mediaKey('game', gameId());
   var row = [key, 'Jogo', title, year, '', JB.fmtDate(new Date())];
   JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
-    .then(function () { return loadAll(); })
+    .then(function () { return loadFilmes(); })
     .then(function () { JB.toast('✓ Registre quando jogarem'); openDetail(key); })
     .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
     .finally(function () { unlockAdd(lockId); });
@@ -1153,7 +1304,7 @@ function addFromMusicBrainz(mbid) {
       if (poster) posterCache[key] = poster;
       var row = [key, 'Música', title, year, poster, JB.fmtDate(new Date())];
       return JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
-        .then(function () { return loadAll(); })
+        .then(function () { return loadFilmes(); })
         .then(function () { JB.toast('✓ Registre quando ouvirem'); openDetail(key); });
     })
     .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
@@ -1173,7 +1324,7 @@ function addManualMusic() {
   var key = mediaKey('music', gameId());
   var row = [key, 'Música', title, year, '', JB.fmtDate(new Date())];
   JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
-    .then(function () { return loadAll(); })
+    .then(function () { return loadFilmes(); })
     .then(function () { JB.toast('✓ Registre quando ouvirem'); openDetail(key); })
     .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
     .finally(function () { unlockAdd(lockId); });
@@ -1200,7 +1351,7 @@ function addFromTmdb(type, tmdbId) {
       if (item.poster_path) posterCache[key] = item.poster_path;
       var row = [key, typeLabel(type), title, year, item.poster_path || '', JB.fmtDate(new Date())];
       return JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
-        .then(function () { return loadAll(); })
+        .then(function () { return loadFilmes(); })
         .then(function () { JB.toast('✓ Registre quando assistirem'); openDetail(key); });
     })
     .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
@@ -1241,7 +1392,7 @@ function deleteSession(sheetRow) {
   JB.confirm('Excluir este registro?', 'A data e avaliação serão removidas.', function () {
     JB.api('POST', ssUrl(':batchUpdate'), {
       requests: [{ deleteDimension: { range: { sheetId: sheetGrid.Assistidos, dimension: 'ROWS', startIndex: sheetRow - 1, endIndex: sheetRow } } }]
-    }).then(function () { return reloadAll(); })
+    }).then(function () { return reloadSessions(); })
       .then(function () { JB.toast('✓ Removido'); })
       .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
   }, { yes: 'Excluir', no: 'Cancelar', danger: true });
@@ -1373,8 +1524,7 @@ function toggleJlboManage() {
   if (!m || !userCanStampMedia(m, em)) return;
   var on = btn.getAttribute('data-on') !== '1';
   updateMediaJlbo(detailId, em, on).then(function () {
-    return reloadAll();
-  }).then(function () {
+    refreshPrateleiraUi();
     JB.toast(on ? '✓ Título selado com JLBOE™' : '✓ Selo removido');
   }).catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
 }
@@ -1467,7 +1617,7 @@ function saveSession() {
   req.then(function () {
     if (stars !== 5 || !jlboBtn || jlboBtn.closest('.hidden')) return Promise.resolve();
     return updateMediaJlbo(detailId, em, stampOn);
-  }).then(function () { return reloadAll(); })
+  }).then(function () { return reloadSessions(); })
     .then(function () {
       JB.toast(editing ? '✓ Atualizado' : (stampOn ? '✓ Título selado com JLBOE™' : '✓ Registrado'));
       editSessionRow = null;
@@ -1479,10 +1629,14 @@ function saveSession() {
 function createSharedSheet() {
   JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets', {
     properties: { title: 'Julioelboard Prateleira' },
-    sheets: [{ properties: { title: 'Filmes' } }, { properties: { title: 'Assistidos' } }]
+    sheets: [{ properties: { title: 'Filmes' } }, { properties: { title: 'Assistidos' } }, { properties: { title: 'Perfil' } }]
   }).then(function (ss) {
     JB.setSheetId(APP, ss.spreadsheetId);
-    sheetGrid = { Filmes: ss.sheets[0].properties.sheetId, Assistidos: ss.sheets[1].properties.sheetId };
+    sheetGrid = {
+      Filmes: ss.sheets[0].properties.sheetId,
+      Assistidos: ss.sheets[1].properties.sheetId,
+      Perfil: ss.sheets[2].properties.sheetId
+    };
     return ensureHeaders().then(function () {
       document.getElementById('sheetInfo').textContent = 'ID: ' + ss.spreadsheetId;
       document.getElementById('sheetIdIn').value = ss.spreadsheetId;
@@ -1542,9 +1696,12 @@ function savePrateleiraIcon() {
   var em = (JB.email() || '').toLowerCase();
   if (JULIOEL_EMAILS.indexOf(em) < 0) return;
   var iconIn = document.getElementById('prUserIcon');
-  setUserIcon(em, iconIn ? iconIn.value : '');
-  if (curTab === 'lib') renderMain();
-  JB.toast('✓ Ícone salvo');
+  saveUserIconToSheet(em, iconIn ? iconIn.value : '')
+    .then(function () {
+      if (curTab === 'lib') renderMain();
+      JB.toast('✓ Ícone salvo — visível para os dois');
+    })
+    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
 }
 function prateleiraSetTab(name) {
   document.querySelectorAll('#setOverlay .set-tab').forEach(function (b) {

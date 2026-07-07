@@ -572,6 +572,48 @@ function starsHtml(n, showJlbo) {
   return h;
 }
 
+var SHELF_PER_ROW = 6;
+
+function shelfTilt(i) {
+  return ((i * 17 + 3) % 7) - 3;
+}
+
+function shelfItemHtml(m, idx) {
+  var byUser = latestStarsByUser(m.key);
+  var latest = latestSession(m.key);
+  var starsMini = JULIOEL_EMAILS.map(function (em) {
+    var s = byUser[em];
+    if (!s || !s.stars) return '';
+    return '<span class="shelf-who"><span class="shelf-who-name">' + esc(userLabel(em)) + '</span>' + starsHtml(s.stars, userHasJlbo(m, em)) + '</span>';
+  }).join('');
+  var hover = '';
+  if (latest || starsMini) {
+    hover = '<div class="shelf-hover">'
+      + (latest ? '<span class="shelf-date">' + esc(JB.fmtDate(latest.date)) + '</span>' : '')
+      + (starsMini ? '<div class="shelf-ratings">' + starsMini + '</div>' : '')
+      + '</div>';
+  }
+  return '<div class="shelf-item' + (mediaHasFullJlbo(m.key) ? ' jlbo-glow' : '') + (m.type === 'game' ? ' is-game' : '') + '"'
+    + ' style="--tilt:' + shelfTilt(idx) + 'deg;--si:' + idx + '" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
+    + '<div class="shelf-cover">' + posterVisual(posterPathFor(m), typeIcon(m.type))
+    + '<span class="mbadge">' + typeIcon(m.type) + '</span></div>'
+    + hover
+    + '<div class="shelf-label"><span class="shelf-title">' + esc(m.title) + '</span>'
+    + (m.year ? '<span class="shelf-year">' + esc(m.year) + '</span>' : '')
+    + '</div></div>';
+}
+
+function renderShelfStack(items) {
+  var html = '<div class="shelf-stack">';
+  for (var i = 0; i < items.length; i += SHELF_PER_ROW) {
+    var chunk = items.slice(i, i + SHELF_PER_ROW);
+    html += '<div class="shelf-row"><div class="shelf-stage"><div class="shelf-items">';
+    chunk.forEach(function (m, j) { html += shelfItemHtml(m, i + j); });
+    html += '</div><div class="shelf-plank" aria-hidden="true"></div></div></div>';
+  }
+  return html + '</div>';
+}
+
 function renderMain() {
   var el = document.getElementById('main');
   if (curTab === 'search') {
@@ -605,25 +647,8 @@ function renderMain() {
     el.innerHTML = JB.emptyState({ icon: '📚', title: 'Prateleira vazia', body: 'Busque filmes, séries ou jogos e registrem quando assistirem/jogarem.', btn: 'Buscar', onclick: 'prateleiraTab(\'search\')' });
     return;
   }
-  var html = '<div class="mgrid">';
-  sortedMedia().forEach(function (m, idx) {
-    var byUser = latestStarsByUser(m.key);
-    var blocks = JULIOEL_EMAILS.map(function (em) {
-      var s = byUser[em];
-      if (!s || !s.stars) return '';
-      return '<div class="who">' + esc(userLabel(em)) + '</div><div class="row">' + starsHtml(s.stars, userHasJlbo(m, em)) + '</div>';
-    }).join('');
-    var latest = latestSession(m.key);
-    html += '<div class="mcard' + (mediaHasFullJlbo(m.key) ? ' jlbo-glow' : '') + '" style="animation-delay:' + (idx * 0.04) + 's" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
-      + '<div class="mposter">' + posterVisual(posterPathFor(m), typeIcon(m.type))
-      + '<span class="mbadge">' + typeIcon(m.type) + '</span></div>'
-      + '<div class="mbody"><div class="mtitle">' + esc(m.title) + '</div><div class="myear">' + esc(m.year) + '</div>'
-      + (latest ? '<div class="mlast"><span class="ml-dot"></span>' + esc(JB.fmtDate(latest.date)) + '</div>' : '')
-      + (blocks ? '<div class="mstars">' + blocks + '</div>' : '') + '</div></div>';
-  });
-  html += '</div>';
-  el.innerHTML = html;
-  if (JB.staggerChildren) JB.staggerChildren(el.querySelector('.mgrid'), 'pr-lib');
+  var items = sortedMedia();
+  el.innerHTML = renderShelfStack(items);
 }
 
 function prateleiraTab(tab) {

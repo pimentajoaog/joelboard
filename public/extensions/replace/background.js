@@ -15,9 +15,22 @@ function injectReplace(tabId, cb) {
     }
     chrome.scripting.executeScript({
       target: { tabId: tabId },
-      files: ['lib/shared.js', 'content.js']
-    }, function () {
-      if (cb) cb(!chrome.runtime.lastError);
+      func: function () { return !!window.__JB_REPLACE_ON__; }
+    }, function (check) {
+      if (chrome.runtime.lastError) {
+        if (cb) cb(false);
+        return;
+      }
+      if (check && check[0] && check[0].result) {
+        if (cb) cb(true);
+        return;
+      }
+      chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ['lib/shared.js', 'content.js']
+      }, function () {
+        if (cb) cb(!chrome.runtime.lastError);
+      });
     });
   });
 }

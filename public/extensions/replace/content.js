@@ -1,5 +1,8 @@
 /* Joelboard Replace — text expansion (content script). © 2026 Joel Soluções LTDA. */
 (function () {
+  if (window.__JB_REPLACE_ON__) return;
+  window.__JB_REPLACE_ON__ = 1;
+
   var data = null;
   var pendingPrompt = null;
 

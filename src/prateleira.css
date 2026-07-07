@@ -45,6 +45,12 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .mposter{ aspect-ratio:2/3; background:var(--surface2); position:relative; overflow:hidden; }
 .mposter img{ width:100%; height:100%; object-fit:cover; display:block; }
 .mposter .ph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:28px; }
+.mposter .ph-fallback{ display:none; }
+.mposter.poster-fail .ph-fallback{ display:flex; }
+.mposter.poster-fail img{ display:none; }
+.dhero-poster{ width:110px; aspect-ratio:2/3; border-radius:12px; background:var(--surface2); flex:none; position:relative; overflow:hidden; }
+.dhero-poster img{ width:100%; height:100%; object-fit:cover; border-radius:12px; display:block; }
+.dhero-poster .ph{ font-size:32px; }
 .mbadge{ position:absolute; top:8px; right:8px; font-size:14px; background:rgba(0,0,0,.55); border-radius:8px; padding:3px 6px; backdrop-filter:blur(4px); }
 .mbody{ padding:10px 11px 12px; }
 .mtitle{ font-size:13px; font-weight:800; line-height:1.25; font-family:var(--font-display); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }

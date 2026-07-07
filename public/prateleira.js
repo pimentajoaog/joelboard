@@ -18,6 +18,7 @@ var curTab = 'lib';
 var detailId = null;
 var sessHistOpen = false;
 var searchTimer = null;
+var posterCache = {};
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -56,8 +57,18 @@ function typeLabel(type) { return type === 'tv' ? 'Série' : (type === 'game' ? 
 function looksLikePosterPath(p) {
   p = String(p || '').trim();
   if (!p) return false;
-  if (/^https?:\/\//i.test(p) || p.indexOf('image.tmdb.org') > -1) return true;
+  if (/^https?:\/\//i.test(p) || p.indexOf('image.tmdb.org') > -1) {
+    return /\/t\/p\/w\d+\/[^/?#]+\.(jpg|jpeg|png|webp)(\?|#|$)/i.test(p);
+  }
   return p.charAt(0) === '/' && /\.(jpg|jpeg|png|webp)$/i.test(p);
+}
+function sheetPosterPath(p) {
+  p = String(p || '').trim();
+  if (!p) return '';
+  var m = p.match(/\/t\/p\/w\d+(\/[^/?#]+\.(?:jpg|jpeg|png|webp))/i);
+  if (m) return m[1];
+  if (/^https?:\/\//i.test(p)) return '';
+  return normalizePosterPath(p);
 }
 function normalizePosterPath(p) {
   p = String(p || '').trim();
@@ -76,7 +87,26 @@ function posterUrl(path) {
 function imgTag(path, alt) {
   var u = posterUrl(path);
   if (!u) return '';
-  return '<img src="' + attrEsc(u) + '" alt="' + attrEsc(alt || '') + '" loading="lazy" referrerpolicy="no-referrer">';
+  return '<img src="' + attrEsc(u) + '" alt="' + attrEsc(alt || '') + '" loading="lazy" referrerpolicy="no-referrer" decoding="async" onerror="prPosterFail(this)">';
+}
+function posterBlock(m) {
+  var path = posterCache[m.key] || m.poster;
+  var src = looksLikePosterPath(path) ? posterUrl(path) : '';
+  var inner = src
+    ? '<img src="' + attrEsc(src) + '" alt="" loading="lazy" referrerpolicy="no-referrer" decoding="async" onerror="prPosterFail(this)">'
+    : '';
+  return inner + '<span class="ph' + (src ? ' ph-fallback' : '') + '">' + typeIcon(m.type) + '</span>';
+}
+function prPosterFail(img) {
+  var wrap = img && img.parentNode;
+  if (wrap) wrap.classList.add('poster-fail');
+  if (img) img.remove();
+}
+function libraryMedia() {
+  return media.filter(function (m) { return sessionsFor(m.key).length > 0; });
+}
+function onShelf(key) {
+  return sessionsFor(key).length > 0;
 }
 
 function migrateAppKeys() {
@@ -165,6 +195,7 @@ function ensureHeaders() {
 }
 
 function loadAll() {
+  posterCache = {};
   return Promise.all([
     JB.api('GET', ssUrl('/values/' + encodeURIComponent('Filmes') + '?valueRenderOption=UNFORMATTED_VALUE')),
     JB.api('GET', ssUrl('/values/' + encodeURIComponent('Avaliacoes') + '?valueRenderOption=FORMATTED_VALUE')),
@@ -179,7 +210,7 @@ function loadAll() {
 
 function repairMediaPosters() {
   if (!tmdbKey()) return Promise.resolve();
-  var todo = media.filter(function (m) { return m.type !== 'game' && !looksLikePosterPath(m.poster); });
+  var todo = media.filter(function (m) { return m.type !== 'game'; });
   if (!todo.length) return Promise.resolve();
   return todo.reduce(function (chain, m) {
     return chain.then(function () { return fetchPosterFromTmdb(m); });
@@ -195,6 +226,7 @@ function fetchPosterFromTmdb(m) {
     .then(function (item) {
       if (!item.poster_path) return;
       m.poster = item.poster_path;
+      posterCache[m.key] = item.poster_path;
       if (!m.sheetRow) return;
       var col = m.layout === 'new' ? 'E' : 'D';
       return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Filmes!' + col + m.sheetRow) + '?valueInputOption=RAW'), { values: [[item.poster_path]] });
@@ -202,7 +234,13 @@ function fetchPosterFromTmdb(m) {
     .catch(function () {});
 }
 
-function reloadAll() { return loadAll().then(function () { renderMain(); if (detailId) openDetail(detailId); }); }
+function reloadAll() {
+  return loadAll().then(function () {
+    renderMain();
+    if (detailId && !media.find(function (m) { return m.key === String(detailId); })) closeDetail();
+    else if (detailId) openDetail(detailId);
+  });
+}
 
 function parseMedia(rows) {
   var out = [];
@@ -216,13 +254,13 @@ function parseMedia(rows) {
       var typeN = r[1] === 'Série' ? 'tv' : (r[1] === 'Jogo' ? 'game' : 'movie');
       out.push({
         key: String(r[0]), type: typeN, title: String(r[2] || ''), year: String(r[3] || ''),
-        poster: String(r[4] || ''), added: String(r[5] || ''), sheetRow: i + 1, layout: 'new'
+        poster: sheetPosterPath(r[4] || ''), added: String(r[5] || ''), sheetRow: i + 1, layout: 'new'
       });
     } else {
       var parsed = parseMediaId(r[0]);
       out.push({
         key: parsed.key, type: parsed.type, title: String(r[1] || ''), year: String(r[2] || ''),
-        poster: String(r[3] || ''), added: String(r[4] || ''), sheetRow: i + 1, layout: 'old'
+        poster: sheetPosterPath(r[3] || ''), added: String(r[4] || ''), sheetRow: i + 1, layout: 'old'
       });
     }
   }
@@ -277,7 +315,7 @@ function latestSession(mediaId) {
 }
 
 function sortedMedia() {
-  return media.slice().sort(function (a, b) {
+  return libraryMedia().slice().sort(function (a, b) {
     var la = latestSession(a.key), lb = latestSession(b.key);
     if (la && lb) return String(lb.date).localeCompare(String(la.date));
     if (la) return -1;
@@ -305,8 +343,8 @@ function renderMain() {
     if (JB.searchFocus) JB.searchFocus(inp);
     return;
   }
-  if (!media.length) {
-    el.innerHTML = JB.emptyState({ icon: '📚', title: 'Prateleira vazia', body: 'Busque filmes ou séries para começar.', btn: 'Buscar', onclick: 'prateleiraTab(\'search\')' });
+  if (!libraryMedia().length) {
+    el.innerHTML = JB.emptyState({ icon: '📚', title: 'Prateleira vazia', body: 'Busque algo e registre quando assistirem — aí entra na prateleira.', btn: 'Buscar', onclick: 'prateleiraTab(\'search\')' });
     return;
   }
   var html = '<div class="mgrid">';
@@ -319,7 +357,7 @@ function renderMain() {
     }).join('');
     var latest = latestSession(m.key);
     html += '<div class="mcard" style="animation-delay:' + (idx * 0.04) + 's" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
-      + '<div class="mposter">' + (looksLikePosterPath(m.poster) ? imgTag(m.poster, m.title) : '<span class="ph">' + typeIcon(m.type) + '</span>')
+      + '<div class="mposter">' + posterBlock(m)
       + '<span class="mbadge">' + typeIcon(m.type) + '</span></div>'
       + '<div class="mbody"><div class="mtitle">' + esc(m.title) + '</div><div class="myear">' + esc(m.year) + '</div>'
       + (latest ? '<div class="mlast"><span class="ml-dot"></span>' + esc(JB.fmtDate(latest.date)) + '</div>' : '')
@@ -350,14 +388,16 @@ function runSearch(q) {
       out.innerHTML = '<div class="sresults">' + list.slice(0, 14).map(function (item) {
         var type = item.media_type === 'tv' ? 'tv' : 'movie';
         var key = mediaKey(type, item.id);
-        var inLib = media.some(function (x) { return x.key === key; });
+        var inSheet = media.some(function (x) { return x.key === key; });
+        var shelf = onShelf(key);
         var title = type === 'tv' ? (item.name || '') : (item.title || '');
         var year = String((type === 'tv' ? item.first_air_date : item.release_date) || '').slice(0, 4) || '—';
         var poster = item.poster_path ? normalizePosterPath(item.poster_path) : '';
+        var tag = shelf ? ' · na prateleira' : (inSheet ? ' · registrar data' : '');
         return '<div class="srow" onclick="addFromTmdb(\'' + type + '\',' + item.id + ')">'
           + (poster ? imgTag(poster, title) : '<div class="ph">' + typeIcon(type) + '</div>')
           + '<div class="info"><div class="t">' + esc(title) + '</div><div class="y">'
-          + esc(typeLabel(type)) + ' · ' + esc(year) + (inLib ? ' · na prateleira' : '') + '</div></div></div>';
+          + esc(typeLabel(type)) + ' · ' + esc(year) + tag + '</div></div></div>';
       }).join('') + '</div>';
     })
     .catch(function () { out.innerHTML = '<div class="empty">Erro na busca.</div>'; });
@@ -366,7 +406,6 @@ function runSearch(q) {
 function addFromTmdb(type, tmdbId) {
   var key = mediaKey(type, tmdbId);
   if (media.some(function (m) { return m.key === key; })) {
-    prateleiraTab('lib');
     openDetail(key);
     return;
   }
@@ -380,7 +419,7 @@ function addFromTmdb(type, tmdbId) {
       var row = [key, typeLabel(type), title, year, item.poster_path || '', JB.fmtDate(new Date())];
       return JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
         .then(function () { return loadAll(); })
-        .then(function () { JB.toast('✓ Adicionado'); prateleiraTab('lib'); openDetail(key); });
+        .then(function () { JB.toast('✓ Registre quando assistirem'); openDetail(key); });
     })
     .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
 }
@@ -458,7 +497,7 @@ function openDetail(id) {
       + '<div class="rev-count"><span class="rc">' + String((rt.review || '').length) + '</span>/' + REVIEW_MAX + '</div></div>';
   }).join('');
   document.getElementById('detailBody').innerHTML = '<div class="dhero">'
-    + (looksLikePosterPath(m.poster) ? imgTag(m.poster, m.title) : '<div class="ph">' + typeIcon(m.type) + '</div>')
+    + '<div class="mposter dhero-poster">' + posterBlock(m) + '</div>'
     + '<div class="dmeta"><h2>' + esc(m.title) + '</h2><p>' + esc(typeLabel(m.type)) + ' · ' + esc(m.year) + '</p></div></div>'
     + sessionBlockHtml(m.key) + logFormHtml() + blocks
     + (JULIOEL_EMAILS.indexOf(myEm) > -1 ? '<button class="btn-primary" style="width:100%;margin-top:4px" onclick="saveDetail()">Salvar minha avaliação</button>' : '');

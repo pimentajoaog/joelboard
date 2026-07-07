@@ -47,7 +47,11 @@ body.jb-noscroll { overflow: hidden; }
 .x { background: transparent; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; font-family: inherit; }
 .field { width: 100%; padding: 10px 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; transition: border-color 0.2s; }
 .field:focus { border-color: var(--primary); }
-.btn-primary { width: 100%; padding: 12px; background: var(--brand); border: none; border-radius: var(--radius-sm); color: var(--on-brand); font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 6px; transition: opacity 0.2s; }
+.btn-primary { width: 100%; padding: 12px; background: var(--brand, var(--primary)); border: none; border-radius: var(--radius-sm); color: var(--on-brand); font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 6px; font-family: inherit; transition: opacity 0.2s, transform 0.09s ease; }
+.btn-primary:hover { opacity: 0.88; }
+.btn-ghost, .btn.ghost { width: 100%; padding: 11px 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: center; text-decoration: none; display: inline-block; transition: border-color 0.15s ease, transform 0.09s ease, opacity 0.2s ease; }
+.btn-ghost:hover, .btn.ghost:hover { border-color: var(--primary); }
+.btn-ghost:active, .btn.ghost:active { transform: scale(0.98); }
 
 /* Slide-in nudge / confirm card — a bottom-right toast-style prompt (NOT a modal overlay).
    Markup: .confirm-card > .cc-head(span + .cc-x) + .cc-body(.cc-q[ strong] + .cc-btns > .cc-btn[.yes]); toggle .show to reveal.

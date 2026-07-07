@@ -4,6 +4,8 @@
    (--income/--expense/… ) ride along for Finance; harmless where unused. --success aliases the
    skin green so any app gets a coherent positive color. Per-skin COMPONENT tweaks stay in finance.css. */
 
+body[data-skin] { --brand: var(--primary); }
+
 body[data-skin="garden"] {
   --on-brand:#ffffff;
   --bg:#f3ede0; --surface:#fffdf8; --surface2:#f0e8d6; --border:#e7ddc8;

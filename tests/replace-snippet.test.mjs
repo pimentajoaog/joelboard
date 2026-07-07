@@ -72,4 +72,22 @@ describe('template variables', () => {
     );
     assert.equal(JSON.stringify(keys), JSON.stringify(['bar', 'foo']));
   });
+
+  it('tokenizes template into text and variable slots', () => {
+    const parts = JB_REPLACE.tokenizeTemplate(
+      'Olá {{nome}}, hoje {{date}} — {{empresa}}',
+      { nome: '', empresa: 'Joel' },
+      { date: '07/07/2026' }
+    );
+    assert.equal(parts.length, 6);
+    assert.equal(parts[0].type, 'text');
+    assert.equal(parts[1].type, 'var');
+    assert.equal(parts[1].key, 'nome');
+    assert.equal(parts[1].missing, true);
+    assert.equal(parts[2].type, 'var');
+    assert.equal(parts[2].key, 'date');
+    assert.equal(parts[2].missing, false);
+    assert.equal(parts[2].value, '07/07/2026');
+    assert.equal(parts[4].value, 'Joel');
+  });
 });

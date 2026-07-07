@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<!-- Joelboard Replace — isolated variable prompt frame. © 2026 Joel Soluções LTDA. -->
+<!-- Joelboard Replace — template preview prompt. © 2026 Joel Soluções LTDA. -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Variável</title>
+<title>Completar template</title>
 <style>
   * { box-sizing: border-box; margin: 0; }
-  html, body { height: 100%; background: transparent; }
+  html, body { background: transparent; }
   body {
     font-family: "Hanken Grotesk", system-ui, sans-serif;
     background: #1b1f32;
@@ -18,20 +18,55 @@
   }
   .title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
   .hint { font-size: 12px; color: #7b85a0; margin-bottom: 12px; }
-  input {
-    display: block;
-    width: 100%;
-    padding: 10px 12px;
-    background: #252a40;
-    border: 1px solid #2b3147;
-    border-radius: 10px;
-    color: #e7eaf3;
+  .preview {
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.7;
     font-size: 14px;
-    outline: none;
-    font-family: inherit;
+    max-height: min(52vh, 360px);
+    overflow: auto;
+    padding: 14px;
+    background: #252a40;
+    border-radius: 12px;
+    border: 1px solid #2b3147;
+    margin-bottom: 14px;
   }
-  input:focus { border-color: #22d3ee; }
-  .btns { display: flex; gap: 8px; margin-top: 14px; }
+  .ph-resolved {
+    display: inline;
+    background: rgba(34, 211, 238, 0.14);
+    color: #67e8f9;
+    border: 1px solid rgba(34, 211, 238, 0.35);
+    border-radius: 8px;
+    padding: 1px 7px;
+    font-weight: 700;
+    font-size: 13px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  .ph-input {
+    display: inline-block;
+    vertical-align: baseline;
+    min-width: 5ch;
+    max-width: 100%;
+    padding: 2px 8px;
+    margin: 0 1px;
+    background: rgba(34, 211, 238, 0.08);
+    color: #e7eaf3;
+    border: 1px dashed #22d3ee;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    outline: none;
+    line-height: 1.5;
+  }
+  .ph-input::placeholder { color: #7b85a0; font-weight: 500; opacity: 1; }
+  .ph-input:focus {
+    border-style: solid;
+    background: #252a40;
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
+  }
+  .btns { display: flex; gap: 8px; margin-top: 2px; }
   button {
     flex: 1;
     padding: 10px;
@@ -47,13 +82,14 @@
 </style>
 </head>
 <body>
-  <div class="title" id="title">Variável</div>
-  <div class="hint">Preencha para expandir o template.</div>
-  <input id="value" type="text" autocomplete="off" spellcheck="false" placeholder="Digite o valor…">
+  <div class="title">Completar template</div>
+  <div class="hint">Preencha os campos destacados no texto abaixo.</div>
+  <div class="preview" id="preview"></div>
   <div class="btns">
     <button type="button" class="ghost" id="skip">Pular</button>
-    <button type="button" class="primary" id="ok">OK</button>
+    <button type="button" class="primary" id="ok">Inserir</button>
   </div>
+<script src="lib/shared.js"></script>
 <script src="prompt-frame.js"></script>
 </body>
 </html>

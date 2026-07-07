@@ -175,6 +175,41 @@ var JB_REPLACE = (function () {
     return missing;
   }
 
+  function resolveVarValue(key, vars, builtins) {
+    var k = String(key || '').toLowerCase();
+    if (builtins && builtins[k] != null && builtins[k] !== '') return String(builtins[k]);
+    if (vars && vars[key] != null && vars[key] !== '') return String(vars[key]);
+    if (vars && vars[k] != null && vars[k] !== '') return String(vars[k]);
+    return '';
+  }
+
+  /** Split template into plain text + variable slots for inline preview. */
+  function tokenizeTemplate(body, vars, builtins) {
+    vars = vars || {};
+    builtins = builtins || {};
+    var parts = [];
+    var text = String(body || '');
+    var re = /\{\{([a-zA-Z0-9_]+)\}\}/g;
+    var last = 0;
+    var m;
+    while ((m = re.exec(text))) {
+      if (m.index > last) parts.push({ type: 'text', text: text.slice(last, m.index) });
+      var key = m[1];
+      var k = key.toLowerCase();
+      var value = resolveVarValue(key, vars, builtins);
+      parts.push({
+        type: 'var',
+        key: key,
+        value: value,
+        missing: !value,
+        builtin: !!BUILTIN_NAMES[k] && k !== 'clipboard'
+      });
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) parts.push({ type: 'text', text: text.slice(last) });
+    return parts;
+  }
+
   function exportJson(data) {
     return JSON.stringify({
       version: EXPORT_VERSION,
@@ -366,6 +401,8 @@ var JB_REPLACE = (function () {
     needsClipboard: needsClipboard,
     applyClipboard: applyClipboard,
     missingVars: missingVars,
+    tokenizeTemplate: tokenizeTemplate,
+    resolveVarValue: resolveVarValue,
     collectVarKeys: collectVarKeys,
     mergedVarKeys: mergedVarKeys,
     exportJson: exportJson,

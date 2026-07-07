@@ -158,13 +158,12 @@
     try { ae.blur(); } catch (_) {}
   }
 
-  function promptVars(missing, vars) {
+  function promptVars(body, vars, builtins) {
     return new Promise(function (resolve) {
+      var missing = JB_REPLACE.missingVars(body, vars, builtins);
       if (!missing.length) { resolve(vars); return; }
       if (pendingPrompt) { resolve(null); return; }
 
-      var key = missing[0];
-      var preset = vars[key] != null ? vars[key] : vars[key.toLowerCase()];
       blurActiveField();
 
       var host = document.createElement('div');
@@ -173,9 +172,9 @@
 
       var iframe = document.createElement('iframe');
       iframe.src = chrome.runtime.getURL('prompt.html');
-      iframe.title = 'Variável: {{' + key + '}}';
-      iframe.setAttribute('aria-label', 'Variável: {{' + key + '}}');
-      iframe.style.cssText = 'border:0;width:100%;max-width:380px;height:220px;background:transparent;color-scheme:dark';
+      iframe.title = 'Completar template';
+      iframe.setAttribute('aria-label', 'Completar template');
+      iframe.style.cssText = 'border:0;width:100%;max-width:560px;height:320px;background:transparent;color-scheme:dark';
 
       host.appendChild(iframe);
       document.documentElement.appendChild(host);
@@ -187,29 +186,32 @@
         pendingPrompt = null;
       }
 
-      function closeAndNext(value) {
-        cleanup();
-        if (value) vars[key] = value;
-        resolve(promptVars(missing.slice(1), vars));
-      }
-
       function onMsg(ev) {
         if (ev.source !== iframe.contentWindow || !ev.data || ev.data.type !== 'jbr-prompt') return;
         if (ev.data.action === 'ready') {
           iframe.contentWindow.postMessage({
             type: 'jbr-prompt-init',
-            key: key,
-            preset: preset != null && String(preset) !== '' ? String(preset) : ''
+            body: body,
+            vars: vars,
+            builtins: builtins
           }, '*');
           return;
         }
+        if (ev.data.action === 'resize' && ev.data.height) {
+          var maxH = Math.max(220, Math.min(ev.data.height + 8, Math.floor(window.innerHeight * 0.82)));
+          iframe.style.height = maxH + 'px';
+          return;
+        }
         if (ev.data.action === 'ok') {
-          var v = (ev.data.value || '').trim();
-          closeAndNext(v || null);
+          var filled = ev.data.values || {};
+          Object.keys(filled).forEach(function (k) { vars[k] = filled[k]; });
+          cleanup();
+          resolve(vars);
           return;
         }
         if (ev.data.action === 'skip') {
-          closeAndNext(null);
+          cleanup();
+          resolve(vars);
           return;
         }
         if (ev.data.action === 'cancel') {
@@ -232,8 +234,7 @@
 
     function finish(clipText) {
       var expanded = JB_REPLACE.applyClipboard(body, clipText);
-      var missing = JB_REPLACE.missingVars(expanded, vars, builtins);
-      return promptVars(missing, vars).then(function (filled) {
+      return promptVars(expanded, vars, builtins).then(function (filled) {
         if (!filled) return false;
         var out = JB_REPLACE.expandVars(expanded, filled, builtins);
         return applyToField(st, trig, out, matchStart, caseSensitive);

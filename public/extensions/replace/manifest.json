@@ -2,12 +2,12 @@
   "manifest_version": 3,
   "name": "Joelboard Replace",
   "short_name": "Replace",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "description": "Expansão de texto leve — templates, gatilhos e variáveis. Parte do Joelboard Mini.",
   "permissions": ["storage", "clipboardRead", "tabs", "scripting"],
   "optional_host_permissions": ["http://localhost/*", "http://127.0.0.1/*", "https://*/*"],
   "web_accessible_resources": [{
-    "resources": ["prompt.html", "prompt-frame.js"],
+    "resources": ["prompt.html", "prompt-frame.js", "lib/shared.js"],
     "matches": ["<all_urls>"]
   }],
   "externally_connectable": {

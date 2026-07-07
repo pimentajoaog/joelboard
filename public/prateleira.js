@@ -151,6 +151,20 @@ function showApp() { document.getElementById('loading').classList.add('hidden');
 function gateHtml(title, sub, btn) {
   return '<div class="gate"><div class="gt">' + esc(title) + '</div><div class="gs">' + sub + '</div>' + (btn || '') + '</div>';
 }
+function isAuthErr(e) {
+  var m = String((e && e.message) || '');
+  return m.indexOf('silent_timeout') > -1 || m.indexOf('auth_failed') > -1 || m.indexOf('401') > -1
+    || m.indexOf('cancelled') > -1 || m.indexOf('signed_out') > -1 || m.indexOf('silent_cooldown') > -1
+    || m.indexOf('auth_cancelled') > -1 || m.indexOf('superseded') > -1;
+}
+function showAuthGate(msg) {
+  loadingHtml(gateHtml(
+    'Julioelboard Prateleira',
+    msg || 'Sessão expirada. Entre de novo para continuar.',
+    '<button class="btn-primary" onclick="prateleiraSignIn()">Entrar</button>'
+      + '<a class="btn ghost" href="/" style="display:inline-block;text-decoration:none;margin-top:10px">← Hub</a>'
+  ));
+}
 
 function whenTmdbReady(fn) {
   if (tmdbKey()) { fn(); return; }
@@ -163,12 +177,15 @@ function whenTmdbReady(fn) {
 function boot() {
   migrateAppKeys();
   if (!julioelOk()) {
-    var sub = !JB.isSignedIn()
-      ? 'Entre com Google e volte ao Hub.'
-      : (!julioelAllowed()
-        ? 'Este cantinho não é para você. 😄'
-        : 'Volte ao Hub e clique no logo <b>Joelboard</b> para desbloquear.');
-    loadingHtml(gateHtml('Julioelboard Prateleira', sub, !JB.isSignedIn() ? '<button class="btn-primary" onclick="prateleiraSignIn()">Entrar</button>' : '<a class="btn ghost" href="/" style="display:inline-block;text-decoration:none">← Hub</a>'));
+    if (!JB.isSignedIn()) {
+      showAuthGate(JB.email() ? 'Sessão expirada. Entre de novo para continuar.' : 'Entre com Google para acessar a Prateleira.');
+      return;
+    }
+    if (!julioelAllowed()) {
+      loadingHtml(gateHtml('Julioelboard Prateleira', 'Este cantinho não é para você. 😄', '<a class="btn ghost" href="/" style="display:inline-block;text-decoration:none">← Hub</a>'));
+      return;
+    }
+    loadingHtml(gateHtml('Julioelboard Prateleira', 'Volte ao Hub e clique no logo <b>Joelboard</b> para desbloquear.', '<a class="btn ghost" href="/" style="display:inline-block;text-decoration:none">← Hub</a>'));
     return;
   }
   document.getElementById('acctEmail').textContent = userLabel(JB.email());
@@ -183,8 +200,8 @@ function boot() {
 
 function handleBootErr(e) {
   var m = String((e && e.message) || '');
-  if (m.indexOf('silent_timeout') > -1 || m.indexOf('auth_failed') > -1 || m.indexOf('401') > -1 || m.indexOf('cancelled') > -1) {
-    loadingHtml(gateHtml('Julioelboard Prateleira', 'Sessão expirada.', '<button class="btn-primary" onclick="prateleiraSignIn()">Entrar</button>'));
+  if (isAuthErr(e)) {
+    showAuthGate();
     return;
   }
   if (m === 'JB_NEED_SHEET') {
@@ -371,6 +388,9 @@ function reloadAll() {
     renderMain();
     if (detailId && !media.find(function (m) { return m.key === String(detailId); })) closeDetail();
     else if (detailId) openDetail(detailId);
+  }).catch(function (e) {
+    if (isAuthErr(e)) showAuthGate();
+    else JB.toast('Erro ao atualizar: ' + (e.message || ''));
   });
 }
 
@@ -857,6 +877,15 @@ function closePrateleiraSet() { document.getElementById('setOverlay').classList.
 function prateleiraSignIn() { JB.signIn({ onSuccess: boot }); }
 function prateleiraSignOut() { try { localStorage.removeItem('jb_julioel'); } catch (_) {} JB.signOut(); location.href = '/'; }
 
+function startPrateleira() {
+  if (!JB.hasSession()) { boot(); return; }
+  JB.ensureToken(false).then(function () {
+    boot();
+  }).catch(function (e) {
+    if (isAuthErr(e)) showAuthGate();
+    else boot();
+  });
+}
+
 JB.applySkin(APP);
-if (JB.hasSession()) JB.ensureToken(false).then(boot).catch(boot);
-else boot();
+startPrateleira();

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!-- Joelboard Movies (Julioelboard). © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Julioelboard Movies</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/joelboard.css">
+<link rel="stylesheet" href="/themes.css">
+<meta name="theme-color" content="#0d0f18">
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/movies.css">
+</head>
+<body>
+<div id="loading"></div>
+<div id="app" class="hidden">
+  <div class="header">
+    <div class="hl"><img src="/icon-192.png" alt=""><h1>Movies</h1></div>
+    <div class="acct"><span id="acctEmail"></span><button class="lnk" onclick="openMoviesSet()" title="Ajustes">⚙</button><button class="lnk" onclick="moviesSignOut()">Sair</button></div>
+  </div>
+  <div class="tabs" id="mainTabs">
+    <button class="tab on" data-tab="lib" onclick="moviesTab('lib')">Biblioteca</button>
+    <button class="tab" data-tab="search" onclick="moviesTab('search')">Buscar</button>
+  </div>
+  <div id="main"></div>
+  <div class="foot">© 2026 Joel Soluções LTDA · Julioelboard</div>
+</div>
+
+<button class="door" onclick="location.href='/'" title="Voltar ao Hub" aria-label="Voltar ao Hub">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg>
+</button>
+
+<div class="overlay" id="detailOv" onclick="if(event.target===this)closeDetail()">
+  <div class="modal detail-modal">
+    <div class="mh"><div class="mt" id="detailTitle">Filme</div><button class="x" onclick="closeDetail()">✕</button></div>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<div class="overlay" id="setOverlay" onclick="if(event.target===this)closeMoviesSet()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeMoviesSet()">✕</button></div>
+    <div class="fg"><label class="fl">Planilha compartilhada</label>
+      <p class="rg" id="sheetInfo">—</p>
+      <input class="field" id="sheetIdIn" placeholder="ID da planilha (opcional)">
+      <button class="btn ghost" style="width:100%;margin-top:8px" onclick="saveSheetId()">Usar este ID</button>
+      <button class="btn ghost" style="width:100%;margin-top:8px" onclick="createSharedSheet()">Criar planilha nova</button>
+    </div>
+    <button class="btn-primary" onclick="closeMoviesSet()">Pronto</button>
+  </div>
+</div>
+
+<script type="module">
+  window.JB_TMDB_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
+</script>
+<script src="/joelboard.js"></script>
+<script src="/movies.js"></script>
+</body>
+</html>

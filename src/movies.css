@@ -1,0 +1,98 @@
+/* Joelboard Movies — Julioelboard. © 2026 Joel Soluções LTDA. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{
+  --bg:#0d0f18; --surface:#1b1f32; --surface2:#252a40; --border:#2b3147;
+  --primary:#e879f9; --movies:#e879f9; --text:#e7eaf3; --muted:#7b85a0;
+  --radius:16px; --radius-sm:10px; --brand:var(--primary); --on-brand:#1a0a22;
+  --font-body:'Hanken Grotesk',system-ui,sans-serif; --font-display:'Hanken Grotesk',system-ui,sans-serif;
+}
+
+*,::before,::after{ box-sizing:border-box; margin:0; padding:0; border-width:0; border-style:solid; border-color:var(--border); }
+button,input,select,textarea{ font-family:inherit; }
+body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var(--font-body); padding:26px 18px 90px; font-size:14px; }
+.hidden{ display:none !important; }
+#loading{ max-width:520px; margin:0 auto; }
+#app{ max-width:920px; margin:0 auto; }
+
+.header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+.hl{ display:flex; align-items:center; gap:10px; }
+.hl img{ width:34px; height:34px; border-radius:9px; }
+.hl h1{ font-size:22px; font-weight:800; letter-spacing:-.4px; font-family:var(--font-display); color:var(--movies); }
+.acct{ font-size:12px; color:var(--muted); display:flex; align-items:center; gap:10px; }
+.lnk{ background:transparent; border:0; color:var(--movies); font-weight:700; font-size:12px; cursor:pointer; }
+.foot{ text-align:center; font-size:11px; color:var(--muted); opacity:.55; margin-top:36px; }
+.door{ position:fixed; bottom:20px; left:16px; z-index:40; width:42px; height:42px; border-radius:12px; background:var(--surface); border:1px solid var(--border); color:var(--movies); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 3px 12px rgba(0,0,0,.25); }
+
+.tabs{ display:flex; gap:6px; margin-bottom:18px; background:var(--surface); border:1px solid var(--border); border-radius:99px; padding:4px; width:fit-content; }
+.tab{ background:transparent; border:0; color:var(--muted); font-size:13px; font-weight:700; padding:8px 18px; border-radius:99px; cursor:pointer; }
+.tab.on{ background:var(--movies); color:var(--on-brand); }
+
+.searchbar{ margin-bottom:16px; }
+.searchbar input{ width:100%; padding:12px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:12px; color:var(--text); font-size:14px; outline:none; }
+.searchbar input:focus{ border-color:var(--movies); }
+
+.mgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(132px,1fr)); gap:14px; }
+.mcard{
+  background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; cursor:pointer;
+  transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  animation: mv-rise .45s cubic-bezier(.2,.7,.3,1) both;
+}
+.mcard:hover{ transform:translateY(-4px); border-color:color-mix(in srgb, var(--movies) 45%, var(--border)); box-shadow:0 10px 28px rgba(0,0,0,.28); }
+.mcard:active{ transform:scale(.98); }
+.mposter{ aspect-ratio:2/3; background:var(--surface2); position:relative; overflow:hidden; }
+.mposter img{ width:100%; height:100%; object-fit:cover; display:block; }
+.mposter .ph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:28px; }
+.mbody{ padding:10px 11px 12px; }
+.mtitle{ font-size:13px; font-weight:800; line-height:1.25; font-family:var(--font-display); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.myear{ font-size:11px; color:var(--muted); margin-top:3px; }
+.mstars{ display:flex; gap:2px; margin-top:8px; flex-wrap:wrap; }
+.mstars .who{ font-size:10px; font-weight:700; color:var(--muted); width:100%; margin-bottom:2px; }
+.mstars .row{ display:flex; gap:1px; align-items:center; }
+.mstar{ color:#3d4460; font-size:12px; }
+.mstar.on{ color:#fbbf24; }
+
+@keyframes mv-rise{
+  from{ opacity:0; transform:translateY(14px) scale(.96); }
+  to{ opacity:1; transform:none; }
+}
+
+.sresults{ display:flex; flex-direction:column; gap:10px; }
+.srow{
+  display:flex; gap:12px; align-items:center; background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; padding:10px; cursor:pointer; transition:border-color .15s ease, transform .15s ease;
+}
+.srow:hover{ border-color:var(--movies); transform:translateX(3px); }
+.srow img{ width:48px; height:72px; object-fit:cover; border-radius:8px; background:var(--surface2); flex:none; }
+.srow .ph{ width:48px; height:72px; border-radius:8px; background:var(--surface2); flex:none; display:flex; align-items:center; justify-content:center; color:var(--muted); }
+.srow .info{ flex:1; min-width:0; }
+.srow .t{ font-weight:800; font-size:14px; }
+.srow .y{ font-size:12px; color:var(--muted); margin-top:2px; }
+
+.detail-modal{ max-width:480px; }
+.dhero{ display:flex; gap:14px; margin-bottom:16px; }
+.dhero img{ width:110px; border-radius:12px; aspect-ratio:2/3; object-fit:cover; background:var(--surface2); flex:none; }
+.dhero .ph{ width:110px; aspect-ratio:2/3; border-radius:12px; background:var(--surface2); flex:none; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:32px; }
+.dmeta h2{ font-size:18px; font-weight:800; font-family:var(--font-display); }
+.dmeta p{ font-size:12px; color:var(--muted); margin-top:4px; }
+.rate-block{ background:var(--surface2); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
+.rate-block .who{ font-size:13px; font-weight:800; margin-bottom:8px; color:var(--movies); }
+.star-pick{ display:flex; gap:4px; margin-bottom:10px; }
+.star-pick button{
+  background:transparent; border:0; font-size:22px; cursor:pointer; color:#3d4460; padding:0 2px; line-height:1;
+  transition:transform .1s ease, color .1s ease;
+}
+.star-pick button.on{ color:#fbbf24; }
+.star-pick button:hover{ transform:scale(1.12); }
+.review-in{
+  width:100%; padding:10px 12px; background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  color:var(--text); font-size:13px; resize:none; outline:none; min-height:72px;
+}
+.review-in:focus{ border-color:var(--movies); }
+.rev-count{ text-align:right; font-size:11px; color:var(--muted); margin-top:4px; }
+.gate{ max-width:420px; margin:48px auto; text-align:center; }
+.gate .gt{ font-size:22px; font-weight:800; font-family:var(--font-display); color:var(--movies); }
+.gate .gs{ color:var(--muted); font-size:13px; margin:10px 0 20px; line-height:1.55; }
+.empty{ text-align:center; color:var(--muted); padding:40px 16px; font-size:13px; }

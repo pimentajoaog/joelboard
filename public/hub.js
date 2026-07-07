@@ -23,9 +23,69 @@ var HUB_TOUR=[
   { sel:'.gear', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
 ];
 function hubVerTutorial(){ closeHubSet(); setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 250); }
-function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); if(on && !_hbooted){ _hbooted=true; if(!JB.tourDone('hub')) setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 700); } }
+
+/* ---- Julioelboard easter egg (Joel + Julia only) ---- */
+var JULIOEL_EMAILS=['joaogabrielpabarbosa@gmail.com','juliazin182@gmail.com'];
+var JULIOEL_KEY='jb_julioel';
+var _hubGridOrder=null;
+function julioelAllowed(){ return JULIOEL_EMAILS.indexOf((JB.email()||'').toLowerCase())>-1; }
+function julioelActive(){ try{ return julioelAllowed()&&localStorage.getItem(JULIOEL_KEY)==='1'; }catch(_){ return false; } }
+function setJulioel(on){ try{ if(on) localStorage.setItem(JULIOEL_KEY,'1'); else localStorage.removeItem(JULIOEL_KEY); }catch(_){} applyJulioelUI(true); }
+function cacheHubGridOrder(){
+  var grid=document.querySelector('.grid'); if(!grid||_hubGridOrder) return;
+  _hubGridOrder=Array.prototype.slice.call(grid.children);
+}
+function shuffleHubTiles(){
+  var grid=document.querySelector('.grid'); if(!grid) return;
+  cacheHubGridOrder();
+  var tiles=Array.prototype.slice.call(grid.querySelectorAll('.tile:not(.julioel-only)'));
+  for(var i=tiles.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=tiles[i]; tiles[i]=tiles[j]; tiles[j]=t; }
+  tiles.forEach(function(t){ grid.appendChild(t); });
+  var sec=document.getElementById('moviesTile'); if(sec) grid.appendChild(sec);
+}
+function restoreHubGrid(){
+  var grid=document.querySelector('.grid'); if(!grid||!_hubGridOrder) return;
+  _hubGridOrder.forEach(function(n){ if(n.parentNode===grid||!n.parentNode) grid.appendChild(n); });
+}
+function julioelTileJitter(){
+  document.querySelectorAll('.grid .tile:not(.julioel-only)').forEach(function(el,i){
+    el.style.setProperty('--jx', ((i%2?1:-1)*(8+Math.random()*14)).toFixed(0)+'px');
+    el.style.setProperty('--jy', ((i%3?-1:1)*(6+Math.random()*12)).toFixed(0)+'px');
+    el.style.setProperty('--jr', ((Math.random()-.5)*6).toFixed(1)+'deg');
+  });
+}
+function applyJulioelUI(animate){
+  var on=julioelActive()&&julioelAllowed();
+  var brand=document.getElementById('hubBrand');
+  var wm=document.getElementById('hubBrandText');
+  var grid=document.querySelector('.grid');
+  var movies=document.getElementById('moviesTile');
+  if(brand){
+    brand.classList.toggle('julioel-secret', julioelAllowed());
+    brand.tabIndex=julioelAllowed()?0:-1;
+  }
+  if(wm){
+    if(animate){ wm.classList.remove('julioel-flip'); void wm.offsetWidth; wm.classList.add('julioel-flip'); }
+    wm.textContent=on?'Julioelboard':'Joelboard';
+  }
+  document.body.classList.toggle('julioel-mode', on);
+  document.querySelectorAll('[data-suite-label]').forEach(function(el){ el.textContent=on?'Julioelboard':'Joelboard'; });
+  if(movies){ movies.style.display=on?'':'none'; movies.setAttribute('aria-hidden', on?'false':'true'); }
+  if(on && animate){ shuffleHubTiles(); }
+  if(!on && _hubGridOrder) restoreHubGrid();
+  if(grid&&animate){
+    julioelTileJitter();
+    grid.classList.remove('julioel-shuffle'); void grid.offsetWidth; grid.classList.add('julioel-shuffle');
+    setTimeout(function(){ grid.classList.remove('julioel-shuffle'); }, 700);
+  }
+}
+function toggleJulioel(){
+  if(!julioelAllowed()) return;
+  setJulioel(!julioelActive());
+}
+function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); applyJulioelUI(false); if(on && !_hbooted){ _hbooted=true; if(!JB.tourDone('hub')) setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 700); } }
 function doIn(){ JB.signIn({ onSuccess: function(){ setGreet(); } }); }
-function doOut(){ JB.signOut(); setGreet(); }
+function doOut(){ try{ localStorage.removeItem(JULIOEL_KEY); }catch(_){} JB.signOut(); setGreet(); }
 /* ---- Feedback viewer (owner-only; reads the form-response sheet via Sheets API) ---- */
 var FB_SHEET='1vgpn1qRuKys8TYQD-Dx49cDjcOqJDZyqS0fZAvfxchs', FB_GID=749060366, FB_OWNER='joaogabrielpabarbosa@gmail.com';
 var FB_STATUS=['New','Acknowledged','Fixed',"Won't fix"];
@@ -184,6 +244,11 @@ JB.applySkin('hub');
 if (JB.hasSession()) { JB.ensureToken(false).then(setGreet).catch(setGreet); } else { setGreet(); }
 document.addEventListener('DOMContentLoaded',function(){
   renderHubNews();
+  var brand=document.getElementById('hubBrand');
+  if(brand){
+    brand.addEventListener('click', toggleJulioel);
+    brand.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggleJulioel(); } });
+  }
   var addBtn=document.getElementById('miniSiteAdd');
   var inp=document.getElementById('miniSiteInput');
   if(addBtn) addBtn.onclick=miniAddSite;

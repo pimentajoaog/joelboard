@@ -49,8 +49,13 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .shelf-row{ width:100%; }
 .shelf-stage{ position:relative; padding:0 2px 18px; }
 .shelf-items{
-  display:flex; flex-wrap:wrap; align-items:flex-end; align-content:flex-end;
-  gap:10px 11px; padding:0 4px 20px; min-height:188px;
+  display:grid;
+  grid-template-columns:repeat(var(--shelf-cols, 7), minmax(0, 1fr));
+  column-gap:clamp(14px, 2.2vw, 26px);
+  row-gap:12px;
+  align-items:end;
+  padding:0 2px 20px;
+  min-height:188px;
 }
 .shelf-plank{
   position:absolute; left:0; right:0; bottom:0; height:16px; border-radius:4px;
@@ -66,7 +71,7 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
   opacity:.7;
 }
 .shelf-item{
-  position:relative; z-index:1; flex:0 1 calc(14.285% - 10px); min-width:74px; max-width:100px;
+  position:relative; z-index:1; width:100%; min-width:0;
   display:flex; flex-direction:column; align-items:center; cursor:pointer;
   transition:transform .2s cubic-bezier(.2,.7,.3,1), z-index 0s .2s;
   animation:shelf-place .5s cubic-bezier(.34,1.2,.64,1) both;
@@ -100,9 +105,13 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
   position:absolute; top:5px; right:5px; z-index:4; line-height:0;
   filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));
 }
-.shelf-jlbo-corner .jlbo-stamp{ margin:0; min-width:22px; height:19px; animation:jlbo-wobble 2.8s ease-in-out infinite; }
+.shelf-jlbo-corner.full .jlbo-stamp{ margin:0; min-width:22px; height:19px; animation:jlbo-wobble 2.8s ease-in-out infinite; }
+.shelf-jlbo-corner.half{ width:11px; height:19px; overflow:hidden; filter:drop-shadow(0 1px 4px rgba(0,0,0,.35)); }
+.shelf-jlbo-corner.half .jlbo-stamp{ margin:0; min-width:22px; height:19px; animation:none; opacity:.92; flex-shrink:0; transform:rotate(-14deg); }
+.shelf-jlbo-corner.half-julia{ display:flex; justify-content:flex-end; }
 .shelf-jlbo-corner .jlbo-jl{ font-size:8px; }
 .shelf-jlbo-corner .jlbo-tm{ font-size:5px; }
+.shelf-jlbo-corner.half .jlbo-tm{ display:none; }
 .shelf-item.is-game .shelf-cover{ aspect-ratio:3/4; border-radius:4px; }
 .shelf-cover .poster-bg{ border-radius:inherit; }
 .shelf-cover .ph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:26px; }
@@ -166,12 +175,11 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 }
 
 @media (max-width: 720px){
-  .shelf-item{ flex:0 1 calc(20% - 9px); min-width:68px; max-width:92px; }
-  .shelf-items{ gap:8px 10px; min-height:150px; }
+  .shelf-items{ column-gap:clamp(10px, 2vw, 18px); min-height:150px; }
 }
 @media (max-width: 480px){
-  .shelf-item{ flex:0 1 calc(33.333% - 10px); min-width:68px; max-width:92px; }
   .shelf-stack{ gap:26px; }
+  .shelf-items{ column-gap:10px; row-gap:10px; }
 }
 
 .poster-bg{ position:absolute; inset:0; background-size:cover; background-position:center; background-repeat:no-repeat; background-color:var(--surface2); }

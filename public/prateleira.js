@@ -541,6 +541,23 @@ function mediaHasFullJlbo(mediaId) {
   return JULIOEL_EMAILS.every(function (em) { return userHasJlbo(m, em); });
 }
 
+function jlboShelfState(m) {
+  var joel = userHasJlbo(m, JULIOEL_EMAILS[0]);
+  var julia = userHasJlbo(m, JULIOEL_EMAILS[1]);
+  if (joel && julia) return 'full';
+  if (joel) return 'half-joel';
+  if (julia) return 'half-julia';
+  return 'none';
+}
+
+function jlboCornerHtml(state) {
+  if (!state || state === 'none') return '';
+  var cls = 'shelf-jlbo-corner';
+  if (state === 'full') cls += ' full';
+  else cls += ' half ' + state;
+  return '<span class="' + cls + '">' + jlboSealHtml() + '</span>';
+}
+
 function userCanStampMedia(m, em) {
   var s = latestStarsByUser(m.key)[(em || '').toLowerCase()];
   return !!(s && s.stars === 5);
@@ -620,7 +637,7 @@ function shelfFootHtml(m) {
 function shelfItemHtml(m, idx) {
   var byUser = latestStarsByUser(m.key);
   var latest = latestSession(m.key);
-  var fullJlbo = mediaHasFullJlbo(m.key);
+  var jlboState = jlboShelfState(m);
   var starsMini = JULIOEL_EMAILS.map(function (em) {
     var s = byUser[em];
     if (!s || !s.stars) return '';
@@ -633,12 +650,12 @@ function shelfItemHtml(m, idx) {
       + (starsMini ? '<div class="shelf-ratings">' + starsMini + '</div>' : '')
       + '</div>';
   }
-  return '<div class="shelf-item' + (fullJlbo ? ' jlbo-glow' : '') + (m.type === 'game' ? ' is-game' : '') + '"'
+  return '<div class="shelf-item' + (jlboState === 'full' ? ' jlbo-glow' : '') + (m.type === 'game' ? ' is-game' : '') + '"'
     + ' style="--tilt:' + shelfTilt(idx) + 'deg;--si:' + idx + '" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
     + hover
-    + '<div class="shelf-tilt"><div class="shelf-cover' + (fullJlbo ? ' has-jlbo' : '') + '">' + posterVisual(posterPathFor(m), typeIcon(m.type))
+    + '<div class="shelf-tilt"><div class="shelf-cover' + (jlboState !== 'none' ? ' has-jlbo' : '') + '">' + posterVisual(posterPathFor(m), typeIcon(m.type))
     + '<span class="mbadge">' + typeIcon(m.type) + '</span>'
-    + (fullJlbo ? '<span class="shelf-jlbo-corner">' + jlboSealHtml() + '</span>' : '')
+    + jlboCornerHtml(jlboState)
     + '</div></div>'
     + '<div class="shelf-meta"><div class="shelf-label"><span class="shelf-title">' + esc(m.title) + '</span>'
     + (m.year ? '<span class="shelf-year">' + esc(m.year) + '</span>' : '')
@@ -649,7 +666,7 @@ function renderShelfStack(items) {
   var html = '<div class="shelf-stack">';
   for (var i = 0; i < items.length; i += SHELF_PER_ROW) {
     var chunk = items.slice(i, i + SHELF_PER_ROW);
-    html += '<div class="shelf-row"><div class="shelf-stage"><div class="shelf-items">';
+    html += '<div class="shelf-row"><div class="shelf-stage"><div class="shelf-items" style="--shelf-cols:' + chunk.length + '">';
     chunk.forEach(function (m, j) { html += shelfItemHtml(m, i + j); });
     html += '</div><div class="shelf-plank" aria-hidden="true"></div></div></div>';
   }

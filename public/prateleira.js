@@ -8,6 +8,10 @@ var USER_NAMES = {
   'joaogabrielpabarbosa@gmail.com': 'Joel',
   'juliazin182@gmail.com': 'Julia'
 };
+var DEFAULT_USER_ICONS = {
+  'joaogabrielpabarbosa@gmail.com': '🐻',
+  'juliazin182@gmail.com': '🐬'
+};
 
 var sheetGrid = null;
 var media = [];
@@ -28,6 +32,31 @@ function attrEsc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 function userLabel(em) { return USER_NAMES[(em || '').toLowerCase()] || (em || '').split('@')[0] || '?'; }
+
+function userIconKey(em) {
+  return 'jb_pr_icon_' + String(em || '').toLowerCase().replace(/[^a-z0-9@._-]/g, '');
+}
+
+function getUserIcon(em) {
+  em = (em || '').toLowerCase();
+  try {
+    var saved = localStorage.getItem(userIconKey(em));
+    if (saved) return saved.slice(0, 8);
+  } catch (_) {}
+  return DEFAULT_USER_ICONS[em] || '👤';
+}
+
+function setUserIcon(em, icon) {
+  try {
+    var val = String(icon || '').trim().slice(0, 8);
+    if (val) localStorage.setItem(userIconKey(em), val);
+    else localStorage.removeItem(userIconKey(em));
+  } catch (_) {}
+}
+
+function userIconHtml(em) {
+  return '<span class="shelf-uicon" aria-hidden="true">' + esc(getUserIcon(em)) + '</span>';
+}
 function julioelAllowed() { return JULIOEL_EMAILS.indexOf((JB.email() || '').toLowerCase()) > -1; }
 function julioelUnlocked() { try { return localStorage.getItem('jb_julioel') === '1'; } catch (_) { return false; } }
 function julioelOk() { return JB.isSignedIn() && julioelAllowed() && julioelUnlocked(); }
@@ -578,6 +607,16 @@ function shelfTilt(i) {
   return ((i * 17 + 3) % 7) - 3;
 }
 
+function shelfFootHtml(m) {
+  var byUser = latestStarsByUser(m.key);
+  var rows = JULIOEL_EMAILS.map(function (em) {
+    var s = byUser[em];
+    if (!s || !s.stars) return '';
+    return '<div class="shelf-foot-row">' + userIconHtml(em) + '<span class="shelf-foot-stars">' + starsHtml(s.stars, userHasJlbo(m, em)) + '</span></div>';
+  }).join('');
+  return rows ? '<div class="shelf-foot">' + rows + '</div>' : '';
+}
+
 function shelfItemHtml(m, idx) {
   var byUser = latestStarsByUser(m.key);
   var latest = latestSession(m.key);
@@ -595,12 +634,12 @@ function shelfItemHtml(m, idx) {
   }
   return '<div class="shelf-item' + (mediaHasFullJlbo(m.key) ? ' jlbo-glow' : '') + (m.type === 'game' ? ' is-game' : '') + '"'
     + ' style="--tilt:' + shelfTilt(idx) + 'deg;--si:' + idx + '" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
-    + '<div class="shelf-cover">' + posterVisual(posterPathFor(m), typeIcon(m.type))
-    + '<span class="mbadge">' + typeIcon(m.type) + '</span></div>'
     + hover
-    + '<div class="shelf-label"><span class="shelf-title">' + esc(m.title) + '</span>'
+    + '<div class="shelf-tilt"><div class="shelf-cover">' + posterVisual(posterPathFor(m), typeIcon(m.type))
+    + '<span class="mbadge">' + typeIcon(m.type) + '</span></div></div>'
+    + '<div class="shelf-meta"><div class="shelf-label"><span class="shelf-title">' + esc(m.title) + '</span>'
     + (m.year ? '<span class="shelf-year">' + esc(m.year) + '</span>' : '')
-    + '</div></div>';
+    + '</div>' + shelfFootHtml(m) + '</div></div>';
 }
 
 function renderShelfStack(items) {
@@ -1130,7 +1169,34 @@ function openPrateleiraSet() {
   document.getElementById('sheetInfo').textContent = JB.getSheetId(APP) ? ('ID: ' + JB.getSheetId(APP)) : 'Nenhuma planilha vinculada.';
   document.getElementById('sheetIdIn').value = JB.getSheetId(APP) || '';
   JB.renderSkinPicker(APP, document.getElementById('prateleiraSkins'));
+  var em = (JB.email() || '').toLowerCase();
+  var iconIn = document.getElementById('prUserIcon');
+  var iconPrev = document.getElementById('prIconPreview');
+  var perfilPane = document.querySelector('#setOverlay [data-pane="perfil"]');
+  var perfilTab = document.querySelector('#setOverlay .set-tab[data-st="perfil"]');
+  if (perfilPane && perfilTab) {
+    var show = JULIOEL_EMAILS.indexOf(em) > -1;
+    perfilTab.style.display = show ? '' : 'none';
+    if (!show && perfilPane.style.display !== 'none') prateleiraSetTab('tema');
+  }
+  if (iconIn && iconPrev) {
+    var ic = getUserIcon(em);
+    iconIn.value = ic;
+    iconPrev.textContent = ic;
+    iconIn.oninput = function () {
+      iconPrev.textContent = (iconIn.value || '').trim().slice(0, 8) || getUserIcon(em);
+    };
+  }
   document.getElementById('setOverlay').classList.add('open');
+}
+
+function savePrateleiraIcon() {
+  var em = (JB.email() || '').toLowerCase();
+  if (JULIOEL_EMAILS.indexOf(em) < 0) return;
+  var iconIn = document.getElementById('prUserIcon');
+  setUserIcon(em, iconIn ? iconIn.value : '');
+  if (curTab === 'lib') renderMain();
+  JB.toast('✓ Ícone salvo');
 }
 function prateleiraSetTab(name) {
   document.querySelectorAll('#setOverlay .set-tab').forEach(function (b) {

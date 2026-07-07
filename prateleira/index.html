@@ -47,10 +47,22 @@
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closePrateleiraSet()">✕</button></div>
     <div class="set-tabs">
       <button class="set-tab active" data-st="tema" onclick="prateleiraSetTab('tema')">Tema</button>
+      <button class="set-tab" data-st="perfil" onclick="prateleiraSetTab('perfil')">Perfil</button>
       <button class="set-tab" data-st="sheet" onclick="prateleiraSetTab('sheet')">Planilha</button>
     </div>
     <div class="set-pane" data-pane="tema">
       <div class="fg"><label class="fl">Tema do app</label><div id="prateleiraSkins"></div></div>
+    </div>
+    <div class="set-pane" data-pane="perfil" style="display:none">
+      <div class="fg">
+        <label class="fl">Seu ícone na prateleira</label>
+        <p class="rg">Aparece junto às estrelas em cada título. Só você vê este ajuste no seu aparelho.</p>
+        <div class="icon-pick-row">
+          <span id="prIconPreview" class="icon-preview" aria-hidden="true">🐻</span>
+          <input class="field" id="prUserIcon" maxlength="8" placeholder="Emoji (ex.: 🐻)">
+        </div>
+        <button type="button" class="btn ghost" style="width:100%;margin-top:8px" onclick="savePrateleiraIcon()">Salvar ícone</button>
+      </div>
     </div>
     <div class="set-pane" data-pane="sheet" style="display:none">
       <div class="fg"><label class="fl">Planilha compartilhada</label>

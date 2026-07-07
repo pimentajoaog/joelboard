@@ -30,17 +30,17 @@ function julioelAllowed() { return JULIOEL_EMAILS.indexOf((JB.email() || '').toL
 function julioelUnlocked() { try { return localStorage.getItem('jb_julioel') === '1'; } catch (_) { return false; } }
 function julioelOk() { return JB.isSignedIn() && julioelAllowed() && julioelUnlocked(); }
 function tmdbKey() { return window.JB_TMDB_KEY || ''; }
-function rawgUrl(params) {
+function gamesUrl(params) {
   var qs = new URLSearchParams(params || {});
-  return '/api/rawg?' + qs.toString();
+  return '/api/games?' + qs.toString();
 }
-function rawgFetch(params) {
-  return fetch(rawgUrl(params)).then(function (r) {
-    if (!r.ok) throw new Error('rawg-' + r.status);
+function gamesFetch(params) {
+  return fetch(gamesUrl(params)).then(function (r) {
+    if (!r.ok) throw new Error('games-' + r.status);
     return r.json();
   });
 }
-function isRawgGameId(id) { return /^\d+$/.test(String(id || '')); }
+function isCatalogGameId(id) { return /^\d+$/.test(String(id || '')); }
 function ssUrl(p) { return 'https://sheets.googleapis.com/v4/spreadsheets/' + JB.getSheetId(APP) + p; }
 function todayISO() {
   var d = new Date();
@@ -284,21 +284,21 @@ function migrateLegacyRatings(avaliacoesRows) {
 
 function refreshAllPosters() {
   var todo = media.filter(function (m) {
-    if (m.type === 'game') return isRawgGameId(parseMediaId(m.key).id);
+    if (m.type === 'game') return isCatalogGameId(parseMediaId(m.key).id);
     return !!tmdbKey();
   });
   if (!todo.length) return Promise.resolve();
   return todo.reduce(function (chain, m) {
     return chain.then(function () {
-      return m.type === 'game' ? fetchPosterFromRawg(m) : fetchPosterFromTmdb(m);
+      return m.type === 'game' ? fetchPosterFromCatalog(m) : fetchPosterFromTmdb(m);
     });
   }, Promise.resolve());
 }
 
-function fetchPosterFromRawg(m) {
+function fetchPosterFromCatalog(m) {
   var parsed = parseMediaId(m.key);
-  if (parsed.type !== 'game' || !isRawgGameId(parsed.id)) return Promise.resolve();
-  return rawgFetch({ game: parsed.id })
+  if (parsed.type !== 'game' || !isCatalogGameId(parsed.id)) return Promise.resolve();
+  return gamesFetch({ game: parsed.id })
     .then(function (item) {
       var poster = item.background_image || '';
       if (!poster) return;
@@ -530,7 +530,7 @@ function runGameSearch(q) {
     return;
   }
   out.innerHTML = '<div class="empty">Buscando…</div>';
-  rawgFetch({ search: q, page_size: '14' })
+  gamesFetch({ search: q, page_size: '14' })
     .then(function (data) {
       var list = data.results || [];
       var html = '';
@@ -545,7 +545,7 @@ function runGameSearch(q) {
           var year = String(item.released || '').slice(0, 4) || '—';
           var tag = shelf ? ' · na prateleira' : (inSheet ? ' · registrar' : '');
           var poster = item.background_image || '';
-          return '<div class="srow" onclick="addFromRawg(' + item.id + ')">'
+          return '<div class="srow" onclick="addFromCatalog(' + item.id + ')">'
             + '<div class="sposter">' + posterVisual(poster, '🎮') + '</div>'
             + '<div class="info"><div class="t">' + esc(item.name || '') + '</div><div class="y">Jogo · ' + esc(year) + tag + '</div></div></div>';
         }).join('') + '</div>';
@@ -571,13 +571,13 @@ function runGameSearch(q) {
     });
 }
 
-function addFromRawg(rawgId) {
-  var key = mediaKey('game', rawgId);
+function addFromCatalog(catalogId) {
+  var key = mediaKey('game', catalogId);
   if (media.some(function (m) { return m.key === key; })) {
     openDetail(key);
     return;
   }
-  rawgFetch({ game: String(rawgId) })
+  gamesFetch({ game: String(catalogId) })
     .then(function (item) {
       var title = item.name || '';
       var year = String(item.released || '').slice(0, 4);

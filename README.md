@@ -58,7 +58,9 @@ Open the URL Vite prints (usually `http://localhost:5173`). Google Sign-In works
 | Variable | Purpose |
 |----------|---------|
 | `VITE_TMDB_API_KEY` | Film/series search (injected at build) |
-| `RAWG_API_KEY` | Game search via `/api/rawg` serverless proxy |
+| `TWITCH_CLIENT_ID` | Game search via IGDB (primary, `/api/games`) |
+| `TWITCH_CLIENT_SECRET` | IGDB OAuth (server-side only) |
+| `RAWG_API_KEY` | Optional game search fallback if IGDB fails |
 
 Each deploy bumps the service-worker cache id (`scripts/bump-sw.mjs`). Core assets (`/joelboard.js`, `/joelboard.css`, `/themes.css`, `/<app>.js`) are served at **unhashed URLs**; the PWA uses network-first revalidation. If a change does not appear after deploy, hard-refresh or wait for the new service worker.
 

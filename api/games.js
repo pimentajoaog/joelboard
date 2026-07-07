@@ -1,4 +1,3 @@
-/** @deprecated Use /api/games — kept as alias for older clients. */
 import { gamesJsonResponse, proxyGamesRequest } from '../lib/games-proxy.mjs';
 
 export default async function handler(request) {

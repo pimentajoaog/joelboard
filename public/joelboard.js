@@ -21,8 +21,8 @@
   function ss(k, v){ try { sessionStorage.setItem(k, v); } catch (_) {} }
   function sr(k){ try { sessionStorage.removeItem(k); } catch (_) {} }
 
-  function readToken(){ return memTok || sg(TOK) || ''; }
-  function readExp(){ return memExp || Number(sg(EXP) || 0); }
+  function readToken(){ return memTok || sg(TOK) || lg(TOK) || ''; }
+  function readExp(){ return memExp || Number(sg(EXP) || lg(EXP) || 0); }
   function tokenExpiresAt(){ return readExp(); }
   function isTokenValid(){ var t = readToken(), e = readExp(); return !!(t && e && Date.now() < e); }
   function cachedToken(){ return isTokenValid() ? readToken() : ''; }
@@ -31,15 +31,32 @@
     memTok = ''; memExp = 0;
     sr(TOK); sr(EXP);
     try { localStorage.removeItem(TOK); localStorage.removeItem(EXP); } catch (_) {}
+    clearRefreshTimer();
   }
   function clearStaleToken(){ if (readToken() && !isTokenValid()) clearTokenStorage(); }
-  function saveToken(tok, expiresIn){
-    var exp = Date.now() + (Number(expiresIn) || 3600) * 1000 - 120000;
+  function persistTokenStore(tok, exp){
     memTok = tok;
     memExp = exp;
     ss(TOK, tok);
     ss(EXP, String(exp));
+    try { localStorage.setItem(TOK, tok); localStorage.setItem(EXP, String(exp)); } catch (_) {}
+  }
+  function scheduleTokenRefresh(){
+    clearRefreshTimer();
+    var exp = readExp();
+    if (!exp || !readToken()) return;
+    var ms = exp - Date.now() - 300000;
+    if (ms < 30000) ms = 30000;
+    refreshTimer = setTimeout(function () {
+      if (!email() && !readToken()) return;
+      requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {});
+    }, Math.min(ms, 2147483647));
+  }
+  function saveToken(tok, expiresIn){
+    var exp = Date.now() + (Number(expiresIn) || 3600) * 1000 - 120000;
+    persistTokenStore(tok, exp);
     lr('jb_signedout');
+    scheduleTokenRefresh();
     if (AUTH_BC) try { AUTH_BC.postMessage({ t: 'tok', tok: tok, exp: exp, from: TAB_ID }); } catch (_) {}
   }
   function email(){ return lg(EML) || ''; }
@@ -47,14 +64,12 @@
   function migrateTokenStorage(){
     try {
       var oldTok = localStorage.getItem(TOK), oldExp = localStorage.getItem(EXP);
-      if (oldTok && oldExp && !sg(TOK)) {
-        memTok = oldTok;
-        memExp = Number(oldExp) || 0;
-        ss(TOK, oldTok);
-        ss(EXP, oldExp);
+      var sessTok = sg(TOK), sessExp = sg(EXP);
+      if (sessTok && sessExp) {
+        if (!oldTok || Number(sessExp) >= Number(oldExp || 0)) persistTokenStore(sessTok, Number(sessExp) || 0);
+      } else if (oldTok && oldExp) {
+        persistTokenStore(oldTok, Number(oldExp) || 0);
       }
-      localStorage.removeItem(TOK);
-      localStorage.removeItem(EXP);
     } catch (_) {}
   }
   function initAuthBroadcast(){
@@ -63,11 +78,9 @@
       var d = ev.data;
       if (!d || d.from === TAB_ID) return;
       if (d.t === 'tok' && d.tok && d.exp && d.exp > Date.now()) {
-        memTok = d.tok;
-        memExp = d.exp;
-        ss(TOK, d.tok);
-        ss(EXP, String(d.exp));
+        persistTokenStore(d.tok, d.exp);
         lr('jb_signedout');
+        scheduleTokenRefresh();
       } else if (d.t === 'out') {
         clearTokenStorage();
         ls('jb_signedout', '1');
@@ -538,8 +551,15 @@
     initAuthBroadcast();
     clearStaleToken();
     if (hasSession()) {
-      if (!isTokenValid()) ensureToken(false).catch(clearStaleToken);
+      if (isTokenValid()) scheduleTokenRefresh();
+      else ensureToken(false).then(scheduleTokenRefresh).catch(clearStaleToken);
     }
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState !== 'visible' || lg('jb_signedout')) return;
+      if (!email() && !readToken()) return;
+      if (isTokenValid() && readExp() - Date.now() > 240000) return;
+      requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {});
+    });
   }
 
   var tabSyncFn = null, tabSyncLast = 0, tabSyncMs = 90000;

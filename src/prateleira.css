@@ -121,7 +121,22 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
   animation:jlbo-shelf-glow 2.6s ease-in-out infinite;
 }
 .shelf-item.jlbo-glow .shelf-cover{
-  box-shadow:0 2px 0 color-mix(in srgb, var(--border) 80%, #000), 0 6px 16px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.06), 0 0 22px rgba(251,191,36,.24);
+  box-shadow:0 2px 0 rgba(120,53,15,.5), 0 6px 18px rgba(0,0,0,.32), 0 0 26px rgba(251,191,36,.38);
+}
+.shelf-item.jlbo-glow .shelf-cover::before{
+  content:''; position:absolute; inset:-1px; border-radius:inherit; padding:2px; z-index:3; pointer-events:none;
+  background:linear-gradient(120deg, #92400e, #fde68a, #fffbeb, #fbbf24, #f59e0b, #fde68a, #92400e);
+  background-size:300% 300%;
+  animation:jlbo-gold-shine 4s ease-in-out infinite;
+  -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite:exclude;
+}
+.shelf-item.jlbo-glow .shelf-label{
+  border:1px solid rgba(251,191,36,.7);
+  background:linear-gradient(180deg, color-mix(in srgb, #fbbf24 10%, var(--surface2)), color-mix(in srgb, var(--surface2) 88%, var(--surface)));
+  box-shadow:0 2px 8px rgba(251,191,36,.24), inset 0 1px 0 rgba(255,251,235,.4), inset 0 0 0 1px rgba(253,230,138,.25);
 }
 .shelf-cover{
   width:100%; aspect-ratio:2/3; background:var(--surface2); position:relative; overflow:visible;
@@ -211,6 +226,10 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
   0%,100%{ opacity:.78; transform:translate(-50%,0) scale(1); }
   50%{ opacity:1; transform:translate(-50%,0) scale(1.1); }
 }
+@keyframes jlbo-gold-shine{
+  0%,100%{ background-position:0% 50%; }
+  50%{ background-position:100% 50%; }
+}
 
 .icon-pick-row{ display:flex; align-items:center; gap:12px; margin-bottom:8px; }
 .icon-preview{
@@ -236,6 +255,20 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .poster-bg{ position:absolute; inset:0; background-size:cover; background-position:center; background-repeat:no-repeat; background-color:var(--surface2); }
 .mbadge{ position:absolute; top:8px; right:8px; font-size:14px; background:rgba(0,0,0,.55); border-radius:8px; padding:3px 6px; backdrop-filter:blur(4px); }
 .dhero-poster{ width:110px; aspect-ratio:2/3; border-radius:12px; background:var(--surface2); flex:none; position:relative; overflow:hidden; }
+.dhero.jlbo-glow .dhero-poster{
+  overflow:visible;
+  box-shadow:0 0 28px rgba(251,191,36,.4), 0 8px 20px rgba(0,0,0,.28);
+}
+.dhero.jlbo-glow .dhero-poster::before{
+  content:''; position:absolute; inset:-2px; border-radius:inherit; padding:2px; z-index:2; pointer-events:none;
+  background:linear-gradient(120deg, #92400e, #fde68a, #fffbeb, #fbbf24, #f59e0b, #fde68a, #92400e);
+  background-size:300% 300%;
+  animation:jlbo-gold-shine 4s ease-in-out infinite;
+  -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite:exclude;
+}
 .dhero-poster.is-music{ aspect-ratio:1/1; }
 .dhero-poster .poster-bg{ border-radius:12px; }
 .dhero-poster .ph{ font-size:32px; }

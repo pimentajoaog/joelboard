@@ -601,7 +601,7 @@ function starsHtml(n, showJlbo) {
   return h;
 }
 
-var SHELF_PER_ROW = 6;
+var SHELF_PER_ROW = 7;
 
 function shelfTilt(i) {
   return ((i * 17 + 3) % 7) - 3;
@@ -612,7 +612,7 @@ function shelfFootHtml(m) {
   var rows = JULIOEL_EMAILS.map(function (em) {
     var s = byUser[em];
     if (!s || !s.stars) return '';
-    return '<div class="shelf-foot-row">' + userIconHtml(em) + '<span class="shelf-foot-stars">' + starsHtml(s.stars, userHasJlbo(m, em)) + '</span></div>';
+    return '<div class="shelf-foot-row">' + userIconHtml(em) + '<span class="shelf-foot-stars">' + starsHtml(s.stars) + '</span></div>';
   }).join('');
   return rows ? '<div class="shelf-foot">' + rows + '</div>' : '';
 }
@@ -620,10 +620,11 @@ function shelfFootHtml(m) {
 function shelfItemHtml(m, idx) {
   var byUser = latestStarsByUser(m.key);
   var latest = latestSession(m.key);
+  var fullJlbo = mediaHasFullJlbo(m.key);
   var starsMini = JULIOEL_EMAILS.map(function (em) {
     var s = byUser[em];
     if (!s || !s.stars) return '';
-    return '<span class="shelf-who"><span class="shelf-who-name">' + esc(userLabel(em)) + '</span>' + starsHtml(s.stars, userHasJlbo(m, em)) + '</span>';
+    return '<span class="shelf-who"><span class="shelf-who-name">' + esc(userLabel(em)) + '</span>' + starsHtml(s.stars) + '</span>';
   }).join('');
   var hover = '';
   if (latest || starsMini) {
@@ -632,11 +633,13 @@ function shelfItemHtml(m, idx) {
       + (starsMini ? '<div class="shelf-ratings">' + starsMini + '</div>' : '')
       + '</div>';
   }
-  return '<div class="shelf-item' + (mediaHasFullJlbo(m.key) ? ' jlbo-glow' : '') + (m.type === 'game' ? ' is-game' : '') + '"'
+  return '<div class="shelf-item' + (fullJlbo ? ' jlbo-glow' : '') + (m.type === 'game' ? ' is-game' : '') + '"'
     + ' style="--tilt:' + shelfTilt(idx) + 'deg;--si:' + idx + '" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
     + hover
-    + '<div class="shelf-tilt"><div class="shelf-cover">' + posterVisual(posterPathFor(m), typeIcon(m.type))
-    + '<span class="mbadge">' + typeIcon(m.type) + '</span></div></div>'
+    + '<div class="shelf-tilt"><div class="shelf-cover' + (fullJlbo ? ' has-jlbo' : '') + '">' + posterVisual(posterPathFor(m), typeIcon(m.type))
+    + '<span class="mbadge">' + typeIcon(m.type) + '</span>'
+    + (fullJlbo ? '<span class="shelf-jlbo-corner">' + jlboSealHtml() + '</span>' : '')
+    + '</div></div>'
     + '<div class="shelf-meta"><div class="shelf-label"><span class="shelf-title">' + esc(m.title) + '</span>'
     + (m.year ? '<span class="shelf-year">' + esc(m.year) + '</span>' : '')
     + '</div>' + shelfFootHtml(m) + '</div></div>';

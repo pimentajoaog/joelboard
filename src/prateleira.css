@@ -50,7 +50,7 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .shelf-stage{ position:relative; padding:0 2px 18px; }
 .shelf-items{
   display:flex; flex-wrap:wrap; align-items:flex-end; align-content:flex-end;
-  gap:12px 16px; padding:0 6px 20px; min-height:188px;
+  gap:10px 11px; padding:0 4px 20px; min-height:188px;
 }
 .shelf-plank{
   position:absolute; left:0; right:0; bottom:0; height:16px; border-radius:4px;
@@ -66,7 +66,7 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
   opacity:.7;
 }
 .shelf-item{
-  position:relative; z-index:1; flex:0 1 calc(16.666% - 14px); min-width:82px; max-width:112px;
+  position:relative; z-index:1; flex:0 1 calc(14.285% - 10px); min-width:74px; max-width:100px;
   display:flex; flex-direction:column; align-items:center; cursor:pointer;
   transition:transform .2s cubic-bezier(.2,.7,.3,1), z-index 0s .2s;
   animation:shelf-place .5s cubic-bezier(.34,1.2,.64,1) both;
@@ -80,17 +80,29 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .shelf-item:hover .shelf-tilt{ transform:translateY(-10px) rotate(var(--tilt, 0deg)) scale(1.04); }
 .shelf-item:active .shelf-tilt{ transform:translateY(-6px) rotate(var(--tilt, 0deg)) scale(1.01); }
 .shelf-item.jlbo-glow::before{
-  content:''; position:absolute; left:50%; bottom:52px; width:130%; height:55%;
+  content:''; position:absolute; left:50%; bottom:48px; width:145%; height:62%;
   transform:translate(-50%,0);
-  background:radial-gradient(ellipse, rgba(251,191,36,.5) 0%, rgba(251,191,36,.2) 40%, transparent 72%);
-  filter:blur(18px); z-index:-1; pointer-events:none;
-  animation:jlbo-backlight 2.6s ease-in-out infinite;
+  background:radial-gradient(ellipse, rgba(251,191,36,.62) 0%, rgba(251,191,36,.28) 40%, transparent 76%);
+  filter:blur(20px); z-index:-1; pointer-events:none;
+  animation:jlbo-shelf-glow 2.6s ease-in-out infinite;
+}
+.shelf-item.jlbo-glow .shelf-cover{
+  box-shadow:0 2px 0 color-mix(in srgb, var(--border) 80%, #000), 0 6px 16px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.06), 0 0 22px rgba(251,191,36,.24);
 }
 .shelf-cover{
-  width:100%; aspect-ratio:2/3; background:var(--surface2); position:relative; overflow:hidden;
+  width:100%; aspect-ratio:2/3; background:var(--surface2); position:relative; overflow:visible;
   border-radius:5px 5px 3px 3px;
   box-shadow:0 2px 0 color-mix(in srgb, var(--border) 80%, #000), 0 6px 16px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.06);
 }
+.shelf-cover .poster-bg,.shelf-cover .ph{ border-radius:5px 5px 3px 3px; overflow:hidden; }
+.shelf-cover.has-jlbo .mbadge{ left:6px; right:auto; }
+.shelf-jlbo-corner{
+  position:absolute; top:5px; right:5px; z-index:4; line-height:0;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));
+}
+.shelf-jlbo-corner .jlbo-stamp{ margin:0; min-width:22px; height:19px; animation:jlbo-wobble 2.8s ease-in-out infinite; }
+.shelf-jlbo-corner .jlbo-jl{ font-size:8px; }
+.shelf-jlbo-corner .jlbo-tm{ font-size:5px; }
 .shelf-item.is-game .shelf-cover{ aspect-ratio:3/4; border-radius:4px; }
 .shelf-cover .poster-bg{ border-radius:inherit; }
 .shelf-cover .ph{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:26px; }
@@ -134,9 +146,11 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 .shelf-uicon{ font-size:11px; line-height:1; flex:none; }
 .shelf-foot-stars{ display:inline-flex; align-items:center; gap:0; line-height:1; }
 .shelf-foot .mstar{ font-size:8px; }
-.shelf-foot .jlbo-stamp{ min-width:14px; height:12px; padding:0 2px; margin-left:2px; }
-.shelf-foot .jlbo-jl{ font-size:6px; }
-.shelf-foot .jlbo-tm{ font-size:4px; }
+
+@keyframes jlbo-shelf-glow{
+  0%,100%{ opacity:.78; transform:translate(-50%,0) scale(1); }
+  50%{ opacity:1; transform:translate(-50%,0) scale(1.1); }
+}
 
 .icon-pick-row{ display:flex; align-items:center; gap:12px; margin-bottom:8px; }
 .icon-preview{
@@ -152,8 +166,8 @@ body{ min-height:100vh; background:var(--bg); color:var(--text); font-family:var
 }
 
 @media (max-width: 720px){
-  .shelf-item{ flex:0 1 calc(25% - 12px); min-width:72px; max-width:100px; }
-  .shelf-items{ gap:10px 12px; min-height:150px; }
+  .shelf-item{ flex:0 1 calc(20% - 9px); min-width:68px; max-width:92px; }
+  .shelf-items{ gap:8px 10px; min-height:150px; }
 }
 @media (max-width: 480px){
   .shelf-item{ flex:0 1 calc(33.333% - 10px); min-width:68px; max-width:92px; }

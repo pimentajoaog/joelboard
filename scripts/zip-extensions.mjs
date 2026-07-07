@@ -9,6 +9,7 @@ const extDir = path.join(root, 'public', 'extensions');
 const extensions = [
   { folder: 'replace', zip: 'joelboard-replace.zip' },
   { folder: 'refresh', zip: 'joelboard-refresh.zip' },
+  { folder: 'report', zip: 'joelboard-report.zip' },
 ];
 
 for (const { folder, zip } of extensions) {

@@ -139,21 +139,21 @@
         <div class="desc">Auto-refresh da aba — intervalo, atalho e pausa em aba inativa.</div>
         <div class="open" style="color:var(--success)">Baixar →</div>
       </a>
-      <div class="miniv-card soon">
-        <div class="miniv-ico" style="background:var(--surface2)">
-          <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="14" fill="none" stroke="var(--muted)" stroke-width="3" stroke-dasharray="4 6"/></svg>
+      <a class="miniv-card live" href="/extensions/joelboard-report.zip" download="joelboard-report.zip">
+        <div class="miniv-ico" style="background:color-mix(in srgb, #f59e0b 12%, var(--surface2))">
+          <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect x="16" y="12" width="32" height="40" rx="6" fill="none" stroke="#f59e0b" stroke-width="3"/><path d="M22 22h20M22 30h14M22 38h18" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/><path d="M40 44l8 6" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/></svg>
         </div>
         <div class="suite">Joelboard Mini</div>
-        <div class="name" style="color:var(--muted)">Em breve</div>
-        <div class="desc">Mais uma extensão entra aqui.</div>
-        <span class="soon">Em breve</span>
-      </div>
+        <div class="name" style="color:#f59e0b">Report</div>
+        <div class="desc">Relatório recorrente — contadores, template editável, copiar para Slack.</div>
+        <div class="open" style="color:#f59e0b">Baixar →</div>
+      </a>
     </div>
     <div class="miniv-steps">
       <h2>Instalar uma extensão</h2>
       <ol>
-        <li>Toque no card acima para baixar o zip (<code>joelboard-replace.zip</code> ou <code>joelboard-refresh.zip</code>).</li>
-        <li>Descompacte — você terá uma pasta (<code>replace</code> ou <code>refresh</code>) com o <code>manifest.json</code>.</li>
+        <li>Toque no card acima para baixar o zip (<code>joelboard-replace.zip</code>, <code>joelboard-refresh.zip</code> ou <code>joelboard-report.zip</code>).</li>
+        <li>Descompacte — você terá uma pasta (<code>replace</code>, <code>refresh</code> ou <code>report</code>) com o <code>manifest.json</code>.</li>
         <li>No Chrome, abra <a href="chrome://extensions" target="_blank" rel="noopener">chrome://extensions</a> e ative o <b>Modo do desenvolvedor</b>.</li>
         <li>Clique em <b>Carregar sem compactação</b> e selecione a pasta descompactada.</li>
         <li>Fixe a extensão na barra. Clique no ícone para abrir o popup.</li>
@@ -162,6 +162,8 @@
       <p>Em qualquer campo de texto, digite um gatilho (ex.: <code>//oi</code>) e pressione <b>Espaço</b> ou <b>Tab</b> para expandir. Planilha: colunas <code>Nome</code>, <code>Trigger</code>, <code>Text</code>. Colar Ctrl+C: <code>%clip%</code>.</p>
       <h3>Joelboard Refresh</h3>
       <p>Abra a aba que quer monitorar, defina o intervalo e clique <b>Iniciar</b> — a página recarrega na hora e um contador aparece no canto enquanto a aba estiver ativa. Atalho personalizável no popup (clique em <b>Atalho</b> para gravar). Padrão: <code>Alt+Shift+R</code>.</p>
+      <h3>Joelboard Report</h3>
+      <p>Preencha os contadores no popup, confira a prévia e clique <b>Copiar relatório</b> — cole no Slack. Edite labels, linhas fixas e campos na aba <b>Template</b>. Não precisa de site permitido (só popup).</p>
     </div>
     <div class="miniv-sites">
       <h2>Sites permitidos</h2>

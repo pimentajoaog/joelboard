@@ -2,14 +2,14 @@
 
 Extensões leves da família Joelboard, distribuídas como zip pelo Hub (**Mini → Baixar**). Não estão na Chrome Web Store — instalação manual em modo desenvolvedor.
 
-Arquivos gerados no build: `public/extensions/joelboard-replace.zip`, `joelboard-refresh.zip`.
+Arquivos gerados no build: `public/extensions/joelboard-replace.zip`, `joelboard-refresh.zip`, `joelboard-report.zip`.
 
 ---
 
 ## Instalar
 
-1. Baixe o zip no Hub (card Replace ou Refresh).
-2. Descompacte — pasta `replace` ou `refresh` com `manifest.json`.
+1. Baixe o zip no Hub (card Replace, Refresh ou Report).
+2. Descompacte — pasta `replace`, `refresh` ou `report` com `manifest.json`.
 3. Chrome → `chrome://extensions` → **Modo do desenvolvedor** ON.
 4. **Carregar sem compactação** → selecione a pasta.
 5. Fixe o ícone na barra.
@@ -62,6 +62,34 @@ Padrão **Alt+Shift+R** — personalizável no popup (gravar novo atalho). Tamb�
 - Badge na extensão mostra tempo restante.
 - Fechar a aba para o timer.
 - Após reload/update da extensão, scripts antigos param silenciosamente (sem erro no console).
+
+---
+
+## Report — relatório recorrente
+
+Monta um texto fixo com **contadores numéricos** — ideal para relatórios de Slack que repetem a mesma estrutura a cada hora.
+
+### Uso
+
+1. Abra o popup da extensão (**Relatório**).
+2. Preencha os números (ex.: fila, treinamento, MTO/VTO, refeição/pausa, Tutor, PS).
+3. Confira a **prévia** e clique **Copiar relatório**.
+4. Cole no Slack.
+
+Os valores ficam salvos para o próximo envio — só ajuste o que mudou.
+
+### Template
+
+Aba **Template** — edite labels, adicione/remova campos, linhas fixas (`Hourly report:`, `Queue:`) e linhas em branco. Dois formatos de campo:
+
+- **Número + rótulo** — ex.: `12 agents on queue`
+- **Prefixo + número** — ex.: `Tutor: 5`
+
+Use ▲/▼ para reordenar blocos.
+
+### Permissões
+
+Report roda **só no popup** — não injeta em páginas e não usa a lista de sites permitidos.
 
 ---
 

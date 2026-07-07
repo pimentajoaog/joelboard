@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!-- Joelboard Report — popup. © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Joelboard Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <img src="icons/icon-192.png" alt="" width="28" height="28">
+    <div>
+      <div class="title">Report</div>
+      <div class="sub">Joelboard Mini · Replace · Refresh · Report</div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="report">Relatório</button>
+    <button class="tab" data-tab="template">Template</button>
+  </div>
+
+  <div class="pane on" id="pane-report">
+    <div class="fields" id="fieldForm"></div>
+    <label class="fl">Prévia</label>
+    <pre class="preview" id="preview"></pre>
+    <button class="btn primary" id="btnCopy">Copiar relatório</button>
+    <p class="hint">Cole no Slack ou onde precisar. Os valores ficam salvos para o próximo envio.</p>
+  </div>
+
+  <div class="pane" id="pane-template">
+    <p class="hint">Monte o texto do relatório: campos numéricos, linhas fixas e espaços em branco.</p>
+    <div class="list" id="blockList"></div>
+    <div class="tpl-actions">
+      <button class="btn ghost" id="btnAddField">+ Campo</button>
+      <button class="btn ghost" id="btnAddText">+ Linha fixa</button>
+      <button class="btn ghost" id="btnAddBlank">+ Linha em branco</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="editor">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="edTitle">Editar</div><button class="x" id="edClose">✕</button></div>
+    <div id="edFieldPane">
+      <label class="fl">Rótulo (formulário)</label>
+      <input class="field" id="edLabel" placeholder="ex.: agents on queue">
+      <label class="fl">Formato da linha</label>
+      <select class="field" id="edFormat">
+        <option value="suffix">Número + rótulo — ex.: 12 agents on queue</option>
+        <option value="prefix">Prefixo + número — ex.: Tutor: 5</option>
+      </select>
+      <label class="fl" id="edPrefixWrap">Prefixo na linha</label>
+      <input class="field" id="edPrefix" placeholder="ex.: Tutor: ">
+    </div>
+    <div id="edTextPane" style="display:none">
+      <label class="fl">Texto da linha</label>
+      <input class="field" id="edText" placeholder="ex.: Hourly report:">
+    </div>
+    <div class="modal-btns">
+      <button class="btn danger ghost" id="edDelete" style="display:none">Excluir</button>
+      <button class="btn primary" id="edSave">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="lib/shared.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

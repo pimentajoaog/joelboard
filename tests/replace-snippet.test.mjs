@@ -84,10 +84,11 @@ describe('template variables', () => {
     assert.equal(parts[1].type, 'var');
     assert.equal(parts[1].key, 'nome');
     assert.equal(parts[1].missing, true);
-    assert.equal(parts[2].type, 'var');
-    assert.equal(parts[2].key, 'date');
-    assert.equal(parts[2].missing, false);
-    assert.equal(parts[2].value, '07/07/2026');
-    assert.equal(parts[4].value, 'Joel');
+    assert.equal(parts[2].type, 'text');
+    assert.equal(parts[3].type, 'var');
+    assert.equal(parts[3].key, 'date');
+    assert.equal(parts[3].missing, false);
+    assert.equal(parts[3].value, '07/07/2026');
+    assert.equal(parts[5].value, 'Joel');
   });
 });

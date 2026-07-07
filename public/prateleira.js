@@ -16,6 +16,7 @@ var curTab = 'lib';
 var detailId = null;
 var sessHistOpen = false;
 var searchTimer = null;
+var searchMode = 'screen';
 var posterCache = {};
 
 function esc(s) {
@@ -29,6 +30,17 @@ function julioelAllowed() { return JULIOEL_EMAILS.indexOf((JB.email() || '').toL
 function julioelUnlocked() { try { return localStorage.getItem('jb_julioel') === '1'; } catch (_) { return false; } }
 function julioelOk() { return JB.isSignedIn() && julioelAllowed() && julioelUnlocked(); }
 function tmdbKey() { return window.JB_TMDB_KEY || ''; }
+function rawgUrl(params) {
+  var qs = new URLSearchParams(params || {});
+  return '/api/rawg?' + qs.toString();
+}
+function rawgFetch(params) {
+  return fetch(rawgUrl(params)).then(function (r) {
+    if (!r.ok) throw new Error('rawg-' + r.status);
+    return r.json();
+  });
+}
+function isRawgGameId(id) { return /^\d+$/.test(String(id || '')); }
 function ssUrl(p) { return 'https://sheets.googleapis.com/v4/spreadsheets/' + JB.getSheetId(APP) + p; }
 function todayISO() {
   var d = new Date();
@@ -77,6 +89,21 @@ function libraryMedia() {
   return media.filter(function (m) { return sessionsFor(m.key).length > 0; });
 }
 function onShelf(key) { return sessionsFor(key).length > 0; }
+
+function gameId() {
+  return 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function findGameByTitle(title) {
+  var t = String(title || '').trim().toLowerCase();
+  if (!t) return null;
+  return media.find(function (m) { return m.type === 'game' && m.title.toLowerCase() === t; }) || null;
+}
+
+function setSearchMode(mode) {
+  searchMode = mode === 'game' ? 'game' : 'screen';
+  renderMain();
+}
 
 function migrateAppKeys() {
   try {
@@ -256,11 +283,32 @@ function migrateLegacyRatings(avaliacoesRows) {
 }
 
 function refreshAllPosters() {
-  if (!tmdbKey()) return Promise.resolve();
-  var todo = media.filter(function (m) { return m.type !== 'game'; });
+  var todo = media.filter(function (m) {
+    if (m.type === 'game') return isRawgGameId(parseMediaId(m.key).id);
+    return !!tmdbKey();
+  });
+  if (!todo.length) return Promise.resolve();
   return todo.reduce(function (chain, m) {
-    return chain.then(function () { return fetchPosterFromTmdb(m); });
+    return chain.then(function () {
+      return m.type === 'game' ? fetchPosterFromRawg(m) : fetchPosterFromTmdb(m);
+    });
   }, Promise.resolve());
+}
+
+function fetchPosterFromRawg(m) {
+  var parsed = parseMediaId(m.key);
+  if (parsed.type !== 'game' || !isRawgGameId(parsed.id)) return Promise.resolve();
+  return rawgFetch({ game: parsed.id })
+    .then(function (item) {
+      var poster = item.background_image || '';
+      if (!poster) return;
+      m.poster = poster;
+      posterCache[m.key] = poster;
+      if (!m.sheetRow) return;
+      var col = m.layout === 'new' ? 'E' : 'D';
+      return JB.api('PUT', ssUrl('/values/' + encodeURIComponent('Filmes!' + col + m.sheetRow) + '?valueInputOption=RAW'), { values: [[poster]] });
+    })
+    .catch(function () {});
 }
 
 function fetchPosterFromTmdb(m) {
@@ -374,7 +422,24 @@ function starsHtml(n) {
 function renderMain() {
   var el = document.getElementById('main');
   if (curTab === 'search') {
-    el.innerHTML = '<div class="searchbar"><input type="search" id="mvSearch" placeholder="Buscar filme ou série…" autocomplete="off"></div><div id="searchOut"><div class="empty">Digite para buscar no catálogo.</div></div>';
+    var pills = '<div class="search-modes"><button type="button" class="smode' + (searchMode === 'screen' ? ' on' : '') + '" onclick="setSearchMode(\'screen\')">Filmes & séries</button>'
+      + '<button type="button" class="smode' + (searchMode === 'game' ? ' on' : '') + '" onclick="setSearchMode(\'game\')">Jogos</button></div>';
+    if (searchMode === 'game') {
+      el.innerHTML = pills
+        + '<div class="searchbar"><input type="search" id="gameSearch" placeholder="Buscar jogo no catálogo…" autocomplete="off"></div>'
+        + '<div class="game-add-row"><input class="field" id="gameYear" placeholder="Ano (só ao adicionar manual)" inputmode="numeric" maxlength="4"></div>'
+        + '<div id="searchOut"><div class="empty">Digite para buscar no catálogo.</div></div>';
+      var ginp = document.getElementById('gameSearch');
+      ginp.oninput = function () {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () { runGameSearch(ginp.value); }, 200);
+      };
+      if (JB.searchFocus) JB.searchFocus(ginp);
+      return;
+    }
+    el.innerHTML = pills
+      + '<div class="searchbar"><input type="search" id="mvSearch" placeholder="Buscar filme ou série…" autocomplete="off"></div>'
+      + '<div id="searchOut"><div class="empty">Digite para buscar no catálogo.</div></div>';
     var inp = document.getElementById('mvSearch');
     inp.oninput = function () {
       clearTimeout(searchTimer);
@@ -384,7 +449,7 @@ function renderMain() {
     return;
   }
   if (!libraryMedia().length) {
-    el.innerHTML = JB.emptyState({ icon: '📚', title: 'Prateleira vazia', body: 'Busque algo e registre quando assistirem — aí entra na prateleira.', btn: 'Buscar', onclick: 'prateleiraTab(\'search\')' });
+    el.innerHTML = JB.emptyState({ icon: '📚', title: 'Prateleira vazia', body: 'Busque filmes, séries ou jogos e registrem quando assistirem/jogarem.', btn: 'Buscar', onclick: 'prateleiraTab(\'search\')' });
     return;
   }
   var html = '<div class="mgrid">';
@@ -440,6 +505,106 @@ function runSearch(q) {
       }).join('') + '</div>';
     })
     .catch(function () { out.innerHTML = '<div class="empty">Erro na busca.</div>'; });
+}
+
+function gameSearchRowHtml(m) {
+  var tag = onShelf(m.key) ? ' · na prateleira' : ' · registrar';
+  return '<div class="srow" data-key="' + attrEsc(m.key) + '" onclick="openDetail(this.dataset.key)">'
+    + '<div class="sposter">' + posterVisual(posterPathFor(m), '🎮') + '</div>'
+    + '<div class="info"><div class="t">' + esc(m.title) + '</div><div class="y">Jogo' + (m.year ? ' · ' + esc(m.year) : '') + tag + '</div></div></div>';
+}
+
+function runGameSearch(q) {
+  var out = document.getElementById('searchOut');
+  q = (q || '').trim();
+  var ql = q.toLowerCase();
+  var local = media.filter(function (m) {
+    return m.type === 'game' && (!ql || m.title.toLowerCase().indexOf(ql) >= 0);
+  });
+  if (!q) {
+    if (local.length) {
+      out.innerHTML = '<div class="sresults">' + local.map(gameSearchRowHtml).join('') + '</div>';
+    } else {
+      out.innerHTML = '<div class="empty">Digite para buscar no catálogo.</div>';
+    }
+    return;
+  }
+  out.innerHTML = '<div class="empty">Buscando…</div>';
+  rawgFetch({ search: q, page_size: '14' })
+    .then(function (data) {
+      var list = data.results || [];
+      var html = '';
+      if (local.length) {
+        html += '<div class="sresults">' + local.map(gameSearchRowHtml).join('') + '</div>';
+      }
+      if (list.length) {
+        html += '<div class="sresults">' + list.map(function (item) {
+          var key = mediaKey('game', item.id);
+          var inSheet = media.some(function (x) { return x.key === key; });
+          var shelf = onShelf(key);
+          var year = String(item.released || '').slice(0, 4) || '—';
+          var tag = shelf ? ' · na prateleira' : (inSheet ? ' · registrar' : '');
+          var poster = item.background_image || '';
+          return '<div class="srow" onclick="addFromRawg(' + item.id + ')">'
+            + '<div class="sposter">' + posterVisual(poster, '🎮') + '</div>'
+            + '<div class="info"><div class="t">' + esc(item.name || '') + '</div><div class="y">Jogo · ' + esc(year) + tag + '</div></div></div>';
+        }).join('') + '</div>';
+      } else if (!local.length) {
+        html += '<div class="empty">Nada encontrado no catálogo.</div>';
+      }
+      if (!findGameByTitle(q) && !list.some(function (item) { return String(item.name || '').trim().toLowerCase() === ql; })) {
+        html += '<button type="button" class="btn-primary game-add-btn" onclick="addManualGame()">+ Adicionar manualmente “' + esc(q) + '”</button>';
+      }
+      out.innerHTML = html || '<div class="empty">Nada encontrado.</div>';
+    })
+    .catch(function () {
+      var html = '';
+      if (local.length) {
+        html += '<div class="sresults">' + local.map(gameSearchRowHtml).join('') + '</div>';
+      } else {
+        html += '<div class="empty">Catálogo indisponível — adicione manualmente.</div>';
+      }
+      if (!findGameByTitle(q)) {
+        html += '<button type="button" class="btn-primary game-add-btn" onclick="addManualGame()">+ Adicionar “' + esc(q) + '”</button>';
+      }
+      out.innerHTML = html;
+    });
+}
+
+function addFromRawg(rawgId) {
+  var key = mediaKey('game', rawgId);
+  if (media.some(function (m) { return m.key === key; })) {
+    openDetail(key);
+    return;
+  }
+  rawgFetch({ game: String(rawgId) })
+    .then(function (item) {
+      var title = item.name || '';
+      var year = String(item.released || '').slice(0, 4);
+      var poster = item.background_image || '';
+      if (poster) posterCache[key] = poster;
+      var row = [key, 'Jogo', title, year, poster, JB.fmtDate(new Date())];
+      return JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
+        .then(function () { return loadAll(); })
+        .then(function () { JB.toast('✓ Registre quando jogarem'); openDetail(key); });
+    })
+    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
+}
+
+function addManualGame() {
+  var titleEl = document.getElementById('gameSearch');
+  var yearEl = document.getElementById('gameYear');
+  var title = titleEl ? (titleEl.value || '').trim() : '';
+  var year = yearEl ? (yearEl.value || '').trim().slice(0, 4) : '';
+  if (!title) { JB.toast('Digite o nome do jogo'); return; }
+  var existing = findGameByTitle(title);
+  if (existing) { openDetail(existing.key); return; }
+  var key = mediaKey('game', gameId());
+  var row = [key, 'Jogo', title, year, '', JB.fmtDate(new Date())];
+  JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
+    .then(function () { return loadAll(); })
+    .then(function () { JB.toast('✓ Registre quando jogarem'); openDetail(key); })
+    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
 }
 
 function addFromTmdb(type, tmdbId) {
@@ -501,20 +666,25 @@ function deleteSession(sheetRow) {
   }, { yes: 'Excluir', no: 'Cancelar', danger: true });
 }
 
-function logFormHtml() {
+function logFormHtml(m) {
   var myEm = (JB.email() || '').toLowerCase();
   if (JULIOEL_EMAILS.indexOf(myEm) < 0) return '';
+  var verb = logVerb(m.type);
   var stars = '';
   for (var s = 1; s <= 5; s++) {
     stars += '<button type="button" data-star="' + s + '" onclick="pickLogStar(' + s + ')">★</button>';
   }
-  return '<div class="sess-log"><div class="sess-label">Registrar</div>'
+  return '<div class="sess-log"><div class="sess-label">Registrar ' + verb + '</div>'
     + '<div class="fg"><label class="fl">Data</label>'
     + '<button type="button" class="field datebtn empty" id="sessDate" data-iso="" data-ph="Escolher data…" onclick="JB.dpOpen(\'sessDate\')">Escolher data…</button></div>'
     + '<div class="fg"><label class="fl">Estrelas</label><div class="star-pick" id="logStars" data-val="0">' + stars + '</div></div>'
     + '<textarea class="review-in" id="sessReview" maxlength="' + REVIEW_MAX + '" placeholder="Resenha curta (opcional)" oninput="revCount(this)"></textarea>'
     + '<div class="rev-count"><span class="rc">0</span>/' + REVIEW_MAX + '</div>'
     + '<button type="button" class="btn-primary" onclick="saveSession()">Registrar</button></div>';
+}
+
+function logVerb(type) {
+  return type === 'game' ? 'jogada' : 'assistida';
 }
 
 function openDetail(id) {
@@ -526,7 +696,7 @@ function openDetail(id) {
   document.getElementById('detailBody').innerHTML = '<div class="dhero">'
     + '<div class="mposter dhero-poster">' + posterVisual(posterPathFor(m), typeIcon(m.type)) + '</div>'
     + '<div class="dmeta"><h2>' + esc(m.title) + '</h2><p>' + esc(typeLabel(m.type)) + ' · ' + esc(m.year) + '</p></div></div>'
-    + sessionBlockHtml(m.key) + logFormHtml();
+    + sessionBlockHtml(m.key) + logFormHtml(m);
   JB.dpSet('sessDate', todayISO());
   document.getElementById('detailOv').classList.add('open');
 }

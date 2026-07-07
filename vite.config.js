@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
+import { proxyRawgRequest, rawgApiKey, rawgJsonResponse } from './lib/rawg-proxy.mjs';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -29,6 +30,36 @@ export default defineConfig(({ mode }) => {
           var tag = '<script>window.JB_TMDB_KEY=' + tmdbKey + ';</script>';
           return html.replace('<script src="/joelboard.js"></script>', tag + '\n<script src="/joelboard.js"></script>');
         }
+      }
+    }, {
+      name: 'rawg-dev-proxy',
+      configureServer(server) {
+        server.middlewares.use(async function (req, res, next) {
+          if (!req.url || req.url.indexOf('/api/rawg') !== 0) return next();
+          if (req.method === 'OPTIONS') {
+            res.statusCode = 204;
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+            res.end();
+            return;
+          }
+          if (req.method !== 'GET') {
+            res.statusCode = 405;
+            res.end(JSON.stringify({ error: 'Method not allowed' }));
+            return;
+          }
+          try {
+            var result = await proxyRawgRequest(req.url, rawgApiKey(env));
+            var response = rawgJsonResponse(result);
+            res.statusCode = response.status;
+            response.headers.forEach(function (v, k) { res.setHeader(k, v); });
+            res.end(await response.text());
+          } catch (err) {
+            res.statusCode = 502;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'RAWG proxy failed' }));
+          }
+        });
       }
     }]
   };

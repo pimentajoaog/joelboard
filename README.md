@@ -53,6 +53,13 @@ Open the URL Vite prints (usually `http://localhost:5173`). Google Sign-In works
 3. **Output directory:** `dist`
 4. Commit **source only** — do not commit `node_modules/` or `dist/` (see `.gitignore`).
 
+**Prateleira env vars (Vercel → Settings → Environment Variables):**
+
+| Variable | Purpose |
+|----------|---------|
+| `VITE_TMDB_API_KEY` | Film/series search (injected at build) |
+| `RAWG_API_KEY` | Game search via `/api/rawg` serverless proxy |
+
 Each deploy bumps the service-worker cache id (`scripts/bump-sw.mjs`). Core assets (`/joelboard.js`, `/joelboard.css`, `/themes.css`, `/<app>.js`) are served at **unhashed URLs**; the PWA uses network-first revalidation. If a change does not appear after deploy, hard-refresh or wait for the new service worker.
 
 ---

@@ -35,7 +35,7 @@ function applyJulioelUI(animate){
   var brand=document.getElementById('hubBrand');
   var wm=document.getElementById('hubBrandText');
   var sub=document.getElementById('hubSub');
-  var movies=document.getElementById('moviesTile');
+  var movies=document.getElementById('prateleiraTile');
   function paint(){
     if(brand){ brand.classList.toggle('julioel-secret', julioelAllowed()); brand.tabIndex=julioelAllowed()?0:-1; brand.setAttribute('aria-label', on?'Julioelboard':'Joelboard'); }
     if(wm) wm.textContent=on?'Julioelboard':'Joelboard';

@@ -1199,7 +1199,9 @@ function starsHtml(n, showJlbo) {
   return h;
 }
 
-var SHELF_PER_ROW = 7;
+function shelfPerRow() {
+  return window.matchMedia('(max-width: 720px)').matches ? 4 : 7;
+}
 
 function shelfTilt(i) {
   return ((i * 17 + 3) % 7) - 3;
@@ -1245,8 +1247,9 @@ function shelfItemHtml(m, idx) {
 
 function renderShelfStack(items) {
   var html = '<div class="shelf-stack">';
-  for (var i = 0; i < items.length; i += SHELF_PER_ROW) {
-    var chunk = items.slice(i, i + SHELF_PER_ROW);
+  var perRow = shelfPerRow();
+  for (var i = 0; i < items.length; i += perRow) {
+    var chunk = items.slice(i, i + perRow);
     html += '<div class="shelf-row"><div class="shelf-stage"><div class="shelf-items" style="--shelf-cols:' + chunk.length + '">';
     chunk.forEach(function (m, j) { html += shelfItemHtml(m, i + j); });
     html += '</div><div class="shelf-plank" aria-hidden="true"></div></div></div>';
@@ -2000,6 +2003,9 @@ function prateleiraSignOut() { try { localStorage.removeItem('jb_julioel'); } ca
 
 function startPrateleira() {
   loadLibPrefs();
+  window.matchMedia('(max-width: 720px)').addEventListener('change', function () {
+    if (curTab === 'lib' && libraryMedia().length) renderMain();
+  });
   if (!JB.hasSession()) { boot(); return; }
   JB.ensureToken(false).then(function () {
     boot();

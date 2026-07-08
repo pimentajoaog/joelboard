@@ -55,6 +55,14 @@ body[data-skin="mint"] {
   --font-body:'Hanken Grotesk',sans-serif; --font-display:'Hanken Grotesk',sans-serif;
   --success: var(--income);
 }
+body[data-skin="vault"] {
+  --on-brand:#14140f;
+  --bg:#14140f; --surface:#1c1c16; --surface2:#222218; --border:#3a3a2e;
+  --primary:#cba86a; --income:#8fbc8f; --expense:#c97b7b; --warning:#cba86a; --savings:#7b9bb0;
+  --text:#e9e4d6; --muted:#9a9588; --radius:12px; --radius-sm:8px; --shadow:none;
+  --font-body:'Jost',sans-serif; --font-display:'Cormorant Garamond',serif;
+  --success: var(--income);
+}
 
 /* ===== Day / Night ===== Each skin gets its OPPOSITE mode, tinted by its own accent
    (color-mix) so the light/dark counterpart still feels like that skin. The base skin block
@@ -72,6 +80,7 @@ body:not([data-skin])[data-mode="light"] {
 }
 
 /* dark-native skins -> LIGHT variant */
+body[data-skin="vault"][data-mode="light"],
 body[data-skin="arcade"][data-mode="light"] {
   --bg: color-mix(in srgb, var(--primary) 6%, #faf8f2);
   --surface: color-mix(in srgb, var(--primary) 3%, #ffffff);

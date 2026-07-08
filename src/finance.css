@@ -1,6 +1,6 @@
 /* Joelboard Finance — styles, Tailwind-based. © 2026 Joel Soluções LTDA.
    On the Tailwind pipeline (shared var-based tokens, utilities available, autoprefixed).
-   Preflight is off; Finance keeps its own reset + its 8 theme skins (var-driven) intact.
+   Preflight is off; Finance keeps its own reset + skin component tweaks (var-driven).
    Components can be migrated to @apply incrementally. */
 @tailwind base;
 @tailwind components;
@@ -13,11 +13,6 @@
   --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --shadow: none;
-}
-body.light {
-  --bg: #f4f5fb; --surface: #ffffff; --surface2: #eef0f7; --border: #dde0ec;
-  --primary: #6366f1; --income: #059669; --expense: #dc2626; --warning: #d97706; --savings: #0891b2;
-  --text: #1e2333; --muted: #6b7280;
 }
 body[data-skin="sorbet"] .tab-btn { border-bottom:none; border-radius:99px; padding:10px 16px; }
 body[data-skin="sorbet"] .tab-btn.active { background:rgba(194,100,232,.14); color:var(--primary); }

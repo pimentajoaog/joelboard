@@ -120,7 +120,7 @@ const I18N = {
     'set.monthlySalaryCur':'Monthly salary (<span class="cur-from-lbl">USD</span>)',
     'set.exchRateCur':'Exchange rate (<span id="setExchLbl">to per from</span>)',
     'set.catHint':'New categories get an auto colour — tap a swatch to change it. Deleting one leaves its transactions as “Uncategorized”.',
-    'set.themeHint':'Pick a look for the whole app. Default has its own light & dark toggle in the header; the others set their own mood.',
+    'set.themeHint':'Pick a skin below. Toggle day/night in settings or with the moon/sun in the header.',
     'set.langHint':'Choose the language for the whole app. This changes labels and messages — your data stays the same.',
     'ot.off':'Off — extra hours at normal pay', 'ot.auto':'Automatic — paid over monthly expected',
     'ot.manual':'Manual — tag overtime per day',
@@ -389,7 +389,7 @@ const I18N = {
     'set.monthlySalaryCur':'Salário mensal (<span class="cur-from-lbl">USD</span>)',
     'set.exchRateCur':'Taxa de câmbio (<span id="setExchLbl">to per from</span>)',
     'set.catHint':'Novas categorias recebem uma cor automática — toque numa cor para mudar. Ao excluir uma, seus lançamentos ficam como “Sem categoria”.',
-    'set.themeHint':'Escolha um visual para o app todo. O tema Padrão tem seu próprio botão claro/escuro no topo; os outros definem o próprio clima.',
+    'set.themeHint':'Escolha um visual abaixo. Alterne claro/escuro nas configurações ou no botão lua/sol do topo.',
     'set.langHint':'Escolha o idioma do app inteiro. Isso muda rótulos e mensagens — seus dados continuam os mesmos.',
     'ot.off':'Desligado — horas extras pagas no valor normal', 'ot.auto':'Automático — pago acima do esperado mensal',
     'ot.manual':'Manual — marcar hora extra por dia',
@@ -643,7 +643,8 @@ function boot(data) {
   if (data && data.needsSetup) { showSheetGate(); return; }
   DATA = data;
   rebuildCatColors();
-  applyTheme();
+  migrateFinanceTheme();
+  applyFinanceTheme();
   applyStaticI18n();
   populateCategoryDropdowns();
   renderAll();
@@ -1828,48 +1829,54 @@ function switchTab(name) {
   document.querySelectorAll('.tab-page').forEach(p=>p.classList.toggle('active', p.id==='tab-'+name));
   if (name==='overview') renderBreakdown();
 }
-const THEMES = [
-  { id:'default', name:'Default', mood:'Clean · light & dark', bg:'#0d0f18', card:'#1b1f32', accent:'#818cf8', text:'#e2e8f0', body:"-apple-system,sans-serif", display:"-apple-system,sans-serif" },
-  { id:'vault', name:'Vault', mood:'Dark · private bank', bg:'#14140f', card:'#222218', accent:'#cba86a', text:'#e9e4d6', body:"'Jost',sans-serif", display:"'Cormorant Garamond',serif" },
-  { id:'garden', name:'Garden', mood:'Warm · organic', bg:'#f3ede0', card:'#fffdf8', accent:'#7c9a6e', text:'#3b352c', body:"'Hanken Grotesk',sans-serif", display:"'Bricolage Grotesque',sans-serif" },
-  { id:'aperture', name:'Aperture', mood:'Light · minimal', bg:'#fbfbf9', card:'#f1f0ec', accent:'#e8482b', text:'#101010', body:"'Hanken Grotesk',sans-serif", display:"'Darker Grotesque',sans-serif" },
-  { id:'arcade', name:'Arcade', mood:'Neon · retro-future', bg:'#0a0a16', card:'#171936', accent:'#22e0e0', text:'#dfe3ff', body:"'IBM Plex Mono',monospace", display:"'Chakra Petch',sans-serif" },
-  { id:'sorbet', name:'Sorbet', mood:'Light · pastel', bg:'#fdf4fb', card:'#ffffff', accent:'#c264e8', text:'#4a3a52', body:"'Comic Sans MS',cursive", display:"'Comic Sans MS',cursive" },
-  { id:'press', name:'Press', mood:'Light · editorial', bg:'#f3efe6', card:'#fbf9f3', accent:'#1a1a1a', text:'#1c1813', body:"'Hanken Grotesk',sans-serif", display:"'Playfair Display',serif" },
-  { id:'mint', name:'Mint', mood:'Light · fresh', bg:'#eefaf4', card:'#ffffff', accent:'#0fb981', text:'#0f3329', body:"'Hanken Grotesk',sans-serif", display:"'Hanken Grotesk',sans-serif" },
-];
-function currentSkin() { return (DATA && DATA.settings && DATA.settings.skin) || 'default'; }
-function applyTheme() {
-  const skin = currentSkin();
-  document.body.dataset.skin = skin;
-  const isLight = skin==='default' && DATA.settings.theme==='light';
-  document.body.classList.toggle('light', isLight);
+const FINANCE_VAULT_SKIN = [{ id:'vault', name:'Vault', bg:'#14140f', card:'#222218', accent:'#cba86a', text:'#e9e4d6' }];
+function financeSkinLabel(id) {
+  if (id === 'vault') return 'Vault';
+  const s = (JB.SKINS || []).find(x => x.id === id);
+  return s ? s.name : id;
+}
+function migrateFinanceTheme() {
+  if (!DATA || !DATA.settings) return;
+  const hasSkin = localStorage.getItem('jb_skin_finance') != null;
+  const hasMode = localStorage.getItem('jb_mode_finance') != null;
+  if (!hasSkin && DATA.settings.skin) JB.setSkin('finance', DATA.settings.skin);
+  if (!hasMode && JB.getSkin('finance') === 'default' && DATA.settings.theme) {
+    JB.setMode('finance', DATA.settings.theme === 'light' ? 'light' : 'dark');
+  }
+}
+function syncFinanceThemeToSheet(skinToast) {
+  if (!DATA || !DATA.settings) return;
+  const skin = JB.getSkin('finance'), mode = JB.getMode('finance');
+  if (DATA.settings.skin !== skin) {
+    DATA.settings.skin = skin;
+    jbSaveSetting('skin', skin);
+    if (skinToast) showToast(t('toast.theme', { name: financeSkinLabel(skin) }));
+  }
+  if (DATA.settings.theme !== mode) {
+    DATA.settings.theme = mode;
+    jbSaveSetting('theme', mode);
+  }
+}
+function applyFinanceTheme() {
+  JB.applySkin('finance');
+  updateThemeBtn();
+}
+function updateThemeBtn() {
   const btn = document.getElementById('themeBtn');
-  if (btn) { btn.style.display = skin==='default' ? '' : 'none'; btn.textContent = isLight ? '☀️' : '🌙'; }
+  if (!btn) return;
+  btn.style.display = '';
+  btn.textContent = JB.getMode('finance') === 'light' ? '☀️' : '🌙';
 }
 function toggleTheme() {
-  const next = (DATA.settings.theme==='light') ? 'dark' : 'light';
-  DATA.settings.theme = next;
-  applyTheme();
-  jbSaveSetting('theme', next);
-}
-function setSkin(id) {
-  DATA.settings.skin = id;
-  applyTheme(); renderThemePicker();
-  jbSaveSetting('skin', id);
-  showToast(t('toast.theme',{name:((THEMES.find(t=>t.id===id)||{}).name || id)}));
+  JB.toggleMode('finance');
+  syncFinanceThemeToSheet(false);
+  updateThemeBtn();
 }
 function renderThemePicker() {
-  const cur = currentSkin(), el = document.getElementById('themeGrid'); if (!el) return;
-  el.innerHTML = THEMES.map(t => {
-    const on = t.id===cur;
-    return '<button class="theme-card'+(on?' active':'')+'" style="background:'+t.bg+';color:'+t.text+';border-color:'+(on?t.accent:'transparent')+'" onclick="setSkin(\''+t.id+'\')">'
-      + '<div class="tc-name" style="font-family:'+t.display+';color:'+t.accent+'">'+t.name+'</div>'
-      + '<div class="tc-mood" style="font-family:'+t.body+'">'+window.t('theme.mood.'+t.id)+'</div>'
-      + '<div class="tc-bars"><span style="background:'+t.accent+'"></span><span style="background:'+t.accent+';opacity:.4"></span><span style="background:'+t.card+'"></span></div>'
-      + '<div class="tc-state" style="color:'+t.accent+'">'+(on?window.t('theme.active'):window.t('theme.apply'))+'</div>'
-      + '</button>';
-  }).join('');
+  const el = document.getElementById('themeGrid');
+  if (!el) return;
+  const onSync = function (toast) { syncFinanceThemeToSheet(toast); updateThemeBtn(); };
+  JB.renderSkinPicker('finance', el, function () { onSync(true); }, { extraSkins: FINANCE_VAULT_SKIN, onModeChange: function () { onSync(false); } });
 }
 
 /* ---------- FAB / overlay / shared save / delete ---------- */
@@ -2796,3 +2803,4 @@ function applyWizSalary(){
   if(!tourIsDone()) setTimeout(startTour,300);
 }
 function showConfirm(title, msg, onYes) { JB.confirm(title, msg, onYes, { yes: t('action.confirm'), no: t('action.cancel'), danger: true }); }
+JB.applySkin('finance');

@@ -94,7 +94,8 @@
     return null;
   }
 
-  function applyToField(st, trigger, text, matchStart, caseSensitive) {
+  function applyToField(st, trigger, text, matchStart, caseSensitive, suffix) {
+    suffix = suffix == null ? '' : String(suffix);
     var el = st.element;
     if (!el || !trigger) return false;
     el.focus();
@@ -116,7 +117,7 @@
       sel.removeAllRanges();
       sel.addRange(range);
       var useHtml = JB_REPLACE.hasFormatting(text);
-      var insertVal = useHtml ? JB_REPLACE.bodyToHtml(text) : text;
+      var insertVal = (useHtml ? JB_REPLACE.bodyToHtml(text) : text) + suffix;
       var ok = useHtml
         ? document.execCommand('insertHTML', false, insertVal)
         : document.execCommand('insertText', false, insertVal);
@@ -132,7 +133,7 @@
       return ok;
     }
 
-    var plain = JB_REPLACE.bodyToPlain(text);
+    var plain = JB_REPLACE.bodyToPlain(text) + suffix;
     var snap = st.snapshot;
     var val = snap ? snap.value : el.value;
     var selStart = snap ? snap.selStart : el.selectionStart;
@@ -237,7 +238,7 @@
     });
   }
 
-  function doExpand(st, snippet, matchStart, caseSensitive) {
+  function doExpand(st, snippet, matchStart, caseSensitive, suffix) {
     if (expanding) return Promise.resolve(false);
     expanding = true;
     var trig = snippet.trigger || '';
@@ -252,7 +253,7 @@
       return promptVars(expanded, vars, builtins).then(function (filled) {
         if (!filled) return false;
         var out = JB_REPLACE.expandVars(expanded, filled, builtins);
-        return applyToField(st, trig, out, matchStart, caseSensitive);
+        return applyToField(st, trig, out, matchStart, caseSensitive, suffix);
       });
     }
 
@@ -288,7 +289,8 @@
     if (key === 'Enter' && !settings.expandOnEnter) return;
     e.preventDefault();
     e.stopPropagation();
-    doExpand(st, match.snippet, match.start, !!settings.caseSensitive).then(function (ok) {
+    var suffix = key === ' ' ? ' ' : '';
+    doExpand(st, match.snippet, match.start, !!settings.caseSensitive, suffix).then(function (ok) {
       if (ok) showToast('✓ ' + (match.snippet.label || match.snippet.trigger));
     });
   }, true);

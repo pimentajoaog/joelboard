@@ -476,21 +476,25 @@ function exportNotasJson(){
   toast('✓ Backup exportado');
 }
 function safeFilename(s){ return String(s||'lista').replace(/[<>:"/\\|?*\x00-\x1f]/g,'').trim().slice(0,60)||'lista'; }
-function buildListMarkdown(n){
-  var lines=['# '+(n.titulo||'Lista'), ''];
-  if(n.vence) lines.push('Prazo: '+fmtDateBR(n.vence), '');
+function buildListCsv(n){
+  var kd=kindDef(n.tipo);
+  var out=['\ufeffCampo,Valor','Título,'+notasCsvCell(n.titulo||'Lista'),'Tipo,'+notasCsvCell(kd.label)];
+  if(n.vence) out.push('Prazo,'+notasCsvCell(fmtDateBR(n.vence)));
+  out.push('','Item,Grupo,Feito');
+  var group='';
   itemsOf(n.id).forEach(function(it){
     var text=(it.texto||'').trim();
-    if(it.tipo==='g'){ if(text) lines.push('## '+text); return; }
+    if(it.tipo==='g'){ group=text; return; }
     if(!text) return;
-    lines.push(it.marcavel?((it.feito?'- [x] ':'- [ ] ')+text):('- '+text));
+    var feito=it.marcavel?(it.feito?'Sim':'Não'):'';
+    out.push([text,group,feito].map(notasCsvCell).join(','));
   });
-  return lines.join('\n');
+  return out.join('\r\n');
 }
 function exportCurrentList(){
   var n=note(openNoteId);
   if(!n){ toast('Abra uma lista primeiro'); return; }
-  notasDownload(safeFilename(n.titulo)+'.md', buildListMarkdown(n), 'text/markdown;charset=utf-8');
+  notasDownload(safeFilename(n.titulo)+'.csv', buildListCsv(n), 'text/csv;charset=utf-8');
   toast('✓ Lista exportada');
 }
 function openSettings(){ switchSet('tema'); JB.renderSkinPicker('notas', $('setSkins')); $('setNudge').classList.toggle('on', (DATA.config&&DATA.config.nudgePref)!=='off'); $('setOverlay').classList.add('open'); }

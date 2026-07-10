@@ -129,7 +129,7 @@ function refreshData(){
 
 /* ---- routing / render ---- */
 function note(id){ return (DATA.notas||[]).find(function(n){return n.id===id;}); }
-function render(){ var ed=!!(openNoteId&&note(openNoteId)); $('fab').style.display=ed?'none':'flex'; if(ed) renderEditor(); else renderHomeShell(); }
+function render(){ var ed=!!(openNoteId&&note(openNoteId)); $('fab').style.display=ed?'none':'flex'; if(ed) renderEditor(); else renderHomeShell(); updateSelBar(); }
 function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; render(); window.scrollTo(0,0); }
 function backHome(){ openNoteId=null; render(); }
 
@@ -225,17 +225,15 @@ function createNote(){ var t=($('newTitle').value||'').trim(); var kd=kindDef(ne
 function renderEditor(){
   var n=note(openNoteId); if(!n){ openNoteId=null; renderHomeShell(); return; }
   var kd=kindDef(n.tipo); var src=lastNoteOfKind(n.tipo,n.id); var fc=fillableCount(n,src); var doneN=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}).length;
-  var hasItems=itemsOf(openNoteId).filter(function(x){return !isGroup(x);}).length>0;
   var html='<div style="--kc:'+kd.color+'">'
     +'<button class="lnk" onclick="backHome()">← Listas</button>'
     +'<div class="ed-head"><span class="ed-ico">'+kd.icon+'</span><input class="ed-title" id="edTitle" value="'+escAttr(n.titulo)+'" onblur="commitTitle(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()"></div>'
     +'<div class="ed-sub"><b>'+esc(kd.label)+'</b> · criada '+esc(relTime(n.criado))+'</div>'
     +'<div class="duerow"><span class="dl">📅 Prazo</span><button type="button" class="field datebtn'+(n.vence?'':' empty')+'" id="edDueBtn" onclick="pickDue()">'+(n.vence?esc(fmtDateBR(n.vence)):'Definir prazo')+'</button>'+(n.vence?'<button class="due-clear" onclick="clearDue()" title="Remover prazo">✕</button>':'')+'</div>'
-    +'<div class="ed-actions">'
-      +(hasItems?'<button class="selstart'+(_selMode?' on':'')+'" onclick="toggleSelMode()">'+(_selMode?'✕ Cancelar':'☑ Selecionar')+'</button>':'')
-      +(!_selMode?'<button class="selstart" onclick="exportCurrentList()">📤 Exportar</button>':'')
-      +(!_selMode?'<button class="delchecked" id="delChecked" onclick="deleteChecked()" style="display:'+(doneN?'inline-flex':'none')+'">🗑 Excluir marcados ('+doneN+')</button>':'')
-    +'</div>'
+    +(!_selMode ? '<div class="ed-actions">'
+      +'<button class="selstart" onclick="exportCurrentList()">📤 Exportar</button>'
+      +'<button class="delchecked" id="delChecked" onclick="deleteChecked()" style="display:'+(doneN?'inline-flex':'none')+'">🗑 Excluir marcados ('+doneN+')</button>'
+    +'</div>' : '')
     +(_selMode? '' : (fc? '<button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button>':''))
     +'<div id="edItems"></div>'
     +(_selMode? '' :
@@ -484,8 +482,8 @@ function createNoteFromKind(kind,titulo,fill){ var now=new Date().toISOString();
 /* ---- persistence ---- */
 function noteRowVals(n){ return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.criado,n.atualizado,n.id,n.vence||'']; }
 function mdToHtml(t){ var s=esc(t); s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>'); s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>'); s=s.replace(/__([^_\n]+)__/g,'<u>$1</u>'); s=s.replace(/~~([^~\n]+)~~/g,'<s>$1</s>'); return s; }
-function startEdit(id){ _editId=id; renderItems(); var bar=$('fmtBar'); if(bar) bar.classList.add('show'); positionFmtBar(); }
-function exitEdit(){ if(_editId==null) return; _editId=null; var bar=$('fmtBar'); if(bar) bar.classList.remove('show'); renderItems(); }
+function startEdit(id){ _editId=id; renderItems(); var bar=$('fmtBar'); if(bar) bar.classList.add('show'); positionFmtBar(); updateSelBar(); }
+function exitEdit(){ if(_editId==null) return; _editId=null; var bar=$('fmtBar'); if(bar) bar.classList.remove('show'); renderItems(); updateSelBar(); }
 function wordAt(v,pos){ var i=pos,j=pos; var isW=function(c){ return c && /\S/.test(c) && c!=='*' && c!=='_' && c!=='~'; }; while(i>0 && isW(v[i-1])) i--; while(j<v.length && isW(v[j])) j++; return [i,j]; }
 function fmt(mk){ var ta=$('editTA'); if(!ta) return; var v=ta.value, sS=ta.selectionStart||0, sE=ta.selectionEnd||0, L=mk.length, sel0=v.slice(sS,sE);
   // (a) selection already includes the markers -> strip them
@@ -806,7 +804,7 @@ function selDelete(){ var ids=Object.keys(_sel); if(!ids.length) return; var m={
     onError: notasWriteErr
   });
 }, { yes:'Excluir', no:'Cancelar', danger:true }); }
-function updateSelBar(){ var bar=$('selBar'); if(!bar) return; bar.classList.toggle('show', _selMode); var c=$('selCount'); if(c) c.textContent=selCount(); }
+function updateSelBar(){ var bar=$('selBar'); if(!bar) return; var hasItems=!!(openNoteId && itemsOf(openNoteId).some(function(x){return !isGroup(x);})); var vis=hasItems && (_selMode || !_editId); bar.classList.toggle('show', vis); bar.classList.toggle('sel-on', _selMode); var c=$('selCount'); if(c) c.textContent=selCount(); }
 
 JB.applySkin('notas');
 startAuth();

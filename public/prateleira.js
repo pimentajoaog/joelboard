@@ -36,6 +36,7 @@ var LOCAL_WRITE_GRACE_MS = 10000;
 
 var LIB_FILTERS_KEY = 'jb_pr_lib_filters';
 var LIB_SORT_KEY = 'jb_pr_lib_sort';
+var LIB_REVIEWER_KEY = 'jb_pr_lib_reviewer';
 var MEDIA_FILTER_TYPES = [
   { id: 'movie', label: 'Filmes', icon: '🎬' },
   { id: 'tv', label: 'Séries', icon: '📺' },
@@ -44,6 +45,18 @@ var MEDIA_FILTER_TYPES = [
 ];
 var libFilters = { movie: true, tv: true, game: true, music: true };
 var libSort = 'recent';
+var libReviewerFilter = 'all';
+var LIB_SORT_OPTIONS = [
+  { id: 'recent', label: 'Último registro' },
+  { id: 'alpha', label: 'A → Z' },
+  { id: 'alpha-desc', label: 'Z → A' },
+  { id: 'rating', label: 'Melhor avaliação' },
+  { id: 'type', label: 'Tipo' },
+  { id: 'year', label: 'Ano (novo → antigo)' },
+  { id: 'year-asc', label: 'Ano (antigo → novo)' },
+  { id: 'added', label: 'Adicionados recentemente' },
+  { id: 'jlbo', label: 'JLBOE™ primeiro' }
+];
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -278,6 +291,8 @@ function loadLibPrefs() {
     }
     var s = localStorage.getItem(LIB_SORT_KEY);
     if (s) libSort = s;
+    var r = localStorage.getItem(LIB_REVIEWER_KEY);
+    if (r && ['all', 'joel', 'julia', 'both'].indexOf(r) >= 0) libReviewerFilter = r;
     var sf = localStorage.getItem(SEARCH_FILTERS_KEY);
     if (sf) {
       var sp = JSON.parse(sf);
@@ -330,6 +345,7 @@ function saveLibPrefs() {
   try {
     localStorage.setItem(LIB_FILTERS_KEY, JSON.stringify(libFilters));
     localStorage.setItem(LIB_SORT_KEY, libSort);
+    localStorage.setItem(LIB_REVIEWER_KEY, libReviewerFilter);
   } catch (_) {}
 }
 
@@ -343,9 +359,25 @@ function activeLibFilterTypes() {
   return active;
 }
 
+function userReviewed(mediaKey, em) {
+  var s = latestStarsByUser(mediaKey)[em];
+  return !!(s && (s.stars || String(s.review || '').trim()));
+}
+
+function passesReviewerFilter(m) {
+  if (libReviewerFilter === 'all') return true;
+  var joel = JULIOEL_EMAILS[0], julia = JULIOEL_EMAILS[1];
+  if (libReviewerFilter === 'joel') return userReviewed(m.key, joel);
+  if (libReviewerFilter === 'julia') return userReviewed(m.key, julia);
+  if (libReviewerFilter === 'both') return userReviewed(m.key, joel) && userReviewed(m.key, julia);
+  return true;
+}
+
 function filteredLibraryMedia() {
   var allowed = activeLibFilterTypes();
-  return libraryMedia().filter(function (m) { return allowed.indexOf(m.type) >= 0; });
+  return libraryMedia().filter(function (m) {
+    return allowed.indexOf(m.type) >= 0 && passesReviewerFilter(m);
+  });
 }
 
 function mediaRatingScore(m) {
@@ -413,6 +445,26 @@ function sortedFilteredMedia() {
   });
 }
 
+function libSortLabel() {
+  var cur = LIB_SORT_OPTIONS.find(function (s) { return s.id === libSort; });
+  return cur ? cur.label : 'Último registro';
+}
+
+function libSortDropdownHtml() {
+  var opts = LIB_SORT_OPTIONS.map(function (s) {
+    return '<div class="jb-dd-opt' + (libSort === s.id ? ' is-sel' : '') + '" onclick="pickLibSort(\'' + s.id + '\')">' + esc(s.label) + '</div>';
+  }).join('');
+  return '<div class="jb-dd lib-sort-dd"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>' + esc(libSortLabel()) + '</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">' + opts + '</div></div>';
+}
+
+function reviewerChipLabel(id) {
+  if (id === 'all') return 'Todos';
+  if (id === 'both') return '👫 Os dois';
+  if (id === 'joel') return getUserIcon(JULIOEL_EMAILS[0]) + ' ' + userLabel(JULIOEL_EMAILS[0]);
+  if (id === 'julia') return getUserIcon(JULIOEL_EMAILS[1]) + ' ' + userLabel(JULIOEL_EMAILS[1]);
+  return id;
+}
+
 function libToolbarHtml() {
   var chips = MEDIA_FILTER_TYPES.map(function (t) {
     var on = !t.soon && libFilters[t.id];
@@ -421,24 +473,17 @@ function libToolbarHtml() {
     return '<button type="button" class="' + cls + '" data-ft="' + t.id + '"' + extra + '>'
       + t.icon + ' ' + esc(t.label) + (t.soon ? ' <span class="lib-soon">em breve</span>' : '') + '</button>';
   }).join('');
-  var sorts = [
-    { id: 'recent', label: 'Último registro' },
-    { id: 'alpha', label: 'A → Z' },
-    { id: 'alpha-desc', label: 'Z → A' },
-    { id: 'rating', label: 'Melhor avaliação' },
-    { id: 'type', label: 'Tipo' },
-    { id: 'year', label: 'Ano (novo → antigo)' },
-    { id: 'year-asc', label: 'Ano (antigo → novo)' },
-    { id: 'added', label: 'Adicionados recentemente' },
-    { id: 'jlbo', label: 'JLBOE™ primeiro' }
-  ];
-  var opts = sorts.map(function (s) {
-    return '<option value="' + s.id + '"' + (libSort === s.id ? ' selected' : '') + '>' + esc(s.label) + '</option>';
+  var reviewerIds = ['all', 'joel', 'julia', 'both'];
+  var reviewerChips = reviewerIds.map(function (id) {
+    var on = libReviewerFilter === id;
+    return '<button type="button" class="lib-chip' + (on ? ' on' : '') + '" data-reviewer="' + id + '" onclick="setLibReviewerFilter(\'' + id + '\')">' + esc(reviewerChipLabel(id)) + '</button>';
   }).join('');
   return '<div class="lib-toolbar">'
-    + '<div class="lib-filters"><span class="lib-tb-label">Filtrar</span><div class="lib-chips">' + chips + '</div></div>'
-    + '<div class="lib-sort"><label class="lib-tb-label" for="libSortSel">Ordenar</label>'
-    + '<select class="field lib-sort-sel" id="libSortSel" onchange="setLibSort(this.value)">' + opts + '</select></div>'
+    + '<div class="lib-toolbar-row">'
+    + '<div class="lib-filters"><span class="lib-tb-label">Tipo</span><div class="lib-chips">' + chips + '</div></div>'
+    + '<div class="lib-sort"><span class="lib-tb-label">Ordenar</span>' + libSortDropdownHtml() + '</div>'
+    + '</div>'
+    + '<div class="lib-reviewer-filters"><span class="lib-tb-label">Quem avaliou</span><div class="lib-chips">' + reviewerChips + '</div></div>'
     + '</div>';
 }
 
@@ -452,6 +497,18 @@ function toggleLibFilter(type) {
 
 function setLibSort(val) {
   libSort = val || 'recent';
+  saveLibPrefs();
+  if (curTab === 'lib') renderMain();
+}
+
+function pickLibSort(val) {
+  if (window.JB && JB.ddClose) JB.ddClose();
+  setLibSort(val);
+}
+
+function setLibReviewerFilter(id) {
+  if (['all', 'joel', 'julia', 'both'].indexOf(id) < 0) return;
+  libReviewerFilter = id;
   saveLibPrefs();
   if (curTab === 'lib') renderMain();
 }
@@ -1279,7 +1336,7 @@ function renderMain() {
   var items = sortedFilteredMedia();
   var body = items.length
     ? renderShelfStack(items)
-    : '<div class="empty">Nada neste filtro — ligue outro tipo acima.</div>';
+    : '<div class="empty">Nada neste filtro — ajuste tipo ou quem avaliou.</div>';
   el.innerHTML = libToolbarHtml() + body;
 }
 

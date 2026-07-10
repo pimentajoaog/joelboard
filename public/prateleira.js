@@ -46,6 +46,7 @@ var MEDIA_FILTER_TYPES = [
 var libFilters = { movie: true, tv: true, game: true, music: true };
 var libSort = 'recent';
 var libReviewerFilter = 'all';
+var authDone = false;
 var LIB_SORT_OPTIONS = [
   { id: 'recent', label: 'Último registro' },
   { id: 'alpha', label: 'A → Z' },
@@ -569,12 +570,25 @@ function isAuthErr(e) {
     || m.indexOf('auth_cancelled') > -1 || m.indexOf('superseded') > -1;
 }
 function showAuthGate(msg) {
+  closeDetail();
+  closePrateleiraSet();
   loadingHtml(gateHtml(
     'Julioelboard Prateleira',
     msg || 'Sessão expirada. Entre de novo para continuar.',
-    '<button class="btn-primary" onclick="prateleiraSignIn()">Entrar</button>'
+    '<button class="btn-primary" onclick="prateleiraSignIn()">Entrar com Google</button>'
       + '<a class="btn ghost" href="/" style="display:inline-block;text-decoration:none;margin-top:10px">← Hub</a>'
   ));
+}
+function handlePrateleiraErr(e, opts) {
+  opts = opts || {};
+  if (isAuthErr(e)) {
+    showAuthGate(opts.authMsg);
+    return true;
+  }
+  if (opts.toast === false) return false;
+  var msg = opts.msg || (opts.sheet ? sheetAccessErr(e) : ('Erro: ' + ((e && e.message) || '')));
+  JB.toast(msg);
+  return false;
 }
 
 function whenTmdbReady(fn) {
@@ -644,6 +658,7 @@ function resolveSheet() {
     });
   }).catch(function (e) {
     if (String((e && e.message) || '') === 'JB_NEED_SHEET') throw e;
+    if (isAuthErr(e)) throw e;
     throw new Error(sheetAccessErr(e));
   });
 }
@@ -895,8 +910,7 @@ function reloadSessions() {
     renderMain();
     if (detailId) openDetail(detailId);
   }).catch(function (e) {
-    if (isAuthErr(e)) showAuthGate();
-    else JB.toast('Erro ao atualizar: ' + (e.message || ''));
+    handlePrateleiraErr(e);
   });
 }
 
@@ -1039,7 +1053,9 @@ function refreshPrateleiraQuiet() {
       else patchDetailPanels(detailId);
     }
     refreshMissingPosters();
-  }).catch(function () {});
+  }).catch(function (e) {
+    if (isAuthErr(e)) showAuthGate();
+  });
 }
 
 function initPrateleiraAutoRefresh() {
@@ -1539,7 +1555,7 @@ function addFromCatalog(catalogId) {
         .then(function () { return loadFilmes(); })
         .then(function () { JB.toast('✓ Registre quando jogarem'); openDetail(key); });
     })
-    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
+    .catch(function (e) { handlePrateleiraErr(e); })
     .finally(function () { unlockAdd(key); });
 }
 
@@ -1558,7 +1574,7 @@ function addManualGame() {
   JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
     .then(function () { return loadFilmes(); })
     .then(function () { JB.toast('✓ Registre quando jogarem'); openDetail(key); })
-    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
+    .catch(function (e) { handlePrateleiraErr(e); })
     .finally(function () { unlockAdd(lockId); });
 }
 
@@ -1584,7 +1600,7 @@ function addFromMusicBrainz(mbid) {
         .then(function () { return loadFilmes(); })
         .then(function () { JB.toast('✓ Registre quando ouvirem'); openDetail(key); });
     })
-    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
+    .catch(function (e) { handlePrateleiraErr(e); })
     .finally(function () { unlockAdd(key); });
 }
 
@@ -1603,7 +1619,7 @@ function addManualMusic() {
   JB.api('POST', ssUrl('/values/' + encodeURIComponent('Filmes') + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
     .then(function () { return loadFilmes(); })
     .then(function () { JB.toast('✓ Registre quando ouvirem'); openDetail(key); })
-    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
+    .catch(function (e) { handlePrateleiraErr(e); })
     .finally(function () { unlockAdd(lockId); });
 }
 
@@ -1631,7 +1647,7 @@ function addFromTmdb(type, tmdbId) {
         .then(function () { return loadFilmes(); })
         .then(function () { JB.toast('✓ Registre quando assistirem'); openDetail(key); });
     })
-    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); })
+    .catch(function (e) { handlePrateleiraErr(e); })
     .finally(function () { unlockAdd(key); });
 }
 
@@ -1705,7 +1721,7 @@ function deleteSession(sheetRow) {
       .catch(function (e) {
         sessions = snapshot;
         if (key) syncMediaUi(key);
-        JB.toast('Erro: ' + (e.message || ''));
+        handlePrateleiraErr(e);
       });
   }, { yes: 'Excluir', no: 'Cancelar', danger: true });
 }
@@ -1842,7 +1858,7 @@ function toggleJlboManage() {
   updateMediaJlbo(key, em, on).catch(function (e) {
     applyJlboLocal(key, em, !on);
     syncMediaUi(key);
-    JB.toast('Erro: ' + (e.message || ''));
+    handlePrateleiraErr(e);
   });
 }
 
@@ -1964,7 +1980,7 @@ function saveSession() {
       sessions = snapshot.sessions;
       if (m && snapshot.jlbo) m.jlbo = snapshot.jlbo;
       syncMediaUi(key);
-      JB.toast('Erro: ' + (e.message || ''));
+      handlePrateleiraErr(e);
     })
     .finally(function () { if (saveBtn) saveBtn.disabled = false; });
 }
@@ -1987,7 +2003,7 @@ function createSharedSheet() {
       closePrateleiraSet();
       return boot();
     });
-  }).catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
+  }).catch(function (e) { handlePrateleiraErr(e); });
 }
 
 function saveSheetId() {
@@ -2000,7 +2016,7 @@ function saveSheetId() {
     JB.toast('✓ Planilha vinculada');
     closePrateleiraSet();
     boot();
-  }).catch(function (e) { JB.toast(sheetAccessErr(e)); });
+  }).catch(function (e) { handlePrateleiraErr(e, { sheet: true }); });
 }
 
 function useDefaultSheet() {
@@ -2044,7 +2060,7 @@ function savePrateleiraIcon() {
       if (curTab === 'lib') renderMain();
       JB.toast('✓ Ícone salvo — visível para os dois');
     })
-    .catch(function (e) { JB.toast('Erro: ' + (e.message || '')); });
+    .catch(function (e) { handlePrateleiraErr(e); });
 }
 function prateleiraSetTab(name) {
   document.querySelectorAll('#setOverlay .set-tab').forEach(function (b) {
@@ -2057,7 +2073,14 @@ function prateleiraSetTab(name) {
 }
 function closePrateleiraSet() { document.getElementById('setOverlay').classList.remove('open'); }
 
-function prateleiraSignIn() { JB.signIn({ onSuccess: boot }); }
+function prateleiraSignIn() {
+  JB.signIn({
+    onSuccess: function () {
+      authDone = true;
+      boot();
+    }
+  });
+}
 function prateleiraSignOut() { try { localStorage.removeItem('jb_julioel'); } catch (_) {} JB.signOut(); location.href = '/'; }
 
 function startPrateleira() {
@@ -2065,13 +2088,25 @@ function startPrateleira() {
   window.matchMedia('(max-width: 720px)').addEventListener('change', function () {
     if (curTab === 'lib' && libraryMedia().length) renderMain();
   });
-  if (!JB.hasSession()) { boot(); return; }
-  JB.ensureToken(false).then(function () {
+  if (JB.cachedToken()) {
+    authDone = true;
     boot();
-  }).catch(function (e) {
-    if (isAuthErr(e)) showAuthGate();
-    else boot();
+    return;
+  }
+  if (!JB.hasSession()) {
+    showAuthGate('Entre com Google para acessar a Prateleira.');
+    return;
+  }
+  loadingHtml(gateHtml('Julioelboard Prateleira', 'Entrando…', ''));
+  JB.requestToken(false).then(function () {
+    authDone = true;
+    boot();
+  }).catch(function () {
+    showAuthGate();
   });
+  setTimeout(function () {
+    if (!authDone && !JB.cachedToken()) showAuthGate();
+  }, 16000);
 }
 
 JB.applySkin(APP);

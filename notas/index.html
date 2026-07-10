@@ -62,6 +62,12 @@
       <div class="fg"><button class="tg" id="setNudge" onclick="toggleNudgePref()">Sugestões automáticas</button><div class="rg">Lembretes do tipo "mês passado você fez…".</div></div>
     </div>
     <div class="set-pane" data-pane="sobre" style="display:none">
+      <div class="fg">
+        <label class="fl">Exportar listas</label>
+        <div class="rg" style="margin-bottom:10px">Baixe todas as suas listas — CSV no formato da planilha, ou JSON de backup.</div>
+        <button class="btn ghost" style="width:100%;margin-bottom:8px" onclick="exportNotasCsv()">📄 Exportar CSV</button>
+        <button class="btn ghost" style="width:100%" onclick="exportNotasJson()">💾 Exportar backup JSON</button>
+      </div>
       <div class="fg"><button class="btn ghost" style="width:100%" onclick="notasVerTutorial()">🧭 Ver tutorial</button></div>
       <div class="fg"><button class="btn ghost" style="width:100%" onclick="dedupeItems()">🧹 Remover duplicatas</button></div>
       <div class="fg"><button class="btn ghost" style="width:100%" onclick="JB.feedback('Joelboard Notas')">💬 Enviar feedback</button></div>

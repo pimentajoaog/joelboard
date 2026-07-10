@@ -189,6 +189,7 @@ function renderEditor(){
     +'<div class="duerow"><span class="dl">📅 Prazo</span><button type="button" class="field datebtn'+(n.vence?'':' empty')+'" id="edDueBtn" onclick="pickDue()">'+(n.vence?esc(fmtDateBR(n.vence)):'Definir prazo')+'</button>'+(n.vence?'<button class="due-clear" onclick="clearDue()" title="Remover prazo">✕</button>':'')+'</div>'
     +'<div class="ed-actions">'
       +(hasItems?'<button class="selstart'+(_selMode?' on':'')+'" onclick="toggleSelMode()">'+(_selMode?'✕ Cancelar':'☑ Selecionar')+'</button>':'')
+      +(!_selMode?'<button class="selstart" onclick="exportCurrentList()">📤 Exportar</button>':'')
       +(!_selMode?'<button class="delchecked" id="delChecked" onclick="deleteChecked()" style="display:'+(doneN?'inline-flex':'none')+'">🗑 Excluir marcados ('+doneN+')</button>':'')
     +'</div>'
     +(_selMode? '' : (fc? '<button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button>':''))
@@ -443,6 +444,55 @@ function saveConfig(k,v){
 }
 
 /* ---- settings + tour ---- */
+function notasCsvCell(v){
+  var s=String(v==null?'':v);
+  return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+function notasDownload(filename, content, mime){
+  var url=URL.createObjectURL(new Blob([content], {type:mime}));
+  var a=document.createElement('a');
+  a.href=url; a.download=filename; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+}
+function exportNotasCsv(){
+  if(!DATA){ toast('Nada para exportar'); return; }
+  var stamp=new Date().toISOString().slice(0,10);
+  var out=['\ufeff### Notas', NOTAS_TABS[0][1].join(',')];
+  (DATA.notas||[]).forEach(function(n){
+    out.push([n.titulo,n.tipo,n.cor,n.fixado?'TRUE':'FALSE',n.criado,n.atualizado,n.id,n.vence].map(notasCsvCell).join(','));
+  });
+  out.push('','### Itens', NOTAS_TABS[1][1].join(','));
+  (DATA.itens||[]).slice().sort(function(a,b){ return String(a.notaId).localeCompare(String(b.notaId)) || (a.ordem-b.ordem); }).forEach(function(it){
+    out.push([it.notaId,it.ordem,it.texto,it.marcavel?'TRUE':'FALSE',it.feito?'TRUE':'FALSE',it.id,it.tipo].map(notasCsvCell).join(','));
+  });
+  notasDownload('joelboard-notas-'+stamp+'.csv', out.join('\r\n'), 'text/csv;charset=utf-8');
+  toast('✓ CSV exportado');
+}
+function exportNotasJson(){
+  if(!DATA){ toast('Nada para exportar'); return; }
+  var stamp=new Date().toISOString().slice(0,10);
+  var payload={ app:'notas', version:1, exportedAt:new Date().toISOString(), notas:DATA.notas||[], itens:DATA.itens||[] };
+  notasDownload('joelboard-notas-'+stamp+'.json', JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+  toast('✓ Backup exportado');
+}
+function safeFilename(s){ return String(s||'lista').replace(/[<>:"/\\|?*\x00-\x1f]/g,'').trim().slice(0,60)||'lista'; }
+function buildListMarkdown(n){
+  var lines=['# '+(n.titulo||'Lista'), ''];
+  if(n.vence) lines.push('Prazo: '+fmtDateBR(n.vence), '');
+  itemsOf(n.id).forEach(function(it){
+    var text=(it.texto||'').trim();
+    if(it.tipo==='g'){ if(text) lines.push('## '+text); return; }
+    if(!text) return;
+    lines.push(it.marcavel?((it.feito?'- [x] ':'- [ ] ')+text):('- '+text));
+  });
+  return lines.join('\n');
+}
+function exportCurrentList(){
+  var n=note(openNoteId);
+  if(!n){ toast('Abra uma lista primeiro'); return; }
+  notasDownload(safeFilename(n.titulo)+'.md', buildListMarkdown(n), 'text/markdown;charset=utf-8');
+  toast('✓ Lista exportada');
+}
 function openSettings(){ switchSet('tema'); JB.renderSkinPicker('notas', $('setSkins')); $('setNudge').classList.toggle('on', (DATA.config&&DATA.config.nudgePref)!=='off'); $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++){ var on=ps[j].getAttribute('data-pane')===name; ps[j].style.display=on?'':'none'; ps[j].classList.toggle('active', on); } }

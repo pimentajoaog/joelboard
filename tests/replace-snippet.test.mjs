@@ -92,3 +92,30 @@ describe('template variables', () => {
     assert.equal(parts[5].value, 'Joel');
   });
 });
+
+describe('body formatting', () => {
+  it('detects formatting markers', () => {
+    assert.equal(JB_REPLACE.hasFormatting('plain text'), false);
+    assert.equal(JB_REPLACE.hasFormatting('**bold**'), true);
+    assert.equal(JB_REPLACE.hasFormatting('- item'), true);
+    assert.equal(JB_REPLACE.hasFormatting('__underline__'), true);
+  });
+
+  it('strips inline markers for plain fields', () => {
+    assert.equal(JB_REPLACE.bodyToPlain('**hi** *x* __u__ ~~s~~'), 'hi x u s');
+  });
+
+  it('converts markup to html', () => {
+    const html = JB_REPLACE.bodyToHtml('**A**\n- one\n- two');
+    assert.match(html, /<strong>A<\/strong>/);
+    assert.match(html, /<ul>/);
+    assert.match(html, /<li>one<\/li>/);
+    assert.match(html, /<li>two<\/li>/);
+  });
+
+  it('escapes raw html in body', () => {
+    const html = JB_REPLACE.bodyToHtml('<script>alert(1)</script>');
+    assert.match(html, /&lt;script&gt;/);
+    assert.doesNotMatch(html, /<script>/);
+  });
+});

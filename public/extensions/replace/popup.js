@@ -83,6 +83,7 @@ function renderSettings() {
   $('optSpace').checked = s.expandOnSpace !== false;
   $('optTab').checked = s.expandOnTab !== false;
   $('optEnter').checked = !!s.expandOnEnter;
+  $('optType').checked = !!s.expandOnType;
   $('optCase').checked = !!s.caseSensitive;
 }
 
@@ -160,17 +161,79 @@ function addVar() {
   persist().then(renderVars);
 }
 
+function wrapEdSelection(before, after, placeholder) {
+  var ta = $('edBody');
+  var start = ta.selectionStart;
+  var end = ta.selectionEnd;
+  var val = ta.value;
+  var sel = val.slice(start, end);
+  var inner = sel || placeholder || 'texto';
+  var insert = before + inner + after;
+  ta.value = val.slice(0, start) + insert + val.slice(end);
+  var cStart = start + before.length;
+  var cEnd = cStart + inner.length;
+  ta.focus();
+  ta.setSelectionRange(cStart, cEnd);
+}
+
+function prefixEdLines(prefix) {
+  var ta = $('edBody');
+  var start = ta.selectionStart;
+  var end = ta.selectionEnd;
+  var val = ta.value;
+  var lineStart = val.lastIndexOf('\n', start - 1) + 1;
+  var lineEnd = val.indexOf('\n', end);
+  if (lineEnd < 0) lineEnd = val.length;
+  var block = val.slice(lineStart, lineEnd);
+  var lines = block.split('\n');
+  var prefixed = lines.map(function (line) {
+    if (!line.trim()) return line;
+    if (/^[-*•]\s/.test(line)) return line;
+    return prefix + line;
+  }).join('\n');
+  ta.value = val.slice(0, lineStart) + prefixed + val.slice(lineEnd);
+  ta.focus();
+  ta.setSelectionRange(lineStart, lineStart + prefixed.length);
+}
+
+function bindFmtToolbar() {
+  var bar = $('edFmt');
+  if (!bar) return;
+  bar.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-wrap], [data-fmt]');
+    if (!btn) return;
+    e.preventDefault();
+    if (btn.getAttribute('data-fmt') === 'bullet') {
+      prefixEdLines('- ');
+      return;
+    }
+    var wrap = btn.getAttribute('data-wrap');
+    if (wrap) wrapEdSelection(wrap, wrap, 'texto');
+  });
+  $('edBody').addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    if (e.key.toLowerCase() === 'b') {
+      e.preventDefault();
+      wrapEdSelection('**', '**', 'texto');
+    } else if (e.key.toLowerCase() === 'i') {
+      e.preventDefault();
+      wrapEdSelection('*', '*', 'texto');
+    }
+  });
+}
+
 function bindSettings() {
   function upd() {
     DATA.settings = {
       expandOnSpace: $('optSpace').checked,
       expandOnTab: $('optTab').checked,
       expandOnEnter: $('optEnter').checked,
+      expandOnType: $('optType').checked,
       caseSensitive: $('optCase').checked
     };
     persist();
   }
-  ['optSpace', 'optTab', 'optEnter', 'optCase'].forEach(function (id) {
+  ['optSpace', 'optTab', 'optEnter', 'optType', 'optCase'].forEach(function (id) {
     $(id).onchange = upd;
   });
 }
@@ -269,6 +332,7 @@ JB_REPLACE.load().then(function (d) {
   renderVars();
   renderSettings();
   bindSettings();
+  bindFmtToolbar();
   initSitesUI();
 });
 

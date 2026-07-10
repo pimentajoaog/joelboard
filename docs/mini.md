@@ -25,8 +25,19 @@ Substitui **gatilhos** por templates em campos editáveis (input, textarea, cont
 ### Uso
 
 1. Digite o gatilho (ex.: `/test`, `//oi`).
-2. Pressione **Espaço**, **Tab** ou **Enter** (configurável no popup).
+2. Pressione **Espaço**, **Tab** ou **Enter** (configurável no popup) — ou ative **Expandir ao terminar de digitar o gatilho** para expandir assim que o último caractere do gatilho for digitado (sem precisar de Espaço/Tab/Enter).
 3. O gatilho expande — funciona **dentro de outro texto** (ex.: `test/test` reconhece `/test` no final).
+
+### Formatação no texto expandido
+
+No editor de template (popup), use marcadores no **texto expandido** (não no gatilho):
+
+- `**negrito**`, `*itálico*`, `__sublinhado__`, `~~riscado~~`
+- Linhas que começam com `- ` viram lista com marcadores
+
+Em campos rich text (`contenteditable`, ex. Google Docs), a formatação é inserida como HTML. Em `input`/`textarea`, os marcadores são removidos e só o texto permanece.
+
+Barra de formatação no editor de template: **B** / **I** / **U** / riscado / lista.
 
 ### Variáveis
 

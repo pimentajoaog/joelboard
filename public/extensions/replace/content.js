@@ -5,6 +5,7 @@
 
   var data = null;
   var pendingPrompt = null;
+  var expanding = false;
 
   var inputValSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
   var areaValSet = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
@@ -114,15 +115,24 @@
       range.setEnd(endPos.node, endPos.offset);
       sel.removeAllRanges();
       sel.addRange(range);
-      var ok = document.execCommand('insertText', false, text);
+      var useHtml = JB_REPLACE.hasFormatting(text);
+      var insertVal = useHtml ? JB_REPLACE.bodyToHtml(text) : text;
+      var ok = useHtml
+        ? document.execCommand('insertHTML', false, insertVal)
+        : document.execCommand('insertText', false, insertVal);
       try {
-        el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText', data: text }));
+        el.dispatchEvent(new InputEvent('input', {
+          bubbles: true,
+          inputType: 'insertReplacementText',
+          data: useHtml ? '' : text
+        }));
       } catch (_) {
         el.dispatchEvent(new Event('input', { bubbles: true }));
       }
       return ok;
     }
 
+    var plain = JB_REPLACE.bodyToPlain(text);
     var snap = st.snapshot;
     var val = snap ? snap.value : el.value;
     var selStart = snap ? snap.selStart : el.selectionStart;
@@ -135,9 +145,9 @@
     if (caseSensitive ? typed !== trigger : typed.toLowerCase() !== trigger.toLowerCase()) return false;
     var after = val.slice(selEnd);
 
-    var newVal = val.slice(0, trigStart) + text + after;
+    var newVal = val.slice(0, trigStart) + plain + after;
     setNativeValue(el, newVal);
-    var pos = trigStart + text.length;
+    var pos = trigStart + plain.length;
     try { el.setSelectionRange(pos, pos); } catch (_) {}
     return true;
   }
@@ -228,6 +238,8 @@
   }
 
   function doExpand(st, snippet, matchStart, caseSensitive) {
+    if (expanding) return Promise.resolve(false);
+    expanding = true;
     var trig = snippet.trigger || '';
     captureSnapshot(st);
     var body = snippet.body || '';
@@ -244,10 +256,10 @@
       });
     }
 
-    if (needsClip) {
-      return readClipboard().then(function (clip) { return finish(clip); });
-    }
-    return finish('');
+    var chain = needsClip
+      ? readClipboard().then(function (clip) { return finish(clip); })
+      : finish('');
+    return chain.finally(function () { expanding = false; });
   }
 
   function showToast(msg) {
@@ -276,6 +288,23 @@
     if (key === 'Enter' && !settings.expandOnEnter) return;
     e.preventDefault();
     e.stopPropagation();
+    doExpand(st, match.snippet, match.start, !!settings.caseSensitive).then(function (ok) {
+      if (ok) showToast('✓ ' + (match.snippet.label || match.snippet.trigger));
+    });
+  }, true);
+
+  document.addEventListener('input', function (e) {
+    if (expanding || pendingPrompt) return;
+    if (e.isComposing) return;
+    var el = e.target;
+    if (!isEditable(el)) return;
+    if (!data || !data.settings || !data.settings.expandOnType) return;
+    var st = getFieldState(el);
+    if (!st) return;
+    var settings = data.settings || {};
+    var match = JB_REPLACE.findSnippetMatch(data.snippets, st.before, !!settings.caseSensitive);
+    if (!match) return;
+    if (match.end !== (st.before || '').length) return;
     doExpand(st, match.snippet, match.start, !!settings.caseSensitive).then(function (ok) {
       if (ok) showToast('✓ ' + (match.snippet.label || match.snippet.trigger));
     });

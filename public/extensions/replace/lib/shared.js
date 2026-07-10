@@ -52,6 +52,7 @@ var JB_REPLACE = (function () {
         expandOnSpace: true,
         expandOnTab: true,
         expandOnEnter: false,
+        expandOnType: false,
         caseSensitive: false
       }
     };
@@ -378,6 +379,64 @@ var JB_REPLACE = (function () {
     return Object.values(map);
   }
 
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /** True when body uses inline or list formatting markers. */
+  function hasFormatting(body) {
+    var t = String(body || '');
+    if (/(^|\n)[ \t]*[-*•]\s+/.test(t)) return true;
+    if (/\*\*[^*\n]+\*\*/.test(t)) return true;
+    if (/(?:^|[^*])\*[^*\n]+\*(?:[^*]|$)/.test(t)) return true;
+    if (/__[^_\n]+__/.test(t)) return true;
+    if (/~~[^~\n]+~~/.test(t)) return true;
+    return false;
+  }
+
+  /** Strip formatting markers for plain input/textarea fields. */
+  function bodyToPlain(body) {
+    return String(body || '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*\n]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/~~([^~]+)~~/g, '$1');
+  }
+
+  function formatInlineHtml(text) {
+    var s = escapeHtml(text);
+    s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    s = s.replace(/__([^_\n]+)__/g, '<u>$1</u>');
+    s = s.replace(/~~([^~\n]+)~~/g, '<s>$1</s>');
+    return s;
+  }
+
+  /** Convert lightweight markup to HTML for contenteditable insertion. */
+  function bodyToHtml(body) {
+    var lines = String(body || '').split('\n');
+    var out = [];
+    var inList = false;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var bullet = line.match(/^([ \t]*)([-*•])\s+(.*)$/);
+      if (bullet) {
+        if (!inList) { out.push('<ul>'); inList = true; }
+        out.push('<li>' + formatInlineHtml(bullet[3]) + '</li>');
+      } else {
+        if (inList) { out.push('</ul>'); inList = false; }
+        if (line === '') out.push('<br>');
+        else out.push('<div>' + formatInlineHtml(line) + '</div>');
+      }
+    }
+    if (inList) out.push('</ul>');
+    return out.join('');
+  }
+
   function importFile(text, filename) {
     var name = String(filename || '').toLowerCase();
     var trimmed = stripBom(text).trim();
@@ -410,6 +469,9 @@ var JB_REPLACE = (function () {
     importJson: importJson,
     importSpreadsheet: importSpreadsheet,
     importFile: importFile,
-    mergeSnippets: mergeSnippets
+    mergeSnippets: mergeSnippets,
+    hasFormatting: hasFormatting,
+    bodyToPlain: bodyToPlain,
+    bodyToHtml: bodyToHtml
   };
 })();

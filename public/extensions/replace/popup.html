@@ -47,6 +47,7 @@
     <label class="tog"><input type="checkbox" id="optSpace" checked> Expandir ao pressionar <kbd>Espaço</kbd></label>
     <label class="tog"><input type="checkbox" id="optTab" checked> Expandir ao pressionar <kbd>Tab</kbd></label>
     <label class="tog"><input type="checkbox" id="optEnter"> Expandir ao pressionar <kbd>Enter</kbd></label>
+    <label class="tog"><input type="checkbox" id="optType"> Expandir ao terminar de digitar o gatilho</label>
     <label class="tog"><input type="checkbox" id="optCase"> Gatilhos diferenciam maiúsculas</label>
     <div class="sep"></div>
     <button class="btn ghost" id="btnExportCsv">⬇ Exportar planilha (CSV)</button>
@@ -62,7 +63,7 @@
       <input class="field" id="siteInput" placeholder="ex.: example.com">
       <button class="btn-sm" id="btnAddSite" title="Adicionar site">+</button>
     </div>
-    <div class="foot">Digite o gatilho em qualquer campo e pressione Espaço ou Tab.</div>
+    <div class="foot">Digite o gatilho e pressione Espaço/Tab — ou ative expansão automática ao digitar.</div>
   </div>
 </div>
 
@@ -74,7 +75,15 @@
     <label class="fl">Gatilho</label>
     <input class="field" id="edTrigger" placeholder="ex.: //oi ou ;sig">
     <label class="fl">Texto expandido</label>
-    <textarea class="field area" id="edBody" rows="6" placeholder="Olá {{nome}},&#10;&#10;…"></textarea>
+    <div class="fmt-bar" id="edFmt">
+      <button type="button" class="fmt-btn" data-wrap="**" title="Negrito"><b>B</b></button>
+      <button type="button" class="fmt-btn" data-wrap="*" title="Itálico"><i>I</i></button>
+      <button type="button" class="fmt-btn" data-wrap="__" title="Sublinhado"><u>U</u></button>
+      <button type="button" class="fmt-btn" data-wrap="~~" title="Riscado"><s>S</s></button>
+      <button type="button" class="fmt-btn" data-fmt="bullet" title="Lista com marcadores">≡</button>
+    </div>
+    <p class="hint fmt-hint"><code>**negrito**</code> <code>*itálico*</code> <code>__sublinhado__</code> <code>~~riscado~~</code> · linha com <code>- </code> vira lista</p>
+    <textarea class="field area" id="edBody" rows="6" placeholder="Olá {{nome}},&#10;&#10;**Importante:** …"></textarea>
     <label class="tog"><input type="checkbox" id="edEnabled" checked> Ativo</label>
     <div class="modal-btns">
       <button class="btn danger ghost" id="edDelete" style="display:none">Excluir</button>

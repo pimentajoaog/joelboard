@@ -12,10 +12,19 @@
 
   function extAlive() {
     try {
-      return !!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id);
+      return !!(
+        typeof chrome !== 'undefined'
+        && chrome.runtime
+        && typeof chrome.runtime.getURL === 'function'
+        && chrome.runtime.id
+      );
     } catch (_) {
       return false;
     }
+  }
+
+  function ignorePromise(p) {
+    if (p && typeof p.catch === 'function') p.catch(function () {});
   }
 
   var extDeadWarned = false;
@@ -36,10 +45,16 @@
 
   function syncData() {
     if (!extAlive()) return Promise.resolve(null);
-    return JB_REPLACE.load().then(function (d) { data = d; return d; });
+    try {
+      return JB_REPLACE.load()
+        .then(function (d) { data = d; return d; })
+        .catch(function () { return null; });
+    } catch (_) {
+      return Promise.resolve(null);
+    }
   }
 
-  syncData();
+  ignorePromise(syncData());
   if (extAlive()) {
     chrome.storage.onChanged.addListener(function (chg) {
       if (chg.jb_replace_data) data = chg.jb_replace_data.newValue;
@@ -213,99 +228,121 @@
 
   function promptVars(body, vars, builtins) {
     return new Promise(function (resolve) {
-      var missing = JB_REPLACE.missingVars(body, vars, builtins);
-      if (!missing.length) { resolve(vars); return; }
-      if (pendingPrompt) { resolve(null); return; }
-      if (!extAlive()) { warnExtDead(); resolve(null); return; }
+      try {
+        var missing = JB_REPLACE.missingVars(body, vars, builtins);
+        if (!missing.length) { resolve(vars); return; }
+        if (pendingPrompt) { resolve(null); return; }
+        if (!extAlive()) { warnExtDead(); resolve(null); return; }
 
-      blurActiveField();
+        blurActiveField();
 
-      var host = document.createElement('div');
-      host.id = 'jbr-prompt-root';
-      host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);padding:18px;box-sizing:border-box';
+        var host = document.createElement('div');
+        host.id = 'jbr-prompt-root';
+        host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);padding:18px;box-sizing:border-box';
 
-      var iframe = document.createElement('iframe');
-      var promptSrc = extUrl('prompt.html');
-      if (!promptSrc) { warnExtDead(); resolve(null); return; }
-      iframe.src = promptSrc;
-      iframe.title = 'Completar template';
-      iframe.setAttribute('aria-label', 'Completar template');
-      iframe.style.cssText = 'border:0;width:100%;max-width:560px;height:320px;background:transparent;color-scheme:dark';
+        var iframe = document.createElement('iframe');
+        var promptSrc = extUrl('prompt.html');
+        if (!promptSrc) { warnExtDead(); resolve(null); return; }
+        iframe.src = promptSrc;
+        iframe.title = 'Completar template';
+        iframe.setAttribute('aria-label', 'Completar template');
+        iframe.style.cssText = 'border:0;width:100%;max-width:560px;height:320px;background:transparent;color-scheme:dark';
 
-      host.appendChild(iframe);
-      document.documentElement.appendChild(host);
-      pendingPrompt = host;
+        host.appendChild(iframe);
+        document.documentElement.appendChild(host);
+        pendingPrompt = host;
 
-      function cleanup() {
-        window.removeEventListener('message', onMsg);
-        if (host.parentNode) host.parentNode.removeChild(host);
-        pendingPrompt = null;
+        function cleanup() {
+          window.removeEventListener('message', onMsg);
+          if (host.parentNode) host.parentNode.removeChild(host);
+          pendingPrompt = null;
+        }
+
+        function onMsg(ev) {
+          if (ev.source !== iframe.contentWindow || !ev.data || ev.data.type !== 'jbr-prompt') return;
+          if (ev.data.action === 'ready') {
+            iframe.contentWindow.postMessage({
+              type: 'jbr-prompt-init',
+              body: body,
+              vars: vars,
+              builtins: builtins
+            }, '*');
+            return;
+          }
+          if (ev.data.action === 'resize' && ev.data.height) {
+            var maxH = Math.max(220, Math.min(ev.data.height + 8, Math.floor(window.innerHeight * 0.82)));
+            iframe.style.height = maxH + 'px';
+            return;
+          }
+          if (ev.data.action === 'ok') {
+            var filled = ev.data.values || {};
+            Object.keys(filled).forEach(function (k) { vars[k] = filled[k]; });
+            cleanup();
+            resolve(vars);
+            return;
+          }
+          if (ev.data.action === 'skip') {
+            cleanup();
+            resolve(vars);
+            return;
+          }
+          if (ev.data.action === 'cancel') {
+            cleanup();
+            resolve(null);
+          }
+        }
+
+        window.addEventListener('message', onMsg);
+      } catch (_) {
+        warnExtDead();
+        resolve(null);
       }
-
-      function onMsg(ev) {
-        if (ev.source !== iframe.contentWindow || !ev.data || ev.data.type !== 'jbr-prompt') return;
-        if (ev.data.action === 'ready') {
-          iframe.contentWindow.postMessage({
-            type: 'jbr-prompt-init',
-            body: body,
-            vars: vars,
-            builtins: builtins
-          }, '*');
-          return;
-        }
-        if (ev.data.action === 'resize' && ev.data.height) {
-          var maxH = Math.max(220, Math.min(ev.data.height + 8, Math.floor(window.innerHeight * 0.82)));
-          iframe.style.height = maxH + 'px';
-          return;
-        }
-        if (ev.data.action === 'ok') {
-          var filled = ev.data.values || {};
-          Object.keys(filled).forEach(function (k) { vars[k] = filled[k]; });
-          cleanup();
-          resolve(vars);
-          return;
-        }
-        if (ev.data.action === 'skip') {
-          cleanup();
-          resolve(vars);
-          return;
-        }
-        if (ev.data.action === 'cancel') {
-          cleanup();
-          resolve(null);
-        }
-      }
-
-      window.addEventListener('message', onMsg);
     });
   }
 
   function doExpand(st, snippet, matchStart, caseSensitive, suffix) {
     if (expanding) return Promise.resolve(false);
+    if (!extAlive()) { warnExtDead(); return Promise.resolve(false); }
     expanding = true;
-    var trig = snippet.trigger || '';
-    captureSnapshot(st);
-    var body = snippet.body || '';
-    var vars = Object.assign({}, data.vars || {});
-    var builtins = buildBuiltins();
-    var needsClip = JB_REPLACE.needsClipboard(body);
+    try {
+      var trig = snippet.trigger || '';
+      captureSnapshot(st);
+      var body = snippet.body || '';
+      var vars = Object.assign({}, data.vars || {});
+      var builtins = buildBuiltins();
+      var needsClip = JB_REPLACE.needsClipboard(body);
 
-    function finish(clipText) {
-      var expanded = JB_REPLACE.applyClipboard(body, clipText);
-      return promptVars(expanded, vars, builtins).then(function (filled) {
-        if (!filled) return false;
-        var out = JB_REPLACE.expandVars(expanded, filled, builtins);
-        return applyToField(st, trig, out, matchStart, caseSensitive, suffix);
-      });
+      function finish(clipText) {
+        try {
+          var expanded = JB_REPLACE.applyClipboard(body, clipText);
+          return promptVars(expanded, vars, builtins).then(function (filled) {
+            if (!filled) return false;
+            try {
+              var out = JB_REPLACE.expandVars(expanded, filled, builtins);
+              return applyToField(st, trig, out, matchStart, caseSensitive, suffix);
+            } catch (_) {
+              warnExtDead();
+              return false;
+            }
+          });
+        } catch (_) {
+          warnExtDead();
+          return Promise.resolve(false);
+        }
+      }
+
+      var chain = needsClip
+        ? readClipboard().then(function (clip) { return finish(clip); })
+        : finish('');
+      return chain.catch(function () {
+        warnExtDead();
+        return false;
+      }).finally(function () { expanding = false; });
+    } catch (_) {
+      expanding = false;
+      warnExtDead();
+      return Promise.resolve(false);
     }
-
-    var chain = needsClip
-      ? readClipboard().then(function (clip) { return finish(clip); })
-      : finish('');
-    return chain.catch(function () {
-      if (!extAlive()) warnExtDead();
-      return false;
-    }).finally(function () { expanding = false; });
   }
 
   function showToast(msg) {
@@ -337,9 +374,9 @@
     e.preventDefault();
     e.stopPropagation();
     var suffix = key === ' ' ? ' ' : '';
-    doExpand(st, match.snippet, match.start, !!settings.caseSensitive, suffix).then(function (ok) {
+    ignorePromise(doExpand(st, match.snippet, match.start, !!settings.caseSensitive, suffix).then(function (ok) {
       if (ok) showToast('✓ ' + (match.snippet.label || match.snippet.trigger));
-    });
+    }));
   }, true);
 
   document.addEventListener('input', function (e) {
@@ -355,9 +392,9 @@
     var match = JB_REPLACE.findSnippetMatch(data.snippets, st.before, !!settings.caseSensitive);
     if (!match) return;
     if (match.end !== (st.before || '').length) return;
-    doExpand(st, match.snippet, match.start, !!settings.caseSensitive).then(function (ok) {
+    ignorePromise(doExpand(st, match.snippet, match.start, !!settings.caseSensitive).then(function (ok) {
       if (ok) showToast('✓ ' + (match.snippet.label || match.snippet.trigger));
-    });
+    }));
   }, true);
 
   if (!document.getElementById('jbr-styles')) {

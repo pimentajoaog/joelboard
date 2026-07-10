@@ -259,13 +259,46 @@ function itemRow(it, hidden){
     ? '<button class="itype" title="Tornar texto" onclick="convertItem(\''+it.id+'\',0)">¶</button>'
     : '<button class="itype" title="Tornar item marcável" onclick="convertItem(\''+it.id+'\',1)">☑</button>';
   var body = (it.id===_editId)
-    ? '<textarea class="itext" id="editTA" rows="1" autocomplete="off" oninput="autoGrow(this)" onblur="commitText(\''+it.id+'\',this.value);exitEdit();" onkeydown="itemKey(event,\''+it.id+'\')" onpaste="itemPaste(event,\''+it.id+'\')">'+esc(it.texto)+'</textarea>'
+    ? '<textarea class="itext" id="editTA" rows="1" autocomplete="off" oninput="autoGrow(this)" onblur="itemBlur(\''+it.id+'\',this)" onkeydown="itemKey(event,\''+it.id+'\')" onpaste="itemPaste(event,\''+it.id+'\')">'+esc(it.texto)+'</textarea>'
     : '<div class="itext itext-view" onclick="startEdit(\''+it.id+'\')">'+(it.texto?mdToHtml(it.texto):'<span class="iplace">(vazio)</span>')+'</div>';
   return '<div class="irow'+(done?' done':'')+(hidden?' ihide':'')+'" data-id="'+it.id+'">'
     +'<button class="ihandle" onpointerdown="dragBegin(event,\''+it.id+'\')" title="Arrastar">⠿</button>'+left+body
     +typeBtn+'<button class="idel" title="Excluir" onclick="deleteItem(\''+it.id+'\')">✕</button></div>';
 }
-function itemKey(e,id){ if(e.key==='Enter'){ e.preventDefault(); commitText(id,e.target.value); var a=$('addInput'); if(a) a.focus(); } }
+var _itemEnterInsert=false;
+function itemBlur(id, el){ if(_itemEnterInsert) return; commitText(id,el.value); exitEdit(); }
+function insertItemAfter(afterId){
+  var n=note(openNoteId); if(!n) return null;
+  var its=itemsOf(openNoteId), idx=-1;
+  for(var k=0;k<its.length;k++){ if(its[k].id===afterId){ idx=k; break; } }
+  if(idx<0) return null;
+  var cur=its[idx];
+  if(cur.tipo==='g') return null;
+  for(var g=idx;g>=0;g--){
+    if(its[g].tipo==='g' && its[g].feito){ its[g].feito=false; saveItemRow(its[g]); break; }
+  }
+  var curOrd=cur.ordem, nextO=(idx+1<its.length)?its[idx+1].ordem:null;
+  var newOrd=(nextO!=null)?(curOrd+nextO)/2:(curOrd+1);
+  var it={ id:uuid(), notaId:openNoteId, ordem:newOrd, texto:'', marcavel:cur.marcavel, feito:false, tipo:'' };
+  DATA.itens.push(it); appendItem(it); touchNote(n); return it;
+}
+function itemKey(e,id){
+  if(e.key!=='Enter' || e.shiftKey) return;
+  e.preventDefault();
+  var val=e.target.value, trimmed=String(val||'').replace(/\s+$/,'').trim();
+  if(!trimmed){ commitText(id,val); exitEdit(); return; }
+  var it=(DATA.itens||[]).find(function(x){return x.id===id;});
+  if(!it || it.tipo==='g') return;
+  var v=val.replace(/\s+$/,'');
+  if(v!==it.texto){ it.texto=v; saveItemRow(it); var nn=note(openNoteId); if(nn) touchNote(nn); }
+  var newIt=insertItemAfter(id);
+  if(!newIt){ exitEdit(); return; }
+  _itemEnterInsert=true;
+  _editId=newIt.id;
+  renderItems(); renderUsuals();
+  _itemEnterInsert=false;
+  var bar=$('fmtBar'); if(bar) bar.classList.add('show'); positionFmtBar();
+}
 function nextOrd(){ var o=1; (DATA.itens||[]).forEach(function(x){ if(x.notaId===openNoteId && x.ordem>=o) o=x.ordem+1; }); return o; }
 function addItemText(text, mk){ var n=note(openNoteId); if(!n) return null; var kd=kindDef(n.tipo); var it={ id:uuid(), notaId:openNoteId, ordem:nextOrd(), texto:text, marcavel:(mk==null?kd.defCheck:!!mk), feito:false, tipo:'' }; DATA.itens=DATA.itens||[]; DATA.itens.push(it); appendItem(it); touchNote(n); return it; }
 function addItemFromInput(){ var inp=$('addInput'); var v=(inp.value||'').trim(); if(!v) return; addItemText(v); inp.value=''; renderItems(); renderUsuals(); setTimeout(function(){ var a=$('addInput'); if(a) a.focus(); },10); }

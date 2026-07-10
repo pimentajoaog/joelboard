@@ -444,10 +444,13 @@ function saveConfig(k,v){
 }
 
 /* ---- settings + tour ---- */
+var NOTAS_CSV_SEP = ';';
 function notasCsvCell(v){
   var s=String(v==null?'':v);
-  return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+  return /[";\r\n,]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
 }
+function notasCsvLine(cells){ return cells.map(notasCsvCell).join(NOTAS_CSV_SEP); }
+function notasCsvFile(lines){ return '\ufeffsep='+NOTAS_CSV_SEP+'\r\n'+lines.join('\r\n'); }
 function notasDownload(filename, content, mime){
   var url=URL.createObjectURL(new Blob([content], {type:mime}));
   var a=document.createElement('a');
@@ -475,20 +478,20 @@ function notasExportItemRows(n, includeListMeta){
     var row=includeListMeta
       ? [n.titulo||'', kd.label, n.vence?fmtDateBR(n.vence):'', n.fixado?'Sim':'Não', group, num, text, it.marcavel?'Sim':'Não', it.marcavel?(it.feito?'Sim':'Não'):'', notasItemStatus(it)]
       : [kd.label, n.vence?fmtDateBR(n.vence):'', n.fixado?'Sim':'Não', group, num, text, it.marcavel?'Sim':'Não', it.marcavel?(it.feito?'Sim':'Não'):'', notasItemStatus(it)];
-    rows.push(row.map(notasCsvCell).join(','));
+    rows.push(notasCsvLine(row));
   });
   return rows;
 }
 function exportNotasCsv(){
   if(!DATA){ toast('Nada para exportar'); return; }
   var stamp=new Date().toISOString().slice(0,10);
-  var out=['\ufeff'+notasExportHeaders(true).map(notasCsvCell).join(',')];
+  var out=[notasCsvLine(notasExportHeaders(true))];
   (DATA.notas||[]).slice().sort(function(a,b){
     return String(b.atualizado||b.criado||'').localeCompare(String(a.atualizado||a.criado||''));
   }).forEach(function(n){
     notasExportItemRows(n, true).forEach(function(line){ out.push(line); });
   });
-  notasDownload('joelboard-notas-'+stamp+'.csv', out.join('\r\n'), 'text/csv;charset=utf-8');
+  notasDownload('joelboard-notas-'+stamp+'.csv', notasCsvFile(out), 'text/csv;charset=utf-8');
   toast('✓ CSV exportado');
 }
 function exportNotasJson(){
@@ -500,9 +503,9 @@ function exportNotasJson(){
 }
 function safeFilename(s){ return String(s||'lista').replace(/[<>:"/\\|?*\x00-\x1f]/g,'').trim().slice(0,60)||'lista'; }
 function buildListCsv(n){
-  var out=['\ufeff'+notasExportHeaders(false).map(notasCsvCell).join(',')];
+  var out=[notasCsvLine(notasExportHeaders(false))];
   notasExportItemRows(n, false).forEach(function(line){ out.push(line); });
-  return out.join('\r\n');
+  return notasCsvFile(out);
 }
 function exportCurrentList(){
   var n=note(openNoteId);

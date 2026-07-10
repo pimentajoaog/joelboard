@@ -4,7 +4,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const root = path.resolve(import.meta.dirname, '..');
-const baseIcon = path.join(root, 'public', 'extensions', 'replace', 'icons', 'icon-192.png');
+const baseIcon = path.join(root, 'public', 'icon-192.png');
 const sizes = [16, 48, 128, 192];
 
 const extensions = {

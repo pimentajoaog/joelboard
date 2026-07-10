@@ -101,17 +101,24 @@
     el.focus();
 
     if (st.kind === 'ce') {
-      var beforeLen = (st.snapshot && st.snapshot.beforeLen != null)
-        ? st.snapshot.beforeLen
-        : (st.before || '').length;
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return false;
+      var range = sel.getRangeAt(0);
+      var pre = range.cloneRange();
+      pre.selectNodeContents(el);
+      pre.setEnd(range.startContainer, range.startOffset);
+      var beforeNow = pre.toString();
       var trigStart = (matchStart != null && matchStart >= 0)
         ? matchStart
-        : beforeLen - trigger.length;
+        : beforeNow.length - trigger.length;
+      if (trigStart < 0) return false;
+      var hay = caseSensitive ? beforeNow : beforeNow.toLowerCase();
+      var needle = caseSensitive ? trigger : trigger.toLowerCase();
+      if (hay.slice(trigStart, trigStart + trigger.length) !== needle) return false;
       var startPos = findTextPosition(el, trigStart);
       var endPos = findTextPosition(el, trigStart + trigger.length);
       if (!startPos || !endPos) return false;
-      var sel = window.getSelection();
-      var range = document.createRange();
+      range = document.createRange();
       range.setStart(startPos.node, startPos.offset);
       range.setEnd(endPos.node, endPos.offset);
       sel.removeAllRanges();
@@ -134,21 +141,26 @@
     }
 
     var plain = JB_REPLACE.bodyToPlain(text) + suffix;
-    var snap = st.snapshot;
-    var val = snap ? snap.value : el.value;
-    var selStart = snap ? snap.selStart : el.selectionStart;
-    var selEnd = snap ? snap.selEnd : el.selectionEnd;
+    var val = el.value;
+    var selStart = el.selectionStart;
+    var selEnd = el.selectionEnd;
+    if (selStart == null || selEnd == null) return false;
     var trigStart = (matchStart != null && matchStart >= 0)
       ? matchStart
       : selStart - trigger.length;
     if (trigStart < 0 || trigStart + trigger.length > val.length) return false;
     var typed = val.slice(trigStart, trigStart + trigger.length);
     if (caseSensitive ? typed !== trigger : typed.toLowerCase() !== trigger.toLowerCase()) return false;
+    var trigEnd = trigStart + trigger.length;
+    var preserved = '';
+    if (selStart === selEnd && selStart >= trigEnd) {
+      preserved = val.slice(trigEnd, selStart);
+    }
     var after = val.slice(selEnd);
 
-    var newVal = val.slice(0, trigStart) + plain + after;
+    var newVal = val.slice(0, trigStart) + plain + preserved + after;
     setNativeValue(el, newVal);
-    var pos = trigStart + plain.length;
+    var pos = trigStart + plain.length + preserved.length;
     try { el.setSelectionRange(pos, pos); } catch (_) {}
     return true;
   }
@@ -273,6 +285,7 @@
 
   document.addEventListener('keydown', function (e) {
     if (pendingPrompt) return;
+    if (expanding) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     var key = e.key;
     if (key !== ' ' && key !== 'Tab' && key !== 'Enter') return;

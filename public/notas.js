@@ -144,6 +144,43 @@ function renderHomeShell(){
 function onHomeSearch(v){ homeQuery=v; JB.searchClearVis('homeSearch','homeSearchClear',!!v); renderHomeList(); }
 function clearHomeSearch(){ homeQuery=''; var i=$('homeSearch'); if(i) i.value=''; JB.searchClearVis('homeSearch','homeSearchClear',false); renderHomeList(); }
 function itemsOf(id){ return (DATA.itens||[]).filter(function(x){return x.notaId===id;}).sort(function(a,b){ return a.ordem-b.ordem; }); }
+function isGroup(it){ return !!(it && (it.tipo==='g' || /^g\d+$/.test(String(it.tipo)))); }
+function groupDepth(it){ if(!isGroup(it)) return -1; if(it.tipo==='g') return 0; var m=String(it.tipo).match(/^g(\d+)$/); return m?parseInt(m[1],10):0; }
+function makeGroupTipo(d){ d=d|0; return d<=0?'g':('g'+d); }
+function groupIndex(its, gid){ for(var k=0;k<its.length;k++){ if(its[k].id===gid) return k; } return -1; }
+function groupDescendantEnd(its, gi){
+  if(gi<0 || !isGroup(its[gi])) return gi;
+  var gDepth=groupDepth(its[gi]), last=gi;
+  for(var j=gi+1;j<its.length;j++){ if(isGroup(its[j]) && groupDepth(its[j])<=gDepth) break; last=j; }
+  return last;
+}
+function expandGroupChain(gid){
+  var its=itemsOf(openNoteId), gi=groupIndex(its, gid);
+  if(gi<0) return;
+  for(var k=gi;k>=0;k--){ if(isGroup(its[k]) && its[k].feito){ its[k].feito=false; saveItemRow(its[k]); } }
+}
+function ordemAfter(its, afterIdx){
+  var lastOrd=its[afterIdx].ordem, nextO=(afterIdx+1<its.length)?its[afterIdx+1].ordem:null;
+  return (nextO!=null)?(lastOrd+nextO)/2:(lastOrd+1);
+}
+function listCollapseStack(its){
+  var stack=[], out=[];
+  for(var i=0;i<its.length;i++){
+    var it=its[i];
+    if(isGroup(it)){
+      var d=groupDepth(it);
+      while(stack.length>d) stack.pop();
+      var hidden=stack.some(function(s){return s.collapsed;});
+      out.push({item:it,depth:d,hidden:hidden,isGroup:true});
+      stack.push({collapsed:!!it.feito});
+    } else {
+      var hid=stack.some(function(s){return s.collapsed;});
+      out.push({item:it,depth:stack.length,hidden:hid,isGroup:false});
+    }
+  }
+  return out;
+}
+function depthAttr(d){ return (d>0?' style="--gdepth:'+d+'"':'')+(d>=0?' data-gd="'+d+'"':''); }
 function renderHomeList(){
   var el=$('homeList'); if(!el) return; var q=normText(homeQuery);
   var ns=(DATA.notas||[]).slice().sort(function(a,b){ return String(b.atualizado||b.criado||'').localeCompare(String(a.atualizado||a.criado||'')); });
@@ -159,7 +196,7 @@ function renderHomeList(){
   }
 }
 function noteCard(n){
-  var kd=kindDef(n.tipo); var its=itemsOf(n.id).filter(function(x){return x.tipo!=='g';}); var chk=its.filter(function(x){return x.marcavel;}); var done=chk.filter(function(x){return x.feito;}).length;
+  var kd=kindDef(n.tipo); var its=itemsOf(n.id).filter(function(x){return !isGroup(x);}); var chk=its.filter(function(x){return x.marcavel;}); var done=chk.filter(function(x){return x.feito;}).length;
   var prog = chk.length ? ('<div class="nc-pbar"><span style="width:'+Math.round(done/chk.length*100)+'%"></span></div>') : '';
   var metaCount = chk.length ? (done+'/'+chk.length+' feitos') : (its.length+' '+(its.length===1?'linha':'linhas'));
   return '<div class="notec" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')">'
@@ -180,8 +217,8 @@ function createNote(){ var t=($('newTitle').value||'').trim(); var kd=kindDef(ne
 /* ---- editor ---- */
 function renderEditor(){
   var n=note(openNoteId); if(!n){ openNoteId=null; renderHomeShell(); return; }
-  var kd=kindDef(n.tipo); var src=lastNoteOfKind(n.tipo,n.id); var fc=fillableCount(n,src); var doneN=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel && x.feito;}).length;
-  var hasItems=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g';}).length>0;
+  var kd=kindDef(n.tipo); var src=lastNoteOfKind(n.tipo,n.id); var fc=fillableCount(n,src); var doneN=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}).length;
+  var hasItems=itemsOf(openNoteId).filter(function(x){return !isGroup(x);}).length>0;
   var html='<div style="--kc:'+kd.color+'">'
     +'<button class="lnk" onclick="backHome()">← Listas</button>'
     +'<div class="ed-head"><span class="ed-ico">'+kd.icon+'</span><input class="ed-title" id="edTitle" value="'+escAttr(n.titulo)+'" onblur="commitTitle(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()"></div>'
@@ -205,18 +242,29 @@ function renderEditor(){
 function renderItems(){
   var el=$('edItems'); if(!el) return; var n=note(openNoteId); var its=itemsOf(openNoteId);
   if(!its.length){ el.innerHTML='<div class="rg" style="padding:8px 0">Lista vazia. Adicione itens abaixo'+(kindDef(n.tipo).defCheck?'':' — toque em ☑ para tornar uma linha marcável')+'.</div>'; return; }
-  var collapsed=false, html='';
-  its.forEach(function(it){ if(it.tipo==='g'){ collapsed=!!it.feito; html+=groupRow(it); } else { html+=itemRow(it, collapsed); } });
+  var layout=listCollapseStack(its), html='';
+  layout.forEach(function(m){ if(m.isGroup) html+=groupRow(m.item,m.depth,m.hidden); else html+=itemRow(m.item,m.hidden,m.depth); });
   el.innerHTML=html;
   var ed=el.querySelector('#editTA'); if(ed){ ed.focus(); try{ var L=ed.value.length; ed.setSelectionRange(L,L); }catch(e){} if(ed.tagName==='TEXTAREA') autoGrow(ed); }
   updateDelChecked(); updateSelBar();
 }
-function updateDelChecked(){ var b=$('delChecked'); if(!b) return; var dn=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel && x.feito;}).length; b.style.display=dn?'inline-flex':'none'; b.textContent='🗑 Excluir marcados ('+dn+')'; }
+function updateDelChecked(){ var b=$('delChecked'); if(!b) return; var dn=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}).length; b.style.display=dn?'inline-flex':'none'; b.textContent='🗑 Excluir marcados ('+dn+')'; }
 function autoGrow(t){ if(!t) return; t.style.height='auto'; t.style.height=(t.scrollHeight)+'px'; }
-function groupStats(gid){ var its=itemsOf(openNoteId); var i=-1; for(var k=0;k<its.length;k++){ if(its[k].id===gid){ i=k; break; } } var done=0,total=0; for(var j=i+1;j<its.length;j++){ if(its[j].tipo==='g') break; if(its[j].marcavel){ total++; if(its[j].feito) done++; } } return {done:done,total:total}; }
-function groupRow(g){ var st=groupStats(g.id); var allon=st.total>0 && st.done===st.total;
+function groupStats(gid){
+  var its=itemsOf(openNoteId), gi=groupIndex(its,gid);
+  if(gi<0) return {done:0,total:0};
+  var gDepth=groupDepth(its[gi]), done=0,total=0;
+  for(var j=gi+1;j<its.length;j++){
+    if(isGroup(its[j]) && groupDepth(its[j])<=gDepth) break;
+    if(its[j].marcavel){ total++; if(its[j].feito) done++; }
+  }
+  return {done:done,total:total};
+}
+function groupRow(g, depth, hidden){
+  depth=depth|0; hidden=!!hidden;
+  var st=groupStats(g.id); var allon=st.total>0 && st.done===st.total;
   var chk = st.total>1 ? '<button class="ichk gchk'+(allon?' on':(st.done>0?' part':''))+'" onclick="toggleGroupAll(\''+g.id+'\')" title="Marcar/desmarcar todos">'+(allon?'✓':(st.done>0?'–':''))+'</button>' : '';
-  return '<div class="ihdr'+(g.feito?' collapsed':'')+'" data-id="'+g.id+'" data-g="1">'
+  return '<div class="ihdr'+(g.feito?' collapsed':'')+(hidden?' ihide':'')+'" data-id="'+g.id+'" data-g="1"'+depthAttr(depth)+'>'
   +'<button class="ihandle" onpointerdown="dragBegin(event,\''+g.id+'\')" title="Arrastar">⠿</button>'
   +'<button class="gchev" onclick="toggleGroup(\''+g.id+'\')" title="Expandir/recolher">'+(g.feito?'▸':'▾')+'</button>'+chk
   +((g.id===_editId)
@@ -224,9 +272,42 @@ function groupRow(g){ var st=groupStats(g.id); var allon=st.total>0 && st.done==
      : '<div class="gname gname-view" onclick="startEdit(\''+g.id+'\')">'+(g.texto?mdToHtml(g.texto):'<span class="iplace">Nome do grupo</span>')+'</div>')
   +'<span class="gcount">'+(st.total?(st.done+'/'+st.total):'')+'</span>'
   +'<button class="gadd" onclick="addToGroup(\''+g.id+'\')" title="Adicionar item neste grupo">+</button>'
-  +'<button class="idel" title="Remover grupo" onclick="deleteGroup(\''+g.id+'\')">✕</button></div>'; }
-function addToGroup(gid){ var n=note(openNoteId); if(!n) return; var g=(DATA.itens||[]).find(function(x){return x.id===gid;}); if(!g) return; if(g.feito){ g.feito=false; saveItemRow(g); } var its=itemsOf(openNoteId); var gi=-1; for(var k=0;k<its.length;k++){ if(its[k].id===gid){ gi=k; break; } } if(gi<0) return; var last=gi; for(var j=gi+1;j<its.length;j++){ if(its[j].tipo==='g') break; last=j; } var lastOrd=its[last].ordem, nextO=(last+1<its.length)?its[last+1].ordem:null; var newOrd=(nextO!=null)?(lastOrd+nextO)/2:(lastOrd+1); var kd=kindDef(n.tipo); var it={ id:uuid(), notaId:openNoteId, ordem:newOrd, texto:'', marcavel:kd.defCheck, feito:false, tipo:'' }; DATA.itens.push(it); appendItem(it); touchNote(n); renderItems(); startEdit(it.id); }
-function toggleGroupAll(gid){ var its=itemsOf(openNoteId); var i=-1; for(var k=0;k<its.length;k++){ if(its[k].id===gid){ i=k; break; } } if(i<0) return; var members=[]; for(var j=i+1;j<its.length;j++){ if(its[j].tipo==='g') break; if(its[j].marcavel) members.push(its[j]); } if(!members.length) return; var allDone=members.every(function(m){return m.feito;}); var target=!allDone; members.forEach(function(m){ m.feito=target; }); renderItems(); persistItems(members); var n=note(openNoteId); if(n) touchNote(n); }
+  +'<button class="gsub" onclick="addSubgroup(\''+g.id+'\')" title="Adicionar subgrupo">⊞</button>'
+  +'<button class="idel" title="Remover grupo" onclick="deleteGroup(\''+g.id+'\')">✕</button></div>';
+}
+function addToGroup(gid){
+  var n=note(openNoteId); if(!n) return;
+  var g=(DATA.itens||[]).find(function(x){return x.id===gid;}); if(!g) return;
+  expandGroupChain(gid);
+  var its=itemsOf(openNoteId), gi=groupIndex(its,gid); if(gi<0) return;
+  var last=groupDescendantEnd(its,gi);
+  var kd=kindDef(n.tipo);
+  var it={ id:uuid(), notaId:openNoteId, ordem:ordemAfter(its,last), texto:'', marcavel:kd.defCheck, feito:false, tipo:'' };
+  DATA.itens.push(it); appendItem(it); touchNote(n); renderItems(); startEdit(it.id);
+}
+function addSubgroup(gid){
+  var n=note(openNoteId); if(!n) return;
+  var g=(DATA.itens||[]).find(function(x){return x.id===gid;}); if(!g || !isGroup(g)) return;
+  expandGroupChain(gid);
+  var its=itemsOf(openNoteId), gi=groupIndex(its,gid); if(gi<0) return;
+  var last=groupDescendantEnd(its,gi), childDepth=groupDepth(g)+1;
+  var sg={ id:uuid(), notaId:openNoteId, ordem:ordemAfter(its,last), texto:'', marcavel:false, feito:false, tipo:makeGroupTipo(childDepth) };
+  DATA.itens.push(sg); appendItem(sg); touchNote(n); renderItems();
+  setTimeout(function(){ var el=$('edItems').querySelector('[data-id="'+sg.id+'"] .gname'); if(el) el.focus(); },30);
+}
+function toggleGroupAll(gid){
+  var its=itemsOf(openNoteId), gi=groupIndex(its,gid); if(gi<0) return;
+  var gDepth=groupDepth(its[gi]), members=[];
+  for(var j=gi+1;j<its.length;j++){
+    if(isGroup(its[j]) && groupDepth(its[j])<=gDepth) break;
+    if(its[j].marcavel) members.push(its[j]);
+  }
+  if(!members.length) return;
+  var allDone=members.every(function(m){return m.feito;}), target=!allDone;
+  members.forEach(function(m){ m.feito=target; });
+  renderItems(); persistItems(members);
+  var nn=note(openNoteId); if(nn) touchNote(nn);
+}
 function persistItems(arr){
   if(!arr||!arr.length) return;
   JB.persist({
@@ -244,9 +325,10 @@ function persistItems(arr){
     onError: notasWriteErr
   });
 }
-function itemRow(it, hidden){
+function itemRow(it, hidden, depth){
+  depth=depth|0; hidden=!!hidden;
   if(_selMode){ var son=!!_sel[it.id];
-    return '<div class="irow selrow'+(son?' on':'')+(hidden?' ihide':'')+'" data-id="'+it.id+'" onclick="selToggle(\''+it.id+'\')">'
+    return '<div class="irow selrow'+(son?' on':'')+(hidden?' ihide':'')+'" data-id="'+it.id+'"'+depthAttr(depth)+' onclick="selToggle(\''+it.id+'\')">'
       +'<button class="ihandle" onpointerdown="dragBegin(event,\''+it.id+'\')" onclick="event.stopPropagation()" title="Arrastar">⠿</button>'
       +'<span class="seldot'+(son?' on':'')+'">'+(son?'✓':'')+'</span>'
       +'<div class="itext itext-view">'+(it.texto?mdToHtml(it.texto):'<span class="iplace">(vazio)</span>')+'</div></div>';
@@ -261,7 +343,7 @@ function itemRow(it, hidden){
   var body = (it.id===_editId)
     ? '<textarea class="itext" id="editTA" rows="1" autocomplete="off" oninput="autoGrow(this)" onblur="itemBlur(\''+it.id+'\',this)" onkeydown="itemKey(event,\''+it.id+'\')" onpaste="itemPaste(event,\''+it.id+'\')">'+esc(it.texto)+'</textarea>'
     : '<div class="itext itext-view" onclick="startEdit(\''+it.id+'\')">'+(it.texto?mdToHtml(it.texto):'<span class="iplace">(vazio)</span>')+'</div>';
-  return '<div class="irow'+(done?' done':'')+(hidden?' ihide':'')+'" data-id="'+it.id+'">'
+  return '<div class="irow'+(done?' done':'')+(hidden?' ihide':'')+'" data-id="'+it.id+'"'+depthAttr(depth)+'>'
     +'<button class="ihandle" onpointerdown="dragBegin(event,\''+it.id+'\')" title="Arrastar">⠿</button>'+left+body
     +typeBtn+'<button class="idel" title="Excluir" onclick="deleteItem(\''+it.id+'\')">✕</button></div>';
 }
@@ -273,13 +355,9 @@ function insertItemAfter(afterId){
   for(var k=0;k<its.length;k++){ if(its[k].id===afterId){ idx=k; break; } }
   if(idx<0) return null;
   var cur=its[idx];
-  if(cur.tipo==='g') return null;
-  for(var g=idx;g>=0;g--){
-    if(its[g].tipo==='g' && its[g].feito){ its[g].feito=false; saveItemRow(its[g]); break; }
-  }
-  var curOrd=cur.ordem, nextO=(idx+1<its.length)?its[idx+1].ordem:null;
-  var newOrd=(nextO!=null)?(curOrd+nextO)/2:(curOrd+1);
-  var it={ id:uuid(), notaId:openNoteId, ordem:newOrd, texto:'', marcavel:cur.marcavel, feito:false, tipo:'' };
+  if(isGroup(cur)) return null;
+  for(var k=idx;k>=0;k--){ if(isGroup(its[k]) && its[k].feito){ its[k].feito=false; saveItemRow(its[k]); } }
+  var it={ id:uuid(), notaId:openNoteId, ordem:ordemAfter(its,idx), texto:'', marcavel:cur.marcavel, feito:false, tipo:'' };
   DATA.itens.push(it); appendItem(it); touchNote(n); return it;
 }
 function itemKey(e,id){
@@ -288,7 +366,7 @@ function itemKey(e,id){
   var val=e.target.value, trimmed=String(val||'').replace(/\s+$/,'').trim();
   if(!trimmed){ commitText(id,val); exitEdit(); return; }
   var it=(DATA.itens||[]).find(function(x){return x.id===id;});
-  if(!it || it.tipo==='g') return;
+  if(!it || isGroup(it)) return;
   var v=val.replace(/\s+$/,'');
   if(v!==it.texto){ it.texto=v; saveItemRow(it); var nn=note(openNoteId); if(nn) touchNote(nn); }
   var newIt=insertItemAfter(id);
@@ -304,10 +382,10 @@ function addItemText(text, mk){ var n=note(openNoteId); if(!n) return null; var 
 function addItemFromInput(){ var inp=$('addInput'); var v=(inp.value||'').trim(); if(!v) return; addItemText(v); inp.value=''; renderItems(); renderUsuals(); setTimeout(function(){ var a=$('addInput'); if(a) a.focus(); },10); }
 function addUsual(t){ addItemText(t); var inp=$('addInput'); if(inp) inp.value=''; renderItems(); renderUsuals(); }
 function toggleItem(ev,id){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return;
-  if(ev && ev.shiftKey && _lastTick && _lastTick!==id){ var its=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel;}); var i1=-1,i2=-1; for(var k=0;k<its.length;k++){ if(its[k].id===_lastTick) i1=k; if(its[k].id===id) i2=k; } if(i1>-1 && i2>-1){ var lo=Math.min(i1,i2), hi=Math.max(i1,i2), target=!it.feito, changed=[]; for(var j=lo;j<=hi;j++){ if(its[j].feito!==target){ its[j].feito=target; changed.push(its[j]); } } _lastTick=id; renderItems(); if(changed.length) persistItems(changed); var nn=note(openNoteId); if(nn) touchNote(nn); return; } }
+  if(ev && ev.shiftKey && _lastTick && _lastTick!==id){ var its=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel;}); var i1=-1,i2=-1; for(var k=0;k<its.length;k++){ if(its[k].id===_lastTick) i1=k; if(its[k].id===id) i2=k; } if(i1>-1 && i2>-1){ var lo=Math.min(i1,i2), hi=Math.max(i1,i2), target=!it.feito, changed=[]; for(var j=lo;j<=hi;j++){ if(its[j].feito!==target){ its[j].feito=target; changed.push(its[j]); } } _lastTick=id; renderItems(); if(changed.length) persistItems(changed); var nn=note(openNoteId); if(nn) touchNote(nn); return; } }
   it.feito=!it.feito; _lastTick=id; renderItems(); saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
 function convertItem(id,mk){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; it.marcavel=!!mk; if(!mk) it.feito=false; renderItems(); saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
-function commitText(id,val){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; var v=val.replace(/\s+$/,''); if(it.tipo==='g'){ if(v===it.texto) return; it.texto=v; saveItemRow(it); var ng=note(openNoteId); if(ng) touchNote(ng); return; } if(!v.trim()){ deleteItem(id); return; } if(v===it.texto) return; it.texto=v; saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
+function commitText(id,val){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; var v=val.replace(/\s+$/,''); if(isGroup(it)){ if(v===it.texto) return; it.texto=v; saveItemRow(it); var ng=note(openNoteId); if(ng) touchNote(ng); return; } if(!v.trim()){ deleteItem(id); return; } if(v===it.texto) return; it.texto=v; saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
 function deleteItem(id){
   var n=note(openNoteId);
   JB.persist({
@@ -352,7 +430,7 @@ function deleteNote(){ var id=openNoteId; var n=note(id); if(!n) return; JB.conf
 }, { yes:'Excluir', no:'Cancelar', danger:true }); }
 
 /* ---- intelligence: usuals, fill-from-last, recurrence ---- */
-function usuals(kind){ var map={}; (DATA.notas||[]).filter(function(n){return n.tipo===kind;}).forEach(function(n){ (DATA.itens||[]).filter(function(x){return x.notaId===n.id && x.tipo!=='g';}).forEach(function(it){ var t=(it.texto||'').trim(); if(!t) return; var k=normText(t); if(!map[k]) map[k]={norm:k,text:t,count:0,last:n.criado||''}; map[k].count++; if(String(n.criado||'')>String(map[k].last)){ map[k].last=n.criado; map[k].text=t; } }); }); return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){ if(b.count!==a.count) return b.count-a.count; return String(b.last||'').localeCompare(String(a.last||'')); }); }
+function usuals(kind){ var map={}; (DATA.notas||[]).filter(function(n){return n.tipo===kind;}).forEach(function(n){ (DATA.itens||[]).filter(function(x){return x.notaId===n.id && !isGroup(x);}).forEach(function(it){ var t=(it.texto||'').trim(); if(!t) return; var k=normText(t); if(!map[k]) map[k]={norm:k,text:t,count:0,last:n.criado||''}; map[k].count++; if(String(n.criado||'')>String(map[k].last)){ map[k].last=n.criado; map[k].text=t; } }); }); return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){ if(b.count!==a.count) return b.count-a.count; return String(b.last||'').localeCompare(String(a.last||'')); }); }
 function renderUsuals(){
   var el=$('edUsuals'); if(!el) return; var n=note(openNoteId); if(!n){ el.innerHTML=''; return; }
   var q=normText(($('addInput')&&$('addInput').value)||''); var present={}; (DATA.itens||[]).filter(function(x){return x.notaId===openNoteId;}).forEach(function(x){present[normText(x.texto)]=1;});
@@ -361,8 +439,8 @@ function renderUsuals(){
   el.innerHTML='<div class="sect">'+(q?'Sugestões':'Frequentes')+'</div><div class="uchips">'+list.map(function(u){return '<button class="uchip" onclick="addUsual(\''+escAttr(u.text)+'\')"><span class="uplus">+</span>'+esc(u.text)+'</button>';}).join('')+'</div>';
 }
 function lastNoteOfKind(kind,ex){ var arr=(DATA.notas||[]).filter(function(n){return n.tipo===kind && n.id!==ex;}).sort(function(a,b){return String(b.criado||'').localeCompare(String(a.criado||''));}); return arr[0]||null; }
-function fillableCount(n,src){ if(!src) return 0; var present={}; (DATA.itens||[]).filter(function(x){return x.notaId===n.id;}).forEach(function(x){present[normText(x.texto)]=1;}); return (DATA.itens||[]).filter(function(x){return x.notaId===src.id && x.tipo!=='g' && (x.texto||'').trim() && !present[normText(x.texto)];}).length; }
-function fillFromLast(){ var n=note(openNoteId); if(!n) return; var src=lastNoteOfKind(n.tipo,n.id); if(!src) return; var present={}; (DATA.itens||[]).filter(function(x){return x.notaId===n.id;}).forEach(function(x){present[normText(x.texto)]=1;}); var from=(DATA.itens||[]).filter(function(x){return x.notaId===src.id && x.tipo!=='g' && (x.texto||'').trim() && !present[normText(x.texto)];}).sort(function(a,b){return a.ordem-b.ordem;}); if(!from.length){ toast('Nada novo para adicionar'); return; } var ord=nextOrd(); var add=from.map(function(s){ var it={ id:uuid(), notaId:openNoteId, ordem:ord++, texto:s.texto, marcavel:s.marcavel, feito:false, tipo:'' }; DATA.itens.push(it); return it; }); appendItems(add); touchNote(n); renderEditor(); toast('✓ '+add.length+' '+(add.length>1?'itens adicionados':'item adicionado')); }
+function fillableCount(n,src){ if(!src) return 0; var present={}; (DATA.itens||[]).filter(function(x){return x.notaId===n.id;}).forEach(function(x){present[normText(x.texto)]=1;}); return (DATA.itens||[]).filter(function(x){return x.notaId===src.id && !isGroup(x) && (x.texto||'').trim() && !present[normText(x.texto)];}).length; }
+function fillFromLast(){ var n=note(openNoteId); if(!n) return; var src=lastNoteOfKind(n.tipo,n.id); if(!src) return; var present={}; (DATA.itens||[]).filter(function(x){return x.notaId===n.id;}).forEach(function(x){present[normText(x.texto)]=1;}); var from=(DATA.itens||[]).filter(function(x){return x.notaId===src.id && !isGroup(x) && (x.texto||'').trim() && !present[normText(x.texto)];}).sort(function(a,b){return a.ordem-b.ordem;}); if(!from.length){ toast('Nada novo para adicionar'); return; } var ord=nextOrd(); var add=from.map(function(s){ var it={ id:uuid(), notaId:openNoteId, ordem:ord++, texto:s.texto, marcavel:s.marcavel, feito:false, tipo:'' }; DATA.itens.push(it); return it; }); appendItems(add); touchNote(n); renderEditor(); toast('✓ '+add.length+' '+(add.length>1?'itens adicionados':'item adicionado')); }
 var _nudgeAction=null, _nudgeDisKey=null;
 function showNudge(html, yesLabel, onYes, disKey){ _nudgeAction=onYes; _nudgeDisKey=disKey; $('nudgeQ').innerHTML=html; $('nudgeYes').textContent=yesLabel; setTimeout(function(){ $('nudgeCard').classList.add('show'); }, 900); }
 function dismissNudge(){ $('nudgeCard').classList.remove('show'); if(_nudgeDisKey) saveConfig(_nudgeDisKey, todayISO()); }
@@ -394,7 +472,7 @@ function checkRecurrence(){
   var html='Há '+relSpan(best.since)+' você fez <strong>'+esc(n.titulo)+'</strong>'+(cnt?(' com '+cnt+' '+(cnt>1?'itens':'item')):'')+'. Quer recriar?';
   showNudge(html, 'Recriar', function(){ var d=new Date(); createNoteFromKind(kd2.k, kd2.label+' — '+MOFULL[d.getMonth()], true); }, 'nudgeDis_'+kd2.k); return true;
 }
-function createNoteFromKind(kind,titulo,fill){ var now=new Date().toISOString(); var n={ id:uuid(), titulo:titulo, tipo:kind, cor:'', fixado:false, criado:now, atualizado:now, vence:'' }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); openNoteId=n.id; if(fill){ var src=lastNoteOfKind(kind,n.id); if(src){ var ord=1, add=[]; (DATA.itens||[]).filter(function(x){return x.notaId===src.id && x.tipo!=='g' && (x.texto||'').trim();}).sort(function(a,b){return a.ordem-b.ordem;}).forEach(function(s){ var it={id:uuid(),notaId:n.id,ordem:ord++,texto:s.texto,marcavel:s.marcavel,feito:false,tipo:''}; DATA.itens.push(it); add.push(it); }); appendItems(add); } } render(); window.scrollTo(0,0); }
+function createNoteFromKind(kind,titulo,fill){ var now=new Date().toISOString(); var n={ id:uuid(), titulo:titulo, tipo:kind, cor:'', fixado:false, criado:now, atualizado:now, vence:'' }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); openNoteId=n.id; if(fill){ var src=lastNoteOfKind(kind,n.id); if(src){ var ord=1, add=[]; (DATA.itens||[]).filter(function(x){return x.notaId===src.id && !isGroup(x) && (x.texto||'').trim();}).sort(function(a,b){return a.ordem-b.ordem;}).forEach(function(s){ var it={id:uuid(),notaId:n.id,ordem:ord++,texto:s.texto,marcavel:s.marcavel,feito:false,tipo:''}; DATA.itens.push(it); add.push(it); }); appendItems(add); } } render(); window.scrollTo(0,0); }
 
 /* ---- persistence ---- */
 function noteRowVals(n){ return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.criado,n.atualizado,n.id,n.vence||'']; }
@@ -502,7 +580,7 @@ function notasDownload(filename, content, mime){
   setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
 }
 function notasItemStatus(it){
-  if(it.tipo==='g') return '';
+  if(isGroup(it)) return '';
   if(!it.marcavel) return '—';
   return it.feito?'Feito':'Pendente';
 }
@@ -513,12 +591,18 @@ function notasExportHeaders(includeListMeta){
 }
 function notasExportItemRows(n, includeListMeta){
   var kd=kindDef(n.tipo);
-  var rows=[], group='', num=0;
+  var rows=[], groupPath=[], num=0;
   itemsOf(n.id).forEach(function(it){
     var text=(it.texto||'').trim();
-    if(it.tipo==='g'){ group=text; return; }
+    if(isGroup(it)){
+      var d=groupDepth(it);
+      while(groupPath.length>d) groupPath.pop();
+      groupPath[d]=text;
+      return;
+    }
     if(!text) return;
     num++;
+    var group=groupPath.filter(Boolean).join(' › ');
     var row=includeListMeta
       ? [n.titulo||'', kd.label, n.vence?fmtDateBR(n.vence):'', n.fixado?'Sim':'Não', group, num, text, it.marcavel?'Sim':'Não', it.marcavel?(it.feito?'Sim':'Não'):'', notasItemStatus(it)]
       : [kd.label, n.vence?fmtDateBR(n.vence):'', n.fixado?'Sim':'Não', group, num, text, it.marcavel?'Sim':'Não', it.marcavel?(it.feito?'Sim':'Não'):'', notasItemStatus(it)];
@@ -593,7 +677,7 @@ function deleteGroup(id){
 function splitLines(txt){ return String(txt||'').split(/\r?\n/).map(function(l){ return l.replace(/^\s*[-*•·\u2022\u25AA\u25CB\u2013\u2014]\s+/,'').replace(/^\s*\d+[\.\)]\s+/,'').replace(/^\s*\[[ xX]?\]\s*/,'').trim(); }).filter(function(l){return l.length;}); }
 function addManyItems(lines){ var n=note(openNoteId); if(!n||!lines.length) return; var kd=kindDef(n.tipo); var ord=nextOrd(); var add=lines.map(function(L){ var it={ id:uuid(), notaId:openNoteId, ordem:ord++, texto:L, marcavel:kd.defCheck, feito:false, tipo:'' }; DATA.itens.push(it); return it; }); appendItems(add); touchNote(n); renderEditor(); toast('✓ '+add.length+(add.length>1?' itens':' item')); }
 function addPaste(e){ var t=((e.clipboardData||window.clipboardData)||{}).getData?((e.clipboardData||window.clipboardData).getData('text')):''; if(t && /\r?\n/.test(t)){ e.preventDefault(); var lines=splitLines(t); var cur=($('addInput').value||'').trim(); if(cur) lines.unshift(cur); $('addInput').value=''; addManyItems(lines); setTimeout(function(){ var a=$('addInput'); if(a) a.focus(); },10); } }
-function itemPaste(e,id){ var t=((e.clipboardData||window.clipboardData)||{}).getData?((e.clipboardData||window.clipboardData).getData('text')):''; if(!t || !/\r?\n/.test(t)) return; e.preventDefault(); var lines=splitLines(t); if(!lines.length) return; var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; it.texto=lines[0]; saveItemRow(it); var base=it.ordem, rest=lines.slice(1); var kd=kindDef(note(openNoteId).tipo); var mk=(it.tipo==='g'?kd.defCheck:it.marcavel); var add=rest.map(function(L,k){ var nit={ id:uuid(), notaId:openNoteId, ordem:base+0.0001*(k+1), texto:L, marcavel:mk, feito:false, tipo:'' }; DATA.itens.push(nit); return nit; }); if(add.length) appendItems(add); normalizeOrder(); touchNote(note(openNoteId)); renderEditor(); }
+function itemPaste(e,id){ var t=((e.clipboardData||window.clipboardData)||{}).getData?((e.clipboardData||window.clipboardData).getData('text')):''; if(!t || !/\r?\n/.test(t)) return; e.preventDefault(); var lines=splitLines(t); if(!lines.length) return; var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; it.texto=lines[0]; saveItemRow(it); var base=it.ordem, rest=lines.slice(1); var kd=kindDef(note(openNoteId).tipo); var mk=(isGroup(it)?kd.defCheck:it.marcavel); var add=rest.map(function(L,k){ var nit={ id:uuid(), notaId:openNoteId, ordem:base+0.0001*(k+1), texto:L, marcavel:mk, feito:false, tipo:'' }; DATA.itens.push(nit); return nit; }); if(add.length) appendItems(add); normalizeOrder(); touchNote(note(openNoteId)); renderEditor(); }
 function normalizeOrder(){ var its=itemsOf(openNoteId); var changed=false; its.forEach(function(x,i){ if(x.ordem!==i+1){ x.ordem=i+1; changed=true; } }); if(changed) persistOrder(); }
 function persistOrder(){
   JB.persist({
@@ -613,11 +697,13 @@ function persistOrder(){
 }
 function applyOrder(ids){ var idx={}; ids.forEach(function(id,i){ idx[id]=i+1; }); (DATA.itens||[]).forEach(function(x){ if(x.notaId===openNoteId && idx[x.id]!=null) x.ordem=idx[x.id]; }); renderItems(); persistOrder(); var n=note(openNoteId); if(n) touchNote(n); }
 var _drag=null, _lastTick=null, _editId=null;
-function dragBegin(ev,id){ ev.preventDefault(); var cont=$('edItems'); if(!cont) return; var block; if(_selMode && _sel[id] && selCount()>1){ block=[].slice.call(cont.children).filter(function(r){ return r.getAttribute && _sel[r.getAttribute('data-id')]; }); if(!block.length){ var rr=cont.querySelector('[data-id="'+id+'"]'); block=rr?[rr]:[]; } } else { var row=cont.querySelector('[data-id="'+id+'"]'); if(!row) return; block=[row]; if(row.getAttribute('data-g')==='1'){ var sib=row.nextElementSibling; while(sib && sib.getAttribute('data-g')!=='1'){ block.push(sib); sib=sib.nextElementSibling; } } } if(!block.length) return; var isG=!!(block[0].getAttribute && block[0].getAttribute('data-g')==='1'); _drag={ block:block, cont:cont, moved:false, isGroup:isG }; block.forEach(function(b){ b.classList.add('dragging'); }); document.addEventListener('pointermove', dragMove, {passive:false}); document.addEventListener('pointerup', dragEnd, {once:true}); }
-function dragMove(ev){ if(!_drag) return; ev.preventDefault(); _drag.moved=true; var cont=_drag.cont, y=ev.clientY; var rows=[].slice.call(cont.children).filter(function(r){ return _drag.block.indexOf(r)<0 && !r.classList.contains('ihide'); }); if(_drag.isGroup) rows=rows.filter(function(r){ return r.getAttribute && r.getAttribute('data-g')==='1'; }); var target=null; for(var i=0;i<rows.length;i++){ var rect=rows[i].getBoundingClientRect(); if(y < rect.top+rect.height/2){ target=rows[i]; break; } } _drag.block.forEach(function(b){ if(target) cont.insertBefore(b,target); else cont.appendChild(b); }); }
+function dragRowDepth(row){ var g=row&&row.getAttribute?row.getAttribute('data-gd'):null; return g!=null?parseInt(g,10):-1; }
+function dragIsGroupRow(row){ return !!(row&&row.getAttribute&&row.getAttribute('data-g')==='1'); }
+function dragBegin(ev,id){ ev.preventDefault(); var cont=$('edItems'); if(!cont) return; var block; if(_selMode && _sel[id] && selCount()>1){ block=[].slice.call(cont.children).filter(function(r){ return r.getAttribute && _sel[r.getAttribute('data-id')]; }); if(!block.length){ var rr=cont.querySelector('[data-id="'+id+'"]'); block=rr?[rr]:[]; } } else { var row=cont.querySelector('[data-id="'+id+'"]'); if(!row) return; block=[row]; if(dragIsGroupRow(row)){ var gDepth=dragRowDepth(row), sib=row.nextElementSibling; while(sib){ if(dragIsGroupRow(sib) && dragRowDepth(sib)<=gDepth) break; block.push(sib); sib=sib.nextElementSibling; } } } if(!block.length) return; var isG=dragIsGroupRow(block[0]); _drag={ block:block, cont:cont, moved:false, isGroup:isG, groupDepth:isG?dragRowDepth(block[0]):-1 }; block.forEach(function(b){ b.classList.add('dragging'); }); document.addEventListener('pointermove', dragMove, {passive:false}); document.addEventListener('pointerup', dragEnd, {once:true}); }
+function dragMove(ev){ if(!_drag) return; ev.preventDefault(); _drag.moved=true; var cont=_drag.cont, y=ev.clientY; var rows=[].slice.call(cont.children).filter(function(r){ return _drag.block.indexOf(r)<0 && !r.classList.contains('ihide'); }); if(_drag.isGroup) rows=rows.filter(function(r){ return dragIsGroupRow(r) && dragRowDepth(r)===_drag.groupDepth; }); var target=null; for(var i=0;i<rows.length;i++){ var rect=rows[i].getBoundingClientRect(); if(y < rect.top+rect.height/2){ target=rows[i]; break; } } _drag.block.forEach(function(b){ if(target) cont.insertBefore(b,target); else cont.appendChild(b); }); }
 function dragEnd(){ if(!_drag) return; document.removeEventListener('pointermove', dragMove); _drag.block.forEach(function(b){ b.classList.remove('dragging'); }); var cont=_drag.cont, moved=_drag.moved; _drag=null; if(!moved) return; var ids=[].slice.call(cont.children).filter(function(r){return r.getAttribute && r.getAttribute('data-id');}).map(function(r){return r.getAttribute('data-id');}); applyOrder(ids); }
 
-function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g' && x.marcavel && x.feito;}); if(!done.length) return; var ids={}; done.forEach(function(x){ids[x.id]=1;}); JB.confirm('Excluir marcados?', done.length+(done.length>1?' itens marcados serão removidos.':' item marcado será removido.'), function(){
+function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}); if(!done.length) return; var ids={}; done.forEach(function(x){ids[x.id]=1;}); JB.confirm('Excluir marcados?', done.length+(done.length>1?' itens marcados serão removidos.':' item marcado será removido.'), function(){
   JB.persist({
     run: function(){ return delItemRows(ids); },
     onSuccess: function(){
@@ -633,7 +719,7 @@ function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return
 function dedupeItems(){
   var seen={}, dups=[];
   (DATA.itens||[]).slice().sort(function(a,b){ return String(a.notaId).localeCompare(String(b.notaId)) || (a.ordem-b.ordem); }).forEach(function(x){
-    if(x.tipo==='g') return; var t=normText(x.texto); if(!t) return; var k=x.notaId+'|'+t;
+    if(isGroup(x)) return; var t=normText(x.texto); if(!t) return; var k=x.notaId+'|'+t;
     if(seen[k]) dups.push(x); else seen[k]=1;
   });
   if(!dups.length){ toast('Nenhuma duplicata 🎉'); return; }
@@ -653,7 +739,7 @@ function dedupeItems(){
 function selCount(){ return Object.keys(_sel).length; }
 function toggleSelMode(){ _selMode=!_selMode; _sel={}; _editId=null; renderEditor(); }
 function selToggle(id){ if(_sel[id]) delete _sel[id]; else _sel[id]=1; renderItems(); }
-function selAll(){ var its=itemsOf(openNoteId).filter(function(x){return x.tipo!=='g';}); var all=its.length>0 && its.every(function(x){return _sel[x.id];}); _sel={}; if(!all) its.forEach(function(x){ _sel[x.id]=1; }); renderItems(); }
+function selAll(){ var its=itemsOf(openNoteId).filter(function(x){return !isGroup(x);}); var all=its.length>0 && its.every(function(x){return _sel[x.id];}); _sel={}; if(!all) its.forEach(function(x){ _sel[x.id]=1; }); renderItems(); }
 function selMark(v){ var ids=Object.keys(_sel); if(!ids.length) return; var changed=[]; ids.forEach(function(id){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(it && it.marcavel && it.feito!==v){ it.feito=v; changed.push(it); } }); renderItems(); if(changed.length) persistItems(changed); var n=note(openNoteId); if(n) touchNote(n); }
 function delItemRows(ids){
   return JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){

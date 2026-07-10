@@ -1,4 +1,4 @@
-const C = 'joelboard-c2f5cbb';
+const C = 'joelboard-f8e74b4';
 const SHELL = ['/', '/icon-192.png', '/icon-512.png', '/favicon-32.png', '/apple-touch-icon.png'];
 const CORE = /\/(joelboard|themes|finance|finance-math|finance-sheets|fit|fit-macros|study|hub|notas|mini|prateleira|movies)\.(js|css)$/;
 const CORE_JSON = /^\/fit-foods\.json$/;

@@ -137,7 +137,11 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .ihandle:hover{ opacity:.9; }
 .ihandle:active{ cursor:grabbing; }
 .irow.dragging,.ihdr.dragging{ opacity:.55; }
-.irow.ihide{ display:none; }
+.irow.ihide,.ihdr.ihide{ display:none; }
+
+/* nested group indent */
+.ihdr[data-gd],.irow[data-gd]{ margin-left:calc(var(--gdepth, 0) * 18px); }
+.ihdr[data-gd]:not([data-gd="0"]){ margin-top:4px; padding-top:8px; }
 
 /* item text now wraps (textarea) instead of overflowing */
 textarea.itext{ resize:none; overflow:hidden; font-family:inherit; line-height:1.4; white-space:pre-wrap; word-break:break-word; }
@@ -183,6 +187,9 @@ textarea.itext{ resize:none; overflow:hidden; font-family:inherit; line-height:1
 /* add item directly into a group */
 .gadd{ background:transparent; border:0; color:var(--primary); cursor:pointer; font-size:18px; font-weight:800; line-height:1; flex:0 0 auto; padding:0 4px; }
 .gadd:active{ transform:scale(.9); }
+.gsub{ background:transparent; border:0; color:var(--muted); cursor:pointer; font-size:15px; font-weight:800; line-height:1; flex:0 0 auto; padding:0 4px; }
+.gsub:hover{ color:var(--primary); }
+.gsub:active{ transform:scale(.9); }
 
 /* ===== multi-select ===== */
 .ed-actions{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }

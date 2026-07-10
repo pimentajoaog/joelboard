@@ -3,11 +3,13 @@
 var greetEl=document.getElementById("greet"), btnEl=document.getElementById("authbtn");
 var _hbooted=false;
 var HUB_NEWS=[
+  { app:'notas', kind:'novo', text:'Exportar listas: CSV e backup JSON em Ajustes → Sobre; Markdown por lista no botão 📤 Exportar.' },
+  { app:'finance', kind:'novo', text:'Temas alinhados com Fit, Study e Notas — skins, dia/noite e Vault no mesmo seletor.' },
   { app:'fit', kind:'novo', text:'Ajustes → Macros: metas, refeições e alimentos custom num só lugar; arraste ⠿ para reordenar refeições.' },
   { app:'fit', kind:'novo', text:'Alimentos custom: toque para editar ou ✕ para excluir da biblioteca.' },
-  { app:'hub', kind:'novo', text:'Painel Novidades ao lado dos apps — últimas funcionalidades e correções.' },
   { app:'fit', kind:'novo', text:'Aba Macros — registre alimentos por refeição e acompanhe metas de P/C/G e kcal.' },
-  { app:'finance', kind:'correcao', text:'Editar conta “só deste mês” não marca mais como paga automaticamente.' }
+  { app:'finance', kind:'correcao', text:'Editar conta “só deste mês” não marca mais como paga automaticamente.' },
+  { app:'hub', kind:'novo', text:'Painel Novidades ao lado dos apps — últimas funcionalidades e correções.' }
 ];
 var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', mini:'Mini', hub:'Hub' };
 var HUB_NEWS_KIND={ novo:'Novo', correcao:'Correção' };

@@ -154,6 +154,13 @@ function groupDescendantEnd(its, gi){
   for(var j=gi+1;j<its.length;j++){ if(isGroup(its[j]) && groupDepth(its[j])<=gDepth) break; last=j; }
   return last;
 }
+function parentGroupIndex(its, gi){
+  if(gi<0) return -1;
+  var d=groupDepth(its[gi]);
+  if(d<=0) return -1;
+  for(var k=gi-1;k>=0;k--){ if(isGroup(its[k]) && groupDepth(its[k])===d-1) return k; }
+  return -1;
+}
 function expandGroupChain(gid){
   var its=itemsOf(openNoteId), gi=groupIndex(its, gid);
   if(gi<0) return;
@@ -699,9 +706,47 @@ function applyOrder(ids){ var idx={}; ids.forEach(function(id,i){ idx[id]=i+1; }
 var _drag=null, _lastTick=null, _editId=null;
 function dragRowDepth(row){ var g=row&&row.getAttribute?row.getAttribute('data-gd'):null; return g!=null?parseInt(g,10):-1; }
 function dragIsGroupRow(row){ return !!(row&&row.getAttribute&&row.getAttribute('data-g')==='1'); }
-function dragBegin(ev,id){ ev.preventDefault(); var cont=$('edItems'); if(!cont) return; var block; if(_selMode && _sel[id] && selCount()>1){ block=[].slice.call(cont.children).filter(function(r){ return r.getAttribute && _sel[r.getAttribute('data-id')]; }); if(!block.length){ var rr=cont.querySelector('[data-id="'+id+'"]'); block=rr?[rr]:[]; } } else { var row=cont.querySelector('[data-id="'+id+'"]'); if(!row) return; block=[row]; if(dragIsGroupRow(row)){ var gDepth=dragRowDepth(row), sib=row.nextElementSibling; while(sib){ if(dragIsGroupRow(sib) && dragRowDepth(sib)<=gDepth) break; block.push(sib); sib=sib.nextElementSibling; } } } if(!block.length) return; var isG=dragIsGroupRow(block[0]); _drag={ block:block, cont:cont, moved:false, isGroup:isG, groupDepth:isG?dragRowDepth(block[0]):-1 }; block.forEach(function(b){ b.classList.add('dragging'); }); document.addEventListener('pointermove', dragMove, {passive:false}); document.addEventListener('pointerup', dragEnd, {once:true}); }
-function dragMove(ev){ if(!_drag) return; ev.preventDefault(); _drag.moved=true; var cont=_drag.cont, y=ev.clientY; var rows=[].slice.call(cont.children).filter(function(r){ return _drag.block.indexOf(r)<0 && !r.classList.contains('ihide'); }); if(_drag.isGroup) rows=rows.filter(function(r){ return dragIsGroupRow(r) && dragRowDepth(r)===_drag.groupDepth; }); var target=null; for(var i=0;i<rows.length;i++){ var rect=rows[i].getBoundingClientRect(); if(y < rect.top+rect.height/2){ target=rows[i]; break; } } _drag.block.forEach(function(b){ if(target) cont.insertBefore(b,target); else cont.appendChild(b); }); }
-function dragEnd(){ if(!_drag) return; document.removeEventListener('pointermove', dragMove); _drag.block.forEach(function(b){ b.classList.remove('dragging'); }); var cont=_drag.cont, moved=_drag.moved; _drag=null; if(!moved) return; var ids=[].slice.call(cont.children).filter(function(r){return r.getAttribute && r.getAttribute('data-id');}).map(function(r){return r.getAttribute('data-id');}); applyOrder(ids); }
+function dragInsertBlockBefore(cont, block, target){ block.forEach(function(b){ cont.insertBefore(b,target); }); }
+function dragInsertBlockAfter(cont, block, afterRow){
+  var mark=afterRow.nextElementSibling;
+  while(mark && block.indexOf(mark)>=0) mark=mark.nextElementSibling;
+  block.forEach(function(b){ if(mark) cont.insertBefore(b,mark); else cont.appendChild(b); });
+}
+function dragZoneTargets(cont, drag){
+  var block=drag.block, gDepth=drag.groupDepth;
+  if(gDepth===0) return [].slice.call(cont.children).filter(function(r){ return block.indexOf(r)<0 && !r.classList.contains('ihide') && dragIsGroupRow(r) && dragRowDepth(r)===0; });
+  var parentRow=drag.parentId?cont.querySelector('[data-id="'+drag.parentId+'"]'):null;
+  if(!parentRow) return [].slice.call(cont.children).filter(function(r){ return block.indexOf(r)<0 && !r.classList.contains('ihide') && dragIsGroupRow(r) && dragRowDepth(r)===gDepth; });
+  var targets=[], sib=parentRow.nextElementSibling;
+  while(sib){
+    if(block.indexOf(sib)>=0){ sib=sib.nextElementSibling; continue; }
+    if(sib.classList.contains('ihide')){ sib=sib.nextElementSibling; continue; }
+    if(dragIsGroupRow(sib) && dragRowDepth(sib)<=gDepth){
+      if(dragIsGroupRow(sib) && dragRowDepth(sib)===gDepth) targets.push(sib);
+      break;
+    }
+    targets.push(sib);
+    sib=sib.nextElementSibling;
+  }
+  return targets;
+}
+function dragOrderValid(ids){
+  var map={}, ordered=[];
+  (DATA.itens||[]).forEach(function(x){ if(x.notaId===openNoteId) map[x.id]=x; });
+  ids.forEach(function(id){ if(map[id]) ordered.push(map[id]); });
+  for(var i=0;i<ordered.length;i++){
+    if(!isGroup(ordered[i])) continue;
+    var d=groupDepth(ordered[i]);
+    if(d<=0) continue;
+    var ok=false;
+    for(var k=i-1;k>=0;k--){ if(isGroup(ordered[k]) && groupDepth(ordered[k])===d-1){ ok=true; break; } if(isGroup(ordered[k]) && groupDepth(ordered[k])<d-1) break; }
+    if(!ok) return false;
+  }
+  return true;
+}
+function dragBegin(ev,id){ ev.preventDefault(); var cont=$('edItems'); if(!cont) return; var block; if(_selMode && _sel[id] && selCount()>1){ block=[].slice.call(cont.children).filter(function(r){ return r.getAttribute && _sel[r.getAttribute('data-id')]; }); if(!block.length){ var rr=cont.querySelector('[data-id="'+id+'"]'); block=rr?[rr]:[]; } } else { var row=cont.querySelector('[data-id="'+id+'"]'); if(!row) return; block=[row]; if(dragIsGroupRow(row)){ var gDepth=dragRowDepth(row), sib=row.nextElementSibling; while(sib){ if(dragIsGroupRow(sib) && dragRowDepth(sib)<=gDepth) break; block.push(sib); sib=sib.nextElementSibling; } } } if(!block.length) return; var isG=dragIsGroupRow(block[0]); var gDepth=isG?dragRowDepth(block[0]):-1, parentId=null; if(isG && gDepth>0){ var its=itemsOf(openNoteId), pi=parentGroupIndex(its, groupIndex(its, id)); if(pi>=0) parentId=its[pi].id; } _drag={ block:block, cont:cont, moved:false, isGroup:isG, groupDepth:gDepth, parentId:parentId }; block.forEach(function(b){ b.classList.add('dragging'); }); document.addEventListener('pointermove', dragMove, {passive:false}); document.addEventListener('pointerup', dragEnd, {once:true}); }
+function dragMove(ev){ if(!_drag) return; ev.preventDefault(); _drag.moved=true; var cont=_drag.cont, y=ev.clientY, block=_drag.block; var rows; if(_drag.isGroup) rows=dragZoneTargets(cont,_drag); else rows=[].slice.call(cont.children).filter(function(r){ return block.indexOf(r)<0 && !r.classList.contains('ihide'); }); var target=null; for(var i=0;i<rows.length;i++){ var rect=rows[i].getBoundingClientRect(); if(y < rect.top+rect.height/2){ target=rows[i]; break; } } if(target) dragInsertBlockBefore(cont, block, target); else if(_drag.isGroup && _drag.groupDepth>0 && rows.length) dragInsertBlockAfter(cont, block, rows[rows.length-1]); else if(_drag.isGroup && _drag.groupDepth===0) block.forEach(function(b){ cont.appendChild(b); }); else if(!_drag.isGroup) block.forEach(function(b){ cont.appendChild(b); }); }
+function dragEnd(){ if(!_drag) return; document.removeEventListener('pointermove', dragMove); _drag.block.forEach(function(b){ b.classList.remove('dragging'); }); var cont=_drag.cont, moved=_drag.moved; _drag=null; if(!moved) return; var ids=[].slice.call(cont.children).filter(function(r){return r.getAttribute && r.getAttribute('data-id');}).map(function(r){return r.getAttribute('data-id');}); if(!dragOrderValid(ids)){ renderItems(); return; } applyOrder(ids); }
 
 function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}); if(!done.length) return; var ids={}; done.forEach(function(x){ids[x.id]=1;}); JB.confirm('Excluir marcados?', done.length+(done.length>1?' itens marcados serão removidos.':' item marcado será removido.'), function(){
   JB.persist({

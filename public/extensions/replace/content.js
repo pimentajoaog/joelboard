@@ -10,15 +10,42 @@
   var inputValSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
   var areaValSet = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
 
+  function extAlive() {
+    try {
+      return !!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  var extDeadWarned = false;
+  function warnExtDead() {
+    if (extDeadWarned) return;
+    extDeadWarned = true;
+    showToast('Replace atualizado — recarregue esta aba.');
+  }
+
+  function extUrl(path) {
+    if (!extAlive()) return '';
+    try {
+      return chrome.runtime.getURL(path);
+    } catch (_) {
+      return '';
+    }
+  }
+
   function syncData() {
+    if (!extAlive()) return Promise.resolve(null);
     return JB_REPLACE.load().then(function (d) { data = d; return d; });
   }
 
   syncData();
-  chrome.storage.onChanged.addListener(function (chg) {
-    if (chg.jb_replace_data) data = chg.jb_replace_data.newValue;
-    else if (chg.jb_refresh_data) data = chg.jb_refresh_data.newValue;
-  });
+  if (extAlive()) {
+    chrome.storage.onChanged.addListener(function (chg) {
+      if (chg.jb_replace_data) data = chg.jb_replace_data.newValue;
+      else if (chg.jb_refresh_data) data = chg.jb_refresh_data.newValue;
+    });
+  }
 
   function isEditable(el) {
     if (!el || el.disabled || el.readOnly) return false;
@@ -189,6 +216,7 @@
       var missing = JB_REPLACE.missingVars(body, vars, builtins);
       if (!missing.length) { resolve(vars); return; }
       if (pendingPrompt) { resolve(null); return; }
+      if (!extAlive()) { warnExtDead(); resolve(null); return; }
 
       blurActiveField();
 
@@ -197,7 +225,9 @@
       host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);padding:18px;box-sizing:border-box';
 
       var iframe = document.createElement('iframe');
-      iframe.src = chrome.runtime.getURL('prompt.html');
+      var promptSrc = extUrl('prompt.html');
+      if (!promptSrc) { warnExtDead(); resolve(null); return; }
+      iframe.src = promptSrc;
       iframe.title = 'Completar template';
       iframe.setAttribute('aria-label', 'Completar template');
       iframe.style.cssText = 'border:0;width:100%;max-width:560px;height:320px;background:transparent;color-scheme:dark';
@@ -272,7 +302,10 @@
     var chain = needsClip
       ? readClipboard().then(function (clip) { return finish(clip); })
       : finish('');
-    return chain.finally(function () { expanding = false; });
+    return chain.catch(function () {
+      if (!extAlive()) warnExtDead();
+      return false;
+    }).finally(function () { expanding = false; });
   }
 
   function showToast(msg) {
@@ -286,6 +319,7 @@
   document.addEventListener('keydown', function (e) {
     if (pendingPrompt) return;
     if (expanding) return;
+    if (!extAlive()) { warnExtDead(); return; }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     var key = e.key;
     if (key !== ' ' && key !== 'Tab' && key !== 'Enter') return;
@@ -310,6 +344,7 @@
 
   document.addEventListener('input', function (e) {
     if (expanding || pendingPrompt) return;
+    if (!extAlive()) { warnExtDead(); return; }
     if (e.isComposing) return;
     var el = e.target;
     if (!isEditable(el)) return;
@@ -335,6 +370,11 @@
 
   window.addEventListener('message', function (ev) {
     if (!ev.data || ev.data.type !== 'jb-mini-sites-set' || !Array.isArray(ev.data.sites)) return;
-    chrome.runtime.sendMessage({ type: 'setSites', sites: ev.data.sites });
+    if (!extAlive()) { warnExtDead(); return; }
+    try {
+      chrome.runtime.sendMessage({ type: 'setSites', sites: ev.data.sites });
+    } catch (_) {
+      warnExtDead();
+    }
   });
 })();

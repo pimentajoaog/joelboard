@@ -450,7 +450,18 @@ function notasCsvCell(v){
   return /[";\r\n,]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
 }
 function notasCsvLine(cells){ return cells.map(notasCsvCell).join(NOTAS_CSV_SEP); }
-function notasCsvFile(lines){ return '\ufeffsep='+NOTAS_CSV_SEP+'\r\n'+lines.join('\r\n'); }
+function notasCsvFile(lines){ return 'sep='+NOTAS_CSV_SEP+'\r\n'+lines.join('\r\n'); }
+function notasCsvUtf16Blob(text){
+  var bom=new Uint8Array([0xFF,0xFE]), n=text.length, raw=new Uint8Array(n*2);
+  for(var i=0;i<n;i++){ var c=text.charCodeAt(i); raw[i*2]=c&255; raw[i*2+1]=c>>8; }
+  return new Blob([bom,raw], {type:'text/csv;charset=utf-16le'});
+}
+function notasDownloadCsv(filename, content){
+  var url=URL.createObjectURL(notasCsvUtf16Blob(content));
+  var a=document.createElement('a');
+  a.href=url; a.download=filename; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+}
 function notasDownload(filename, content, mime){
   var url=URL.createObjectURL(new Blob([content], {type:mime}));
   var a=document.createElement('a');
@@ -491,7 +502,7 @@ function exportNotasCsv(){
   }).forEach(function(n){
     notasExportItemRows(n, true).forEach(function(line){ out.push(line); });
   });
-  notasDownload('joelboard-notas-'+stamp+'.csv', notasCsvFile(out), 'text/csv;charset=utf-8');
+  notasDownloadCsv('joelboard-notas-'+stamp+'.csv', notasCsvFile(out));
   toast('✓ CSV exportado');
 }
 function exportNotasJson(){
@@ -510,7 +521,7 @@ function buildListCsv(n){
 function exportCurrentList(){
   var n=note(openNoteId);
   if(!n){ toast('Abra uma lista primeiro'); return; }
-  notasDownload(safeFilename(n.titulo)+'.csv', buildListCsv(n), 'text/csv;charset=utf-8');
+  notasDownloadCsv(safeFilename(n.titulo)+'.csv', buildListCsv(n));
   toast('✓ Lista exportada');
 }
 function openSettings(){ switchSet('tema'); JB.renderSkinPicker('notas', $('setSkins')); $('setNudge').classList.toggle('on', (DATA.config&&DATA.config.nudgePref)!=='off'); $('setOverlay').classList.add('open'); }

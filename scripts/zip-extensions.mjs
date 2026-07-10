@@ -6,6 +6,8 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const extDir = path.join(root, 'public', 'extensions');
 
+execSync('node scripts/generate-extension-icons.mjs', { stdio: 'inherit', cwd: root });
+
 const extensions = [
   { folder: 'replace', zip: 'joelboard-replace.zip' },
   { folder: 'refresh', zip: 'joelboard-refresh.zip' },

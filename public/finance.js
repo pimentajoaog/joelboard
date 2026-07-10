@@ -102,6 +102,7 @@ const I18N = {
     'goal.save':'Save Goal', 'goal.update':'Update Goal', 'goal.delete':'Delete Goal',
     'alloc.add':'Plan a Saving', 'alloc.edit':'Edit Saving Plan', 'alloc.save':'Save Saving Plan',
     'alloc.update':'Update Saving Plan', 'alloc.delete':'Delete Saving Plan', 'alloc.subDefault':'Toward your goal',
+    'alloc.skipMonth':'Skip this month', 'alloc.editPlan':'Edit plan', 'alloc.amtPrompt':'Amount for this month (planned {amt})', 'alloc.planned':'planned {x}',
     'bundle.add':'Add Payment Bundle', 'bundle.edit':'Edit Payment Bundle',
     'bundle.save':'Save Bundle', 'bundle.update':'Update Bundle', 'bundle.delete':'Delete Bundle',
 
@@ -162,7 +163,7 @@ const I18N = {
     'err.exchRate':'Enter a valid exchange rate.',
     'err.catExistsNamed': v => 'A category named “' + v.name + '” already exists.',
 
-    'confirm.deleteItemTitle':'Delete this item?', 'confirm.cantUndo':'This can’t be undone.', 'confirm.deleteCanUndo':'You can undo this right after.', 'billdel.title':'Delete this recurring bill?', 'billdel.month':'Only this month', 'billdel.onwards':'This month onwards', 'billdel.all':'All months', 'billamt.title':'Apply new amount how?', 'toast.billSkipped':'✓ Hidden for this month', 'toast.billStopped':'✓ Stopped from this month on', 'toast.billAmtMonth':'✓ Amount updated for this month', 'toast.billAmtOnwards':'✓ New amount from this month on',
+    'confirm.deleteItemTitle':'Delete this item?', 'confirm.cantUndo':'This can’t be undone.', 'confirm.deleteCanUndo':'You can undo this right after.', 'billdel.title':'Delete this recurring bill?', 'billdel.month':'Only this month', 'billdel.onwards':'This month onwards', 'billdel.all':'All months', 'billamt.title':'Apply new amount how?', 'toast.billSkipped':'✓ Hidden for this month', 'toast.billStopped':'✓ Stopped from this month on', 'toast.billAmtMonth':'✓ Amount updated for this month', 'toast.billAmtOnwards':'✓ New amount from this month on', 'toast.allocSkipped':'✓ Skipped this month', 'toast.allocAmtMonth':'✓ Amount updated for this month',
     'confirm.catTitle':'Delete category?',
     'confirm.catDelete': v => 'Delete “' + v.name + '”? This can’t be undone.',
     'confirm.catUsed': v => '“' + v.name + '” is used by ' + v.txN + ' transaction' + (v.txN!==1?'s':'') + ' and ' + v.blN + ' bill' + (v.blN!==1?'s':'') + '.\nThey’ll show as Uncategorized until reassigned.',
@@ -371,6 +372,7 @@ const I18N = {
     'goal.save':'Salvar meta', 'goal.update':'Atualizar meta', 'goal.delete':'Excluir meta',
     'alloc.add':'Planejar uma poupança', 'alloc.edit':'Editar plano de poupança', 'alloc.save':'Salvar plano de poupança',
     'alloc.update':'Atualizar plano de poupança', 'alloc.delete':'Excluir plano de poupança', 'alloc.subDefault':'Para sua meta',
+    'alloc.skipMonth':'Pular este mês', 'alloc.editPlan':'Editar plano', 'alloc.amtPrompt':'Valor deste mês (planejado {amt})', 'alloc.planned':'planejado {x}',
     'bundle.add':'Adicionar pacote de pagamento', 'bundle.edit':'Editar pacote de pagamento',
     'bundle.save':'Salvar pacote', 'bundle.update':'Atualizar pacote', 'bundle.delete':'Excluir pacote',
 
@@ -431,7 +433,7 @@ const I18N = {
     'err.exchRate':'Informe uma taxa de câmbio válida.',
     'err.catExistsNamed': v => 'Já existe uma categoria chamada “' + v.name + '”.',
 
-    'confirm.deleteItemTitle':'Excluir este item?', 'confirm.cantUndo':'Isso não pode ser desfeito.', 'confirm.deleteCanUndo':'Dá pra desfazer logo em seguida.', 'billdel.title':'Excluir esta conta recorrente?', 'billdel.month':'Só este mês', 'billdel.onwards':'Deste mês em diante', 'billdel.all':'Todos os meses', 'billamt.title':'Como aplicar o novo valor?', 'toast.billSkipped':'✓ Oculta neste mês', 'toast.billStopped':'✓ Encerrada deste mês em diante', 'toast.billAmtMonth':'✓ Valor atualizado neste mês', 'toast.billAmtOnwards':'✓ Novo valor deste mês em diante',
+    'confirm.deleteItemTitle':'Excluir este item?', 'confirm.cantUndo':'Isso não pode ser desfeito.', 'confirm.deleteCanUndo':'Dá pra desfazer logo em seguida.', 'billdel.title':'Excluir esta conta recorrente?', 'billdel.month':'Só este mês', 'billdel.onwards':'Deste mês em diante', 'billdel.all':'Todos os meses', 'billamt.title':'Como aplicar o novo valor?', 'toast.billSkipped':'✓ Oculta neste mês', 'toast.billStopped':'✓ Encerrada deste mês em diante', 'toast.billAmtMonth':'✓ Valor atualizado neste mês', 'toast.billAmtOnwards':'✓ Novo valor deste mês em diante', 'toast.allocSkipped':'✓ Pulado neste mês', 'toast.allocAmtMonth':'✓ Valor atualizado neste mês',
     'confirm.catTitle':'Excluir categoria?',
     'confirm.catDelete': v => 'Excluir “' + v.name + '”? Isso não pode ser desfeito.',
     'confirm.catUsed': v => '“' + v.name + '” é usada por ' + v.txN + (v.txN!==1?' lançamentos':' lançamento') + ' e ' + v.blN + (v.blN!==1?' contas':' conta') + '.\nEles ficarão como Sem categoria até serem reatribuídos.',
@@ -828,6 +830,8 @@ function isForecast() { return !isPast(); } // current month or later: include p
 function selectedTx() { return (DATA.transactions||[]).filter(t => { const d = new Date(t.date+'T12:00:00'); return d.getFullYear()===selY && d.getMonth()===selM; }); }
 
 function billOverride(id, ymS) { const p = (DATA.payments||[]).find(p => p.month===ymS && (p.type==='bill'||p.type==='recurring'||p.type==='installment') && String(p.itemId)===String(id) && p.actualAmount!=null); return p ? p.actualAmount : null; }
+function allocOverride(id, ymS) { const p = (DATA.payments||[]).find(p => p.month===ymS && p.type==='allocation' && String(p.itemId)===String(id) && p.actualAmount!=null); return p ? p.actualAmount : null; }
+function allocationPaidSum(a) { return (DATA.payments||[]).filter(p=>p.type==='allocation' && String(p.itemId)===String(a.id) && paymentMarkedPaid(p)).reduce((s,p)=>s+(p.actualAmount!=null?p.actualAmount:a.amount),0); }
 function billAmountFor(b, y, m) { const ov = billOverride(b.id, ymStr(y,m)); return ov!=null ? ov : b.amount; }
 function billStarted(b, cur) { return FinMath.billStarted(b, cur); }
 function activeBills() {
@@ -847,15 +851,22 @@ function activeBills() {
 function activeAllocations() {
   const cur = ymStr(selY,selM);
   return (DATA.allocations||[]).map(a => {
+    if (paymentPaidFor(['skip'], a.id, cur)) return null;
     const diff = monthDiff(a.startMonth, cur);
     if (diff<0) return null;
     if (a.installments>0 && diff>=a.installments) return null;
-    return {...a, ongoing:a.installments<=0, num:diff+1};
+    const ov = allocOverride(a.id, cur);
+    return {...a, ongoing:a.installments<=0, num:diff+1, nominal:a.amount, amount:ov!=null?ov:a.amount, overridden:ov!=null};
   }).filter(Boolean);
 }
 function activeAllocationsAt(y,m) {
   const cur = ymStr(y,m);
-  return (DATA.allocations||[]).map(a => { const diff = monthDiff(a.startMonth, cur); if (diff<0) return null; if (a.installments>0 && diff>=a.installments) return null; return {...a, ongoing:a.installments<=0, num:diff+1}; }).filter(Boolean);
+  return (DATA.allocations||[]).map(a => {
+    if (paymentPaidFor(['skip'], a.id, cur)) return null;
+    const diff = monthDiff(a.startMonth, cur); if (diff<0) return null; if (a.installments>0 && diff>=a.installments) return null;
+    const ov = allocOverride(a.id, cur);
+    return {...a, ongoing:a.installments<=0, num:diff+1, nominal:a.amount, amount:ov!=null?ov:a.amount, overridden:ov!=null};
+  }).filter(Boolean);
 }
 function paymentMarkedPaid(p) { return !!(p && (p.paid === true || p.type === 'skip')); }
 function paymentPaidFor(types, id, ymS) { return (DATA.payments||[]).some(p => p.month===ymS && types.indexOf(p.type)>-1 && String(p.itemId)===String(id) && paymentMarkedPaid(p)); }
@@ -1246,6 +1257,13 @@ function applyPaid(type, id, nw, m, actualAmount, paidDate) {
 function togglePaid(type, id) {
   const m = ymStr(selY,selM), cur = type==='bill' ? isPaidBill(id) : isPaid(type,id), nw = !cur;
   if (type==='bill' && nw) { promptActual(id, m); return; }
+  if (type==='allocation' && nw) {
+    const a = activeAllocations().find(x=>x.id===id);
+    const pd = isCurrentMonth() ? todayStr() : (m+'-01');
+    applyPaid(type, id, true, m, a && a.overridden ? a.amount : null, pd);
+    renderAll();
+    return;
+  }
   applyPaid(type, id, nw, m);
   renderAll();
 }
@@ -1289,6 +1307,10 @@ function confirmActualInput() {
   const v = parseFloat(document.getElementById('ccInput').value);
   if (isNaN(v) || (confirmCtx.kind==='ot' ? v < 0 : v === 0)) { showToast(confirmCtx.kind==='ot'?t('err.validHours'):t('err.validAmount'),'error'); return; }
   if (confirmCtx.kind==='ot') { const ds=confirmCtx.date; cancelConfirm(); commitOT(ds, v); showToast(t('toast.otLogged',{h:fmtHours(v)})); return; }
+  if (confirmCtx.kind==='allocAmt') {
+    applyAllocOverride(confirmCtx.id, confirmCtx.month, v);
+    cancelConfirm(); renderAll(); showToast(t('toast.allocAmtMonth')); return;
+  }
   applyPaid('bill', confirmCtx.id, true, confirmCtx.month, v, confirmCtx.paidDate);
   cancelConfirm(); renderAll(); showToast(t('toast.paidActual',{amt:brl(v)}));
 }
@@ -1473,11 +1495,16 @@ function submitBudget() {
 function goalName(id) { if (id==='__general__') return t('savings.general'); const g=(DATA.goals||[]).find(x=>x.id===id); return g?g.name:t('misc.goal'); }
 function goalCurrent(g) {
   let total = Number(g.current)||0;
-  (DATA.allocations||[]).filter(a=>a.goalId===g.id).forEach(a => {
-    const paidMonths = (DATA.payments||[]).filter(p=>p.type==='allocation' && String(p.itemId)===String(a.id)).length;
-    total += paidMonths * a.amount;
-  });
+  (DATA.allocations||[]).filter(a=>a.goalId===g.id).forEach(a => { total += allocationPaidSum(a); });
   return total;
+}
+function allocRowLbl(a) { return a.ongoing ? t('alloc.lbl.monthly') : a.installments===1 ? t('alloc.lbl.once') : (a.num+'/'+a.installments); }
+function renderAllocRowHtml(a) {
+  const paid = isPaid('allocation', a.id), lbl = allocRowLbl(a);
+  const acts = (!paid ? '<button type="button" class="alloc-act" onclick="event.stopPropagation();skipAllocMonth(\''+a.id+'\')" title="'+esc(t('alloc.skipMonth'))+'">⏭</button>' : '')
+    + '<button type="button" class="alloc-act" onclick="event.stopPropagation();editAllocation(\''+a.id+'\')" title="'+esc(t('alloc.editPlan'))+'">✎</button>';
+  const orig = a.overridden ? ' <span class="alloc-orig">('+t('alloc.planned',{x:brl(a.nominal)})+')</span>' : '';
+  return '<div class="alloc-row'+(paid?' paid':'')+'"><div class="check sm'+(paid?' on':'')+'" onclick="event.stopPropagation();togglePaid(\'allocation\',\''+a.id+'\')">'+(paid?'✓':'')+'</div><div class="alloc-main"><span class="alloc-amt" onclick="event.stopPropagation();promptAllocAmount(\''+a.id+'\')">'+brl(a.amount)+'</span><span class="alloc-lbl"> · '+lbl+'</span>'+orig+'</div><div class="alloc-acts">'+acts+'</div></div>';
 }
 function renderGoals() {
   const tdy = todayStr();
@@ -1492,11 +1519,7 @@ function renderGoals() {
     const mine = allocs.filter(a=>a.goalId===g.id);
     const _rate = mine.filter(a=>a.ongoing).reduce((s,a)=>s+a.amount,0);
     let eta=''; if (_rate>0 && cur<g.target) { const _ml=Math.ceil((g.target-cur)/_rate); const _d=new Date(now.getFullYear(), now.getMonth()+_ml, 1); eta=t('goal.eta',{date:_d.toLocaleString(L(),{month:'short',year:'numeric'})}); }
-    const allocHtml = mine.map(a => {
-      const paid = isPaid('allocation', a.id);
-      const lbl = a.ongoing ? t('alloc.lbl.monthly') : a.installments===1 ? t('alloc.lbl.once') : (a.num+'/'+a.installments);
-      return '<div class="alloc-row'+(paid?' paid':'')+'"><div class="check sm'+(paid?' on':'')+'" onclick="event.stopPropagation();togglePaid(\'allocation\',\''+a.id+'\')">'+(paid?'✓':'')+'</div><span class="alloc-txt" onclick="event.stopPropagation();editAllocation(\''+a.id+'\')">'+brl(a.amount)+' · '+lbl+'</span></div>';
-    }).join('');
+    const allocHtml = mine.map(a => renderAllocRowHtml(a)).join('');
     return '<div class="goal-card"><div class="goal-bar-top" style="background:'+g.color+'"></div>'
       + '<div class="goal-body" onclick="editGoal(\''+g.id+'\')"><div class="goal-name">'+esc(g.name)+'</div><div class="goal-value" style="color:'+g.color+'">'+brl(cur)+'</div><div class="goal-meta"><span>'+t('goal.of',{x:brl(g.target)})+'</span><span>'+Math.round(pct)+'%</span></div><div class="track"><div class="fill" style="width:'+pct+'%;background:'+g.color+'"></div></div>'+(dlt?'<div class="goal-deadline">'+dlt+'</div>':'')+(eta?'<div class="goal-deadline">'+eta+'</div>':'')+'</div>'
       + '<div class="goal-allocs">'+allocHtml+'<button class="alloc-add" onclick="openAllocation(\''+g.id+'\')">'+t('goal.planSaving')+'</button></div></div>';
@@ -2229,10 +2252,7 @@ function replayTour(){ closeOverlay('setOverlay'); setTimeout(startTour, 250); }
 /* ---------- Savings: overall balance = editable base + ticked general contributions ---------- */
 function generalSaved() {
   let extra = 0;
-  (DATA.allocations||[]).filter(a=>a.goalId==='__general__').forEach(a => {
-    const paid = (DATA.payments||[]).filter(p=>p.type==='allocation' && String(p.itemId)===String(a.id)).length;
-    extra += paid * a.amount;
-  });
+  (DATA.allocations||[]).filter(a=>a.goalId==='__general__').forEach(a => { extra += allocationPaidSum(a); });
   return extra;
 }
 function savingsTotal() { return (Number(P().savings_balance)||0) + generalSaved(); }
@@ -2258,11 +2278,33 @@ function renderGeneralSavings() {
   const el=document.getElementById('genSavingsList'); if (!el) return;
   const mine = activeAllocations().filter(a=>a.goalId==='__general__');
   if (!mine.length) { el.innerHTML = '<div class="empty">'+t('savings.empty')+'</div>'; return; }
-  el.innerHTML = mine.map(a => {
-    const paid = isPaid('allocation', a.id);
-    const lbl = a.ongoing ? t('alloc.lbl.monthly') : a.installments===1 ? t('alloc.lbl.once') : (a.num+'/'+a.installments);
-    return '<div class="alloc-row'+(paid?' paid':'')+'"><div class="check sm'+(paid?' on':'')+'" onclick="event.stopPropagation();togglePaid(\'allocation\',\''+a.id+'\')">'+(paid?'✓':'')+'</div><span class="alloc-txt" onclick="event.stopPropagation();editAllocation(\''+a.id+'\')">'+brl(a.amount)+' · '+lbl+'</span></div>';
-  }).join('');
+  el.innerHTML = mine.map(a => renderAllocRowHtml(a)).join('');
+}
+function applyAllocOverride(id, month, amount) {
+  let p = (DATA.payments||[]).find(x => x.month===month && x.type==='allocation' && String(x.itemId)===String(id));
+  if (p) p.actualAmount = Number(amount);
+  else (DATA.payments=DATA.payments||[]).push({ month:month, type:'allocation', itemId:String(id), paid:false, actualAmount:Number(amount), paidDate:'' });
+  jbRun('setAllocOverride', month, id, amount).catch(e => { showToast(t('err.prefix')+e.message,'error'); reload(); });
+}
+function skipAllocMonth(id) {
+  const cur = curYM();
+  (DATA.payments=DATA.payments||[]).push({ month:cur, type:'skip', itemId:String(id), paid:true, actualAmount:null, paidDate:'' });
+  renderAll(); showToast(t('toast.allocSkipped'));
+  jbRun('setBillSkip', cur, id).catch(e => { showToast(t('err.prefix')+e.message,'error'); reload(); });
+}
+function promptAllocAmount(id) {
+  const a = (DATA.allocations||[]).find(x=>x.id===id); if (!a) return;
+  const active = activeAllocations().find(x=>x.id===id);
+  const curAmt = active ? active.amount : a.amount;
+  confirmCtx = { kind:'allocAmt', id:id, month:curYM(), nominal:a.amount };
+  document.getElementById('ccTitle').textContent = goalName(a.goalId);
+  document.getElementById('ccQ').innerHTML = t('alloc.amtPrompt',{amt:brl(a.amount)});
+  document.getElementById('ccYesNo').style.display = 'none';
+  document.getElementById('ccDateRow').style.display = 'none';
+  document.getElementById('ccInputWrap').style.display = 'flex';
+  document.getElementById('ccInput').value = curAmt;
+  document.getElementById('confirmCard').classList.add('show');
+  setTimeout(()=>{ const i=document.getElementById('ccInput'); if(i){ i.focus(); i.select(); } }, 20);
 }
 function openGeneralAllocation() { openAllocation('__general__'); }
 let svDir='deposit';

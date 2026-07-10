@@ -62,6 +62,21 @@ var JB_IMPL = {
       return row<0 ? jbAppend('Payments', rr) : jbPutRange('Payments!A'+row+':F'+row, [rr]);
     }).then(function(){ return {success:true}; });
   },
+  setAllocOverride: function(month,id,amount){
+    return jbGetVals('Payments').then(function(vals){
+      var row=-1, wasPaid=false, paidDate='';
+      for(var i=1;i<vals.length;i++){
+        var r=vals[i]||[];
+        var m=String(r[0]).replace(/^m/,'').slice(0,7);
+        if(m===month && String(r[1])==='allocation' && String(r[2])===String(id)){
+          row=i+1; wasPaid=jbBool(r[3]); paidDate=r[5];
+          break;
+        }
+      }
+      var rr=['m'+month,'allocation',String(id), wasPaid?true:'', Number(amount), wasPaid?(typeof paidDate==='number'?jbDate(paidDate):(paidDate||'')):''];
+      return row<0 ? jbAppend('Payments', rr) : jbPutRange('Payments!A'+row+':F'+row, [rr]);
+    }).then(function(){ return {success:true}; });
+  },
   saveSetting: function(key,value){ return jbGetVals('Settings').then(function(vals){ for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===String(key)) return jbPutRange('Settings!B'+(i+1), [[value]]); } return jbAppend('Settings', [key,value]); }).then(function(){ return {success:true}; }); },
   saveProfile: function(data){ var ch=Promise.resolve(); Object.keys(data).forEach(function(k){ var v=data[k]; if(k==='off_weekdays' && Object.prototype.toString.call(v)==='[object Array]') v=v.map(function(d){ return 'd'+d; }).join(','); ch=ch.then(function(){ return JB_IMPL.saveSetting(k,v); }); }); return ch.then(function(){ return {success:true}; }); },
   savingsMove: function(newBase,tx){ return JB_IMPL.saveSetting('savings_balance',newBase).then(function(){ return JB_IMPL.addRecord('transactions',tx); }).then(function(){ return {success:true}; }); },

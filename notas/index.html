@@ -85,10 +85,13 @@
   <div class="cc-btns"><button class="cc-btn" onclick="dismissNudge()">Agora não</button><button class="cc-btn yes" onclick="acceptNudge()" id="nudgeYes">Recriar</button></div>
 </div>
 
+<!-- rubber-band multi-select (Windows-style drag box) -->
+<div class="selmarquee" id="selMarquee" aria-hidden="true"></div>
+
 <!-- multi-select action bar (idle: enter mode · active: bulk actions) -->
 <div class="selbar" id="selBar">
   <div class="selbar-idle" id="selIdle">
-    <button class="selentry" onclick="toggleSelMode()" title="Selecionar vários itens">☑ Selecionar</button>
+    <button class="selentry" onclick="toggleSelMode()" title="Selecionar vários itens — ou clique e arraste na lista">☑ Selecionar</button>
   </div>
   <div class="selbar-active" id="selActive">
     <span class="selcount"><b id="selCount">0</b> sel.</span>

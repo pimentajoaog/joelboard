@@ -482,7 +482,7 @@ function createNoteFromKind(kind,titulo,fill){ var now=new Date().toISOString();
 /* ---- persistence ---- */
 function noteRowVals(n){ return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.criado,n.atualizado,n.id,n.vence||'']; }
 function mdToHtml(t){ var s=esc(t); s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>'); s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>'); s=s.replace(/__([^_\n]+)__/g,'<u>$1</u>'); s=s.replace(/~~([^~\n]+)~~/g,'<s>$1</s>'); return s; }
-function startEdit(id){ _editId=id; renderItems(); var bar=$('fmtBar'); if(bar) bar.classList.add('show'); positionFmtBar(); updateSelBar(); }
+function startEdit(id){ if(_marqueeDidDrag) return; _editId=id; renderItems(); var bar=$('fmtBar'); if(bar) bar.classList.add('show'); positionFmtBar(); updateSelBar(); }
 function exitEdit(){ if(_editId==null) return; _editId=null; var bar=$('fmtBar'); if(bar) bar.classList.remove('show'); renderItems(); updateSelBar(); }
 function wordAt(v,pos){ var i=pos,j=pos; var isW=function(c){ return c && /\S/.test(c) && c!=='*' && c!=='_' && c!=='~'; }; while(i>0 && isW(v[i-1])) i--; while(j<v.length && isW(v[j])) j++; return [i,j]; }
 function fmt(mk){ var ta=$('editTA'); if(!ta) return; var v=ta.value, sS=ta.selectionStart||0, sE=ta.selectionEnd||0, L=mk.length, sel0=v.slice(sS,sE);
@@ -780,8 +780,20 @@ function dedupeItems(){
 }
 
 function selCount(){ return Object.keys(_sel).length; }
+var _mq=null, _marqueeDidDrag=false, _MQ_MIN=6;
+function selMarqueeIgnore(el){ if(!el||!el.closest) return true; if(el.closest('.ihandle,button,input,textarea,.ichk,.itype,.idel,.gchev,.gadd,.gsub,.fmtbar,.selbar,.lnk,.iadd,.gaddbtn,.uwrap')) return true; if(el.closest('.ihdr')) return true; return false; }
+function selMarqueeRect(){ var l=Math.min(_mq.sx,_mq.ox), t=Math.min(_mq.sy,_mq.oy), r=Math.max(_mq.sx,_mq.ox), b=Math.max(_mq.sy,_mq.oy); return {left:l,top:t,right:r,bottom:b,width:r-l,height:b-t}; }
+function selRectsHit(a,b){ return a.left<b.right && a.right>b.left && a.top<b.bottom && a.bottom>b.top; }
+function selMarqueePaint(){ var box=$('selMarquee'), rc=selMarqueeRect(); if(!box) return; box.style.left=rc.left+'px'; box.style.top=rc.top+'px'; box.style.width=rc.width+'px'; box.style.height=rc.height+'px'; }
+function selPaintRows(){ var cont=$('edItems'); if(!cont) return; cont.querySelectorAll('.irow[data-id]').forEach(function(row){ var id=row.getAttribute('data-id'), on=!!_sel[id]; row.classList.toggle('on', on); var dot=row.querySelector('.seldot'); if(dot){ dot.classList.toggle('on', on); dot.textContent=on?'✓':''; } }); updateSelBar(); }
+function selApplyMarquee(rc, additive, base){ var next=additive?Object.assign({}, base):{}; var cont=$('edItems'); if(!cont) return; cont.querySelectorAll('.irow[data-id]:not(.ihide)').forEach(function(row){ var id=row.getAttribute('data-id'); if(id && selRectsHit(rc, row.getBoundingClientRect())) next[id]=1; }); _sel=next; selPaintRows(); }
+function selMarqueeBegin(ev){ if(!openNoteId||_editId||_drag) return; if(!itemsOf(openNoteId).some(function(x){return !isGroup(x);})) return; var cont=$('edItems'); if(!cont||!cont.contains(ev.target)||selMarqueeIgnore(ev.target)) return; _mq={ sx:ev.clientX, sy:ev.clientY, ox:ev.clientX, oy:ev.clientY, on:false, additive:!!ev.shiftKey, baseSel:Object.assign({},_sel), pid:ev.pointerId }; }
+function selMarqueeActive(ev){ if(!_mq||ev.pointerId!==_mq.pid) return false; var dx=ev.clientX-_mq.sx, dy=ev.clientY-_mq.sy; if(_mq.on) return true; if(Math.abs(dx)<_MQ_MIN && Math.abs(dy)<_MQ_MIN) return false; _mq.on=true; _marqueeDidDrag=true; if(!_selMode){ _selMode=true; _editId=null; var fb=$('fmtBar'); if(fb) fb.classList.remove('show'); _mq.baseSel={}; _mq.additive=false; renderEditor(); } document.body.classList.add('sel-mq-active'); var box=$('selMarquee'); if(box) box.classList.add('show'); try{ document.body.setPointerCapture(ev.pointerId); }catch(e){} return true; }
+function selMarqueeMove(ev){ if(!_mq||ev.pointerId!==_mq.pid) return; if(!selMarqueeActive(ev)) return; ev.preventDefault(); _mq.ox=ev.clientX; _mq.oy=ev.clientY; selMarqueePaint(); selApplyMarquee(selMarqueeRect(), _mq.additive, _mq.baseSel); }
+function selMarqueeEnd(ev){ if(!_mq||ev.pointerId!==_mq.pid) return; if(_mq.on){ selApplyMarquee(selMarqueeRect(), _mq.additive, _mq.baseSel); try{ document.body.releasePointerCapture(ev.pointerId); }catch(e){} } document.body.classList.remove('sel-mq-active'); var box=$('selMarquee'); if(box){ box.classList.remove('show'); box.style.width='0'; box.style.height='0'; } var did=_marqueeDidDrag&&_mq.on; _mq=null; if(did) setTimeout(function(){ _marqueeDidDrag=false; }, 320); }
+function selMarqueeInit(){ if(selMarqueeInit.done) return; selMarqueeInit.done=true; document.addEventListener('pointerdown', selMarqueeBegin, true); document.addEventListener('pointermove', selMarqueeMove, {passive:false}); document.addEventListener('pointerup', selMarqueeEnd); document.addEventListener('pointercancel', selMarqueeEnd); }
 function toggleSelMode(){ _selMode=!_selMode; _sel={}; _editId=null; renderEditor(); }
-function selToggle(id){ if(_sel[id]) delete _sel[id]; else _sel[id]=1; renderItems(); }
+function selToggle(id){ if(_marqueeDidDrag) return; if(_sel[id]) delete _sel[id]; else _sel[id]=1; renderItems(); }
 function selAll(){ var its=itemsOf(openNoteId).filter(function(x){return !isGroup(x);}); var all=its.length>0 && its.every(function(x){return _sel[x.id];}); _sel={}; if(!all) its.forEach(function(x){ _sel[x.id]=1; }); renderItems(); }
 function selMark(v){ var ids=Object.keys(_sel); if(!ids.length) return; var changed=[]; ids.forEach(function(id){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(it && it.marcavel && it.feito!==v){ it.feito=v; changed.push(it); } }); renderItems(); if(changed.length) persistItems(changed); var n=note(openNoteId); if(n) touchNote(n); }
 function delItemRows(ids){
@@ -807,4 +819,5 @@ function selDelete(){ var ids=Object.keys(_sel); if(!ids.length) return; var m={
 function updateSelBar(){ var bar=$('selBar'); if(!bar) return; var hasItems=!!(openNoteId && itemsOf(openNoteId).some(function(x){return !isGroup(x);})); var vis=hasItems && (_selMode || !_editId); bar.classList.toggle('show', vis); bar.classList.toggle('sel-on', _selMode); var c=$('selCount'); if(c) c.textContent=selCount(); }
 
 JB.applySkin('notas');
+selMarqueeInit();
 startAuth();

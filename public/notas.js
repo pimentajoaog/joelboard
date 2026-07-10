@@ -454,16 +454,39 @@ function notasDownload(filename, content, mime){
   a.href=url; a.download=filename; a.click();
   setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
 }
+function notasItemStatus(it){
+  if(it.tipo==='g') return '';
+  if(!it.marcavel) return '—';
+  return it.feito?'Feito':'Pendente';
+}
+function notasExportHeaders(includeListMeta){
+  return includeListMeta
+    ? ['Lista','Tipo','Prazo','Fixada','Grupo','#','Item','Marcável','Feito','Status']
+    : ['Tipo','Prazo','Fixada','Grupo','#','Item','Marcável','Feito','Status'];
+}
+function notasExportItemRows(n, includeListMeta){
+  var kd=kindDef(n.tipo);
+  var rows=[], group='', num=0;
+  itemsOf(n.id).forEach(function(it){
+    var text=(it.texto||'').trim();
+    if(it.tipo==='g'){ group=text; return; }
+    if(!text) return;
+    num++;
+    var row=includeListMeta
+      ? [n.titulo||'', kd.label, n.vence?fmtDateBR(n.vence):'', n.fixado?'Sim':'Não', group, num, text, it.marcavel?'Sim':'Não', it.marcavel?(it.feito?'Sim':'Não'):'', notasItemStatus(it)]
+      : [kd.label, n.vence?fmtDateBR(n.vence):'', n.fixado?'Sim':'Não', group, num, text, it.marcavel?'Sim':'Não', it.marcavel?(it.feito?'Sim':'Não'):'', notasItemStatus(it)];
+    rows.push(row.map(notasCsvCell).join(','));
+  });
+  return rows;
+}
 function exportNotasCsv(){
   if(!DATA){ toast('Nada para exportar'); return; }
   var stamp=new Date().toISOString().slice(0,10);
-  var out=['\ufeff### Notas', NOTAS_TABS[0][1].join(',')];
-  (DATA.notas||[]).forEach(function(n){
-    out.push([n.titulo,n.tipo,n.cor,n.fixado?'TRUE':'FALSE',n.criado,n.atualizado,n.id,n.vence].map(notasCsvCell).join(','));
-  });
-  out.push('','### Itens', NOTAS_TABS[1][1].join(','));
-  (DATA.itens||[]).slice().sort(function(a,b){ return String(a.notaId).localeCompare(String(b.notaId)) || (a.ordem-b.ordem); }).forEach(function(it){
-    out.push([it.notaId,it.ordem,it.texto,it.marcavel?'TRUE':'FALSE',it.feito?'TRUE':'FALSE',it.id,it.tipo].map(notasCsvCell).join(','));
+  var out=['\ufeff'+notasExportHeaders(true).map(notasCsvCell).join(',')];
+  (DATA.notas||[]).slice().sort(function(a,b){
+    return String(b.atualizado||b.criado||'').localeCompare(String(a.atualizado||a.criado||''));
+  }).forEach(function(n){
+    notasExportItemRows(n, true).forEach(function(line){ out.push(line); });
   });
   notasDownload('joelboard-notas-'+stamp+'.csv', out.join('\r\n'), 'text/csv;charset=utf-8');
   toast('✓ CSV exportado');
@@ -477,18 +500,8 @@ function exportNotasJson(){
 }
 function safeFilename(s){ return String(s||'lista').replace(/[<>:"/\\|?*\x00-\x1f]/g,'').trim().slice(0,60)||'lista'; }
 function buildListCsv(n){
-  var kd=kindDef(n.tipo);
-  var out=['\ufeffCampo,Valor','Título,'+notasCsvCell(n.titulo||'Lista'),'Tipo,'+notasCsvCell(kd.label)];
-  if(n.vence) out.push('Prazo,'+notasCsvCell(fmtDateBR(n.vence)));
-  out.push('','Item,Grupo,Feito');
-  var group='';
-  itemsOf(n.id).forEach(function(it){
-    var text=(it.texto||'').trim();
-    if(it.tipo==='g'){ group=text; return; }
-    if(!text) return;
-    var feito=it.marcavel?(it.feito?'Sim':'Não'):'';
-    out.push([text,group,feito].map(notasCsvCell).join(','));
-  });
+  var out=['\ufeff'+notasExportHeaders(false).map(notasCsvCell).join(',')];
+  notasExportItemRows(n, false).forEach(function(line){ out.push(line); });
   return out.join('\r\n');
 }
 function exportCurrentList(){

@@ -367,9 +367,11 @@ function userReviewed(mediaKey, em) {
 function passesReviewerFilter(m) {
   if (libReviewerFilter === 'all') return true;
   var joel = JULIOEL_EMAILS[0], julia = JULIOEL_EMAILS[1];
-  if (libReviewerFilter === 'joel') return userReviewed(m.key, joel);
-  if (libReviewerFilter === 'julia') return userReviewed(m.key, julia);
-  if (libReviewerFilter === 'both') return userReviewed(m.key, joel) && userReviewed(m.key, julia);
+  var joelReviewed = userReviewed(m.key, joel);
+  var juliaReviewed = userReviewed(m.key, julia);
+  if (libReviewerFilter === 'joel') return joelReviewed && !juliaReviewed;
+  if (libReviewerFilter === 'julia') return juliaReviewed && !joelReviewed;
+  if (libReviewerFilter === 'both') return joelReviewed && juliaReviewed;
   return true;
 }
 

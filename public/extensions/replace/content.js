@@ -125,40 +125,10 @@
 
   /** Map flat offset (Range.toString length) to a DOM point inside el. */
   function cePointAtFlatOffset(el, offset, endContainer, endOffset) {
-    var cap = document.createRange();
-    cap.selectNodeContents(el);
-    cap.setEnd(endContainer, endOffset);
-    var max = cap.toString().length;
-    offset = Math.max(0, Math.min(offset, max));
-    if (offset === 0) {
-      var start = document.createRange();
-      start.selectNodeContents(el);
-      start.collapse(true);
-      return { node: start.startContainer, offset: start.startOffset };
-    }
-    var sel = window.getSelection();
-    var saved = sel && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
-    try {
-      if (!sel) return null;
-      var r = document.createRange();
-      r.selectNodeContents(el);
-      r.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(r);
-      if (typeof sel.modify === 'function') {
-        for (var i = 0; i < offset; i++) sel.modify('move', 'forward', 'character');
-        return { node: sel.anchorNode, offset: sel.anchorOffset };
-      }
-      return cePointAtFlatOffsetWalk(el, offset, endContainer, endOffset);
-    } finally {
-      if (sel && saved) {
-        sel.removeAllRanges();
-        sel.addRange(saved);
-      }
-    }
+    return cePointAtFlatOffsetWalk(el, offset, endContainer, endOffset);
   }
 
-  /** Fallback when Selection.modify is unavailable — binary search on Range.toString length. */
+  /** Binary search on Range.toString length to map flat offset → DOM point. */
   function cePointAtFlatOffsetWalk(el, targetOffset, endContainer, endOffset) {
     var cap = document.createRange();
     cap.selectNodeContents(el);
@@ -195,13 +165,28 @@
       range.setEnd(limitContainer, limitOffset);
       return true;
     }
-    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    if (targetLen <= 0) {
+      range.selectNodeContents(el);
+      range.collapse(true);
+      return true;
+    }
+    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+      acceptNode: function (node) {
+        if (node.nodeType === Node.TEXT_NODE) return NodeFilter.FILTER_ACCEPT;
+        if (node.nodeName === 'BR') return NodeFilter.FILTER_ACCEPT;
+        return NodeFilter.FILTER_SKIP;
+      }
+    });
     var node;
-    var count = 0;
     while ((node = walker.nextNode())) {
-      var text = node.textContent || '';
-      for (var i = 0; i <= text.length; i++) {
-        range.setEnd(node, i);
+      if (node.nodeType === Node.TEXT_NODE) {
+        var text = node.textContent || '';
+        for (var i = 0; i <= text.length; i++) {
+          range.setEnd(node, i);
+          if (range.toString().length >= targetLen) return true;
+        }
+      } else if (node.nodeName === 'BR') {
+        range.setEndAfter(node);
         if (range.toString().length >= targetLen) return true;
       }
     }
@@ -216,16 +201,19 @@
     var hay = caseSensitive ? beforeNow : beforeNow.toLowerCase();
     var needle = caseSensitive ? trigger : trigger.toLowerCase();
     if (beforeNow.length < needle.length || hay.slice(-needle.length) !== needle) return null;
-    var trigStart = beforeNow.length - trigger.length;
-    var trigEnd = beforeNow.length;
-    var startPos = cePointAtFlatOffset(el, trigStart, endContainer, endOffset);
-    var endPos = cePointAtFlatOffset(el, trigEnd, endContainer, endOffset);
-    if (!startPos || !endPos) return null;
-    var range = document.createRange();
-    range.setStart(startPos.node, startPos.offset);
-    range.setEnd(endPos.node, endPos.offset);
-    if ((caseSensitive ? range.toString() : range.toString().toLowerCase()) !== needle) return null;
-    return range;
+
+    var capLen = beforeNow.length;
+    var startFlat = Math.max(0, capLen - trigger.length);
+    for (var flat = startFlat; flat <= capLen; flat++) {
+      var startPos = cePointAtFlatOffset(el, flat, endContainer, endOffset);
+      if (!startPos) continue;
+      var range = document.createRange();
+      range.setStart(startPos.node, startPos.offset);
+      range.setEnd(endContainer, endOffset);
+      var got = range.toString();
+      if ((caseSensitive ? got : got.toLowerCase()) === needle) return range;
+    }
+    return null;
   }
 
   function applyToField(st, trigger, text, matchStart, caseSensitive, suffix) {

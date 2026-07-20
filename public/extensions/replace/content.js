@@ -122,18 +122,110 @@
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  function findTextPosition(root, charIndex) {
-    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
-    var count = 0;
-    var node;
-    while ((node = walker.nextNode())) {
-      var len = (node.textContent || '').length;
-      if (count + len >= charIndex) {
-        return { node: node, offset: charIndex - count };
-      }
-      count += len;
+
+  /** Map flat offset (Range.toString length) to a DOM point inside el. */
+  function cePointAtFlatOffset(el, offset, endContainer, endOffset) {
+    var cap = document.createRange();
+    cap.selectNodeContents(el);
+    cap.setEnd(endContainer, endOffset);
+    var max = cap.toString().length;
+    offset = Math.max(0, Math.min(offset, max));
+    if (offset === 0) {
+      var start = document.createRange();
+      start.selectNodeContents(el);
+      start.collapse(true);
+      return { node: start.startContainer, offset: start.startOffset };
     }
-    return null;
+    var sel = window.getSelection();
+    var saved = sel && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+    try {
+      if (!sel) return null;
+      var r = document.createRange();
+      r.selectNodeContents(el);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+      if (typeof sel.modify === 'function') {
+        for (var i = 0; i < offset; i++) sel.modify('move', 'forward', 'character');
+        return { node: sel.anchorNode, offset: sel.anchorOffset };
+      }
+      return cePointAtFlatOffsetWalk(el, offset, endContainer, endOffset);
+    } finally {
+      if (sel && saved) {
+        sel.removeAllRanges();
+        sel.addRange(saved);
+      }
+    }
+  }
+
+  /** Fallback when Selection.modify is unavailable — binary search on Range.toString length. */
+  function cePointAtFlatOffsetWalk(el, targetOffset, endContainer, endOffset) {
+    var cap = document.createRange();
+    cap.selectNodeContents(el);
+    cap.setEnd(endContainer, endOffset);
+    var max = cap.toString().length;
+    targetOffset = Math.max(0, Math.min(targetOffset, max));
+
+    var lo = 0;
+    var hi = max;
+    var best = null;
+    while (lo <= hi) {
+      var mid = Math.floor((lo + hi) / 2);
+      var test = document.createRange();
+      test.selectNodeContents(el);
+      test.collapse(true);
+      if (!ceSetRangeEndAtFlatLen(test, el, mid, endContainer, endOffset)) break;
+      var len = test.toString().length;
+      if (len <= targetOffset) {
+        best = { node: test.endContainer, offset: test.endOffset };
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return best;
+  }
+
+  function ceSetRangeEndAtFlatLen(range, el, targetLen, limitContainer, limitOffset) {
+    var cap = document.createRange();
+    cap.selectNodeContents(el);
+    cap.setEnd(limitContainer, limitOffset);
+    var max = cap.toString().length;
+    if (targetLen >= max) {
+      range.setEnd(limitContainer, limitOffset);
+      return true;
+    }
+    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    var node;
+    var count = 0;
+    while ((node = walker.nextNode())) {
+      var text = node.textContent || '';
+      for (var i = 0; i <= text.length; i++) {
+        range.setEnd(node, i);
+        if (range.toString().length >= targetLen) return true;
+      }
+    }
+    return false;
+  }
+
+  function ceTriggerRange(el, trigger, caseSensitive, endContainer, endOffset) {
+    var pre = document.createRange();
+    pre.selectNodeContents(el);
+    pre.setEnd(endContainer, endOffset);
+    var beforeNow = pre.toString();
+    var hay = caseSensitive ? beforeNow : beforeNow.toLowerCase();
+    var needle = caseSensitive ? trigger : trigger.toLowerCase();
+    if (beforeNow.length < needle.length || hay.slice(-needle.length) !== needle) return null;
+    var trigStart = beforeNow.length - trigger.length;
+    var trigEnd = beforeNow.length;
+    var startPos = cePointAtFlatOffset(el, trigStart, endContainer, endOffset);
+    var endPos = cePointAtFlatOffset(el, trigEnd, endContainer, endOffset);
+    if (!startPos || !endPos) return null;
+    var range = document.createRange();
+    range.setStart(startPos.node, startPos.offset);
+    range.setEnd(endPos.node, endPos.offset);
+    if ((caseSensitive ? range.toString() : range.toString().toLowerCase()) !== needle) return null;
+    return range;
   }
 
   function applyToField(st, trigger, text, matchStart, caseSensitive, suffix) {
@@ -145,26 +237,12 @@
     if (st.kind === 'ce') {
       var sel = window.getSelection();
       if (!sel || !sel.rangeCount) return false;
-      var range = sel.getRangeAt(0);
-      var pre = range.cloneRange();
-      pre.selectNodeContents(el);
-      pre.setEnd(range.startContainer, range.startOffset);
-      var beforeNow = pre.toString();
-      var trigStart = (matchStart != null && matchStart >= 0)
-        ? matchStart
-        : beforeNow.length - trigger.length;
-      if (trigStart < 0) return false;
-      var hay = caseSensitive ? beforeNow : beforeNow.toLowerCase();
-      var needle = caseSensitive ? trigger : trigger.toLowerCase();
-      if (hay.slice(trigStart, trigStart + trigger.length) !== needle) return false;
-      var startPos = findTextPosition(el, trigStart);
-      var endPos = findTextPosition(el, trigStart + trigger.length);
-      if (!startPos || !endPos) return false;
-      range = document.createRange();
-      range.setStart(startPos.node, startPos.offset);
-      range.setEnd(endPos.node, endPos.offset);
+      var endRange = sel.getRangeAt(0);
+      if (!el.contains(endRange.startContainer)) return false;
+      var triggerRange = ceTriggerRange(el, trigger, caseSensitive, endRange.startContainer, endRange.startOffset);
+      if (!triggerRange) return false;
       sel.removeAllRanges();
-      sel.addRange(range);
+      sel.addRange(triggerRange);
       var useHtml = JB_REPLACE.hasFormatting(text);
       var insertVal = (useHtml ? JB_REPLACE.bodyToHtml(text) : text) + suffix;
       var ok = useHtml

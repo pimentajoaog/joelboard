@@ -193,27 +193,94 @@
     return false;
   }
 
-  function ceTriggerRange(el, trigger, caseSensitive, endContainer, endOffset) {
-    var pre = document.createRange();
-    pre.selectNodeContents(el);
-    pre.setEnd(endContainer, endOffset);
-    var beforeNow = pre.toString();
+  function ceCursorText(endContainer, endOffset) {
+    if (endContainer.nodeType === 3) {
+      return { node: endContainer, offset: endOffset };
+    }
+    if (endContainer.nodeType === 1) {
+      if (endOffset > 0) {
+        var prev = endContainer.childNodes[endOffset - 1];
+        if (prev) {
+          if (prev.nodeType === 3) {
+            return { node: prev, offset: (prev.textContent || '').length };
+          }
+          var walker = document.createTreeWalker(prev, NodeFilter.SHOW_TEXT, null);
+          var last = null;
+          while (walker.nextNode()) last = walker.currentNode;
+          if (last) return { node: last, offset: (last.textContent || '').length };
+        }
+      }
+      if (endOffset < endContainer.childNodes.length) {
+        var next = endContainer.childNodes[endOffset];
+        if (next && next.nodeType === 3) return { node: next, offset: 0 };
+      }
+    }
+    return null;
+  }
+
+  /** Match trigger in the text node at the cursor — avoids cross-block selections. */
+  function ceTriggerRangeLocal(endContainer, endOffset, trigger, caseSensitive) {
+    var cur = ceCursorText(endContainer, endOffset);
+    if (!cur) return null;
+    var text = cur.node.textContent || '';
+    var off = cur.offset;
+    if (off < trigger.length) return null;
+    var typed = text.slice(off - trigger.length, off);
+    if (caseSensitive ? typed !== trigger : typed.toLowerCase() !== trigger.toLowerCase()) return null;
+    var range = document.createRange();
+    range.setStart(cur.node, off - trigger.length);
+    range.setEnd(cur.node, off);
+    return range;
+  }
+
+  /** Fallback: leftmost flat start where range ending at cursor equals trigger. */
+  function ceTriggerRangeFlat(el, trigger, caseSensitive, endContainer, endOffset) {
+    var cap = document.createRange();
+    cap.selectNodeContents(el);
+    cap.setEnd(endContainer, endOffset);
+    var beforeNow = cap.toString();
     var hay = caseSensitive ? beforeNow : beforeNow.toLowerCase();
     var needle = caseSensitive ? trigger : trigger.toLowerCase();
     if (beforeNow.length < needle.length || hay.slice(-needle.length) !== needle) return null;
 
-    var capLen = beforeNow.length;
-    var startFlat = Math.max(0, capLen - trigger.length);
-    for (var flat = startFlat; flat <= capLen; flat++) {
-      var startPos = cePointAtFlatOffset(el, flat, endContainer, endOffset);
-      if (!startPos) continue;
-      var range = document.createRange();
-      range.setStart(startPos.node, startPos.offset);
-      range.setEnd(endContainer, endOffset);
-      var got = range.toString();
-      if ((caseSensitive ? got : got.toLowerCase()) === needle) return range;
+    var lo = 0;
+    var hi = beforeNow.length;
+    var best = null;
+    while (lo <= hi) {
+      var mid = Math.floor((lo + hi) / 2);
+      var startPos = cePointAtFlatOffset(el, mid, endContainer, endOffset);
+      if (!startPos) {
+        lo = mid + 1;
+        continue;
+      }
+      var test = document.createRange();
+      test.setStart(startPos.node, startPos.offset);
+      test.setEnd(endContainer, endOffset);
+      var got = test.toString();
+      if (got.length < trigger.length) lo = mid + 1;
+      else if (got.length > trigger.length) hi = mid - 1;
+      else if ((caseSensitive ? got : got.toLowerCase()) === needle) {
+        best = test;
+        hi = mid - 1;
+      } else {
+        lo = mid + 1;
+      }
     }
-    return null;
+    return best;
+  }
+
+  function ceTriggerRange(el, trigger, caseSensitive, endContainer, endOffset) {
+    var cap = document.createRange();
+    cap.selectNodeContents(el);
+    cap.setEnd(endContainer, endOffset);
+    var beforeNow = cap.toString();
+    var hay = caseSensitive ? beforeNow : beforeNow.toLowerCase();
+    var needle = caseSensitive ? trigger : trigger.toLowerCase();
+    if (beforeNow.length < needle.length || hay.slice(-needle.length) !== needle) return null;
+
+    var local = ceTriggerRangeLocal(endContainer, endOffset, trigger, caseSensitive);
+    if (local) return local;
+    return ceTriggerRangeFlat(el, trigger, caseSensitive, endContainer, endOffset);
   }
 
   function applyToField(st, trigger, text, matchStart, caseSensitive, suffix) {
@@ -253,12 +320,15 @@
     var selStart = el.selectionStart;
     var selEnd = el.selectionEnd;
     if (selStart == null || selEnd == null) return false;
-    var trigStart = (matchStart != null && matchStart >= 0)
-      ? matchStart
-      : selStart - trigger.length;
-    if (trigStart < 0 || trigStart + trigger.length > val.length) return false;
+    var trigStart = selStart - trigger.length;
+    if (trigStart < 0) return false;
     var typed = val.slice(trigStart, trigStart + trigger.length);
-    if (caseSensitive ? typed !== trigger : typed.toLowerCase() !== trigger.toLowerCase()) return false;
+    if (caseSensitive ? typed !== trigger : typed.toLowerCase() !== trigger.toLowerCase()) {
+      if (matchStart == null || matchStart < 0) return false;
+      trigStart = matchStart;
+      typed = val.slice(trigStart, trigStart + trigger.length);
+      if (caseSensitive ? typed !== trigger : typed.toLowerCase() !== trigger.toLowerCase()) return false;
+    }
     var trigEnd = trigStart + trigger.length;
     var preserved = '';
     if (selStart === selEnd && selStart >= trigEnd) {

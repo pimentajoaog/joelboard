@@ -1,6 +1,6 @@
 /* Joelboard Notas — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
-var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={};
+var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={}, _renameNoteId=null;
 var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']]];
 var KINDS=[
   {k:'compras', label:'Compras', icon:'🛒', color:'#34d399', defCheck:true},
@@ -130,7 +130,7 @@ function refreshData(){
 /* ---- routing / render ---- */
 function note(id){ return (DATA.notas||[]).find(function(n){return n.id===id;}); }
 function render(){ var ed=!!(openNoteId&&note(openNoteId)); $('fab').style.display=ed?'none':'flex'; if(ed) renderEditor(); else renderHomeShell(); updateSelBar(); }
-function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; render(); window.scrollTo(0,0); }
+function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; _renameNoteId=null; render(); window.scrollTo(0,0); }
 function backHome(){ openNoteId=null; render(); }
 
 /* ---- home ---- */
@@ -203,14 +203,24 @@ function renderHomeList(){
   }
 }
 function noteCard(n){
-  var kd=kindDef(n.tipo); var its=itemsOf(n.id).filter(function(x){return !isGroup(x);}); var chk=its.filter(function(x){return x.marcavel;}); var done=chk.filter(function(x){return x.feito;}).length;
+  var kd=kindDef(n.tipo);
+  if(_renameNoteId===n.id){
+    return '<div class="notec notec-rename" style="--kc:'+kd.color+'" onclick="event.stopPropagation()">'
+      +'<input class="nc-rename-inp field" data-rename="'+n.id+'" value="'+escAttr(n.titulo||'')+'" placeholder="Nome da lista" aria-label="Nome da lista" onkeydown="noteRenameKey(event,\''+n.id+'\')" onblur="commitNoteRename(\''+n.id+'\',this.value)">'
+      +'</div>';
+  }
+  var its=itemsOf(n.id).filter(function(x){return !isGroup(x);}); var chk=its.filter(function(x){return x.marcavel;}); var done=chk.filter(function(x){return x.feito;}).length;
   var prog = chk.length ? ('<div class="nc-pbar"><span style="width:'+Math.round(done/chk.length*100)+'%"></span></div>') : '';
   var metaCount = chk.length ? (done+'/'+chk.length+' feitos') : (its.length+' '+(its.length===1?'linha':'linhas'));
   return '<div class="notec" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')">'
-    +'<div class="nc-top"><span class="nc-ico">'+kd.icon+'</span><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div><button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button></div>'
+    +'<div class="nc-top"><span class="nc-ico">'+kd.icon+'</span><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div><button class="nc-edit" onclick="startNoteRename(event,\''+n.id+'\')" title="Renomear">✎</button><button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button></div>'
     +'<div class="nc-kind">'+esc(kd.label)+'</div>'
     +'<div class="nc-meta">'+metaCount+' · '+esc(relTime(n.atualizado||n.criado))+dueBadge(n)+'</div>'+prog+'</div>';
 }
+function startNoteRename(ev,id){ ev.stopPropagation(); _renameNoteId=id; renderHomeList(); setTimeout(function(){ var inp=document.querySelector('[data-rename="'+id+'"]'); if(inp){ inp.focus(); inp.select(); } },30); }
+function noteRenameKey(ev,id){ if(ev.key==='Enter'){ ev.preventDefault(); commitNoteRename(id,ev.target.value); } if(ev.key==='Escape'){ ev.preventDefault(); cancelNoteRename(); } }
+function commitNoteRename(id,val){ var n=note(id); if(n){ var v=(val||'').trim()||'(sem título)'; if(v!==n.titulo){ n.titulo=v; touchNote(n); } } _renameNoteId=null; renderHomeList(); }
+function cancelNoteRename(){ _renameNoteId=null; renderHomeList(); }
 function togglePin(ev,id){ ev.stopPropagation(); var n=note(id); if(!n) return; n.fixado=!n.fixado; renderHomeList(); saveNoteRow(n); }
 
 /* ---- new note ---- */
@@ -227,14 +237,14 @@ function renderEditor(){
   var kd=kindDef(n.tipo); var src=lastNoteOfKind(n.tipo,n.id); var fc=fillableCount(n,src); var doneN=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}).length;
   var html='<div style="--kc:'+kd.color+'">'
     +'<button class="lnk" onclick="backHome()">← Listas</button>'
-    +'<div class="ed-head"><span class="ed-ico">'+kd.icon+'</span><input class="ed-title" id="edTitle" value="'+escAttr(n.titulo)+'" onblur="commitTitle(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()"></div>'
-    +'<div class="ed-sub"><b>'+esc(kd.label)+'</b> · criada '+esc(relTime(n.criado))+'</div>'
+    +'<div class="ed-head"><span class="ed-ico">'+kd.icon+'</span><input class="ed-title" id="edTitle" value="'+escAttr(n.titulo)+'" placeholder="Nome da lista" aria-label="Nome da lista" onblur="commitTitle(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()"></div>'
+    +'<div class="ed-sub"><b>'+esc(kd.label)+'</b> · criada '+esc(relTime(n.criado))+' · toque no título para renomear</div>'
     +'<div class="duerow"><span class="dl">📅 Prazo</span><button type="button" class="field datebtn'+(n.vence?'':' empty')+'" id="edDueBtn" onclick="pickDue()">'+(n.vence?esc(fmtDateBR(n.vence)):'Definir prazo')+'</button>'+(n.vence?'<button class="due-clear" onclick="clearDue()" title="Remover prazo">✕</button>':'')+'</div>'
     +(!_selMode ? '<div class="ed-actions">'
       +'<button class="selstart" onclick="exportCurrentList()">📤 Exportar</button>'
       +'<button class="delchecked" id="delChecked" onclick="deleteChecked()" style="display:'+(doneN?'inline-flex':'none')+'">🗑 Excluir marcados ('+doneN+')</button>'
     +'</div>' : '')
-    +(_selMode? '' : (fc? '<button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button>':''))
+    +(_selMode? '' : (fc && !fillDismissed(n.id)? '<div class="fillrow"><button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button><button type="button" class="fill-dismiss" onclick="dismissFill()" title="Ocultar sugestão">✕</button></div>':''))
     +'<div id="edItems"></div>'
     +(_selMode? '' :
        ('<div class="iadd"><span class="ico">+</span><input id="addInput" placeholder="Adicionar item… (cole várias linhas de uma vez)" autocomplete="off" oninput="renderUsuals()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addItemFromInput();}" onpaste="addPaste(event)"><button class="iaddbtn" onclick="addItemFromInput()">Adicionar</button></div>'
@@ -436,12 +446,17 @@ function deleteNote(){ var id=openNoteId; var n=note(id); if(!n) return; JB.conf
 
 /* ---- intelligence: usuals, fill-from-last, recurrence ---- */
 function usuals(kind){ var map={}; (DATA.notas||[]).filter(function(n){return n.tipo===kind;}).forEach(function(n){ (DATA.itens||[]).filter(function(x){return x.notaId===n.id && !isGroup(x);}).forEach(function(it){ var t=(it.texto||'').trim(); if(!t) return; var k=normText(t); if(!map[k]) map[k]={norm:k,text:t,count:0,last:n.criado||''}; map[k].count++; if(String(n.criado||'')>String(map[k].last)){ map[k].last=n.criado; map[k].text=t; } }); }); return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){ if(b.count!==a.count) return b.count-a.count; return String(b.last||'').localeCompare(String(a.last||'')); }); }
+function fillDismissed(noteId){ return !!((DATA.config||{})['fillDis_'+noteId]); }
+function usualsDismissed(noteId){ return !!((DATA.config||{})['usualsDis_'+noteId]); }
+function dismissFill(){ if(!openNoteId) return; saveConfig('fillDis_'+openNoteId, '1'); renderEditor(); }
+function dismissUsuals(){ if(!openNoteId) return; saveConfig('usualsDis_'+openNoteId, '1'); renderEditor(); }
 function renderUsuals(){
   var el=$('edUsuals'); if(!el) return; var n=note(openNoteId); if(!n){ el.innerHTML=''; return; }
+  if(usualsDismissed(openNoteId)){ el.innerHTML=''; return; }
   var q=normText(($('addInput')&&$('addInput').value)||''); var present={}; (DATA.itens||[]).filter(function(x){return x.notaId===openNoteId;}).forEach(function(x){present[normText(x.texto)]=1;});
   var list=usuals(n.tipo).filter(function(u){ return !present[u.norm] && (!q || u.norm.indexOf(q)>-1); }).slice(0,12);
   if(!list.length){ el.innerHTML=''; return; }
-  el.innerHTML='<div class="sect">'+(q?'Sugestões':'Frequentes')+'</div><div class="uchips">'+list.map(function(u){return '<button class="uchip" onclick="addUsual(\''+escAttr(u.text)+'\')"><span class="uplus">+</span>'+esc(u.text)+'</button>';}).join('')+'</div>';
+  el.innerHTML='<div class="uhead"><div class="sect">'+(q?'Sugestões':'Frequentes')+'</div><button type="button" class="udismiss" onclick="dismissUsuals()" title="Ocultar sugestões">✕</button></div><div class="uchips">'+list.map(function(u){return '<button class="uchip" onclick="addUsual(\''+escAttr(u.text)+'\')"><span class="uplus">+</span>'+esc(u.text)+'</button>';}).join('')+'</div>';
 }
 function lastNoteOfKind(kind,ex){ var arr=(DATA.notas||[]).filter(function(n){return n.tipo===kind && n.id!==ex;}).sort(function(a,b){return String(b.criado||'').localeCompare(String(a.criado||''));}); return arr[0]||null; }
 function fillableCount(n,src){ if(!src) return 0; var present={}; (DATA.itens||[]).filter(function(x){return x.notaId===n.id;}).forEach(function(x){present[normText(x.texto)]=1;}); return (DATA.itens||[]).filter(function(x){return x.notaId===src.id && !isGroup(x) && (x.texto||'').trim() && !present[normText(x.texto)];}).length; }
@@ -782,7 +797,7 @@ function dedupeItems(){
 function selCount(){ return Object.keys(_sel).length; }
 function selExitIfEmpty(){ if(_selMode && !selCount()){ _selMode=false; renderEditor(); return true; } return false; }
 var _mq=null, _marqueeDidDrag=false, _MQ_MIN=6;
-function selMarqueeIgnore(el){ if(!el||!el.closest) return true; if(el.closest('.ihandle,button,input,textarea,.ichk,.itype,.idel,.gchev,.gadd,.gsub,.fmtbar,.selbar,.lnk,.iadd,.gaddbtn,.uwrap,.ed-head,.ed-sub,.duerow,.ed-actions,.fillbtn,.door,.fab,.overlay,.header,.foot,.toast,.confirm-card')) return true; if(el.closest('.ihdr')) return true; return false; }
+function selMarqueeIgnore(el){ if(!el||!el.closest) return true; if(el.closest('.ihandle,button,input,textarea,.ichk,.itype,.idel,.gchev,.gadd,.gsub,.fmtbar,.selbar,.lnk,.iadd,.gaddbtn,.uwrap,.uhead,.fillrow,.ed-head,.ed-sub,.duerow,.ed-actions,.fillbtn,.door,.fab,.overlay,.header,.foot,.toast,.confirm-card,.nc-edit,.nc-rename-inp')) return true; if(el.closest('.ihdr')) return true; return false; }
 function selMarqueeZone(){ if(!openNoteId||!$('edItems')) return null; return { top:0, bottom:window.innerHeight, left:0, right:document.documentElement.clientWidth }; }
 function selMarqueeInZone(ev){ var z=selMarqueeZone(); if(!z) return false; return ev.clientX>=z.left && ev.clientX<=z.right && ev.clientY>=z.top && ev.clientY<=z.bottom; }
 function selMarqueeRect(){ var l=Math.min(_mq.sx,_mq.ox), t=Math.min(_mq.sy,_mq.oy), r=Math.max(_mq.sx,_mq.ox), b=Math.max(_mq.sy,_mq.oy); return {left:l,top:t,right:r,bottom:b,width:r-l,height:b-t}; }

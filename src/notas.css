@@ -64,6 +64,10 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .nc-top{ @apply flex items-center gap-2.5 mb-1.5; }
 .nc-ico{ @apply w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-[18px] flex-[0_0_auto]; background:color-mix(in srgb, var(--kc,var(--primary)) 16%, var(--surface2)); }
 .nc-title{ @apply font-extrabold text-[15px] leading-tight flex-1 min-w-0; font-family:var(--font-display); word-break:break-word; }
+.nc-edit{ @apply bg-transparent border-0 text-muted cursor-pointer text-[13px] flex-[0_0_auto] opacity-60 px-1; }
+.nc-edit:hover{ color:var(--primary); opacity:1; }
+.notec-rename{ cursor:default; }
+.nc-rename-inp{ @apply w-full text-[15px] font-bold; font-family:var(--font-display); }
 .nc-pin{ @apply bg-transparent border-0 text-muted cursor-pointer text-[15px] leading-none p-0 flex-[0_0_auto]; }
 .nc-pin.on{ color:var(--primary); }
 .nc-kind{ @apply text-[11px] font-bold uppercase tracking-[.5px]; color:var(--kc,var(--primary)); }
@@ -75,8 +79,9 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 /* ===== editor ===== */
 .ed-head{ @apply flex items-center gap-2 mb-1; }
 .ed-ico{ @apply w-[30px] h-[30px] rounded-[9px] flex items-center justify-center text-[16px] flex-[0_0_auto]; background:color-mix(in srgb, var(--kc,var(--primary)) 16%, var(--surface2)); }
-.ed-title{ @apply flex-1 bg-transparent border-0 text-ink text-xl font-extrabold p-0; font-family:var(--font-display); }
-.ed-title:focus{ outline:none; }
+.ed-title{ @apply flex-1 bg-transparent border-0 text-ink text-xl font-extrabold p-0; font-family:var(--font-display); border-bottom:1px solid transparent; border-radius:0; }
+.ed-title:hover{ border-bottom-color:color-mix(in srgb, var(--border) 70%, transparent); }
+.ed-title:focus{ outline:none; border-bottom-color:var(--primary); }
 .ed-sub{ @apply text-xs text-muted mb-4 mt-0.5; }
 .ed-sub b{ color:var(--kc,var(--primary)); }
 
@@ -100,10 +105,18 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 
 /* usuals / suggestions */
 .uwrap{ @apply mt-4; }
+.uhead{ @apply flex items-center justify-between gap-2 mb-0; }
+.uhead .sect{ @apply mb-0; }
+.udismiss{ @apply bg-transparent border-0 text-muted cursor-pointer text-[13px] opacity-60 px-1 flex-[0_0_auto]; }
+.udismiss:hover{ color:var(--primary); opacity:1; }
 .uchips{ @apply flex gap-2 flex-wrap mt-2; }
 .uchip{ @apply bg-surface2 border border-border rounded-full px-3 py-1.5 text-[13px] font-semibold cursor-pointer text-ink; font-family:inherit; }
 .uchip .uplus{ color:var(--primary); font-weight:800; margin-right:4px; }
 
+.fillrow{ @apply flex items-stretch gap-2 mb-4; }
+.fillrow .fillbtn{ @apply flex-1 mb-0; }
+.fill-dismiss{ @apply bg-surface2 border border-border rounded-[var(--radius-sm)] px-3 text-muted cursor-pointer text-[13px] flex-[0_0_auto]; font-family:inherit; }
+.fill-dismiss:hover{ color:var(--primary); border-color:color-mix(in srgb, var(--primary) 35%, var(--border)); }
 .fillbtn{ @apply w-full bg-surface2 border border-border rounded-[var(--radius-sm)] px-3 py-2.5 text-[13px] font-bold cursor-pointer text-ink mb-4 text-left; font-family:inherit; }
 .fillbtn b{ color:var(--primary); }
 

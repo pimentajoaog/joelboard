@@ -33,6 +33,9 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 .tile.ghost{ @apply opacity-[0.62]; }
 .soon{ @apply mt-[13px] text-[10px] font-bold uppercase tracking-[1px] text-muted bg-surface2 border border-border rounded-full px-[11px] py-1; }
 .foot{ @apply mt-10 text-[11px] text-muted opacity-60 text-center; }
+.hub-legal-link{ color:inherit; text-decoration:underline; text-underline-offset:2px; }
+.hub-legal-link:hover{ color:var(--primary); opacity:1; }
+.hub-legal-btn{ display:block; text-align:center; text-decoration:none; color:inherit; }
 
 /* Novidades sidebar */
 .novidades{ position:sticky; top:24px; background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:18px 16px; }
@@ -119,7 +122,10 @@ a.miniv-card.live:hover{ border-color:var(--mini); transform:translateY(-3px); }
 .miniv-site-in:focus{ border-color:var(--mini); }
 .miniv-site-btn{ width:40px; background:var(--surface2); border:1px solid var(--border); color:var(--mini); border-radius:11px; font-size:20px; font-weight:700; cursor:pointer; }
 .miniv-site-btn:hover{ border-color:var(--mini); }
-.miniv-sites-note{ font-size:11px; color:var(--muted); margin-top:10px; line-height:1.5; }
+.miniv-sites-note a{ color:var(--mini); font-weight:700; text-decoration:none; }
+.miniv-sites-note a:hover{ text-decoration:underline; }
+.miniv-sync-btn{ display:block; width:100%; margin-top:4px; padding:11px 14px; background:color-mix(in srgb, var(--mini) 12%, var(--surface2)); border:1px solid color-mix(in srgb, var(--mini) 35%, var(--border)); border-radius:12px; color:var(--mini); font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; }
+.miniv-sync-btn:hover{ border-color:var(--mini); }
 
 /* skin display font on headings */
 .wm, .name { font-family: var(--font-display); }

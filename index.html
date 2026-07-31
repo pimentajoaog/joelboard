@@ -85,7 +85,7 @@
   <aside class="novidades" id="hubNews" aria-label="Novidades"></aside>
   </div>
 
-  <div class="foot">© 2026 Joel Soluções LTDA · Todos os direitos reservados.</div>
+  <div class="foot">© 2026 Joel Soluções LTDA · <a class="hub-legal-link" href="/privacy.html">Privacidade</a></div>
 </div>
 
 <div class="overlay" id="hubSet" onclick="if(event.target===this)closeHubSet()">
@@ -94,6 +94,7 @@
     <div id="hubAcct" class="acctline"></div>
     <button class="mbtn" onclick="hubVerTutorial()">🧭 Ver tutorial</button>
     <button class="mbtn" onclick="JB.feedback('Joelboard Hub')">💬 Enviar feedback</button>
+    <a class="mbtn hub-legal-btn" href="/privacy.html">🔒 Privacidade</a>
     <button class="mbtn" id="hubAuthBtn" onclick="hubAuth()">Entrar com Google</button>
     <div style="font-size:12px;color:var(--muted);margin:14px 0 8px">Tema</div>
     <div id="hubSkins"></div>
@@ -164,6 +165,13 @@
       <p>Abra a aba que quer monitorar, defina o intervalo e clique <b>Iniciar</b> — a página recarrega na hora e um contador aparece no canto enquanto a aba estiver ativa. Atalho personalizável no popup (clique em <b>Atalho</b> para gravar). Padrão: <code>Alt+Shift+R</code>.</p>
       <h3>Joelboard Report</h3>
       <p>Preencha os contadores no popup, confira a prévia e clique <b>Copiar relatório</b> — cole no Slack. Edite labels, linhas fixas e campos na aba <b>Template</b>. Não precisa de site permitido (só popup).</p>
+    </div>
+    <div class="miniv-sites">
+      <h2>Sincronizar Replace</h2>
+      <p class="miniv-sub">Macros, variáveis e ajustes ficam numa planilha <b>Joelboard Mini</b> no seu Drive — mesma conta Google do Hub. Funciona entre dispositivos depois de sincronizar.</p>
+      <button type="button" class="miniv-sync-btn" id="miniReplaceSync">↻ Sincronizar Replace agora</button>
+      <p class="miniv-sites-note" id="miniReplaceSyncNote">Requer a extensão Replace instalada neste navegador. Também pode entrar com Google no popup da extensão (Ajustes → Nuvem).</p>
+      <p class="miniv-sites-note">Extensões sujeitas à <a href="/privacy.html">política de privacidade</a> do Joelboard.</p>
     </div>
     <div class="miniv-sites">
       <h2>Sites permitidos</h2>

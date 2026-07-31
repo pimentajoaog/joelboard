@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<!-- Joelboard — privacy policy (site + Mini extensions). © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacidade — Joelboard</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="stylesheet" href="/joelboard.css">
+<link rel="stylesheet" href="/themes.css">
+<meta name="theme-color" content="#0d0f18">
+<style>
+  :root {
+    --bg: #0d0f18;
+    --surface: #1b1f32;
+    --surface2: #141824;
+    --border: #2b3147;
+    --text: #e7eaf3;
+    --muted: #9aa3b5;
+    --primary: #818cf8;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .privacy-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+  }
+  .privacy-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .privacy-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 18px;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .privacy-brand img { width: 36px; height: 36px; border-radius: 8px; }
+  .privacy-back {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .privacy-back:hover { text-decoration: underline; }
+  h1 {
+    font-size: clamp(1.6rem, 4vw, 2rem);
+    font-weight: 800;
+    margin: 0 0 8px;
+    letter-spacing: -0.02em;
+  }
+  .privacy-updated {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 32px;
+  }
+  .privacy-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    margin-bottom: 16px;
+  }
+  h2 {
+    font-size: 17px;
+    font-weight: 800;
+    margin: 0 0 12px;
+    color: var(--text);
+  }
+  p, li { margin: 0 0 10px; color: var(--text); }
+  p:last-child, li:last-child { margin-bottom: 0; }
+  ul { margin: 0 0 10px; padding-left: 1.25rem; }
+  li { margin-bottom: 6px; }
+  a { color: var(--primary); }
+  code {
+    font-size: 0.92em;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+  .privacy-footer {
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<div class="privacy-wrap">
+  <div class="privacy-top">
+    <a class="privacy-brand" href="/">
+      <img src="/icon-192.png" alt="">
+      <span>Joelboard</span>
+    </a>
+    <a class="privacy-back" href="/">← Voltar ao Hub</a>
+  </div>
+
+  <h1>Política de privacidade</h1>
+  <p class="privacy-updated">Última atualização: 10 de julho de 2026 · Joel Soluções LTDA</p>
+
+  <div class="privacy-card">
+    <h2>Resumo</h2>
+    <p>Joelboard é um conjunto de apps web e extensões Chrome leves (<strong>Joelboard Mini</strong>). Projetamos o produto para que seus dados fiquem sob seu controle: em geral, no seu navegador e — se você optar — na sua conta Google (Sheets/Drive).</p>
+    <p><strong>Não vendemos dados.</strong> Não operamos um backend que armazena o conteúdo dos seus apps ou extensões.</p>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Quem somos</h2>
+    <p>Esta política cobre o site <a href="https://joelboard.vercel.app">joelboard.vercel.app</a>, os apps Joelboard (Finance, Fit, Study, Notas, etc.) e as extensões Chrome <strong>Joelboard Replace</strong>, <strong>Joelboard Refresh</strong> e <strong>Joelboard Report</strong>.</p>
+    <p>Controlador: <strong>Joel Soluções LTDA</strong>.</p>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Site e apps Joelboard</h2>
+    <ul>
+      <li><strong>Armazenamento local:</strong> preferências, rascunhos e dados dos apps ficam principalmente no <code>localStorage</code> / <code>sessionStorage</code> do seu navegador neste dispositivo.</li>
+      <li><strong>Login Google (opcional):</strong> se você entrar com Google, usamos OAuth para acessar planilhas e arquivos <em>na sua conta</em> (Google Sheets e Drive). O token fica no navegador; as chamadas vão direto às APIs do Google.</li>
+      <li><strong>Sem servidor Joelboard de dados:</strong> não enviamos o conteúdo das suas planilhas ou notas para servidores nossos.</li>
+    </ul>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Extensões Joelboard Mini (Chrome)</h2>
+    <p>As três extensões são distribuídas pela Chrome Web Store (ou manualmente). Cada uma tem um propósito único:</p>
+    <ul>
+      <li><strong>Replace</strong> — expansão de texto por gatilhos em sites que você permitir.</li>
+      <li><strong>Refresh</strong> — recarregar automaticamente a aba atual em intervalo que você define.</li>
+      <li><strong>Report</strong> — montar relatórios no popup e copiar para a área de transferência (ex.: Slack).</li>
+    </ul>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Joelboard Replace</h2>
+    <ul>
+      <li><strong>Dados locais:</strong> gatilhos, templates, variáveis e ajustes ficam em <code>chrome.storage.local</code> no seu navegador.</li>
+      <li><strong>Sites permitidos:</strong> a extensão só injeta script em domínios que você adicionar (lista padrão inclui Joelboard, Google Docs/Sheets, GitHub, etc.). Não roda em todos os sites por padrão.</li>
+      <li><strong>Área de transferência:</strong> a permissão <code>clipboardRead</code> é usada apenas quando um template contém <code>{{clipboard}}</code> ou <code>%clip%</code> — para colar o que você copiou no texto expandido.</li>
+      <li><strong>Sync na nuvem (opcional):</strong> se você entrar com Google (página Joelboard aberta pela extensão), macros e ajustes podem ser gravados numa planilha <strong>Joelboard Mini</strong> no <em>seu</em> Google Drive. A extensão fala diretamente com <code>googleapis.com</code>; nós não recebemos esses dados.</li>
+      <li><strong>E-mail:</strong> se você usar sync, guardamos seu endereço Google localmente na extensão para exibir “Conectado: …” no popup.</li>
+    </ul>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Joelboard Refresh</h2>
+    <ul>
+      <li><strong>Dados locais:</strong> intervalo, estado ligado/desligado e preferências em <code>chrome.storage.local</code>.</li>
+      <li><strong>Sites permitidos:</strong> só recarrega abas em domínios que você autorizar (mesma lista compartilhada com Replace, se configurada no Hub).</li>
+      <li><strong>Sem sync na nuvem</strong> e sem login Google nesta extensão.</li>
+    </ul>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Joelboard Report</h2>
+    <ul>
+      <li><strong>Dados locais:</strong> template do relatório, contadores e labels em <code>chrome.storage.local</code>.</li>
+      <li><strong>Sem acesso a páginas web</strong> — funciona só no popup da extensão.</li>
+      <li><strong>Sem sync na nuvem</strong> e sem login Google nesta extensão.</li>
+    </ul>
+  </div>
+
+  <div class="privacy-card">
+    <h2>O que não coletamos</h2>
+    <ul>
+      <li>Não vendemos nem alugamos dados pessoais.</li>
+      <li>Não usamos analytics de terceiros nas extensões Mini.</li>
+      <li>Não enviamos keystrokes, histórico de navegação ou conteúdo digitado para servidores Joelboard.</li>
+      <li>Replace e Refresh não transmitem texto expandido ou conteúdo de páginas para nossos servidores — processamento local ou, se você ativar sync, gravação na sua planilha Google.</li>
+    </ul>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Google e terceiros</h2>
+    <p>Login e planilhas usam serviços Google (OAuth, Sheets, Drive). O uso desses serviços está sujeito à <a href="https://policies.google.com/privacy" rel="noopener noreferrer" target="_blank">Política de Privacidade do Google</a>.</p>
+    <p>Fontes web (Google Fonts) podem ser carregadas no site Joelboard conforme a política do Google Fonts.</p>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Retenção e exclusão</h2>
+    <ul>
+      <li><strong>Extensões:</strong> remova a extensão em <code>chrome://extensions</code> ou limpe dados em “Limpar dados de navegação” / desinstalar. Sync na planilha permanece no seu Drive até você apagar a planilha.</li>
+      <li><strong>Site:</strong> limpe dados do site Joelboard nas configurações do navegador ou use “Sair” nos apps.</li>
+    </ul>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Alterações</h2>
+    <p>Podemos atualizar esta página. A data no topo indica a versão vigente. Para extensões na Chrome Web Store, mudanças relevantes podem ser refletidas na listagem da loja.</p>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Contato</h2>
+    <p>Dúvidas sobre privacidade: use o e-mail de suporte informado na listagem da extensão na Chrome Web Store ou acesse <a href="https://joelboard.vercel.app">joelboard.vercel.app</a>.</p>
+  </div>
+
+  <p class="privacy-footer">© 2026 Joel Soluções LTDA · <a href="/">Joelboard</a></p>
+</div>
+</body>
+</html>

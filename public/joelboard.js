@@ -594,6 +594,87 @@
 
   // --- shared feedback (posts to the app owner's Google Form) + a tiny core toast ---
   var FB_FORM = { action: 'https://docs.google.com/forms/d/e/1FAIpQLSdfIXwvv96V8E2aMsS0Yu9AlugAy0NZ7-eAklGisFO6cuSCuA/formResponse', nameEntry: 'entry.2102774097', kindEntry: 'entry.1066607309', msgEntry: 'entry.315076588' };
+  var FB_ATTACH = {
+    maxFiles: 10,
+    maxBytes: 10 * 1024 * 1024,
+    accept: 'image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,video/mp4,video/webm,video/quicktime,video/x-msvideo,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.mp4,.webm,.mov,.avi',
+    exts: /\.(jpe?g|png|gif|webp|heic|heif|mp4|webm|mov|avi)$/i
+  };
+  var FB_FOLDER_KEY = 'jb_fb_folder';
+  function fbAttachHint(){
+    return 'Até ' + FB_ATTACH.maxFiles + ' arquivos · ' + (FB_ATTACH.maxBytes / (1024 * 1024)) + ' MB cada · JPG, PNG, GIF, WebP, MP4, WebM, MOV';
+  }
+  function fbFormatBytes(n){
+    if (n < 1024 * 1024) return Math.max(1, Math.round(n / 1024)) + ' KB';
+    return (n / (1024 * 1024)).toFixed(n >= 10 * 1024 * 1024 ? 0 : 1).replace(/\.0$/, '') + ' MB';
+  }
+  function fbFileOk(file){
+    if (!file) return false;
+    var t = String(file.type || '').toLowerCase();
+    if (t.indexOf('image/') === 0 || t.indexOf('video/') === 0) return true;
+    return FB_ATTACH.exts.test(String(file.name || ''));
+  }
+  function fbValidateFiles(fileList){
+    var files = [].slice.call(fileList || []);
+    if (!files.length) return { ok: true, files: [] };
+    if (files.length > FB_ATTACH.maxFiles) return { ok: false, err: 'Máximo de ' + FB_ATTACH.maxFiles + ' arquivos por envio.' };
+    for (var i = 0; i < files.length; i++) {
+      if (!fbFileOk(files[i])) return { ok: false, err: 'Formato não suportado: ' + (files[i].name || 'arquivo') };
+      if (files[i].size > FB_ATTACH.maxBytes) return { ok: false, err: (files[i].name || 'Arquivo') + ' excede ' + fbFormatBytes(FB_ATTACH.maxBytes) + '.' };
+    }
+    return { ok: true, files: files };
+  }
+  function fbDriveUpload(file, folderId){
+    var boundary = 'jbfb' + Date.now() + Math.floor(Math.random() * 1e6);
+    var meta = { name: file.name }; if (folderId) meta.parents = [folderId];
+    var pre = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) + '\r\n--' + boundary + '\r\nContent-Type: ' + (file.type || 'application/octet-stream') + '\r\n\r\n';
+    var post = '\r\n--' + boundary + '--';
+    var blob = new Blob([pre, file, post], { type: 'multipart/related; boundary=' + boundary });
+    var url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink';
+    function attempt(tok, retry){
+      return fetch(url, { method: 'POST', headers: { Authorization: 'Bearer ' + tok }, body: blob }).then(function (r) {
+        if (r.status === 401 && retry) return requestToken(false).then(function (nt) { return attempt(nt, false); });
+        if (!r.ok) return r.text().then(function () { throw new Error('HTTP ' + r.status); });
+        return r.json();
+      });
+    }
+    var t = cachedToken();
+    return (t ? Promise.resolve(t) : requestToken(false)).then(function (tok) { return attempt(tok, true); });
+  }
+  function fbEnsureFolder(){
+    var cached = lg(FB_FOLDER_KEY);
+    if (cached) return Promise.resolve(cached);
+    var q = "mimeType='application/vnd.google-apps.folder' and trashed=false and name='Joelboard Feedback — Anexos'";
+    return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&pageSize=1')
+      .then(function (res) {
+        var files = res.files || [];
+        if (files.length) { ls(FB_FOLDER_KEY, files[0].id); return files[0].id; }
+        return api('POST', 'https://www.googleapis.com/drive/v3/files?fields=id', { name: 'Joelboard Feedback — Anexos', mimeType: 'application/vnd.google-apps.folder' })
+          .then(function (f) { ls(FB_FOLDER_KEY, f.id); return f.id; });
+      });
+  }
+  function fbShareAnyone(fileId){
+    return api('POST', 'https://www.googleapis.com/drive/v3/files/' + fileId + '/permissions', { role: 'reader', type: 'anyone' });
+  }
+  function uploadFeedbackFiles(fileList){
+    var v = fbValidateFiles(fileList);
+    if (!v.ok) return Promise.reject(new Error(v.err));
+    if (!v.files.length) return Promise.resolve([]);
+    if (!isSignedIn()) return Promise.reject(new Error('JB_FB_SIGNIN'));
+    return fbEnsureFolder().then(function (folderId) {
+      return Promise.all(v.files.map(function (file) {
+        return fbDriveUpload(file, folderId).then(function (f) {
+          return fbShareAnyone(f.id).then(function () { return f; }, function () { return f; });
+        }).then(function (f) {
+          return { name: f.name || file.name, url: f.webViewLink || ('https://drive.google.com/file/d/' + f.id + '/view') };
+        });
+      }));
+    });
+  }
+  function fbLinksText(links){
+    if (!links || !links.length) return '';
+    return '\n\nAnexos:\n' + links.map(function (l) { return '• ' + l.name + ': ' + l.url; }).join('\n');
+  }
   function jbToast(msg, opts){
     opts = opts || {};
     var text = String(msg == null ? '' : msg);
@@ -672,6 +753,10 @@
       + '<div style="display:flex;gap:8px;margin-bottom:12px"><button id="jbFbBug" style="flex:1;border-radius:10px;padding:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">🐛 Bug</button><button id="jbFbFeat" style="flex:1;border-radius:10px;padding:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">💡 Ideia</button></div>'
       + '<input id="jbFbName" placeholder="Seu nome (opcional)" style="width:100%;background:#252a40;border:1px solid #2b3147;border-radius:10px;padding:11px;color:#e7eaf3;font-size:14px;margin-bottom:10px;font-family:inherit">'
       + '<textarea id="jbFbMsg" placeholder="O que aconteceu? O que você gostaria?" rows="4" style="width:100%;background:#252a40;border:1px solid #2b3147;border-radius:10px;padding:11px;color:#e7eaf3;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>'
+      + '<div style="margin-top:12px"><div style="font-size:12px;font-weight:700;color:#c4c9d8;margin-bottom:6px">📎 Anexos (opcional)</div>'
+      + '<input type="file" id="jbFbFiles" multiple accept="' + FB_ATTACH.accept + '" style="width:100%;font-size:12px;color:#c4c9d8">'
+      + '<div style="font-size:11px;color:#8a93a8;margin-top:6px;line-height:1.4">' + fbAttachHint() + '<br>Mesmos limites do Google Forms. Entre com Google para enviar anexos.</div>'
+      + '<div id="jbFbFileList" style="margin-top:8px;font-size:12px;color:#c4c9d8"></div></div>'
       + '<div id="jbFbErr" style="color:#fb7185;font-size:12px;margin-top:8px;min-height:14px"></div>'
       + '<button id="jbFbSend" style="background:#fff;color:#1f2430;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;width:100%;cursor:pointer;font-family:inherit;margin-top:4px">Enviar</button>'
       + '</div>';
@@ -682,17 +767,45 @@
     function paint(){ bug.style.background = kind==='bug'?'#fff':'transparent'; bug.style.color = kind==='bug'?'#1f2430':'#e7eaf3'; bug.style.border = kind==='bug'?'none':'1px solid #2b3147'; feat.style.background = kind==='feature'?'#fff':'transparent'; feat.style.color = kind==='feature'?'#1f2430':'#e7eaf3'; feat.style.border = kind==='feature'?'none':'1px solid #2b3147'; }
     bug.onclick = function(){ kind='bug'; paint(); }; feat.onclick = function(){ kind='feature'; paint(); }; paint();
     ov.querySelector('#jbFbName').value = email() ? email().split('@')[0] : '';
+    function paintFbFiles(){
+      var el = ov.querySelector('#jbFbFileList');
+      var inp = ov.querySelector('#jbFbFiles');
+      if (!el || !inp || !inp.files || !inp.files.length) { if (el) el.textContent = ''; return; }
+      el.textContent = [].slice.call(inp.files).map(function (f) { return f.name + ' (' + fbFormatBytes(f.size) + ')'; }).join(' · ');
+    }
+    ov.querySelector('#jbFbFiles').addEventListener('change', function(){
+      var v = fbValidateFiles(this.files);
+      if (!v.ok) { this.value = ''; paintFbFiles(); ov.querySelector('#jbFbErr').textContent = v.err; return; }
+      ov.querySelector('#jbFbErr').textContent = '';
+      paintFbFiles();
+    });
     ov.querySelector('#jbFbX').onclick = close;
     ov.querySelector('#jbFbSend').onclick = function(){
       var msg = (ov.querySelector('#jbFbMsg').value || '').trim();
       if (!msg) { ov.querySelector('#jbFbErr').textContent = 'Escreva uma mensagem.'; return; }
-      var btn = ov.querySelector('#jbFbSend'); btn.disabled = true; btn.textContent = 'Enviando…';
-      var fd = new FormData();
-      fd.append(FB_FORM.nameEntry, (ov.querySelector('#jbFbName').value || '').trim() || email() || '');
-      fd.append(FB_FORM.kindEntry, kind==='feature' ? 'Feature request' : 'Bug report');
-      fd.append(FB_FORM.msgEntry, '[' + (appName || 'Joelboard') + '] ' + msg + (email() ? (' — ' + email()) : ''));
-      function done(){ close(); jbToast('✓ Feedback enviado. Obrigado!'); }
-      fetch(FB_FORM.action, { method: 'POST', mode: 'no-cors', body: fd }).then(done, done);
+      var fileInp = ov.querySelector('#jbFbFiles');
+      var v = fbValidateFiles(fileInp && fileInp.files);
+      if (!v.ok) { ov.querySelector('#jbFbErr').textContent = v.err; return; }
+      var btn = ov.querySelector('#jbFbSend'); btn.disabled = true; btn.textContent = v.files.length ? 'Enviando anexos…' : 'Enviando…';
+      function sendFeedback(links){
+        btn.textContent = 'Enviando…';
+        var fd = new FormData();
+        fd.append(FB_FORM.nameEntry, (ov.querySelector('#jbFbName').value || '').trim() || email() || '');
+        fd.append(FB_FORM.kindEntry, kind==='feature' ? 'Feature request' : 'Bug report');
+        fd.append(FB_FORM.msgEntry, '[' + (appName || 'Joelboard') + '] ' + msg + fbLinksText(links) + (email() ? (' — ' + email()) : ''));
+        function done(){ close(); jbToast('✓ Feedback enviado. Obrigado!'); }
+        fetch(FB_FORM.action, { method: 'POST', mode: 'no-cors', body: fd }).then(done, done);
+      }
+      if (!v.files.length) { sendFeedback([]); return; }
+      uploadFeedbackFiles(v.files).then(sendFeedback).catch(function(err){
+        btn.disabled = false; btn.textContent = 'Enviar';
+        if (err && err.message === 'JB_FB_SIGNIN') {
+          ov.querySelector('#jbFbErr').textContent = 'Entre com Google para anexar arquivos.';
+          signIn({ onSuccess: function(){ ov.querySelector('#jbFbErr').textContent = ''; } });
+          return;
+        }
+        ov.querySelector('#jbFbErr').textContent = (err && err.message) || 'Erro ao enviar anexos.';
+      });
     };
   }
 
@@ -1012,7 +1125,8 @@
     requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
-    feedback: feedback, toast: jbToast, persist: persist, onTabVisible: onTabVisible, watchSheet: watchSheet, confirm: confirm, whenReady: whenReady,
+    feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH,
+    toast: jbToast, persist: persist, onTabVisible: onTabVisible, watchSheet: watchSheet, confirm: confirm, whenReady: whenReady,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis
   };

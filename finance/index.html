@@ -413,6 +413,12 @@
       </div>
     </div>
     <div class="fg"><label class="flabel" data-i18n="fb.message">Message</label><textarea class="field" id="fbMsg" rows="5" data-i18n-ph="fb.ph" placeholder="Describe it…" style="resize:vertical;min-height:90px;font-family:inherit;"></textarea></div>
+    <div class="fg">
+      <label class="flabel" data-i18n="fb.attach">Attachments (optional)</label>
+      <input type="file" class="field" id="fbFiles" multiple accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,video/mp4,video/webm,video/quicktime,video/x-msvideo,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.mp4,.webm,.mov,.avi" style="padding:8px 10px;font-size:13px" onchange="onFbFilesChange()">
+      <div class="rg" id="fbAttachHint" data-i18n="fb.attachHint" style="margin-top:6px;font-size:12px"></div>
+      <div class="rg" id="fbFileList" style="margin-top:4px;font-size:12px"></div>
+    </div>
     <div class="form-err" id="fbErr"></div>
     <button class="btn-primary" id="fbSave" onclick="submitFeedback()" data-i18n="fb.send">Send</button>
   </div>

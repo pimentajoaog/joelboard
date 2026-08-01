@@ -104,11 +104,46 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .nc-pick-ico.on{ border-color:var(--primary); background:color-mix(in srgb, var(--primary) 12%, var(--surface2)); }
 
 /* ===== editor ===== */
-.ed-head{ @apply flex items-center gap-2 mb-1; }
+.ed-shell{ @apply flex flex-col min-h-[calc(100dvh-120px)] pb-28; }
+.ed-top{ @apply flex items-center justify-between gap-2 mb-3; }
+.ed-back{ @apply text-sm; }
+.ed-head{ @apply flex items-center gap-2 mb-2 flex-wrap; }
+.ed-head-avatars{ @apply flex gap-1 flex-[0_0_auto]; }
 .ed-ico{ @apply w-[30px] h-[30px] rounded-[9px] flex items-center justify-center text-[16px] flex-[0_0_auto]; background:color-mix(in srgb, var(--kc,var(--primary)) 16%, var(--surface2)); }
-.ed-title{ @apply flex-1 bg-transparent border-0 text-ink text-xl font-extrabold p-0; font-family:var(--font-display); border-bottom:1px solid transparent; border-radius:0; }
+.ed-title{ @apply flex-1 min-w-[140px] bg-transparent border-0 text-ink text-xl font-extrabold p-0; font-family:var(--font-display); border-bottom:1px solid transparent; border-radius:0; }
 .ed-title:hover{ border-bottom-color:color-mix(in srgb, var(--border) 70%, transparent); }
 .ed-title:focus{ outline:none; border-bottom-color:var(--primary); }
+.ed-meta{ @apply flex flex-wrap items-center gap-2 mb-3; }
+.ed-chip{ @apply inline-flex items-center gap-1 text-[11px] font-bold rounded-full px-2.5 py-1; background:var(--surface2); color:var(--muted); white-space:nowrap; }
+.ed-chip.ed-kind{ color:var(--kc,var(--primary)); background:color-mix(in srgb, var(--kc,var(--primary)) 12%, var(--surface2)); }
+.ed-chip.ed-prog{ @apply cursor-default; }
+.ed-chip.ed-due{ cursor:pointer; }
+.ed-chip.ed-due.soon{ background:color-mix(in srgb,#fb7185 18%,var(--surface)); color:#fb7185; }
+.ed-chip.ed-due.warn{ background:color-mix(in srgb,#fbbf24 18%,var(--surface)); color:#fbbf24; }
+.ed-chip.ed-due.over{ background:color-mix(in srgb,#f87171 24%,var(--surface)); color:#f87171; }
+.ed-chip.ed-due.done{ background:color-mix(in srgb,var(--success) 18%,var(--surface)); color:var(--success); cursor:default; }
+.ed-progbar{ @apply w-16 h-1.5 rounded-full overflow-hidden flex-[0_0_auto]; background:color-mix(in srgb, var(--border) 55%, transparent); }
+.ed-progbar span{ @apply block h-full rounded-full; background:var(--kc,var(--primary)); }
+.ed-menu-wrap{ @apply relative flex-[0_0_auto]; }
+.ed-menu-btn{ @apply w-9 h-9 rounded-full border border-border bg-surface2 text-lg leading-none cursor-pointer; color:var(--text); font-family:inherit; }
+.ed-menu-btn:hover{ border-color:color-mix(in srgb, var(--primary) 35%, var(--border)); }
+.ed-menu{ @apply absolute right-0 top-[calc(100%+4px)] min-w-[210px] py-1.5 rounded-xl border border-border bg-surface2 shadow-lg z-[300]; display:none; }
+.ed-menu.open{ display:block; }
+.ed-menu-item{ @apply block w-full text-left px-3.5 py-2.5 text-[13px] font-semibold bg-transparent border-0 cursor-pointer text-ink; font-family:inherit; }
+.ed-menu-item:hover{ background:var(--surface); }
+.ed-menu-item.danger{ color:#f87171; }
+.ed-menu-div{ @apply h-px my-1.5 mx-2; background:var(--border); }
+.fillrow-slim{ @apply mb-3; }
+.ed-items-panel{ @apply flex-1 min-h-0; }
+.ed-done-toggle{ @apply block w-full text-left py-2 my-1 text-[12px] font-bold text-muted bg-transparent border-0 cursor-pointer; font-family:inherit; }
+.ed-done-toggle:hover{ color:var(--primary); }
+.ed-add-card{ @apply sticky bottom-0 mt-4 p-3 rounded-[var(--radius)] border border-border bg-surface2 shadow-[0_-8px_24px_rgba(0,0,0,.22)]; }
+.ed-add-card .iadd{ @apply mt-0 py-1; }
+.ed-add-card .uwrap{ @apply mt-2; }
+.iadd-go{ @apply w-8 h-8 rounded-full border-0 bg-primary text-on-brand text-sm font-extrabold cursor-pointer flex-[0_0_auto]; font-family:inherit; }
+.ed-add-group{ @apply block w-full mt-2 bg-transparent border border-dashed border-border text-muted rounded-[var(--radius-sm)] py-2 text-[12px] font-bold cursor-pointer; font-family:inherit; }
+.ed-add-group:hover{ color:var(--text); border-color:var(--muted); }
+
 .ed-sub{ @apply text-xs text-muted mb-4 mt-0.5; }
 .ed-sub b{ color:var(--kc,var(--primary)); }
 
@@ -120,9 +155,9 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .itext{ @apply flex-1 bg-transparent border-0 text-ink text-sm p-0 min-w-0; }
 .itext:focus{ outline:none; }
 .irow.done .itext{ @apply line-through text-muted; }
-.itype{ @apply bg-transparent border-0 text-muted cursor-pointer text-[13px] flex-[0_0_auto] opacity-60 px-1; }
+.itype{ @apply bg-transparent border-0 text-muted cursor-pointer text-[13px] flex-[0_0_auto] px-1; }
 .itype:hover{ opacity:1; }
-.idel{ @apply bg-transparent border-0 text-muted cursor-pointer text-[13px] flex-[0_0_auto] opacity-50 px-1; }
+.idel{ @apply bg-transparent border-0 text-muted cursor-pointer text-[13px] flex-[0_0_auto] px-1; }
 .idel:hover{ color:#f87171; opacity:1; }
 
 .iadd{ @apply flex items-center gap-2.5 py-2 mt-1; }
@@ -173,8 +208,16 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .due-clear:hover{ color:#f87171; }
 
 /* ===== groups, drag handles, wrapping, add buttons ===== */
-.ihandle{ background:transparent; border:0; color:var(--muted); cursor:grab; flex:0 0 auto; font-size:14px; line-height:1; padding:0 2px; opacity:.45; touch-action:none; }
-.ihandle:hover{ opacity:.9; }
+.ihandle{ background:transparent; border:0; color:var(--muted); cursor:grab; flex:0 0 auto; font-size:14px; line-height:1; padding:0 2px; opacity:0; touch-action:none; transition:opacity .12s ease; }
+.irow:hover .ihandle,.ihdr:hover .ihandle,.irow.dragging .ihandle,.ihdr.dragging .ihandle{ opacity:.45; }
+.ihandle:hover{ opacity:.9 !important; }
+.itype,.idel,.gadd,.gsub{ opacity:0; transition:opacity .12s ease; }
+.irow:hover .itype,.irow:hover .idel,.ihdr:hover .gadd,.ihdr:hover .gsub,.ihdr:hover .idel,.irow:focus-within .itype,.irow:focus-within .idel,.ihdr:focus-within .gadd,.ihdr:focus-within .gsub,.ihdr:focus-within .idel{ opacity:.6; }
+.irow:hover .itype:hover,.irow:hover .idel:hover,.ihdr:hover .gadd:hover,.ihdr:hover .gsub:hover,.ihdr:hover .idel:hover{ opacity:1; }
+@media (hover:none){
+  .ihandle{ opacity:.35; }
+  .itype,.idel,.gadd,.gsub{ opacity:.45; }
+}
 .ihandle:active{ cursor:grabbing; }
 .irow.dragging,.ihdr.dragging{ opacity:.55; }
 .irow.ihide,.ihdr.ihide{ display:none; }

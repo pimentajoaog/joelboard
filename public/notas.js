@@ -1,6 +1,6 @@
 /* Joelboard Notas — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
-var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={}, _renameNoteId=null;
+var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={}, _renameNoteId=null, _doneCollapsed=true, _edMenuOpen=false;
 var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']],['Compartilhadas',['Titulo','SheetID','Papel','Owner','ListaID','Atualizado']]];
 function _ncSsId(){ return (typeof ncSsId==='function')?ncSsId():JB.getSheetId('notas'); }
 function _ncGrid(){ return (typeof ncGrid==='function')?ncGrid():notasGrid; }
@@ -139,8 +139,8 @@ function refreshData(){
 /* ---- routing / render ---- */
 function note(id){ return (DATA.notas||[]).find(function(n){return n.id===id;}); }
 function render(){ var ed=!!(openNoteId&&note(openNoteId)); $('fab').style.display=ed?'none':'flex'; if(ed) renderEditor(); else renderHomeShell(); updateSelBar(); }
-function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; _renameNoteId=null; render(); window.scrollTo(0,0); }
-function backHome(){ openNoteId=null; render(); }
+function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; _renameNoteId=null; _doneCollapsed=true; _edMenuOpen=false; render(); window.scrollTo(0,0); }
+function backHome(){ openNoteId=null; _edMenuOpen=false; render(); }
 
 /* ---- home ---- */
 function renderHomeShell(){
@@ -245,41 +245,84 @@ function renderNewKind(){ var el=$('newKindWrap'); if(!el) return; var cur=kindD
 function pickNewKind(k){ newKind=k; if(window.JB&&JB.ddClose)JB.ddClose(); renderNewKind(); }
 function createNote(){ var t=($('newTitle').value||'').trim(); var kd=kindDef(newKind); if(!t){ var d=new Date(); t=kd.label+' — '+MOFULL[d.getMonth()]; } var now=new Date().toISOString(); var n={ id:uuid(), titulo:t, tipo:newKind, cor:'', fixado:false, criado:now, atualizado:now, vence:newDue }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); closeNew(); openNote(n.id); }
 
+function noteProgressStats(){
+  var its=itemsOf(openNoteId).filter(function(x){ return !isGroup(x) && x.marcavel; });
+  var done=0; its.forEach(function(x){ if(x.feito) done++; });
+  return { total:its.length, done:done, open:its.length-done, pct:its.length?Math.round(done/its.length*100):0 };
+}
+function toggleDoneCollapsed(){ _doneCollapsed=!_doneCollapsed; renderItems(); }
+function toggleEdMenu(ev){ if(ev) ev.stopPropagation(); _edMenuOpen=!_edMenuOpen; var m=$('edMenu'); if(m) m.classList.toggle('open', _edMenuOpen); }
+function closeEdMenu(){ _edMenuOpen=false; var m=$('edMenu'); if(m) m.classList.remove('open'); }
+function edMenuDelChecked(){ closeEdMenu(); deleteChecked(); }
+function renderEdDueChip(n){
+  if(!n.vence) return '';
+  if(noteDone(n)) return '<span class="ed-chip ed-due done">✅ feito</span>';
+  return '<span class="ed-chip ed-due '+dueClass(n.vence)+'" onclick="pickDue()">📅 '+esc(dueLabel(n.vence))+'</span>';
+}
+function renderEdProgress(n){
+  var st=noteProgressStats();
+  if(!st.total) return '<span class="ed-chip ed-prog">0 itens</span>';
+  return '<span class="ed-chip ed-prog">'+st.done+'/'+st.total+' feitos</span><div class="ed-progbar"><span style="width:'+st.pct+'%"></span></div>';
+}
+function renderEdMenu(n, doneN){
+  var shareBtn=n.collabSheetId?'<button type="button" class="ed-menu-item" onclick="closeEdMenu();ncOpenShare()">👥 Compartilhar</button>':'<button type="button" class="ed-menu-item" onclick="closeEdMenu();ncShareFromPrivate()">👥 Tornar compartilhada</button>';
+  var dueBtn=n.vence?'<button type="button" class="ed-menu-item" onclick="closeEdMenu();pickDue()">📅 Alterar prazo</button><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();clearDue()">Remover prazo</button>':'<button type="button" class="ed-menu-item" onclick="closeEdMenu();pickDue()">📅 Definir prazo</button>';
+  var delChecked='<button type="button" class="ed-menu-item danger" id="edMenuDelChecked" onclick="edMenuDelChecked()" style="display:'+(doneN?'':'none')+'">🗑 Excluir marcados ('+doneN+')</button>';
+  var leaveLabel=n.collabSheetId?(n.collabRole==='owner'?'Excluir lista compartilhada':'Sair da lista'):'Excluir lista';
+  var leaveFn=n.collabSheetId?'ncLeaveOrDelete()':'deleteNote()';
+  return '<div class="ed-menu-wrap"><button type="button" class="ed-menu-btn" onclick="toggleEdMenu(event)" aria-label="Mais opções">⋯</button><div class="ed-menu" id="edMenu" onclick="event.stopPropagation()"><button type="button" class="ed-menu-item" onclick="closeEdMenu();exportCurrentList()">📤 Exportar</button>'+shareBtn+dueBtn+delChecked+'<div class="ed-menu-div"></div><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();'+leaveFn+'">'+esc(leaveLabel)+'</button></div></div>';
+}
+
 /* ---- editor ---- */
 function renderEditor(){
   var n=note(openNoteId); if(!n){ openNoteId=null; renderHomeShell(); return; }
   var kd=kindDef(n.tipo); var src=lastNoteOfKind(n.tipo,n.id); var fc=fillableCount(n,src); var doneN=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}).length;
-  var html='<div style="--kc:'+kd.color+'">'
-    +'<button class="lnk" onclick="backHome()">← Listas</button>'
-    +'<div class="ed-head"><span class="ed-ico">'+kd.icon+'</span><input class="ed-title" id="edTitle" value="'+escAttr(n.titulo)+'" placeholder="Nome da lista" aria-label="Nome da lista" onblur="commitTitle(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()"></div>'
-    +'<div class="ed-sub"><b>'+esc(kd.label)+'</b> · criada '+esc(relTime(n.criado))+' · toque no título para renomear</div>'
-    +'<div class="duerow"><span class="dl">📅 Prazo</span><button type="button" class="field datebtn'+(n.vence?'':' empty')+'" id="edDueBtn" onclick="pickDue()">'+(n.vence?esc(fmtDateBR(n.vence)):'Definir prazo')+'</button>'+(n.vence?'<button class="due-clear" onclick="clearDue()" title="Remover prazo">✕</button>':'')+'</div>'
-    +(!_selMode ? '<div class="ed-actions">'
-      +'<button class="selstart" onclick="exportCurrentList()">📤 Exportar</button>'
-      +(n.collabSheetId ? '<button class="selstart" onclick="ncOpenShare()">👥 Compartilhar</button>' : '<button class="selstart" onclick="ncShareFromPrivate()">👥 Tornar compartilhada</button>')
-      +'<button class="delchecked" id="delChecked" onclick="deleteChecked()" style="display:'+(doneN?'inline-flex':'none')+'">🗑 Excluir marcados ('+doneN+')</button>'
-    +'</div>' : '')
-    +((typeof ncEditorMembersHtml==='function')?ncEditorMembersHtml(n):'')
-    +(_selMode? '' : (fc && !fillDismissed(n.id)? '<div class="fillrow"><button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button><button type="button" class="fill-dismiss" onclick="dismissFill()" title="Ocultar sugestão">✕</button></div>':''))
-    +'<div id="edItems"></div>'
+  var avatars=(typeof ncMemberAvatarsHtml==='function'&&n.collabSheetId)?('<div class="ed-head-avatars">'+ncMemberAvatarsHtml(n)+'</div>'):'';
+  var html='<div class="ed-shell" style="--kc:'+kd.color+'" onclick="closeEdMenu()">'
+    +'<div class="ed-top"><button class="lnk ed-back" onclick="backHome()">← Listas</button>'+(_selMode?'':renderEdMenu(n,doneN))+'</div>'
+    +'<div class="ed-head"><span class="ed-ico">'+kd.icon+'</span><input class="ed-title" id="edTitle" value="'+escAttr(n.titulo)+'" placeholder="Nome da lista" aria-label="Nome da lista" onblur="commitTitle(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()">'+avatars+'</div>'
+    +'<div class="ed-meta">'
+    +'<span class="ed-chip ed-kind">'+esc(kd.label)+'</span>'
+    +renderEdProgress(n)
+    +renderEdDueChip(n)
+    +'</div>'
+    +(_selMode? '' : (fc && !fillDismissed(n.id)? '<div class="fillrow fillrow-slim"><button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button><button type="button" class="fill-dismiss" onclick="dismissFill()" title="Ocultar">✕</button></div>':''))
+    +'<div class="ed-items-panel"><div id="edItems"></div></div>'
     +(_selMode? '' :
-       ('<div class="iadd"><span class="ico">+</span><input id="addInput" placeholder="Adicionar item… (cole várias linhas de uma vez)" autocomplete="off" oninput="renderUsuals()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addItemFromInput();}" onpaste="addPaste(event)"><button class="iaddbtn" onclick="addItemFromInput()">Adicionar</button></div>'
-        +'<button class="gaddbtn" onclick="addGroup()">＋ Adicionar grupo</button>'
+      '<div class="ed-add-card" onclick="event.stopPropagation()">'
+        +'<div class="iadd"><span class="ico">+</span><input id="addInput" placeholder="Adicionar item… (Enter · cole várias linhas)" autocomplete="off" oninput="renderUsuals()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addItemFromInput();}" onpaste="addPaste(event)"><button type="button" class="iadd-go" onclick="addItemFromInput()" title="Adicionar">↵</button></div>'
         +'<div class="uwrap" id="edUsuals"></div>'
-        +'<button class="del" style="margin-top:26px" onclick="'+(n.collabSheetId?'ncLeaveOrDelete()':'deleteNote()')+'">'+(n.collabSheetId?(n.collabRole==='owner'?'Excluir lista compartilhada':'Sair da lista'):'Excluir lista')+'</button>'))
+        +'<button type="button" class="ed-add-group" onclick="addGroup()">+ Adicionar grupo</button>'
+      +'</div>')
     +'</div>';
   $('main').innerHTML=html; renderItems(); if(!_selMode) renderUsuals(); updateSelBar();
+  if(_edMenuOpen){ var m=$('edMenu'); if(m) m.classList.add('open'); }
 }
 function renderItems(){
   var el=$('edItems'); if(!el) return; var n=note(openNoteId); var its=itemsOf(openNoteId);
   if(!its.length){ el.innerHTML='<div class="rg" style="padding:8px 0">Lista vazia. Adicione itens abaixo'+(kindDef(n.tipo).defCheck?'':' — toque em ☑ para tornar uma linha marcável')+'.</div>'; return; }
-  var layout=listCollapseStack(its), html='';
-  layout.forEach(function(m){ if(m.isGroup) html+=groupRow(m.item,m.depth,m.hidden); else html+=itemRow(m.item,m.hidden,m.depth); });
+  var layout=listCollapseStack(its), html='', togglePlaced=false;
+  var doneN=layout.filter(function(m){ return !m.isGroup && !m.hidden && m.item.marcavel && m.item.feito; }).length;
+  layout.forEach(function(m){
+    if(m.isGroup){ html+=groupRow(m.item,m.depth,m.hidden); return; }
+    var isDone=m.item.marcavel && m.item.feito;
+    var hideDone=isDone && _doneCollapsed && m.item.id!==_editId;
+    if(!togglePlaced && isDone && !m.hidden && doneN>0){
+      html+=doneToggleRow(doneN);
+      togglePlaced=true;
+    }
+    html+=itemRow(m.item, m.hidden||hideDone, m.depth);
+  });
+  if(!togglePlaced && doneN>0) html+=doneToggleRow(doneN);
   el.innerHTML=html;
   var ed=el.querySelector('#editTA'); if(ed){ ed.focus(); try{ var L=ed.value.length; ed.setSelectionRange(L,L); }catch(e){} if(ed.tagName==='TEXTAREA') autoGrow(ed); }
   updateDelChecked(); updateSelBar();
 }
-function updateDelChecked(){ var b=$('delChecked'); if(!b) return; var dn=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}).length; b.style.display=dn?'inline-flex':'none'; b.textContent='🗑 Excluir marcados ('+dn+')'; }
+function doneToggleRow(n){
+  var label=_doneCollapsed?('✓ '+n+' concluído'+(n>1?'s':'')+' — mostrar'):('✓ '+n+' concluído'+(n>1?'s':'')+' — ocultar');
+  return '<button type="button" class="ed-done-toggle" onclick="toggleDoneCollapsed()">'+label+'</button>';
+}
+function updateDelChecked(){ var b=$('edMenuDelChecked'); if(!b) return; var dn=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}).length; b.style.display=dn?'':'none'; b.textContent='🗑 Excluir marcados ('+dn+')'; }
 function autoGrow(t){ if(!t) return; t.style.height='auto'; t.style.height=(t.scrollHeight)+'px'; }
 function groupStats(gid){
   var its=itemsOf(openNoteId), gi=groupIndex(its,gid);
@@ -815,7 +858,7 @@ function dedupeItems(){
 function selCount(){ return Object.keys(_sel).length; }
 function selExitIfEmpty(){ if(_selMode && !selCount()){ _selMode=false; renderEditor(); return true; } return false; }
 var _mq=null, _marqueeDidDrag=false, _MQ_MIN=6;
-function selMarqueeIgnore(el){ if(!el||!el.closest) return true; if(el.closest('.ihandle,button,input,textarea,.ichk,.itype,.idel,.gchev,.gadd,.gsub,.fmtbar,.selbar,.lnk,.iadd,.gaddbtn,.uwrap,.uhead,.fillrow,.ed-head,.ed-sub,.duerow,.ed-actions,.fillbtn,.door,.fab,.overlay,.header,.foot,.toast,.confirm-card,.nc-edit,.nc-rename-inp')) return true; if(el.closest('.ihdr')) return true; return false; }
+function selMarqueeIgnore(el){ if(!el||!el.closest) return true; if(el.closest('.ihandle,button,input,textarea,.ichk,.itype,.idel,.gchev,.gadd,.gsub,.fmtbar,.selbar,.lnk,.iadd,.ed-add-card,.uwrap,.uhead,.fillrow,.ed-head,.ed-top,.ed-meta,.ed-menu,.ed-menu-wrap,.fillbtn,.door,.fab,.overlay,.header,.foot,.toast,.confirm-card,.nc-edit,.nc-rename-inp,.ed-done-toggle')) return true; if(el.closest('.ihdr')) return true; return false; }
 function selMarqueeZone(){ if(!openNoteId||!$('edItems')) return null; return { top:0, bottom:window.innerHeight, left:0, right:document.documentElement.clientWidth }; }
 function selMarqueeInZone(ev){ var z=selMarqueeZone(); if(!z) return false; return ev.clientX>=z.left && ev.clientX<=z.right && ev.clientY>=z.top && ev.clientY<=z.bottom; }
 function selMarqueeRect(){ var l=Math.min(_mq.sx,_mq.ox), t=Math.min(_mq.sy,_mq.oy), r=Math.max(_mq.sx,_mq.ox), b=Math.max(_mq.sy,_mq.oy); return {left:l,top:t,right:r,bottom:b,width:r-l,height:b-t}; }

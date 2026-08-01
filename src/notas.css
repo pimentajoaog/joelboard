@@ -84,9 +84,12 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .nc-mchips{ @apply flex flex-wrap gap-1.5; }
 .nc-mchip{ @apply inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full; background:var(--surface2); border:1px solid var(--border); }
 .modal-wide{ max-width:480px; }
-.share-invite-row,.share-copy-row{ @apply flex gap-2; }
-.share-invite-row input,.share-copy-row input{ flex:1; min-width:0; }
+.share-invite-row,.share-copy-row{ @apply flex items-stretch gap-2; }
+.share-invite-row input,.share-copy-row input{ flex:1 1 0; min-width:0; width:auto !important; }
 .share-invite-row .btn{ @apply flex-[0_0_auto] px-4 py-2 text-[13px]; }
+.share-link-inp{ @apply text-xs py-2.5 px-3; color:var(--text); background:var(--surface2); font-family:ui-monospace,monospace; }
+.share-copy-btn{ flex:0 0 auto; padding:10px 14px; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+.share-copy-btn:hover{ border-color:var(--primary); }
 .share-members{ @apply flex flex-col gap-2 max-h-40 overflow-y-auto; }
 .share-mrow{ @apply flex items-center gap-2 text-xs py-1.5 border-b border-border; }
 .share-mav{ @apply text-base flex-[0_0_auto]; }

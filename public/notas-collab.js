@@ -286,17 +286,41 @@ function ncShareFromPrivate() {
   });
 }
 
+function ncShareJoinUrl(n) {
+  return location.origin + '/notas/?join=' + encodeURIComponent(n.collabSheetId);
+}
+
+function ncShareSheetUrl(n) {
+  return 'https://docs.google.com/spreadsheets/d/' + n.collabSheetId + '/edit';
+}
+
 function ncOpenShare() {
   var n = note(openNoteId);
   if (!n || !n.collabSheetId) return;
   $('shareListTitle').textContent = n.titulo || 'Lista';
   $('shareInviteEmail').value = '';
   ncRenderShareMembers(n);
-  var joinUrl = location.origin + '/notas/?join=' + encodeURIComponent(n.collabSheetId);
-  var sheetUrl = 'https://docs.google.com/spreadsheets/d/' + n.collabSheetId;
-  $('shareJoinLink').value = joinUrl;
-  $('shareSheetLink').value = sheetUrl;
+  $('shareJoinLink').value = ncShareJoinUrl(n);
+  $('shareSheetLink').value = ncShareSheetUrl(n);
   $('shareOverlay').classList.add('open');
+}
+
+function ncOpenDriveShare() {
+  var n = note(openNoteId);
+  if (!n || !n.collabSheetId) return;
+  window.open(ncShareSheetUrl(n), '_blank', 'noopener,noreferrer');
+}
+
+function ncMailInvite(email, n) {
+  var joinUrl = ncShareJoinUrl(n);
+  var sheetUrl = ncShareSheetUrl(n);
+  var sub = encodeURIComponent('Lista compartilhada no Joelboard: ' + (n.titulo || 'Lista'));
+  var body = encodeURIComponent(
+    'Oi!\n\nCompartilhei uma lista com você no Joelboard Notas.\n\n'
+    + '1) Abra este link e entre com Google:\n' + joinUrl + '\n\n'
+    + '2) No Google Drive, aceite acesso Editor à planilha (se ainda não tiver):\n' + sheetUrl + '\n'
+  );
+  window.location.href = 'mailto:' + encodeURIComponent(email) + '?subject=' + sub + '&body=' + body;
 }
 
 function ncCloseShare() { $('shareOverlay').classList.remove('open'); }
@@ -311,9 +335,18 @@ function ncRenderShareMembers(n) {
 
 function ncCopyShareField(id) {
   var el = $(id);
-  if (!el) return;
+  if (!el || !el.value) { toast('Nada para copiar'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(el.value).then(function () { toast('✓ Copiado'); }).catch(function () { ncCopyShareFallback(el); });
+    return;
+  }
+  ncCopyShareFallback(el);
+}
+
+function ncCopyShareFallback(el) {
+  el.focus();
   el.select();
-  try { document.execCommand('copy'); toast('✓ Copiado'); } catch (_) { navigator.clipboard.writeText(el.value).then(function () { toast('✓ Copiado'); }); }
+  try { document.execCommand('copy'); toast('✓ Copiado'); } catch (_) { toast('Copie manualmente'); }
 }
 
 function ncInviteMember() {
@@ -321,21 +354,29 @@ function ncInviteMember() {
   if (!n || !n.collabSheetId) return;
   var raw = ($('shareInviteEmail').value || '').trim().toLowerCase();
   if (!raw || raw.indexOf('@') < 1) { toast('E-mail inválido'); return; }
-  if ((n.collabMembers || []).some(function (m) { return m.email === raw; })) { toast('Já está na lista'); return; }
+  var dup = false;
+  (n.collabMembers || []).forEach(function (m) { if (m.email === raw) dup = true; });
+  if (dup) { toast('Já está na lista'); return; }
+
+  function afterAdded() {
+    n.collabMembers = n.collabMembers || [];
+    n.collabMembers.push({ email: raw, nome: '', icone: '👤', papel: 'editor', status: 'pending', entrou: '' });
+    ncRenderShareMembers(n);
+    $('shareInviteEmail').value = '';
+    toast('✓ Convite salvo — abrindo e-mail…');
+    setTimeout(function () { ncMailInvite(raw, n); }, 400);
+  }
+
   JB.persist({
     run: function () {
       return JB.api('POST', ncCollabUrl(n.collabSheetId, '/values/Membros:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {
         values: [ncMemberRow(raw, '', '👤', 'editor', 'pending')]
       });
     },
-    onSuccess: function () {
-      n.collabMembers = n.collabMembers || [];
-      n.collabMembers.push({ email: raw, nome: '', icone: '👤', papel: 'editor', status: 'pending', entrou: '' });
-      ncRenderShareMembers(n);
-      $('shareInviteEmail').value = '';
-      toast('✓ Convite adicionado — compartilhe o link ou a planilha no Drive');
-    },
-    onError: notasWriteErr
+    onSuccess: afterAdded,
+    onError: function (e) {
+      toast('Erro ao convidar: ' + ((e && e.message) || 'falha ao salvar'));
+    }
   });
 }
 

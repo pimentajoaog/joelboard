@@ -99,7 +99,7 @@
         <input class="field" id="shareInviteEmail" placeholder="amigo@gmail.com" type="email">
         <button class="btn" type="button" onclick="ncInviteMember()">Convidar</button>
       </div>
-      <div class="rg">Adiciona o convite na planilha. Compartilhe também a planilha no Google Drive (Editor) ou envie o link Joelboard abaixo.</div>
+      <div class="rg">Grava o convite na planilha e abre seu app de e-mail com o link (você envia). Também dê acesso <b>Editor</b> no Drive.</div>
     </div>
     <div class="fg">
       <label class="fl">Membros</label>
@@ -107,11 +107,19 @@
     </div>
     <div class="fg">
       <label class="fl">Link Joelboard</label>
-      <div class="share-copy-row"><input class="field" id="shareJoinLink" readonly><button class="btn ghost" type="button" onclick="ncCopyShareField('shareJoinLink')">Copiar</button></div>
+      <div class="share-copy-row">
+        <input class="field share-link-inp" id="shareJoinLink" type="text" readonly>
+        <button class="share-copy-btn" type="button" onclick="ncCopyShareField('shareJoinLink')">Copiar</button>
+      </div>
     </div>
     <div class="fg">
       <label class="fl">Link da planilha (Google Drive)</label>
-      <div class="share-copy-row"><input class="field" id="shareSheetLink" readonly><button class="btn ghost" type="button" onclick="ncCopyShareField('shareSheetLink')">Copiar</button></div>
+      <div class="share-copy-row">
+        <input class="field share-link-inp" id="shareSheetLink" type="text" readonly>
+        <button class="share-copy-btn" type="button" onclick="ncCopyShareField('shareSheetLink')">Copiar</button>
+      </div>
+      <div class="rg" style="margin-top:8px">No Drive, compartilhe a planilha com <b>Editor</b> para quem você convidou.</div>
+      <button class="btn ghost" style="width:100%;margin-top:8px" type="button" onclick="ncOpenDriveShare()">↗ Abrir planilha no Drive</button>
     </div>
     <button class="btn-primary" onclick="ncCloseShare()">Pronto</button>
   </div>

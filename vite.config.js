@@ -70,7 +70,8 @@ export default defineConfig(({ mode }) => {
           notas: 'notas/index.html',
           prateleira: 'prateleira/index.html',
           movies: 'movies/index.html',
-          mini: 'mini/index.html'
+          mini: 'mini/index.html',
+          miniReplaceAuth: 'mini/replace-auth.html'
         }
       }
     },

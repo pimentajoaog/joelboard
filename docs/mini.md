@@ -48,6 +48,16 @@ Barra de formatação no editor de template: **B** / **I** / **U** / riscado / l
 - JSON ou CSV/TSV no popup.
 - Planilha: colunas `Nome`, `Trigger`, `Text` (ou `Trigger`, `Text`).
 
+### Sincronização na nuvem (Google Sheets)
+
+Macros, variáveis e ajustes podem ficar na planilha **Joelboard Mini** no seu Drive — mesma conta Google do Hub — para usar em vários dispositivos.
+
+**Opção A — popup da extensão:** Ajustes → **Nuvem** → Entrar com Google → Sincronizar. Alterações locais sobem automaticamente; a extensão puxa da planilha ao abrir o popup e a cada ~30 min.
+
+**Opção B — Hub:** Mini → **Sincronizar Replace agora** (com a extensão instalada nesta aba). Cria ou usa a planilha com abas `Replace`, `ReplaceVars`, `ReplaceSettings`.
+
+No segundo dispositivo: instale a extensão, entre com Google (ou use o Hub) e sincronize — os gatilhos aparecem.
+
 ### Permissões
 
 Só roda em **sites permitidos** (padrão: Joelboard, Google Docs/Sheets, GitHub, …). Adicione domínios no Hub (**Mini → Sites permitidos**) ou no popup da extensão.

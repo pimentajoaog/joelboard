@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<!-- Joelboard Replace — extension sign-in (GIS runs here, not in MV3 popup). © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Replace — Entrar com Google</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0f1118; color: #e7eaf3; display: flex; min-height: 100vh; align-items: center; justify-content: center; margin: 0; }
+  .card { background: #1b1f32; border: 1px solid #2b3147; border-radius: 12px; padding: 28px 32px; max-width: 380px; text-align: center; }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  p { color: #9aa3b5; font-size: 14px; margin: 0 0 20px; line-height: 1.45; }
+  button { background: #4f7cff; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  #status { margin-top: 16px; font-size: 13px; color: #9aa3b5; min-height: 1.2em; }
+  .ok { color: #6ee7a0; }
+  .err { color: #f87171; }
+</style>
+<script src="/joelboard.js"></script>
+</head>
+<body>
+<div class="card">
+  <h1>Joelboard Replace</h1>
+  <p>Entre com Google para sincronizar macros na planilha Joelboard Mini.</p>
+  <button type="button" id="btnSignIn">Entrar com Google</button>
+  <div id="status"></div>
+</div>
+<script>
+(function () {
+  var btn = document.getElementById('btnSignIn');
+  var status = document.getElementById('status');
+  var rid = 'auth' + Date.now();
+  var delivered = false;
+
+  function setStatus(msg, cls) {
+    status.textContent = msg;
+    status.className = cls || '';
+  }
+
+  function deliver() {
+    if (delivered) return;
+    var tok = JB.cachedToken();
+    if (!tok) {
+      setStatus('Não foi possível obter o token.', 'err');
+      btn.disabled = false;
+      return;
+    }
+    delivered = true;
+    var exp = Number(localStorage.getItem('jb_tok_exp') || sessionStorage.getItem('jb_tok_exp') || 0);
+    var em = JB.email() || '';
+    var sheetId = JB.getSheetId('mini-replace') || '';
+    setStatus('Enviando para a extensão…');
+    window.postMessage({
+      type: 'jb-mini-replace-auth',
+      requestId: rid,
+      token: tok,
+      exp: exp,
+      email: em,
+      sheetId: sheetId
+    }, '*');
+    setTimeout(function () {
+      if (status.textContent.indexOf('Enviando') >= 0) {
+        delivered = false;
+        setStatus('Extensão Replace não respondeu. Instale-a e recarregue esta página.', 'err');
+        btn.disabled = false;
+        btn.style.display = '';
+      }
+    }, 6000);
+  }
+
+  window.addEventListener('message', function (ev) {
+    if (ev.source !== window || !ev.data || ev.data.type !== 'jb-mini-replace-reply') return;
+    if (ev.data.requestId !== rid) return;
+    if (ev.data.ok) {
+      setStatus('Conectado! Pode fechar esta aba.', 'ok');
+      btn.style.display = 'none';
+      setTimeout(function () { window.close(); }, 1500);
+      return;
+    }
+    delivered = false;
+    setStatus(ev.data.error || 'Extensão não conseguiu guardar o login.', 'err');
+    btn.disabled = false;
+    btn.style.display = '';
+  });
+
+  if (JB.cachedToken()) {
+    btn.textContent = 'Continuar';
+    deliver();
+    return;
+  }
+
+  btn.onclick = function () {
+    btn.disabled = true;
+    setStatus('Aguardando Google…');
+    JB.signIn({
+      onSuccess: deliver,
+      onError: function () {
+        setStatus('Login cancelado ou falhou.', 'err');
+        btn.disabled = false;
+      }
+    });
+  };
+})();
+</script>
+</body>
+</html>

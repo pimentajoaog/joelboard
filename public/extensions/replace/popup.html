@@ -56,6 +56,12 @@
     <input type="file" id="importFile" accept=".csv,.tsv,.txt,.json,application/json,text/csv" hidden>
     <p class="hint" style="margin-top:10px">Planilha: <b>Nome</b>, <b>Trigger</b>, <b>Text</b> (export inclui as três). Import aceita 2 ou 3 colunas.</p>
     <div class="sep"></div>
+    <label class="fl">Nuvem (Google Sheets)</label>
+    <p class="hint" id="syncStatus">Sincronize macros entre dispositivos com a planilha Joelboard Mini.</p>
+    <button class="btn ghost" id="btnSyncSignIn">Entrar com Google</button>
+    <button class="btn ghost" id="btnSyncNow" style="display:none">↻ Sincronizar agora</button>
+    <button class="btn ghost" id="btnSyncOut" style="display:none">Desconectar nuvem</button>
+    <div class="sep"></div>
     <label class="fl" style="margin-top:4px">Sites permitidos</label>
     <p class="hint sites-hint">Replace só injeta nos domínios abaixo. Adicione sites conforme precisar.</p>
     <div class="sites-list" id="sitesList"></div>
@@ -106,6 +112,8 @@
 </div>
 
 <script src="lib/shared.js"></script>
+<script src="lib/sheets-sync.js"></script>
+<script src="lib/sheet-data.js"></script>
 <script src="lib/sites.js"></script>
 <script src="popup.js"></script>
 </body>

@@ -1,5 +1,7 @@
 /* Joelboard Replace — service worker. © 2026 Joel Soluções LTDA. */
-importScripts('lib/shared.js', 'lib/sites.js');
+importScripts('lib/shared.js', 'lib/sites.js', 'lib/sheets-sync.js', 'lib/sheet-data.js');
+
+var pushTimer = null;
 
 function tabExists(tabId, cb) {
   chrome.tabs.get(tabId, function (tab) {
@@ -73,11 +75,80 @@ function notifyOpenTabsOnUpdate() {
   });
 }
 
+function schedulePush() {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(function () {
+    JB_SHEETS.isSignedIn().then(function (ok) {
+      if (!ok) return;
+      JB_REPLACE.load().then(function (data) {
+        JB_REPLACE_SHEET.push(data).catch(function () {});
+      });
+    });
+  }, 2500);
+}
+
 chrome.tabs.onUpdated.addListener(function (tabId, info, tab) {
   if (info.status === 'complete' && tab.url) maybeInject(tabId, tab.url);
 });
 
+chrome.storage.onChanged.addListener(function (chg) {
+  if (chg.jb_replace_data) schedulePush();
+});
+
+chrome.alarms.create('replace-sync', { periodInMinutes: 30 });
+chrome.alarms.onAlarm.addListener(function (a) {
+  if (a.name !== 'replace-sync') return;
+  JB_SHEETS.isSignedIn().then(function (ok) {
+    if (!ok) return;
+    JB_REPLACE_SHEET.sync(true).catch(function () {});
+  });
+});
+
 chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
+  if (msg.type === 'schedulePush') {
+    schedulePush();
+    sendResponse({ ok: true });
+    return;
+  }
+  if (msg.type === 'replaceGetData') {
+    JB_REPLACE.load().then(function (data) {
+      sendResponse({ ok: true, data: data });
+    });
+    return true;
+  }
+  if (msg.type === 'replaceSetData' && msg.data) {
+    JB_REPLACE.save(msg.data).then(function () {
+      sendResponse({ ok: true });
+    });
+    return true;
+  }
+  if (msg.type === 'replaceSyncNow') {
+    JB_REPLACE_SHEET.sync(true).then(function (data) {
+      sendResponse({ ok: true, data: data });
+    }).catch(function (e) {
+      sendResponse({ ok: false, error: (e && e.message) || 'sync_failed' });
+    });
+    return true;
+  }
+  if (msg.type === 'setSheetId' && msg.sheetId) {
+    JB_SHEETS.setSheetId(msg.sheetId).then(function () {
+      sendResponse({ ok: true });
+    });
+    return true;
+  }
+  if (msg.type === 'replaceStoreAuth' && msg.token) {
+    JB_SHEETS.storeAuth({
+      token: msg.token,
+      exp: msg.exp,
+      email: msg.email || '',
+      sheetId: msg.sheetId || ''
+    }).then(function () {
+      sendResponse({ ok: true });
+    }).catch(function (e) {
+      sendResponse({ ok: false, error: (e && e.message) || 'store_failed' });
+    });
+    return true;
+  }
   if (msg.type === 'getSites') {
     JB_SITES.loadSites(sendResponse);
     return true;

@@ -18,7 +18,80 @@ function esc(s) {
 }
 
 function persist() {
-  return JB_REPLACE.save(DATA);
+  return JB_REPLACE.save(DATA).then(function () {
+    try { chrome.runtime.sendMessage({ type: 'schedulePush' }); } catch (_) {}
+  });
+}
+
+function renderSyncStatus() {
+  var el = $('syncStatus');
+  var btnIn = $('btnSyncSignIn');
+  var btnNow = $('btnSyncNow');
+  var btnOut = $('btnSyncOut');
+  if (!el || !btnIn) return;
+  Promise.all([JB_SHEETS.isSignedIn(), JB_SHEETS.email(), JB_SHEETS.lastSyncTs(), JB_SHEETS.getSheetId()]).then(function (parts) {
+    var signed = parts[0];
+    var em = parts[1];
+    var ts = parts[2];
+    var sid = parts[3];
+    btnIn.style.display = signed ? 'none' : '';
+    btnNow.style.display = signed ? '' : 'none';
+    if (btnOut) btnOut.style.display = signed ? '' : 'none';
+    if (!signed) {
+      el.textContent = 'Entre com Google para guardar macros na planilha Joelboard Mini.';
+      return;
+    }
+    var msg = em ? ('Conectado: ' + em) : 'Conectado ao Google';
+    if (ts) msg += ' · última sync ' + ts.slice(0, 16).replace('T', ' ');
+    if (sid) msg += ' · planilha vinculada';
+    el.textContent = msg;
+  });
+}
+
+function syncSignIn() {
+  $('btnSyncSignIn').disabled = true;
+  JB_SHEETS.requestTokenInteractive().then(function () {
+    return JB_REPLACE_SHEET.sync(true);
+  }).then(function (merged) {
+    DATA = merged;
+    renderSnippets();
+    renderVars();
+    renderSettings();
+    renderSyncStatus();
+    toast('✓ Sincronizado');
+  }).catch(function (e) {
+    var msg = (e && e.message) || 'falha ao entrar';
+    if (msg === 'auth_cancelled') msg = 'Login cancelado';
+    toast('Erro: ' + msg);
+    renderSyncStatus();
+  }).finally(function () {
+    $('btnSyncSignIn').disabled = false;
+  });
+}
+
+function syncNow() {
+  $('btnSyncNow').disabled = true;
+  JB_REPLACE_SHEET.sync(true).then(function (merged) {
+    DATA = merged;
+    renderSnippets();
+    renderVars();
+    renderSettings();
+    renderSyncStatus();
+    toast('✓ Sincronizado');
+  }).catch(function (e) {
+    var msg = (e && e.message) || 'falha ao sincronizar';
+    if (msg === 'auth_required') msg = 'Sessão expirada — entre novamente';
+    toast('Erro: ' + msg);
+  }).finally(function () {
+    $('btnSyncNow').disabled = false;
+  });
+}
+
+function syncSignOut() {
+  JB_SHEETS.clearAuth().then(function () {
+    renderSyncStatus();
+    toast('Desconectado');
+  });
 }
 
 function switchTab(name) {
@@ -316,6 +389,9 @@ $('newVarKey').onkeydown = $('newVarVal').onkeydown = function (e) {
 };
 $('btnExportCsv').onclick = exportCsv;
 $('btnExportJson').onclick = exportJson;
+if ($('btnSyncSignIn')) $('btnSyncSignIn').onclick = syncSignIn;
+if ($('btnSyncNow')) $('btnSyncNow').onclick = syncNow;
+if ($('btnSyncOut')) $('btnSyncOut').onclick = syncSignOut;
 $('btnImport').onclick = function () { $('importFile').click(); };
 $('importFile').onchange = function () {
   if (this.files && this.files[0]) importData(this.files[0]);
@@ -331,9 +407,20 @@ JB_REPLACE.load().then(function (d) {
   renderSnippets();
   renderVars();
   renderSettings();
+  renderSyncStatus();
   bindSettings();
   bindFmtToolbar();
   initSitesUI();
+  JB_SHEETS.isSignedIn().then(function (ok) {
+    if (!ok) return;
+    return JB_REPLACE_SHEET.sync(true).then(function (merged) {
+      DATA = merged;
+      renderSnippets();
+      renderVars();
+      renderSettings();
+      renderSyncStatus();
+    }).catch(function () {});
+  });
 });
 
 function initSitesUI() {

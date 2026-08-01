@@ -224,6 +224,145 @@ function fbSetFilter(f){ fbFilter=f; renderFB(); }
 function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; JB.renderSkinPicker('hub', document.getElementById("hubSkins")); document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
 function hubAuth(){ var on=JB.isSignedIn(); closeHubSet(); if(on) doOut(); else doIn(); }
+function miniReplaceMsg(type, extra) {
+  return new Promise(function (resolve) {
+    var requestId = 'mrr' + Date.now() + Math.random().toString(36).slice(2);
+    var timer = setTimeout(function () {
+      window.removeEventListener('message', on);
+      resolve({ ok: false, error: 'timeout' });
+    }, 12000);
+    function on(ev) {
+      if (ev.source !== window || !ev.data || ev.data.type !== 'jb-mini-replace-reply' || ev.data.requestId !== requestId) return;
+      clearTimeout(timer);
+      window.removeEventListener('message', on);
+      resolve(ev.data);
+    }
+    window.addEventListener('message', on);
+    var msg = { type: type, requestId: requestId };
+    if (extra) Object.keys(extra).forEach(function (k) { msg[k] = extra[k]; });
+    window.postMessage(msg, '*');
+  });
+}
+
+function miniEnsureReplaceSheet() {
+  return JB.resolveSheet({ app: 'mini-replace', namePart: 'Joelboard Mini', requiredTabs: ['Replace', 'ReplaceVars', 'ReplaceSettings'] }).catch(function (err) {
+    if (String(err.message || '') !== 'JB_NEED_SHEET') throw err;
+    return JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets', {
+      properties: { title: 'Joelboard Mini' },
+      sheets: [{ properties: { title: 'Replace' } }, { properties: { title: 'ReplaceVars' } }, { properties: { title: 'ReplaceSettings' } }]
+    }).then(function (ss) {
+      JB.setSheetId('mini-replace', ss.spreadsheetId);
+      return JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets/' + ss.spreadsheetId + '/values:batchUpdate', {
+        valueInputOption: 'RAW',
+        data: [
+          { range: 'Replace!A1', values: [['Nome', 'Trigger', 'Text', 'Enabled', 'ID']] },
+          { range: 'ReplaceVars!A1', values: [['Chave', 'Valor']] },
+          { range: 'ReplaceSettings!A1', values: [['Chave', 'Valor']] }
+        ]
+      }).then(function () {
+        return JB.sheetTabs(ss.spreadsheetId).then(function (grid) { return { id: ss.spreadsheetId, grid: grid }; });
+      });
+    });
+  });
+}
+
+function miniSheetBody(rows) { return (rows || []).slice(1); }
+
+function miniMergeReplaceData(local, remote) {
+  local = local || { snippets: [], vars: {}, settings: {} };
+  remote = remote || { snippets: [], vars: {}, settings: {} };
+  var map = {};
+  (local.snippets || []).forEach(function (s) { if (s.trigger) map[s.trigger] = s; });
+  (remote.snippets || []).forEach(function (s) {
+    if (!s.trigger) return;
+    if (map[s.trigger]) {
+      map[s.trigger].body = s.body;
+      map[s.trigger].label = s.label;
+      map[s.trigger].enabled = s.enabled !== false;
+    } else map[s.trigger] = s;
+  });
+  return {
+    snippets: Object.keys(map).map(function (k) { return map[k]; }),
+    vars: Object.assign({}, remote.vars || {}, local.vars || {}),
+    settings: Object.assign({}, remote.settings || {}, local.settings || {})
+  };
+}
+
+function miniReplaceFromSheet(vrs) {
+  var sn = miniSheetBody((vrs[0] && vrs[0].values) || []);
+  var vr = miniSheetBody((vrs[1] && vrs[1].values) || []);
+  var st = miniSheetBody((vrs[2] && vrs[2].values) || []);
+  var snippets = sn.filter(function (r) { return r && (r[1] || r[2]); }).map(function (r) {
+    return { id: String(r[4] || ''), label: String(r[0] || ''), trigger: String(r[1] || ''), body: String(r[2] != null ? r[2] : ''), enabled: String(r[3]) !== '0' };
+  });
+  var vars = {};
+  vr.forEach(function (r) { if (r && r[0]) vars[String(r[0])] = r[1] == null ? '' : String(r[1]); });
+  var settings = {};
+  st.forEach(function (r) { if (r && r[0]) settings[String(r[0])] = String(r[1]) === '1'; });
+  return { snippets: snippets, vars: vars, settings: settings };
+}
+
+function miniReplaceToSheet(data) {
+  data = data || {};
+  var snippets = (data.snippets || []).map(function (s) {
+    return [s.label || '', s.trigger || '', s.body || '', s.enabled !== false ? '1' : '0', s.id || ''];
+  });
+  var vars = Object.keys(data.vars || {}).sort().map(function (k) { return [k, data.vars[k] == null ? '' : String(data.vars[k])]; });
+  var settings = Object.keys(data.settings || {}).sort().map(function (k) { return [k, data.settings[k] ? '1' : '0']; });
+  return { snippets: snippets, vars: vars, settings: settings };
+}
+
+function miniSyncReplaceViaHub() {
+  return miniEnsureReplaceSheet().then(function (ctx) {
+    return miniReplaceMsg('jb-mini-replace-get').then(function (ext) {
+      var local = ext.ok ? ext.data : null;
+      var ranges = ['Replace', 'ReplaceVars', 'ReplaceSettings'].map(function (t) {
+        return 'ranges=' + encodeURIComponent(t);
+      }).join('&');
+      return JB.api('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' + ctx.id + '/values:batchGet?' + ranges + '&valueRenderOption=UNFORMATTED_VALUE').then(function (res) {
+        var remote = miniReplaceFromSheet(res.valueRanges || []);
+        var merged = miniMergeReplaceData(local, remote);
+        var rows = miniReplaceToSheet(merged);
+        return JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets/' + ctx.id + '/values:batchUpdate', {
+          valueInputOption: 'RAW',
+          data: [
+            { range: 'Replace!A1', values: [['Nome', 'Trigger', 'Text', 'Enabled', 'ID']].concat(rows.snippets) },
+            { range: 'ReplaceVars!A1', values: [['Chave', 'Valor']].concat(rows.vars) },
+            { range: 'ReplaceSettings!A1', values: [['Chave', 'Valor']].concat(rows.settings) }
+          ]
+        }).then(function () {
+          return miniReplaceMsg('jb-mini-replace-set-sheet', { sheetId: ctx.id }).then(function () {
+            return miniReplaceMsg('jb-mini-replace-set', { data: merged });
+          });
+        });
+      });
+    });
+  });
+}
+
+function miniSyncReplace() {
+  if (!JB.isSignedIn()) {
+    JB.signIn({ onSuccess: miniSyncReplace });
+    return;
+  }
+  var note = document.getElementById('miniReplaceSyncNote');
+  if (note) note.textContent = 'Sincronizando…';
+  miniReplaceMsg('jb-mini-replace-sync').then(function (res) {
+    if (res.ok) {
+      if (JB.toast) JB.toast('✓ Replace sincronizado');
+      if (note) note.textContent = 'Sincronizado via extensão.';
+      return;
+    }
+    return miniSyncReplaceViaHub().then(function () {
+      if (JB.toast) JB.toast('✓ Replace sincronizado via Hub');
+      if (note) note.textContent = 'Sincronizado via Hub (planilha Joelboard Mini).';
+    });
+  }).catch(function (e) {
+    if (JB.toast) JB.toast('Erro: ' + ((e && e.message) || 'falha ao sincronizar'));
+    if (note) note.textContent = 'Falha — instale a extensão Replace ou abra Ajustes → Nuvem no popup.';
+  });
+}
+
 function closeMini(){ document.getElementById('miniViewer').classList.remove('open'); }
 
 var MINI_SITES_KEY='jb_mini_sites';
@@ -297,4 +436,6 @@ document.addEventListener('DOMContentLoaded',function(){
   var inp=document.getElementById('miniSiteInput');
   if(addBtn) addBtn.onclick=miniAddSite;
   if(inp) inp.onkeydown=function(e){ if(e.key==='Enter') miniAddSite(); };
+  var syncBtn=document.getElementById('miniReplaceSync');
+  if(syncBtn) syncBtn.onclick=miniSyncReplace;
 });

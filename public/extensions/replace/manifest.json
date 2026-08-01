@@ -2,9 +2,10 @@
   "manifest_version": 3,
   "name": "Joelboard Replace",
   "short_name": "Replace",
-  "version": "1.5.7",
-  "description": "Expansão de texto leve — templates, gatilhos e variáveis. Parte do Joelboard Mini.",
-  "permissions": ["storage", "clipboardRead", "tabs", "scripting"],
+  "version": "1.6.1",
+  "description": "Expansão de texto leve — templates, gatilhos e variáveis. Sincroniza com Google Sheets. Parte do Joelboard Mini.",
+  "permissions": ["storage", "clipboardRead", "tabs", "scripting", "alarms"],
+  "host_permissions": ["https://www.googleapis.com/*", "https://joelboard.vercel.app/*"],
   "optional_host_permissions": ["http://localhost/*", "http://127.0.0.1/*", "https://*/*"],
   "web_accessible_resources": [{
     "resources": ["prompt.html", "prompt-frame.js", "lib/shared.js"],
@@ -30,5 +31,10 @@
   },
   "background": {
     "service_worker": "background.js"
-  }
+  },
+  "content_scripts": [{
+    "matches": ["https://joelboard.vercel.app/*", "http://localhost/*", "http://127.0.0.1/*"],
+    "js": ["hub-bridge.js"],
+    "run_at": "document_idle"
+  }]
 }

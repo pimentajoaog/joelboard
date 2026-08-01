@@ -20,7 +20,8 @@ export default {
         fit: 'var(--fit)'
       },
       fontFamily: {
-        sans: ['Hanken Grotesk', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif']
+        sans: ['var(--font-body)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        display: ['var(--font-display)', 'var(--font-body)', 'sans-serif']
       }
     }
   },

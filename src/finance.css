@@ -10,8 +10,6 @@
   --bg: #0d0f18; --surface: #151929; --surface2: #1b1f32; --border: #252840;
   --primary: #818cf8; --income: #34d399; --expense: #f87171; --warning: #fbbf24; --savings: #22d3ee;
   --text: #e2e8f0; --muted: #64748b; --radius: 16px; --radius-sm: 10px;
-  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --shadow: none;
 }
 body[data-skin="sorbet"] .tab-btn { border-bottom:none; border-radius:99px; padding:10px 16px; }

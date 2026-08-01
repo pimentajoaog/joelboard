@@ -5,7 +5,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --primary:#f59e0b; --text:#e7eaf3; --muted:#7b85a0; --success:#34d399; --radius:16px; --radius-sm:10px; --brand:var(--primary); --on-brand:#241803; --font-body:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; --font-display:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --primary:#f59e0b; --text:#e7eaf3; --muted:#7b85a0; --success:#34d399; --radius:16px; --radius-sm:10px; --brand:var(--primary); --on-brand:#241803; }
 
 *,::before,::after{ box-sizing:border-box; margin:0; padding:0; border-width:0; border-style:solid; border-color:var(--border); }
 button,input,select,textarea{ font-family:inherit; }

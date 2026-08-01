@@ -6,7 +6,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --primary:#fb7185; --accent2:color-mix(in srgb, var(--primary) 18%, var(--surface)); --text:#e7eaf3; --muted:#7b85a0; --success:#34d399; --radius:16px; --radius-sm:10px; --brand:var(--primary); --on-brand:#3a0f17; --font-body:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; --font-display:'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+:root{ --bg:#0d0f18; --surface:#191d2c; --surface2:#232838; --border:#2d3346; --primary:#fb7185; --accent2:color-mix(in srgb, var(--primary) 18%, var(--surface)); --text:#e7eaf3; --muted:#7b85a0; --success:#34d399; --radius:16px; --radius-sm:10px; --brand:var(--primary); --on-brand:#3a0f17; }
 
 /* Reset: extends the original with the border + form-font defaults Tailwind's (disabled)
    preflight would normally provide, so @apply border / buttons render correctly. */

@@ -884,7 +884,18 @@
   ];
   function skinKey(app){ return 'jb_skin_' + app; }
   function getSkin(app){ return lg(skinKey(app)) || 'default'; }
-  function applySkinAttr(id){ whenReady(function(){ if (id && id !== 'default') document.body.setAttribute('data-skin', id); else document.body.removeAttribute('data-skin'); }); }
+  function applySkinAttr(id){
+    whenReady(function(){
+      var root = document.documentElement;
+      if (id && id !== 'default') {
+        root.setAttribute('data-skin', id);
+        document.body.setAttribute('data-skin', id);
+      } else {
+        root.removeAttribute('data-skin');
+        document.body.removeAttribute('data-skin');
+      }
+    });
+  }
   function applySkin(app){ applySkinAttr(getSkin(app)); applyModeAttr(getMode(app)); }
   function setSkin(app, id){ if (id && id !== 'default') ls(skinKey(app), id); else lr(skinKey(app)); applySkinAttr(id); applyModeAttr(getMode(app)); return id; }
   // --- day / night mode (orthogonal to skin; each skin has a native mode, user can flip) ---
@@ -892,7 +903,13 @@
   function nativeMode(app){ return SKIN_MODE[getSkin(app)] || 'dark'; }
   function modeKey(app){ return 'jb_mode_' + app; }
   function getMode(app){ return lg(modeKey(app)) || nativeMode(app); }
-  function applyModeAttr(m){ whenReady(function(){ document.body.setAttribute('data-mode', (m==='light'?'light':'dark')); }); }
+  function applyModeAttr(m){
+    whenReady(function(){
+      var v = (m === 'light' ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-mode', v);
+      document.body.setAttribute('data-mode', v);
+    });
+  }
   function applyMode(app){ applyModeAttr(getMode(app)); }
   function setMode(app, m){ m=(m==='light'?'light':'dark'); ls(modeKey(app), m); applyModeAttr(m); return m; }
   function toggleMode(app){ return setMode(app, getMode(app)==='light'?'dark':'light'); }

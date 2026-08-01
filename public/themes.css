@@ -1,12 +1,17 @@
 /* Joelboard shared THEMES — per-app skins. © 2026 Joel Soluções LTDA.
    Link in every app AFTER joelboard.css. Each block overrides the neutral token vocabulary
-   under body[data-skin="…"] (opt-in; the app's own :root is the default). Domain tokens
+   under :root[data-skin="…"] (opt-in; default fonts live on :root below). Domain tokens
    (--income/--expense/… ) ride along for Finance; harmless where unused. --success aliases the
    skin green so any app gets a coherent positive color. Per-skin COMPONENT tweaks stay in finance.css. */
 
-body[data-skin] { --brand: var(--primary); }
+:root {
+  --font-body: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
 
-body[data-skin="garden"] {
+:root[data-skin], body[data-skin] { --brand: var(--primary); }
+
+:root[data-skin="garden"], body[data-skin="garden"] {
   --on-brand:#ffffff;
   --bg:#f3ede0; --surface:#fffdf8; --surface2:#f0e8d6; --border:#e7ddc8;
   --primary:#7c9a6e; --income:#5f7d54; --expense:#c97b5a; --warning:#b9893f; --savings:#7b9bb0;
@@ -14,7 +19,7 @@ body[data-skin="garden"] {
   --font-body:'Hanken Grotesk',sans-serif; --font-display:'Bricolage Grotesque',sans-serif;
   --success: var(--income);
 }
-body[data-skin="aperture"] {
+:root[data-skin="aperture"], body[data-skin="aperture"] {
   --on-brand:#ffffff;
   --bg:#fbfbf9; --surface:#ffffff; --surface2:#f1f0ec; --border:#e7e6e1;
   --primary:#e8482b; --income:#3f7d4f; --expense:#e8482b; --warning:#b9700f; --savings:#3a6ea5;
@@ -22,7 +27,7 @@ body[data-skin="aperture"] {
   --font-body:'Hanken Grotesk',sans-serif; --font-display:'Darker Grotesque',sans-serif;
   --success: var(--income);
 }
-body[data-skin="arcade"] {
+:root[data-skin="arcade"], body[data-skin="arcade"] {
   --on-brand:#06222b;
   --bg:#0a0a16; --surface:#11122a; --surface2:#171936; --border:#26285a;
   --primary:#22e0e0; --income:#b6ff3a; --on-income:#0a2912; --expense:#ff2fb0; --warning:#ffcc33; --savings:#22e0e0;
@@ -31,7 +36,7 @@ body[data-skin="arcade"] {
   --success: var(--income);
 }
 
-body[data-skin="sorbet"] {
+:root[data-skin="sorbet"], body[data-skin="sorbet"] {
   --on-brand:#ffffff;
   --bg:#fdf4fb; --surface:#ffffff; --surface2:#fbeef9; --border:#f3dcef;
   --primary:#c264e8; --income:#2bb673; --expense:#f76b8a; --warning:#f5a524; --savings:#22b8c4;
@@ -39,7 +44,7 @@ body[data-skin="sorbet"] {
   --font-body:'Comic Sans MS','Comic Sans',cursive; --font-display:'Comic Sans MS','Comic Sans',cursive;
   --success: var(--income);
 }
-body[data-skin="press"] {
+:root[data-skin="press"], body[data-skin="press"] {
   --on-brand:#ffffff;
   --bg:#f3efe6; --surface:#fbf9f3; --surface2:#efeadd; --border:#ccc2ad;
   --primary:#1a1a1a; --income:#2f6b4f; --expense:#b03a2e; --warning:#9a7b2e; --savings:#3a5a78;
@@ -47,7 +52,7 @@ body[data-skin="press"] {
   --font-body:'Hanken Grotesk',sans-serif; --font-display:'Playfair Display',serif;
   --success: var(--income);
 }
-body[data-skin="mint"] {
+:root[data-skin="mint"], body[data-skin="mint"] {
   --on-brand:#ffffff;
   --bg:#eefaf4; --surface:#ffffff; --surface2:#e2f5ec; --border:#c7eadb;
   --primary:#0fb981; --income:#0ea5a0; --expense:#f43f5e; --warning:#f59e0b; --savings:#0d9488;
@@ -55,7 +60,7 @@ body[data-skin="mint"] {
   --font-body:'Hanken Grotesk',sans-serif; --font-display:'Hanken Grotesk',sans-serif;
   --success: var(--income);
 }
-body[data-skin="vault"] {
+:root[data-skin="vault"], body[data-skin="vault"] {
   --on-brand:#14140f;
   --bg:#14140f; --surface:#1c1c16; --surface2:#222218; --border:#3a3a2e;
   --primary:#cba86a; --income:#8fbc8f; --expense:#c97b7b; --warning:#cba86a; --savings:#7b9bb0;
@@ -70,6 +75,7 @@ body[data-skin="vault"] {
    Generic default-theme (no skin) modes use :not([data-skin]) so they never fight a skin. */
 
 /* default theme (no skin): native is dark (app :root); add a light flip */
+:root:not([data-skin])[data-mode="light"],
 body:not([data-skin])[data-mode="light"] {
   --bg: color-mix(in srgb, var(--primary) 5%, #faf9f5);
   --surface: color-mix(in srgb, var(--primary) 3%, #ffffff);
@@ -80,7 +86,9 @@ body:not([data-skin])[data-mode="light"] {
 }
 
 /* dark-native skins -> LIGHT variant */
+:root[data-skin="vault"][data-mode="light"],
 body[data-skin="vault"][data-mode="light"],
+:root[data-skin="arcade"][data-mode="light"],
 body[data-skin="arcade"][data-mode="light"] {
   --bg: color-mix(in srgb, var(--primary) 6%, #faf8f2);
   --surface: color-mix(in srgb, var(--primary) 3%, #ffffff);
@@ -92,9 +100,13 @@ body[data-skin="arcade"][data-mode="light"] {
 }
 
 /* light-native skins -> DARK variant */
+:root[data-skin="garden"][data-mode="dark"],
 body[data-skin="garden"][data-mode="dark"],
+:root[data-skin="aperture"][data-mode="dark"],
 body[data-skin="aperture"][data-mode="dark"],
+:root[data-skin="sorbet"][data-mode="dark"],
 body[data-skin="sorbet"][data-mode="dark"],
+:root[data-skin="mint"][data-mode="dark"],
 body[data-skin="mint"][data-mode="dark"] {
   --bg: color-mix(in srgb, var(--primary) 7%, #0e1014);
   --surface: color-mix(in srgb, var(--primary) 10%, #161922);
@@ -106,6 +118,7 @@ body[data-skin="mint"][data-mode="dark"] {
 }
 
 /* Press has an INK accent (near-black) — its dark variant inverts to a paper-cream accent so it stays visible */
+:root[data-skin="press"][data-mode="dark"],
 body[data-skin="press"][data-mode="dark"] {
   --bg: #14130f; --surface: #1c1b15; --surface2: #24221a; --border: #322f25;
   --text: #efe9da; --muted: #8f8a7b;

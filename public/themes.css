@@ -16,7 +16,7 @@
   --bg:#f3ede0; --surface:#fffdf8; --surface2:#f0e8d6; --border:#e7ddc8;
   --primary:#7c9a6e; --income:#5f7d54; --expense:#c97b5a; --warning:#b9893f; --savings:#7b9bb0;
   --text:#3b352c; --muted:#9a9082; --radius:22px; --radius-sm:14px; --shadow:0 4px 18px rgba(59,53,44,.07);
-  --font-body:'Hanken Grotesk',sans-serif; --font-display:'Bricolage Grotesque',sans-serif;
+  --font-body:'Bricolage Grotesque',sans-serif; --font-display:'Bricolage Grotesque',sans-serif;
   --success: var(--income);
 }
 :root[data-skin="aperture"], body[data-skin="aperture"] {
@@ -24,7 +24,7 @@
   --bg:#fbfbf9; --surface:#ffffff; --surface2:#f1f0ec; --border:#e7e6e1;
   --primary:#e8482b; --income:#3f7d4f; --expense:#e8482b; --warning:#b9700f; --savings:#3a6ea5;
   --text:#101010; --muted:#a3a29c; --radius:14px; --radius-sm:10px; --shadow:none;
-  --font-body:'Hanken Grotesk',sans-serif; --font-display:'Darker Grotesque',sans-serif;
+  --font-body:'Darker Grotesque',sans-serif; --font-display:'Darker Grotesque',sans-serif;
   --success: var(--income);
 }
 :root[data-skin="arcade"], body[data-skin="arcade"] {
@@ -49,7 +49,7 @@
   --bg:#f3efe6; --surface:#fbf9f3; --surface2:#efeadd; --border:#ccc2ad;
   --primary:#1a1a1a; --income:#2f6b4f; --expense:#b03a2e; --warning:#9a7b2e; --savings:#3a5a78;
   --text:#1c1813; --muted:#7c715c; --radius:5px; --radius-sm:4px; --shadow:none;
-  --font-body:'Hanken Grotesk',sans-serif; --font-display:'Playfair Display',serif;
+  --font-body:Georgia,'Times New Roman',serif; --font-display:'Playfair Display',serif;
   --success: var(--income);
 }
 :root[data-skin="mint"], body[data-skin="mint"] {
@@ -57,7 +57,7 @@
   --bg:#eefaf4; --surface:#ffffff; --surface2:#e2f5ec; --border:#c7eadb;
   --primary:#0fb981; --income:#0ea5a0; --expense:#f43f5e; --warning:#f59e0b; --savings:#0d9488;
   --text:#0f3329; --muted:#5f9080; --radius:16px; --radius-sm:11px; --shadow:0 4px 16px rgba(16,185,129,.07);
-  --font-body:'Hanken Grotesk',sans-serif; --font-display:'Hanken Grotesk',sans-serif;
+  --font-body:'Jost',sans-serif; --font-display:'Jost',sans-serif;
   --success: var(--income);
 }
 :root[data-skin="vault"], body[data-skin="vault"] {
@@ -67,6 +67,21 @@
   --text:#e9e4d6; --muted:#9a9588; --radius:12px; --radius-sm:8px; --shadow:none;
   --font-body:'Jost',sans-serif; --font-display:'Cormorant Garamond',serif;
   --success: var(--income);
+}
+
+/* ===== Typography — apply skin fonts suite-wide ===== */
+html[data-skin], html[data-skin] body {
+  font-family: var(--font-body);
+}
+html[data-skin] :where(
+  h1, h2, h3,
+  .hl h1, .wm, .name, .mt, .mh .mt, .modal-title, .gate .gt,
+  .ed-title, .nc-title, .calmonth, .nov-title,
+  .header-left h1, .summary-card .value, .goal-value, .calc-amount,
+  .grp-hero-total, .hero .big, .debts-summary .ds-val,
+  .dmeta h2, .sr-date, .shelf-title, .mtitle, .tdname, .prv
+) {
+  font-family: var(--font-display);
 }
 
 /* ===== Day / Night ===== Each skin gets its OPPOSITE mode, tinted by its own accent

@@ -885,16 +885,18 @@
   function skinKey(app){ return 'jb_skin_' + app; }
   function getSkin(app){ return lg(skinKey(app)) || 'default'; }
   function applySkinAttr(id){
-    whenReady(function(){
-      var root = document.documentElement;
-      if (id && id !== 'default') {
-        root.setAttribute('data-skin', id);
-        document.body.setAttribute('data-skin', id);
-      } else {
-        root.removeAttribute('data-skin');
-        document.body.removeAttribute('data-skin');
-      }
-    });
+    var root = document.documentElement;
+    var skin = (id && id !== 'default') ? id : null;
+    if (skin) {
+      root.setAttribute('data-skin', skin);
+      if (document.body) document.body.setAttribute('data-skin', skin);
+    } else {
+      root.removeAttribute('data-skin');
+      if (document.body) document.body.removeAttribute('data-skin');
+    }
+    if (!document.body) {
+      whenReady(function(){ applySkinAttr(id); });
+    }
   }
   function applySkin(app){ applySkinAttr(getSkin(app)); applyModeAttr(getMode(app)); }
   function setSkin(app, id){ if (id && id !== 'default') ls(skinKey(app), id); else lr(skinKey(app)); applySkinAttr(id); applyModeAttr(getMode(app)); return id; }
@@ -904,11 +906,10 @@
   function modeKey(app){ return 'jb_mode_' + app; }
   function getMode(app){ return lg(modeKey(app)) || nativeMode(app); }
   function applyModeAttr(m){
-    whenReady(function(){
-      var v = (m === 'light' ? 'light' : 'dark');
-      document.documentElement.setAttribute('data-mode', v);
-      document.body.setAttribute('data-mode', v);
-    });
+    var v = (m === 'light' ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-mode', v);
+    if (document.body) document.body.setAttribute('data-mode', v);
+    else whenReady(function(){ applyModeAttr(m); });
   }
   function applyMode(app){ applyModeAttr(getMode(app)); }
   function setMode(app, m){ m=(m==='light'?'light':'dark'); ls(modeKey(app), m); applyModeAttr(m); return m; }

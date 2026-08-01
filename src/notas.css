@@ -75,6 +75,30 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .nc-pbar{ @apply mt-2 h-1.5 rounded-full bg-surface2 overflow-hidden; }
 .nc-pbar span{ @apply block h-full rounded-full; background:var(--kc,var(--primary)); }
 .pin-sect{ @apply mb-2; }
+.nc-shared{ @apply inline-block text-[10px] font-bold uppercase tracking-wide mr-1.5 opacity-80; }
+.notec-shared{ border-color:color-mix(in srgb, var(--primary) 28%, var(--border)); }
+.nc-members{ @apply flex gap-1 mt-2; }
+.nc-av{ @apply w-7 h-7 rounded-full flex items-center justify-center text-sm; background:var(--surface2); border:1px solid var(--border); }
+.nc-ed-members{ @apply flex flex-wrap items-center gap-2 mb-3 mt-1; }
+.nc-ed-members .dl{ @apply text-xs text-muted font-semibold; }
+.nc-mchips{ @apply flex flex-wrap gap-1.5; }
+.nc-mchip{ @apply inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full; background:var(--surface2); border:1px solid var(--border); }
+.modal-wide{ max-width:480px; }
+.share-invite-row,.share-copy-row{ @apply flex gap-2; }
+.share-invite-row input,.share-copy-row input{ flex:1; min-width:0; }
+.share-invite-row .btn{ @apply flex-[0_0_auto] px-4 py-2 text-[13px]; }
+.share-members{ @apply flex flex-col gap-2 max-h-40 overflow-y-auto; }
+.share-mrow{ @apply flex items-center gap-2 text-xs py-1.5 border-b border-border; }
+.share-mav{ @apply text-base flex-[0_0_auto]; }
+.share-mname{ @apply font-bold flex-1 min-w-0; }
+.share-mem{ @apply text-muted truncate max-w-[120px]; }
+.share-mst{ @apply text-[10px] uppercase font-bold text-muted; }
+.nc-set-profile{ @apply flex items-center gap-3; }
+.nc-set-prev{ @apply text-3xl w-12 h-12 flex items-center justify-center rounded-xl; background:var(--surface2); border:1px solid var(--border); }
+.nc-set-name{ @apply font-bold text-[15px]; }
+.nc-pick-grid{ @apply flex flex-wrap gap-2; }
+.nc-pick-ico{ @apply w-10 h-10 rounded-xl border border-border bg-surface2 text-lg cursor-pointer; font-family:inherit; }
+.nc-pick-ico.on{ border-color:var(--primary); background:color-mix(in srgb, var(--primary) 12%, var(--surface2)); }
 
 /* ===== editor ===== */
 .ed-head{ @apply flex items-center gap-2 mb-1; }

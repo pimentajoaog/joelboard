@@ -1,7 +1,10 @@
 /* Joelboard Notas — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
 var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={}, _renameNoteId=null;
-var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']]];
+var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']],['Compartilhadas',['Titulo','SheetID','Papel','Owner','ListaID','Atualizado']]];
+function _ncSsId(){ return (typeof ncSsId==='function')?ncSsId():JB.getSheetId('notas'); }
+function _ncGrid(){ return (typeof ncGrid==='function')?ncGrid():notasGrid; }
+function noteDataTab(n){ return (n&&n.collabSheetId)?'Meta':'Notas'; }
 var KINDS=[
   {k:'compras', label:'Compras', icon:'🛒', color:'#34d399', defCheck:true},
   {k:'tarefas', label:'Tarefas', icon:'✅', color:'#60a5fa', defCheck:true},
@@ -60,7 +63,8 @@ function notasSignOut(){ JB.signOut(); location.reload(); }
 function afterAuth(){ loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>'); JB.fetchEmail().then(bootSheet); }
 
 /* ---- sheet bootstrap ---- */
-function ssUrl(p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+JB.getSheetId('notas')+p; }
+function ssUrl(p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+_ncSsId()+p; }
+function personalSsUrl(p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+JB.getSheetId('notas')+p; }
 function bootSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando suas listas…</div></div>');
   JB.resolveSheet({ app:'notas', namePart:'Joelboard', requiredTabs: ['Notas','Itens'] })  /* distinctive tabs only — Config is shared */
@@ -105,7 +109,9 @@ function loadData(){
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
-    DATA=buildNotas(by); show();
+    DATA=buildNotas(by);
+    var collabLoad=(typeof ncLoadCollabLists==='function')?ncLoadCollabLists():Promise.resolve();
+    collabLoad.then(function(){ show(); }).catch(function(){ show(); });
   }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('notas'); bootSheet(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(e.message)+'</div></div>'); });
 }
 function buildNotas(t){
@@ -116,14 +122,17 @@ function buildNotas(t){
     config: config
   };
 }
-function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); render(); if(!_nbooted){ _nbooted=true; if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('notas', refreshData); } }
+function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+((typeof ncAcctLabel==='function')?ncAcctLabel():(JB.email()||'')); render(); if(!_nbooted){ _nbooted=true; if(typeof ncCheckJoinParam==='function') ncCheckJoinParam(); if(typeof ncStartCollabPoll==='function') ncStartCollabPoll(); if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('notas', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
+  if(typeof ncRefreshCollabOnly==='function' && openNoteId && note(openNoteId) && note(openNoteId).collabSheetId){ ncRefreshCollabOnly().then(function(){ render(); }).catch(function(){}); return; }
   var want=NOTAS_TABS.map(function(t){return t[0];}).filter(function(t){return notasGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
-  JB.syncWrap(JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+  JB.syncWrap(JB.api('GET', personalSsUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
-    DATA=buildNotas(by); render();
+    DATA=buildNotas(by);
+    var collabLoad=(typeof ncLoadCollabLists==='function')?ncLoadCollabLists():Promise.resolve();
+    collabLoad.then(function(){ render(); }).catch(function(){ render(); });
   })).catch(function(){});
 }
 
@@ -193,9 +202,12 @@ function renderHomeList(){
   var ns=(DATA.notas||[]).slice().sort(function(a,b){ return String(b.atualizado||b.criado||'').localeCompare(String(a.atualizado||a.criado||'')); });
   if(q) ns=ns.filter(function(n){ if(normText(n.titulo).indexOf(q)>-1) return true; return (DATA.itens||[]).some(function(it){return it.notaId===n.id && normText(it.texto).indexOf(q)>-1;}); });
   if(!ns.length){ el.innerHTML = (DATA.notas&&DATA.notas.length)? JB.emptyState({ icon:'🔎', title:'Nada encontrado', hint:'Tente outro termo na busca.' }) : JB.emptyState({ icon:'📝', title:'Nenhuma lista ainda', hint:'Crie listas de compras, tarefas, viagens e notas.', action:'+ Nova lista', onclick:'openNew()' }); return; }
-  var pinned=ns.filter(function(n){return n.fixado;}), rest=ns.filter(function(n){return !n.fixado;}); var html=(q?'':dueStripHtml());
+  var shared=ns.filter(function(n){return n.collabSheetId;}), priv=ns.filter(function(n){return !n.collabSheetId;});
+  var pinned=priv.filter(function(n){return n.fixado;}), rest=priv.filter(function(n){return !n.fixado;});
+  var html=(q?'':dueStripHtml());
+  if(shared.length && !q){ html+='<div class="secbar"><div class="sect">👥 Compartilhadas</div></div><div class="notes-grid nc-shared-grid">'+shared.map(noteCard).join('')+'</div>'; }
   if(pinned.length){ html+='<div class="secbar pin-sect"><div class="sect">📌 Fixadas</div></div><div class="notes-grid">'+pinned.map(noteCard).join('')+'</div>'; }
-  if(rest.length){ if(pinned.length) html+='<div class="secbar" style="margin-top:18px"><div class="sect">Todas</div></div>'; html+='<div class="notes-grid">'+rest.map(noteCard).join('')+'</div>'; }
+  if(rest.length){ if(pinned.length || (shared.length && !q)) html+='<div class="secbar" style="margin-top:18px"><div class="sect">Minhas listas</div></div>'; html+='<div class="notes-grid">'+rest.map(noteCard).join('')+'</div>'; }
   el.innerHTML=html;
   if (!_stNotasHome && !q) {
     _stNotasHome = true;
@@ -212,10 +224,12 @@ function noteCard(n){
   var its=itemsOf(n.id).filter(function(x){return !isGroup(x);}); var chk=its.filter(function(x){return x.marcavel;}); var done=chk.filter(function(x){return x.feito;}).length;
   var prog = chk.length ? ('<div class="nc-pbar"><span style="width:'+Math.round(done/chk.length*100)+'%"></span></div>') : '';
   var metaCount = chk.length ? (done+'/'+chk.length+' feitos') : (its.length+' '+(its.length===1?'linha':'linhas'));
-  return '<div class="notec" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')">'
-    +'<div class="nc-top"><span class="nc-ico">'+kd.icon+'</span><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div><button class="nc-edit" onclick="startNoteRename(event,\''+n.id+'\')" title="Renomear">✎</button><button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button></div>'
-    +'<div class="nc-kind">'+esc(kd.label)+'</div>'
-    +'<div class="nc-meta">'+metaCount+' · '+esc(relTime(n.atualizado||n.criado))+dueBadge(n)+'</div>'+prog+'</div>';
+  var avatars = (typeof ncMemberAvatarsHtml==='function')?ncMemberAvatarsHtml(n):'';
+  var sharedBadge = n.collabSheetId ? '<span class="nc-shared">Compartilhada</span>' : '';
+  return '<div class="notec'+(n.collabSheetId?' notec-shared':'')+'" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')">'
+    +'<div class="nc-top"><span class="nc-ico">'+kd.icon+'</span><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div>'+(n.collabSheetId?'':('<button class="nc-edit" onclick="startNoteRename(event,\''+n.id+'\')" title="Renomear">✎</button><button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button>'))+'</div>'
+    +'<div class="nc-kind">'+sharedBadge+esc(kd.label)+'</div>'
+    +'<div class="nc-meta">'+metaCount+' · '+esc(relTime(n.atualizado||n.criado))+dueBadge(n)+'</div>'+(avatars?('<div class="nc-members">'+avatars+'</div>'):'')+prog+'</div>';
 }
 function startNoteRename(ev,id){ ev.stopPropagation(); _renameNoteId=id; renderHomeList(); setTimeout(function(){ var inp=document.querySelector('[data-rename="'+id+'"]'); if(inp){ inp.focus(); inp.select(); } },30); }
 function noteRenameKey(ev,id){ if(ev.key==='Enter'){ ev.preventDefault(); commitNoteRename(id,ev.target.value); } if(ev.key==='Escape'){ ev.preventDefault(); cancelNoteRename(); } }
@@ -242,15 +256,17 @@ function renderEditor(){
     +'<div class="duerow"><span class="dl">📅 Prazo</span><button type="button" class="field datebtn'+(n.vence?'':' empty')+'" id="edDueBtn" onclick="pickDue()">'+(n.vence?esc(fmtDateBR(n.vence)):'Definir prazo')+'</button>'+(n.vence?'<button class="due-clear" onclick="clearDue()" title="Remover prazo">✕</button>':'')+'</div>'
     +(!_selMode ? '<div class="ed-actions">'
       +'<button class="selstart" onclick="exportCurrentList()">📤 Exportar</button>'
+      +(n.collabSheetId ? '<button class="selstart" onclick="ncOpenShare()">👥 Compartilhar</button>' : '<button class="selstart" onclick="ncShareFromPrivate()">👥 Tornar compartilhada</button>')
       +'<button class="delchecked" id="delChecked" onclick="deleteChecked()" style="display:'+(doneN?'inline-flex':'none')+'">🗑 Excluir marcados ('+doneN+')</button>'
     +'</div>' : '')
+    +((typeof ncEditorMembersHtml==='function')?ncEditorMembersHtml(n):'')
     +(_selMode? '' : (fc && !fillDismissed(n.id)? '<div class="fillrow"><button class="fillbtn" onclick="fillFromLast()">↻ Preencher da última vez — <b>'+fc+' '+(fc>1?'itens':'item')+'</b> de "'+esc(src.titulo)+'"</button><button type="button" class="fill-dismiss" onclick="dismissFill()" title="Ocultar sugestão">✕</button></div>':''))
     +'<div id="edItems"></div>'
     +(_selMode? '' :
        ('<div class="iadd"><span class="ico">+</span><input id="addInput" placeholder="Adicionar item… (cole várias linhas de uma vez)" autocomplete="off" oninput="renderUsuals()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addItemFromInput();}" onpaste="addPaste(event)"><button class="iaddbtn" onclick="addItemFromInput()">Adicionar</button></div>'
         +'<button class="gaddbtn" onclick="addGroup()">＋ Adicionar grupo</button>'
         +'<div class="uwrap" id="edUsuals"></div>'
-        +'<button class="del" style="margin-top:26px" onclick="deleteNote()">Excluir lista</button>'))
+        +'<button class="del" style="margin-top:26px" onclick="'+(n.collabSheetId?'ncLeaveOrDelete()':'deleteNote()')+'">'+(n.collabSheetId?(n.collabRole==='owner'?'Excluir lista compartilhada':'Sair da lista'):'Excluir lista')+'</button>'))
     +'</div>';
   $('main').innerHTML=html; renderItems(); if(!_selMode) renderUsuals(); updateSelBar();
 }
@@ -407,7 +423,7 @@ function deleteItem(id){
     run: function(){
       return findRow('Itens',5,id).then(function(row){
         if(row<0) throw notasRowErr('Itens');
-        return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:notasGrid['Itens'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
+        return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:_ncGrid()['Itens'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
       });
     },
     onSuccess: function(){
@@ -419,7 +435,8 @@ function deleteItem(id){
   });
 }
 function commitTitle(val){ var n=note(openNoteId); if(!n) return; var v=(val||'').trim()||'(sem título)'; if(v===n.titulo) return; n.titulo=v; touchNote(n); }
-function deleteNote(){ var id=openNoteId; var n=note(id); if(!n) return; JB.confirm('Excluir lista?','"'+(n.titulo||'')+'" e seus itens serão removidos.', function(){
+function deleteNote(){ var id=openNoteId; var n=note(id); if(!n) return; if(n.collabSheetId && typeof ncLeaveOrDelete==='function'){ ncLeaveOrDelete(); return; }
+  JB.confirm('Excluir lista?','"'+(n.titulo||'')+'" e seus itens serão removidos.', function(){
   JB.persist({
     run: function(){
       return findRow('Notas',6,id).then(function(noteRow){
@@ -428,8 +445,8 @@ function deleteNote(){ var id=openNoteId; var n=note(id); if(!n) return; JB.conf
           var v=res.values||[]; var rows=[]; var reqs=[];
           for(var i=1;i<v.length;i++){ if(String((v[i]||[])[0])===String(id)) rows.push(i+1); }
           rows.sort(function(a,b){return b-a;});
-          rows.forEach(function(r){ reqs.push({ deleteDimension:{ range:{ sheetId:notasGrid['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }); });
-          if(noteRow>0) reqs.push({ deleteDimension:{ range:{ sheetId:notasGrid['Notas'], dimension:'ROWS', startIndex:noteRow-1, endIndex:noteRow } } });
+          rows.forEach(function(r){ reqs.push({ deleteDimension:{ range:{ sheetId:_ncGrid()['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }); });
+          if(noteRow>0) reqs.push({ deleteDimension:{ range:{ sheetId:_ncGrid()['Notas'], dimension:'ROWS', startIndex:noteRow-1, endIndex:noteRow } } });
           if(!reqs.length) return;
           return JB.api('POST', ssUrl(':batchUpdate'), { requests:reqs });
         });
@@ -524,11 +541,12 @@ function appendNote(n){
   });
 }
 function saveNoteRow(n){
+  var tab=noteDataTab(n);
   JB.persist({
     run: function(){
-      return findRow('Notas',6,n.id).then(function(row){
-        if(row<0) throw notasRowErr('Notas');
-        return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Notas!A'+row+':H'+row)+'?valueInputOption=RAW'), { values:[noteRowVals(n)] });
+      return findRow(tab,6,n.id).then(function(row){
+        if(row<0) throw notasRowErr(tab);
+        return JB.api('PUT', ssUrl('/values/'+encodeURIComponent(tab+'!A'+row+':H'+row)+'?valueInputOption=RAW'), { values:[noteRowVals(n)] });
       });
     },
     onError: notasWriteErr
@@ -562,12 +580,12 @@ function saveConfig(k,v){
   DATA.config[k]=v;
   JB.persist({
     run: function(){
-      return JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+      return JB.api('GET', personalSsUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
         var vals=res.values||[];
         for(var i=1;i<vals.length;i++){
-          if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]});
+          if(String((vals[i]||[])[0])===k) return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]});
         }
-        return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]});
+        return JB.api('POST', personalSsUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]});
       });
     },
     onError: notasWriteErr
@@ -661,7 +679,7 @@ function exportCurrentList(){
   notasDownloadCsv(safeFilename(n.titulo)+'.csv', buildListCsv(n));
   toast('✓ Lista exportada');
 }
-function openSettings(){ switchSet('tema'); JB.renderSkinPicker('notas', $('setSkins')); $('setNudge').classList.toggle('on', (DATA.config&&DATA.config.nudgePref)!=='off'); $('setOverlay').classList.add('open'); }
+function openSettings(){ switchSet('tema'); JB.renderSkinPicker('notas', $('setSkins')); $('setNudge').classList.toggle('on', (DATA.config&&DATA.config.nudgePref)!=='off'); if(typeof ncInitProfileSettings==='function') ncInitProfileSettings(); $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++){ var on=ps[j].getAttribute('data-pane')===name; ps[j].style.display=on?'':'none'; ps[j].classList.toggle('active', on); } }
 function toggleNudgePref(){ var off=(DATA.config&&DATA.config.nudgePref)==='off'; var nv=off?'on':'off'; saveConfig('nudgePref', nv); $('setNudge').classList.toggle('on', nv!=='off'); }
@@ -682,7 +700,7 @@ function deleteGroup(id){
     run: function(){
       return findRow('Itens',5,id).then(function(row){
         if(row<0) throw notasRowErr('Itens');
-        return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:notasGrid['Itens'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
+        return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:_ncGrid()['Itens'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
       });
     },
     onSuccess: function(){
@@ -823,7 +841,7 @@ function delItemRows(ids){
     var v=res.values||[]; var rows=[];
     for(var i=1;i<v.length;i++){ if(ids[String((v[i]||[])[5])]) rows.push(i+1); }
     rows.sort(function(a,b){return b-a;});
-    if(rows.length) return JB.api('POST', ssUrl(':batchUpdate'), { requests: rows.map(function(r){ return { deleteDimension:{ range:{ sheetId:notasGrid['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }; }) });
+    if(rows.length) return JB.api('POST', ssUrl(':batchUpdate'), { requests: rows.map(function(r){ return { deleteDimension:{ range:{ sheetId:_ncGrid()['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }; }) });
   });
 }
 function selDelete(){ var ids=Object.keys(_sel); if(!ids.length) return; var m={}; ids.forEach(function(i){m[i]=1;}); JB.confirm('Excluir selecionados?', ids.length+(ids.length>1?' itens serão removidos.':' item será removido.'), function(){

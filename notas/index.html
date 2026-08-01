@@ -55,11 +55,22 @@
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>
     <div class="set-tabs">
       <button class="set-tab active" data-st="tema" onclick="switchSet('tema')">Tema</button>
+      <button class="set-tab" data-st="perfil" onclick="switchSet('perfil')">Perfil</button>
       <button class="set-tab" data-st="sobre" onclick="switchSet('sobre')">Sobre</button>
     </div>
     <div class="set-pane" data-pane="tema">
       <div class="fg"><label class="fl">Tema do app</label><div id="setSkins"></div></div>
       <div class="fg"><button class="tg" id="setNudge" onclick="toggleNudgePref()">Sugestões automáticas</button><div class="rg">Lembretes do tipo "mês passado você fez…".</div></div>
+    </div>
+    <div class="set-pane" data-pane="perfil" style="display:none">
+      <div class="fg">
+        <label class="fl">Como você aparece em listas compartilhadas</label>
+        <div class="nc-set-profile">
+          <span class="nc-set-prev" id="setProfilePreview">👤</span>
+          <div><div class="nc-set-name" id="setProfileName">—</div><div class="rg">Nome e ícone visíveis para quem compartilha listas com você.</div></div>
+        </div>
+        <button class="btn ghost" style="width:100%;margin-top:10px" onclick="ncOpenProfileFromSettings()">✏ Editar perfil</button>
+      </div>
     </div>
     <div class="set-pane" data-pane="sobre" style="display:none">
       <div class="fg">
@@ -75,6 +86,44 @@
       <div class="rg" style="text-align:center;font-size:11px;margin-top:4px">Joelboard Notas</div>
     </div>
     <button class="btn-primary" onclick="closeSettings()">Pronto</button>
+  </div>
+</div>
+
+<!-- share list -->
+<div class="overlay" id="shareOverlay" onclick="if(event.target===this)ncCloseShare()">
+  <div class="modal modal-wide">
+    <div class="mh"><div class="mt">Compartilhar — <span id="shareListTitle"></span></div><button class="x" onclick="ncCloseShare()">✕</button></div>
+    <div class="fg">
+      <label class="fl">Convidar por e-mail</label>
+      <div class="share-invite-row">
+        <input class="field" id="shareInviteEmail" placeholder="amigo@gmail.com" type="email">
+        <button class="btn" type="button" onclick="ncInviteMember()">Convidar</button>
+      </div>
+      <div class="rg">Adiciona o convite na planilha. Compartilhe também a planilha no Google Drive (Editor) ou envie o link Joelboard abaixo.</div>
+    </div>
+    <div class="fg">
+      <label class="fl">Membros</label>
+      <div id="shareMembers" class="share-members"></div>
+    </div>
+    <div class="fg">
+      <label class="fl">Link Joelboard</label>
+      <div class="share-copy-row"><input class="field" id="shareJoinLink" readonly><button class="btn ghost" type="button" onclick="ncCopyShareField('shareJoinLink')">Copiar</button></div>
+    </div>
+    <div class="fg">
+      <label class="fl">Link da planilha (Google Drive)</label>
+      <div class="share-copy-row"><input class="field" id="shareSheetLink" readonly><button class="btn ghost" type="button" onclick="ncCopyShareField('shareSheetLink')">Copiar</button></div>
+    </div>
+    <button class="btn-primary" onclick="ncCloseShare()">Pronto</button>
+  </div>
+</div>
+
+<!-- profile (collab display name) -->
+<div class="overlay" id="profileOverlay" onclick="if(event.target===this)ncCloseProfile()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Seu perfil</div><button class="x" onclick="ncCloseProfile()">✕</button></div>
+    <div class="fg"><label class="fl">Ícone</label><div class="nc-pick-grid" id="profileIcons"></div></div>
+    <div class="fg"><label class="fl">Nome de exibição</label><input class="field" id="profileName" placeholder="Como quer aparecer"></div>
+    <button class="btn-primary" onclick="ncSaveProfile()">Salvar</button>
   </div>
 </div>
 
@@ -117,5 +166,6 @@
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="/joelboard.js"></script>
 <script src="/notas.js"></script>
+<script src="/notas-collab.js"></script>
 </body>
 </html>

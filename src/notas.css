@@ -140,7 +140,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .ed-add-card{ @apply sticky bottom-0 mt-4 p-3 rounded-[var(--radius)] border border-border bg-surface2 shadow-[0_-8px_24px_rgba(0,0,0,.22)]; }
 .ed-add-card .iadd{ @apply mt-0 py-1; }
 .ed-add-card .uwrap{ @apply mt-2; }
-.iadd-go{ @apply w-8 h-8 rounded-full border-0 bg-primary text-on-brand text-sm font-extrabold cursor-pointer flex-[0_0_auto]; font-family:inherit; }
+.iadd-go{ @apply w-8 h-8 rounded-full border-0 bg-primary text-sm font-extrabold cursor-pointer flex-[0_0_auto] text-[color:var(--on-brand)]; font-family:inherit; }
 .ed-add-group{ @apply block w-full mt-2 bg-transparent border border-dashed border-border text-muted rounded-[var(--radius-sm)] py-2 text-[12px] font-bold cursor-pointer; font-family:inherit; }
 .ed-add-group:hover{ color:var(--text); border-color:var(--muted); }
 

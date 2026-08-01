@@ -246,6 +246,41 @@ html.jb-syncing .header { animation: jb-sync-pulse 1.1s ease-in-out infinite; }
 .jb-mode-toggle:hover { border-color: var(--primary); }
 .jb-mode-toggle .jb-mode-hint { margin-left: auto; font-weight: 500; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
 
+.jb-file-pick { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.jb-file-pick-label { font-size: 12px; font-weight: 800; color: var(--text, #e7eaf3); letter-spacing: 0.01em; }
+.jb-file-pick-opt { font-weight: 600; color: var(--muted, #8a93a8); }
+.jb-file-pick-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 16px; margin: 0;
+  background: color-mix(in srgb, var(--primary, #818cf8) 10%, var(--surface2, #252a40));
+  border: 1px dashed color-mix(in srgb, var(--primary, #818cf8) 45%, var(--border, #2b3147));
+  border-radius: 99px; color: var(--text, #e7eaf3);
+  font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.09s ease;
+}
+.jb-file-pick-btn:hover {
+  border-color: var(--primary, #818cf8);
+  background: color-mix(in srgb, var(--primary, #818cf8) 16%, var(--surface2, #252a40));
+}
+.jb-file-pick-btn:active { transform: scale(0.98); }
+.jb-file-pick-btn input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.jb-file-hint { font-size: 11px; color: var(--muted, #8a93a8); line-height: 1.45; }
+.jb-file-chips { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.jb-file-chip {
+  display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+  padding: 5px 8px 5px 10px;
+  background: var(--surface2, #252a40);
+  border: 1px solid var(--border, #2b3147);
+  border-radius: 99px; font-size: 11px; font-weight: 600; color: var(--muted, #8a93a8);
+}
+.jb-file-chip b { color: var(--text, #e7eaf3); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: min(160px, 42vw); }
+.jb-file-chip-sz { font-size: 10px; opacity: 0.85; white-space: nowrap; }
+.jb-file-chip-x {
+  background: none; border: none; color: var(--muted, #8a93a8); cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 0 2px; font-family: inherit;
+}
+.jb-file-chip-x:hover { color: #fb7185; }
+
 /* Offline outbox badge (joelboard.js) */
 .jb-outbox {
   position: fixed;

@@ -267,7 +267,7 @@ const I18N = {
     'fb.bug':'🐛 Bug', 'fb.feature':'💡 Feature', 'fb.message':'Message',
     'fb.ph':'Describe it — what happened, or what you\u2019d like…',
     'fb.send':'Send', 'fb.sent':'✓ Thanks! Sent.', 'fb.empty':'Write a short message first.',
-    'fb.attach':'Attachments (optional)', 'fb.attachHint':'Up to 10 files · 10 MB each · JPG, PNG, GIF, WebP, MP4, WebM, MOV. Same limits as Google Forms. Sign in with Google to upload attachments.',
+    'fb.attach':'Attachments (optional)', 'fb.attachBtn':'＋ Choose images or videos', 'fb.attachHint':'Up to 10 files · 10 MB each · JPG, PNG, GIF, WebP, MP4, WebM, MOV. Same limits as Google Forms. Sign in with Google to upload attachments.',
     'fb.attachSignIn':'Sign in with Google to attach files.', 'fb.attachErr':'Could not upload attachments.',
     'fb.reportBug':'🐛 Report a bug', 'fb.requestFeature':'💡 Feature request', 'fb.open':'💬 Send feedback', 'fb.name':'Name', 'fb.namePh':'Your name', 'footer.rights':'All rights reserved.', 'acct.switch':'Switch', 'acct.logout':'Sign out', 'acct.hint':'Tap Sign out to switch Google accounts.',
     'runway.label': v => '≈ ' + v.n + ' months of buffer', 'goal.eta': v => '🎯 reaches ~' + v.date,
@@ -539,7 +539,7 @@ const I18N = {
     'fb.bug':'🐛 Bug', 'fb.feature':'💡 Recurso', 'fb.message':'Mensagem',
     'fb.ph':'Descreva — o que aconteceu, ou o que você gostaria…',
     'fb.send':'Enviar', 'fb.sent':'✓ Obrigado! Enviado.', 'fb.empty':'Escreva uma mensagem curta primeiro.',
-    'fb.attach':'Anexos (opcional)', 'fb.attachHint':'Até 10 arquivos · 10 MB cada · JPG, PNG, GIF, WebP, MP4, WebM, MOV. Mesmos limites do Google Forms. Entre com Google para enviar anexos.',
+    'fb.attach':'Anexos (opcional)', 'fb.attachBtn':'＋ Escolher imagens ou vídeos', 'fb.attachHint':'Até 10 arquivos · 10 MB cada · JPG, PNG, GIF, WebP, MP4, WebM, MOV. Mesmos limites do Google Forms. Entre com Google para enviar anexos.',
     'fb.attachSignIn':'Entre com Google para anexar arquivos.', 'fb.attachErr':'Erro ao enviar anexos.',
     'fb.reportBug':'🐛 Reportar um bug', 'fb.requestFeature':'💡 Sugerir um recurso', 'fb.open':'💬 Enviar feedback', 'fb.name':'Nome', 'fb.namePh':'Seu nome', 'footer.rights':'Todos os direitos reservados.', 'acct.switch':'Trocar', 'acct.logout':'Sair', 'acct.hint':'Toque em Sair para trocar de conta do Google.',
     'runway.label': v => '≈ ' + v.n + ' meses de reserva', 'goal.eta': v => '🎯 atinge ~' + v.date,
@@ -2367,28 +2367,24 @@ function removeRecurringSalary() {
 
 /* ---------- In-app feedback (emails the app owner) ---------- */
 let fbKind='bug';
+var fbFilePickReady=false;
 function fbLinksText(links){
   if (!links || !links.length) return '';
   return '\n\nAnexos:\n' + links.map(function(l){ return '• ' + l.name + ': ' + l.url; }).join('\n');
 }
-function paintFbFileList(){
-  var el=document.getElementById('fbFileList'); var inp=document.getElementById('fbFiles');
-  if (!el || !inp || !inp.files || !inp.files.length) { if (el) el.textContent=''; return; }
-  el.textContent=[].slice.call(inp.files).map(function(f){
-    return f.name + ' (' + (window.JB && JB.fbFormatBytes ? JB.fbFormatBytes(f.size) : Math.round(f.size/1024)+' KB') + ')';
-  }).join(' · ');
+function ensureFbFilePick(){
+  if (fbFilePickReady || !window.JB || !JB.initFilePick) return;
+  var el=document.getElementById('fbFilePick');
+  if (!el) return;
+  JB.initFilePick(el, { onError: function(err){ setFormError('fbErr', err ? ((err && err.message) || t('fb.attachErr')) : ''); } });
+  fbFilePickReady=true;
 }
 function openFeedback(kind) {
   setFbKind(kind||'bug'); setFormError('fbErr',''); document.getElementById('fbMsg').value=''; document.getElementById('fbName').value='';
-  var fi=document.getElementById('fbFiles'); if (fi) fi.value=''; paintFbFileList();
+  ensureFbFilePick();
+  if (window.JB && JB.resetFilePick) JB.resetFilePick(document.getElementById('fbFilePick'));
   document.getElementById('fbOverlay').classList.add('open');
   setTimeout(()=>{ const m=document.getElementById('fbMsg'); if (m) m.focus(); }, 30);
-}
-function onFbFilesChange(){
-  if (!window.JB || !JB.fbValidateFiles) return;
-  var inp=document.getElementById('fbFiles'); var v=JB.fbValidateFiles(inp.files);
-  if (!v.ok) { inp.value=''; paintFbFileList(); setFormError('fbErr', v.err); return; }
-  setFormError('fbErr',''); paintFbFileList();
 }
 function setFbKind(k) {
   fbKind=(k==='feature')?'feature':'bug';
@@ -2401,8 +2397,9 @@ function submitFeedback() {
   const msg=document.getElementById('fbMsg').value.trim();
   if (!msg) { setFormError('fbErr', t('fb.empty')); return; }
   if (FEEDBACK_FORM.action.indexOf('FORM_ID') > -1) { setFormError('fbErr', 'Feedback form not set up yet.'); return; }
-  const fileInp=document.getElementById('fbFiles');
-  const v=(window.JB && JB.fbValidateFiles) ? JB.fbValidateFiles(fileInp && fileInp.files) : { ok:true, files:[] };
+  const filePick=document.getElementById('fbFilePick');
+  const picked=(window.JB && JB.getFilePickFiles) ? JB.getFilePickFiles(filePick) : [];
+  const v=(window.JB && JB.fbValidateFiles) ? JB.fbValidateFiles(picked) : { ok:true, files:[] };
   if (!v.ok) { setFormError('fbErr', v.err); return; }
   const btn=document.getElementById('fbSave'); btn.disabled=true; btn.textContent=v.files.length ? t('action.saving') : t('action.saving');
   function sendFeedback(links){

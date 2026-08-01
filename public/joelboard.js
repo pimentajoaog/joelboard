@@ -675,6 +675,77 @@
     if (!links || !links.length) return '';
     return '\n\nAnexos:\n' + links.map(function (l) { return '• ' + l.name + ': ' + l.url; }).join('\n');
   }
+  function initFilePick(container, opts){
+    if (!container) return container;
+    opts = opts || {};
+    var inp = container.querySelector('input[type=file]');
+    var chipsEl = container.querySelector('.jb-file-chips');
+    if (!inp || !chipsEl) return container;
+    var files = container._jbFiles || (container._jbFiles = []);
+    function escFb(s){ return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+    function renderChips(){
+      if (!files.length) { chipsEl.innerHTML = ''; return; }
+      chipsEl.innerHTML = files.map(function (f, i) {
+        var ico = (String(f.type || '').indexOf('video') === 0 || /\.(mp4|webm|mov|avi)$/i.test(f.name)) ? '🎬' : '🖼';
+        return '<span class="jb-file-chip">' + ico + '<b title="' + escFb(f.name) + '">' + escFb(f.name) + '</b><span class="jb-file-chip-sz">' + fbFormatBytes(f.size) + '</span><button type="button" class="jb-file-chip-x" data-i="' + i + '" aria-label="Remover">×</button></span>';
+      }).join('');
+      chipsEl.querySelectorAll('.jb-file-chip-x').forEach(function (btn) {
+        btn.onclick = function (ev) {
+          ev.preventDefault(); ev.stopPropagation();
+          files.splice(+btn.getAttribute('data-i'), 1);
+          syncInp();
+        };
+      });
+    }
+    function syncInp(){
+      try {
+        var dt = new DataTransfer();
+        files.forEach(function (f) { dt.items.add(f); });
+        inp.files = dt.files;
+      } catch (_) {}
+      renderChips();
+      if (opts.onChange) opts.onChange(files, container);
+    }
+    function mergeFiles(list){
+      var merged = files.slice();
+      [].slice.call(list || []).forEach(function (f) {
+        if (merged.some(function (x) { return x.name === f.name && x.size === f.size && x.lastModified === f.lastModified; })) return;
+        merged.push(f);
+      });
+      var v = fbValidateFiles(merged);
+      if (!v.ok) throw new Error(v.err);
+      files.length = 0;
+      v.files.forEach(function (f) { files.push(f); });
+      syncInp();
+    }
+    container._jbFilePickReset = function () {
+      files.length = 0;
+      inp.value = '';
+      syncInp();
+    };
+    container._jbFilePickFiles = function () { return files.slice(); };
+    if (!container._jbFilePickInit) {
+      container._jbFilePickInit = true;
+      inp.addEventListener('change', function () {
+        if (!inp.files || !inp.files.length) return;
+        try {
+          mergeFiles(inp.files);
+          if (opts.onError) opts.onError(null, container);
+        } catch (err) {
+          inp.value = '';
+          if (opts.onError) opts.onError(err, container);
+        }
+      });
+    }
+    syncInp();
+    return container;
+  }
+  function getFilePickFiles(container){
+    if (container && container._jbFilePickFiles) return container._jbFilePickFiles();
+    var inp = container && container.querySelector && container.querySelector('input[type=file]');
+    return inp && inp.files ? [].slice.call(inp.files) : [];
+  }
+  function resetFilePick(container){ if (container && container._jbFilePickReset) container._jbFilePickReset(); }
   function jbToast(msg, opts){
     opts = opts || {};
     var text = String(msg == null ? '' : msg);
@@ -753,10 +824,11 @@
       + '<div style="display:flex;gap:8px;margin-bottom:12px"><button id="jbFbBug" style="flex:1;border-radius:10px;padding:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">🐛 Bug</button><button id="jbFbFeat" style="flex:1;border-radius:10px;padding:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">💡 Ideia</button></div>'
       + '<input id="jbFbName" placeholder="Seu nome (opcional)" style="width:100%;background:#252a40;border:1px solid #2b3147;border-radius:10px;padding:11px;color:#e7eaf3;font-size:14px;margin-bottom:10px;font-family:inherit">'
       + '<textarea id="jbFbMsg" placeholder="O que aconteceu? O que você gostaria?" rows="4" style="width:100%;background:#252a40;border:1px solid #2b3147;border-radius:10px;padding:11px;color:#e7eaf3;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>'
-      + '<div style="margin-top:12px"><div style="font-size:12px;font-weight:700;color:#c4c9d8;margin-bottom:6px">📎 Anexos (opcional)</div>'
-      + '<input type="file" id="jbFbFiles" multiple accept="' + FB_ATTACH.accept + '" style="width:100%;font-size:12px;color:#c4c9d8">'
-      + '<div style="font-size:11px;color:#8a93a8;margin-top:6px;line-height:1.4">' + fbAttachHint() + '<br>Mesmos limites do Google Forms. Entre com Google para enviar anexos.</div>'
-      + '<div id="jbFbFileList" style="margin-top:8px;font-size:12px;color:#c4c9d8"></div></div>'
+      + '<div class="jb-file-pick" id="jbFbFilePick" style="margin-top:12px">'
+      + '<div class="jb-file-pick-label">📎 Anexos <span class="jb-file-pick-opt">(opcional)</span></div>'
+      + '<label class="jb-file-pick-btn"><input type="file" id="jbFbFiles" multiple accept="' + FB_ATTACH.accept + '"><span>＋ Escolher imagens ou vídeos</span></label>'
+      + '<div class="jb-file-chips" id="jbFbFileList"></div>'
+      + '<div class="jb-file-hint">' + fbAttachHint() + '<br>Mesmos limites do Google Forms. Entre com Google para enviar anexos.</div></div>'
       + '<div id="jbFbErr" style="color:#fb7185;font-size:12px;margin-top:8px;min-height:14px"></div>'
       + '<button id="jbFbSend" style="background:#fff;color:#1f2430;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;width:100%;cursor:pointer;font-family:inherit;margin-top:4px">Enviar</button>'
       + '</div>';
@@ -767,24 +839,15 @@
     function paint(){ bug.style.background = kind==='bug'?'#fff':'transparent'; bug.style.color = kind==='bug'?'#1f2430':'#e7eaf3'; bug.style.border = kind==='bug'?'none':'1px solid #2b3147'; feat.style.background = kind==='feature'?'#fff':'transparent'; feat.style.color = kind==='feature'?'#1f2430':'#e7eaf3'; feat.style.border = kind==='feature'?'none':'1px solid #2b3147'; }
     bug.onclick = function(){ kind='bug'; paint(); }; feat.onclick = function(){ kind='feature'; paint(); }; paint();
     ov.querySelector('#jbFbName').value = email() ? email().split('@')[0] : '';
-    function paintFbFiles(){
-      var el = ov.querySelector('#jbFbFileList');
-      var inp = ov.querySelector('#jbFbFiles');
-      if (!el || !inp || !inp.files || !inp.files.length) { if (el) el.textContent = ''; return; }
-      el.textContent = [].slice.call(inp.files).map(function (f) { return f.name + ' (' + fbFormatBytes(f.size) + ')'; }).join(' · ');
-    }
-    ov.querySelector('#jbFbFiles').addEventListener('change', function(){
-      var v = fbValidateFiles(this.files);
-      if (!v.ok) { this.value = ''; paintFbFiles(); ov.querySelector('#jbFbErr').textContent = v.err; return; }
-      ov.querySelector('#jbFbErr').textContent = '';
-      paintFbFiles();
+    var filePick = initFilePick(ov.querySelector('#jbFbFilePick'), {
+      onError: function (err) { ov.querySelector('#jbFbErr').textContent = err ? ((err && err.message) || 'Erro nos anexos.') : ''; }
     });
     ov.querySelector('#jbFbX').onclick = close;
     ov.querySelector('#jbFbSend').onclick = function(){
       var msg = (ov.querySelector('#jbFbMsg').value || '').trim();
       if (!msg) { ov.querySelector('#jbFbErr').textContent = 'Escreva uma mensagem.'; return; }
-      var fileInp = ov.querySelector('#jbFbFiles');
-      var v = fbValidateFiles(fileInp && fileInp.files);
+      var picked = getFilePickFiles(filePick);
+      var v = fbValidateFiles(picked);
       if (!v.ok) { ov.querySelector('#jbFbErr').textContent = v.err; return; }
       var btn = ov.querySelector('#jbFbSend'); btn.disabled = true; btn.textContent = v.files.length ? 'Enviando anexos…' : 'Enviando…';
       function sendFeedback(links){
@@ -1125,7 +1188,7 @@
     requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
-    feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH,
+    feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,
     toast: jbToast, persist: persist, onTabVisible: onTabVisible, watchSheet: watchSheet, confirm: confirm, whenReady: whenReady,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis

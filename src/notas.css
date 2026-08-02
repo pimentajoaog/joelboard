@@ -229,19 +229,29 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .ihdr[data-gd]:not([data-gd="0"]),.irow[data-gd]:not([data-gd="0"]){
   position:relative;
   padding-left:10px;
-  border-left:2px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+  border-left:2px solid color-mix(in srgb, var(--text) 14%, var(--border));
 }
 .ihdr[data-gd]:not([data-gd="0"]){ margin-top:4px; padding-top:8px; }
 
-/* group header — depth styling */
+/* group header — depth styling (neutral surface tints, darkest at top level) */
 .ihdr{ display:flex; align-items:center; gap:6px; padding:11px 8px 7px; margin-top:8px; border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent); border-radius:var(--radius-sm); }
 .ihdr.gdepth-0{
-  background:color-mix(in srgb, var(--kc, var(--primary)) 7%, transparent);
-  border-bottom:1px solid color-mix(in srgb, var(--kc, var(--primary)) 18%, var(--border));
+  background:color-mix(in srgb, var(--text) 11%, var(--surface));
+  border-bottom:1px solid color-mix(in srgb, var(--text) 16%, var(--border));
   margin-top:14px;
 }
-.ihdr.gdepth-1{ border-bottom-color:color-mix(in srgb, var(--primary) 28%, var(--border)); }
-.ihdr.gdepth-2,.ihdr.gdepth-3{ border-bottom-style:dashed; border-bottom-color:color-mix(in srgb, var(--muted) 40%, var(--border)); }
+.ihdr.gdepth-1{
+  background:color-mix(in srgb, var(--text) 7%, var(--surface));
+  border-bottom:1px solid color-mix(in srgb, var(--text) 11%, var(--border));
+}
+.ihdr.gdepth-2{
+  background:color-mix(in srgb, var(--text) 4%, var(--surface));
+  border-bottom:1px dashed color-mix(in srgb, var(--muted) 35%, var(--border));
+}
+.ihdr.gdepth-3{
+  background:color-mix(in srgb, var(--text) 2%, var(--surface));
+  border-bottom:1px dashed color-mix(in srgb, var(--muted) 28%, var(--border));
+}
 .gdepth-0 .gname,.gdepth-0 .gname-view{ font-size:13px; }
 .gdepth-1 .gname,.gdepth-1 .gname-view{ font-size:12px; letter-spacing:.4px; }
 .gdepth-2 .gname,.gdepth-2 .gname-view,.gdepth-3 .gname,.gdepth-3 .gname-view{ font-size:11px; letter-spacing:.3px; text-transform:none; font-weight:700; }

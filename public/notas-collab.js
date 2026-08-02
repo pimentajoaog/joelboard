@@ -7,6 +7,53 @@ var NC_COLLAB_TABS = [
 var NC_PROFILE_ICONS = ['🧑', '👩', '🧑‍💻', '🌸', '🐱', '🦊', '🐻', '🦁', '🐼', '🦉', '🐸', '🦄', '⭐', '🔥', '💜', '🛒', '✈️', '📝', '☕', '🌈'];
 var collabGrids = {};
 var _ncPollTimer = null;
+var _ncSyncChain = Promise.resolve();
+var _ncCollabSig = {};
+
+function ncWithSync(fn) {
+  _ncSyncChain = _ncSyncChain.then(fn, fn);
+  return _ncSyncChain;
+}
+
+function ncRowToItem(r, notaId) {
+  return {
+    id: String(r[5]),
+    notaId: String(r[0] || notaId),
+    ordem: Number(r[1]) || 0,
+    texto: String(r[2] || ''),
+    marcavel: !!r[3],
+    feito: !!r[4],
+    tipo: String(r[6] || '')
+  };
+}
+
+function ncParseItemRows(rows, notaId) {
+  var byId = {}, out = [];
+  body(rows).forEach(function (r) {
+    if (!r[5]) return;
+    var id = String(r[5]);
+    if (byId[id]) return;
+    var it = ncRowToItem(r, notaId);
+    byId[id] = it;
+    out.push(it);
+  });
+  return out;
+}
+
+function ncItemsSignature(items) {
+  return (items || []).slice().sort(function (a, b) { return a.ordem - b.ordem; }).map(function (it) {
+    return it.id + '\t' + it.ordem + '\t' + it.texto + '\t' + (it.feito ? 1 : 0) + '\t' + (it.marcavel ? 1 : 0) + '\t' + (it.tipo || '');
+  }).join('\n');
+}
+
+function ncSetCollabItems(notaId, items) {
+  var sig = ncItemsSignature(items);
+  if (_ncCollabSig[notaId] === sig) return false;
+  _ncCollabSig[notaId] = sig;
+  DATA.itens = (DATA.itens || []).filter(function (it) { return it.notaId !== notaId; });
+  items.forEach(function (it) { DATA.itens.push(it); });
+  return true;
+}
 
 function ncCollabUrl(sid, p) {
   return 'https://sheets.googleapis.com/v4/spreadsheets/' + sid + p;
@@ -90,6 +137,7 @@ function ncStripCollabFromData() {
   (DATA.notas || []).forEach(function (n) { if (n.collabSheetId) drop[n.id] = 1; });
   DATA.notas = (DATA.notas || []).filter(function (n) { return !n.collabSheetId; });
   DATA.itens = (DATA.itens || []).filter(function (it) { return !drop[it.notaId]; });
+  Object.keys(drop).forEach(function (id) { delete _ncCollabSig[id]; });
 }
 
 function ncFetchCollabPack(sid) {
@@ -139,42 +187,49 @@ function ncMergeRegistryRow(reg, pack) {
 
 function ncLoadCollabLists() {
   if (!DATA || !notasGrid['Compartilhadas']) return Promise.resolve();
-  return JB.api('GET', personalSsUrl('/values/Compartilhadas?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
-    var regs = body(res.values || []);
-    ncStripCollabFromData();
-    if (!regs.length) return;
-    return Promise.all(regs.map(function (reg) {
-      var sid = String(reg[1] || '');
-      if (!sid) return null;
-      return ncFetchCollabPack(sid).then(function (pack) {
-        if (!pack) return;
-        var n = ncMergeRegistryRow(reg, pack);
-        if (!n) return;
-        DATA.notas.push(n);
-        body(pack.itens).filter(function (r) { return r[5]; }).forEach(function (r) {
-          DATA.itens.push({ id: r[5], notaId: String(r[0] || n.id), ordem: Number(r[1]) || 0, texto: String(r[2] || ''), marcavel: !!r[3], feito: !!r[4], tipo: String(r[6] || '') });
-        });
-      }).catch(function () {});
-    }));
+  return ncWithSync(function () {
+    return JB.api('GET', personalSsUrl('/values/Compartilhadas?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
+      var regs = body(res.values || []);
+      ncStripCollabFromData();
+      if (!regs.length) return;
+      return Promise.all(regs.map(function (reg) {
+        var sid = String(reg[1] || '');
+        if (!sid) return null;
+        return ncFetchCollabPack(sid).then(function (pack) {
+          if (!pack) return;
+          var n = ncMergeRegistryRow(reg, pack);
+          if (!n) return;
+          DATA.notas.push(n);
+          ncSetCollabItems(n.id, ncParseItemRows(pack.itens, n.id));
+        }).catch(function () {});
+      }));
+    });
   }).catch(function () {});
 }
 
 function ncRefreshCollabOnly() {
   var n = note(openNoteId);
-  if (!n || !n.collabSheetId) return Promise.resolve();
-  return ncFetchCollabPack(n.collabSheetId).then(function (pack) {
-    if (!pack) return;
-    DATA.itens = (DATA.itens || []).filter(function (it) { return it.notaId !== n.id; });
-    body(pack.itens).filter(function (r) { return r[5]; }).forEach(function (r) {
-      DATA.itens.push({ id: r[5], notaId: String(r[0] || n.id), ordem: Number(r[1]) || 0, texto: String(r[2] || ''), marcavel: !!r[3], feito: !!r[4], tipo: String(r[6] || '') });
+  if (!n || !n.collabSheetId) return Promise.resolve({ changed: false });
+  var noteId = n.id, sheetId = n.collabSheetId;
+  return ncWithSync(function () {
+    return ncFetchCollabPack(sheetId).then(function (pack) {
+      if (!pack) return { changed: false };
+      var cur = note(noteId);
+      if (!cur || cur.collabSheetId !== sheetId) return { changed: false };
+      var changed = ncSetCollabItems(cur.id, ncParseItemRows(pack.itens, cur.id));
+      var metaRow = body(pack.meta)[0];
+      if (metaRow) {
+        var t = String(metaRow[0] || cur.titulo);
+        var u = String(metaRow[5] || cur.atualizado);
+        var v = String(metaRow[7] || '');
+        if (t !== cur.titulo || u !== cur.atualizado || v !== cur.vence) changed = true;
+        cur.titulo = t;
+        cur.atualizado = u;
+        cur.vence = v;
+      }
+      cur.collabMembers = ncParseMembers(pack.membros);
+      return { changed: changed };
     });
-    var metaRow = body(pack.meta)[0];
-    if (metaRow) {
-      n.titulo = String(metaRow[0] || n.titulo);
-      n.atualizado = String(metaRow[5] || n.atualizado);
-      n.vence = String(metaRow[7] || '');
-    }
-    n.collabMembers = ncParseMembers(pack.membros);
   });
 }
 
@@ -183,7 +238,7 @@ function ncStartCollabPoll() {
   _ncPollTimer = setInterval(function () {
     if (!openNoteId || !note(openNoteId) || !note(openNoteId).collabSheetId) return;
     if (document.hidden) return;
-    ncRefreshCollabOnly().then(function () { render(); }).catch(function () {});
+    ncRefreshCollabOnly().then(function (res) { if (res && res.changed) render(); }).catch(function () {});
   }, 20000);
 }
 

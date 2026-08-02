@@ -125,7 +125,7 @@ function buildNotas(t){
 function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+((typeof ncAcctLabel==='function')?ncAcctLabel():(JB.email()||'')); render(); if(!_nbooted){ _nbooted=true; if(typeof ncCheckJoinParam==='function') ncCheckJoinParam(); if(typeof ncStartCollabPoll==='function') ncStartCollabPoll(); if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('notas', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
-  if(typeof ncRefreshCollabOnly==='function' && openNoteId && note(openNoteId) && note(openNoteId).collabSheetId){ ncRefreshCollabOnly().then(function(){ render(); }).catch(function(){}); return; }
+  if(typeof ncRefreshCollabOnly==='function' && openNoteId && note(openNoteId) && note(openNoteId).collabSheetId){ ncRefreshCollabOnly().then(function(res){ if(res && res.changed) render(); }).catch(function(){}); return; }
   var want=NOTAS_TABS.map(function(t){return t[0];}).filter(function(t){return notasGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.syncWrap(JB.api('GET', personalSsUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
@@ -178,6 +178,36 @@ function expandGroupChain(gid){
 function ordemAfter(its, afterIdx){
   var lastOrd=its[afterIdx].ordem, nextO=(afterIdx+1<its.length)?its[afterIdx+1].ordem:null;
   return (nextO!=null)?(lastOrd+nextO)/2:(lastOrd+1);
+}
+function visualDepthAt(its, idx){
+  var stack=[];
+  for(var i=0;i<=idx && i<its.length;i++){
+    var it=its[i];
+    if(isGroup(it)){
+      var d=groupDepth(it);
+      while(stack.length>d) stack.pop();
+      stack.push(it);
+    }
+  }
+  return stack.length;
+}
+function groupOrdemBounds(its, idx){
+  var depth=visualDepthAt(its, idx);
+  if(depth<=0) return { lo: its[idx].ordem, hi: null };
+  for(var k=idx;k>=0;k--){
+    if(!isGroup(its[k]) || groupDepth(its[k])!==depth-1) continue;
+    var gDepth=groupDepth(its[k]), hi=null;
+    for(var j=k+1;j<its.length;j++){
+      if(isGroup(its[j]) && groupDepth(its[j])<=gDepth){ hi=its[j].ordem; break; }
+    }
+    return { lo: its[idx].ordem, hi: hi };
+  }
+  return { lo: its[idx].ordem, hi: null };
+}
+function insertOrdemInContext(its, idx){
+  if(idx+1<its.length) return (its[idx].ordem+its[idx+1].ordem)/2;
+  var b=groupOrdemBounds(its, idx);
+  return (b.hi!=null)?(b.lo+b.hi)/2:(b.lo+1);
 }
 function listCollapseStack(its){
   var stack=[], out=[];
@@ -431,7 +461,8 @@ function insertItemAfter(afterId){
   var cur=its[idx];
   if(isGroup(cur)) return null;
   for(var k=idx;k>=0;k--){ if(isGroup(its[k]) && its[k].feito){ its[k].feito=false; saveItemRow(its[k]); } }
-  var it={ id:uuid(), notaId:openNoteId, ordem:ordemAfter(its,idx), texto:'', marcavel:cur.marcavel, feito:false, tipo:'' };
+  var ord=insertOrdemInContext(its, idx);
+  var it={ id:uuid(), notaId:openNoteId, ordem:ord, texto:'', marcavel:cur.marcavel, feito:false, tipo:'' };
   DATA.itens.push(it); appendItem(it); touchNote(n); return it;
 }
 function itemKey(e,id){
@@ -836,18 +867,33 @@ function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return
 }, { yes:'Excluir', no:'Cancelar', danger:true }); }
 
 function dedupeItems(){
-  var seen={}, dups=[];
-  (DATA.itens||[]).slice().sort(function(a,b){ return String(a.notaId).localeCompare(String(b.notaId)) || (a.ordem-b.ordem); }).forEach(function(x){
-    if(isGroup(x)) return; var t=normText(x.texto); if(!t) return; var k=x.notaId+'|'+t;
-    if(seen[k]) dups.push(x); else seen[k]=1;
+  var scopeId=openNoteId||null;
+  var pool=(DATA.itens||[]).filter(function(x){
+    if(scopeId) return x.notaId===scopeId;
+    var nn=note(x.notaId);
+    return !nn || !nn.collabSheetId;
   });
+  if(!pool.length){ toast('Nenhuma duplicata 🎉'); return; }
+  var seenId={}, seenText={}, dups=[], dupIds={};
+  pool.slice().sort(function(a,b){ return a.ordem-b.ordem; }).forEach(function(x){
+    if(seenId[x.id]){ dups.push(x); return; }
+    seenId[x.id]=1;
+    if(isGroup(x)) return;
+    var t=normText(x.texto);
+    if(!t) return;
+    var k=x.notaId+'|'+t;
+    if(seenText[k]) dups.push(x);
+    else seenText[k]=1;
+  });
+  dups.forEach(function(x){ dupIds[x.id]=1; });
   if(!dups.length){ toast('Nenhuma duplicata 🎉'); return; }
-  var ids={}; dups.forEach(function(x){ids[x.id]=1;});
-  JB.confirm('Remover duplicatas?', dups.length+(dups.length>1?' itens repetidos':' item repetido')+' (mesmo texto na mesma lista) serão removidos. Um de cada é mantido.', function(){
+  var keepN=pool.filter(function(x){ return !dupIds[x.id]; }).length;
+  if(!keepN){ toast('Nada a remover — evitaria esvaziar a lista'); return; }
+  JB.confirm('Remover duplicatas?', dups.length+(dups.length>1?' itens repetidos':' item repetido')+' serão removidos. Um de cada é mantido.', function(){
     JB.persist({
-      run: function(){ return delItemRows(ids); },
+      run: function(){ return delItemRows(dupIds); },
       onSuccess: function(){
-        DATA.itens=(DATA.itens||[]).filter(function(x){return !ids[x.id];});
+        DATA.itens=(DATA.itens||[]).filter(function(x){ return !dupIds[x.id]; });
         closeSettings(); render(); toast('✓ '+dups.length+' removidos');
       },
       onError: notasWriteErr

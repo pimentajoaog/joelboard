@@ -150,7 +150,7 @@
 <!-- multi-select action bar (idle: enter mode · active: bulk actions) -->
 <div class="selbar" id="selBar">
   <div class="selbar-idle" id="selIdle">
-    <button class="selentry" onclick="toggleSelMode()" title="Selecionar vários itens — ou clique e arraste na lista">☑ Selecionar</button>
+    <button class="selentry" onclick="toggleSelMode()" title="Selecionar vários itens — Esc para sair">☑ Selecionar</button>
   </div>
   <div class="selbar-active" id="selActive">
     <span class="selcount"><b id="selCount">0</b> sel.</span>
@@ -158,7 +158,7 @@
     <button onclick="selMark(true)" title="Marcar">✓</button>
     <button onclick="selMark(false)" title="Desmarcar">▢</button>
     <button class="seldel" onclick="selDelete()" title="Excluir">🗑</button>
-    <button onclick="toggleSelMode()" title="Sair">✕</button>
+    <button onclick="selExitMode()" title="Sair (Esc)">✕</button>
   </div>
 </div>
 

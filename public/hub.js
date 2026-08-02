@@ -269,7 +269,7 @@ function hubNewsEditSave(){
     var note=$('hubNewsSheetNote');
     if(note&&res&&res.id){
       if(_hubNewsIgnoreEnv||!HUB_NEWS_SHEET_ID||hubNewsCleanId(HUB_NEWS_SHEET_ID)!==res.id){
-        note.textContent='Planilha criada/atualizada. Coloque no Vercel: VITE_HUB_NEWS_SHEET_ID='+res.id+' e redeploy.';
+        note.innerHTML='No Vercel, crie a variável <b>VITE_HUB_NEWS_SHEET_ID</b> com <b>só</b> este valor (sem URL, sem nome da variável):<br><code class="hub-news-id">'+esc(res.id)+'</code>';
       }
     }
   }).catch(function(e){

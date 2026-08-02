@@ -52,7 +52,7 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 .nov-edit-row textarea{ resize:vertical; min-height:52px; }
 .nov-edit-rm{ background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:8px; width:28px; height:28px; cursor:pointer; margin-top:4px; }
 .nov-edit-rm:hover{ border-color:#f87171; color:#f87171; }
-.hub-news-sheet-note{ font-size:11px; color:var(--muted); margin:10px 0 12px; line-height:1.4; word-break:break-all; }
+.hub-news-sheet-note code.hub-news-id{ display:block; margin-top:8px; padding:8px 10px; font-size:12px; word-break:break-all; user-select:all; }
 @media (max-width:520px){ .nov-edit-row{ grid-template-columns:1fr 1fr; } .nov-edit-row textarea{ grid-column:1/-1; } .nov-edit-rm{ grid-column:2; justify-self:end; } }
 .nov-empty{ color:var(--muted); font-style:italic; }
 .nov-list{ display:flex; flex-direction:column; gap:12px; list-style:none; }

@@ -54,6 +54,7 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 .nov-edit-rm:hover{ border-color:#f87171; color:#f87171; }
 .hub-news-sheet-note{ font-size:11px; color:var(--muted); margin:10px 0 12px; line-height:1.4; word-break:break-all; }
 @media (max-width:520px){ .nov-edit-row{ grid-template-columns:1fr 1fr; } .nov-edit-row textarea{ grid-column:1/-1; } .nov-edit-rm{ grid-column:2; justify-self:end; } }
+.nov-empty{ color:var(--muted); font-style:italic; }
 .nov-list{ display:flex; flex-direction:column; gap:12px; list-style:none; }
 .nov-item{ font-size:12.5px; line-height:1.45; color:var(--text); }
 .nov-meta{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:5px; }

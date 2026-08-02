@@ -3,7 +3,7 @@
 var greetEl=document.getElementById("greet"), btnEl=document.getElementById("authbtn");
 var _hbooted=false;
 var HUB_NEWS_ADMIN_EMAIL='joaogabrielpabarbosa@gmail.com';
-var HUB_NEWS_SHEET_ID=(typeof window!=='undefined'&&window.JB_HUB_NEWS_SHEET_ID)||'';
+var HUB_NEWS_SHEET_ID=hubNewsCleanId((typeof window!=='undefined'&&window.JB_HUB_NEWS_SHEET_ID)||'');
 var HUB_NEWS_SHEET_LOCAL='jb_hub_news_sheet_id';
 var HUB_NEWS_LIMIT=5;
 var HUB_NEWS_DEFAULT=[
@@ -18,32 +18,43 @@ var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', mini:'Mini', h
 var HUB_NEWS_KIND={ novo:'Novo', correcao:'Correção' };
 var HUB_NEWS_APPS=['hub','finance','fit','study','notas','mini'];
 
+function hubNewsCleanId(raw){
+  raw=String(raw||'').trim().replace(/^["']|["']$/g,'');
+  var m=raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return m?m[1]:raw;
+}
+function hubNewsCoerceItems(items){
+  if(!items||!items.length) return HUB_NEWS_DEFAULT.slice();
+  return items.slice(0,HUB_NEWS_LIMIT);
+}
 function hubNewsAdmin(){ return (JB.email()||'').toLowerCase()===HUB_NEWS_ADMIN_EMAIL; }
 function hubNewsSheetId(){
-  if(HUB_NEWS_SHEET_ID) return HUB_NEWS_SHEET_ID;
-  try{ return localStorage.getItem(HUB_NEWS_SHEET_LOCAL)||''; }catch(_){ return ''; }
+  var id=hubNewsCleanId(HUB_NEWS_SHEET_ID);
+  if(id) return id;
+  try{ return hubNewsCleanId(localStorage.getItem(HUB_NEWS_SHEET_LOCAL)||''); }catch(_){ return ''; }
 }
 function hubNewsSetSheetId(id){
   try{ if(id) localStorage.setItem(HUB_NEWS_SHEET_LOCAL,id); else localStorage.removeItem(HUB_NEWS_SHEET_LOCAL); }catch(_){}
 }
 
 function hubNewsParseGviz(text){
-  var m=String(text||'').match(/google\.visualization\.Query\.setResponse\(([\s\S]+)\);?\s*$/);
-  if(!m) return null;
-  var data=JSON.parse(m[1]);
-  if(!data||data.status!=='ok'||!data.table) return null;
-  var out=[];
-  (data.table.rows||[]).forEach(function(row){
-    var c=row.c||[];
-    var textVal=c[2]&&(c[2].v!=null?String(c[2].v):'');
-    if(!textVal) return;
-    out.push({
-      app:String((c[0]&&c[0].v)||'hub').toLowerCase(),
-      kind:String((c[1]&&c[1].v)||'novo').toLowerCase(),
-      text:textVal
+  try{
+    var m=String(text||'').match(/google\.visualization\.Query\.setResponse\(([\s\S]+)\);?\s*$/);
+    if(!m) return null;
+    var data=JSON.parse(m[1]);
+    if(!data||data.status!=='ok'||!data.table) return null;
+    var out=[];
+    (data.table.rows||[]).forEach(function(row){
+      var c=row.c||[];
+      var textVal=c[2]&&(c[2].v!=null?String(c[2].v):'');
+      if(!textVal) return;
+      var app=String((c[0]&&c[0].v)||'hub').toLowerCase();
+      var kind=String((c[1]&&c[1].v)||'novo').toLowerCase();
+      if(app==='app'&&kind==='kind'&&/^text$/i.test(textVal)) return;
+      out.push({ app:app, kind:kind, text:textVal });
     });
-  });
-  return out.length?out:null;
+    return out.length?out:null;
+  }catch(_){ return null; }
 }
 
 function hubNewsParseApiRows(rows){
@@ -58,42 +69,58 @@ function hubNewsParseApiRows(rows){
 function hubNewsFetchPublic(id){
   return fetch('https://docs.google.com/spreadsheets/d/'+encodeURIComponent(id)+'/gviz/tq?tqx=out:json&sheet=Novidades',{ cache:'no-store' })
     .then(function(r){ return r.text(); })
-    .then(function(t){ return hubNewsParseGviz(t); });
+    .then(function(t){ return hubNewsParseGviz(t); })
+    .catch(function(){ return null; });
 }
 
 function hubNewsFetchApi(id){
   return JB.api('GET','https://sheets.googleapis.com/v4/spreadsheets/'+id+'/values/Novidades?valueRenderOption=UNFORMATTED_VALUE')
-    .then(function(res){ return hubNewsParseApiRows(res.values||[]); });
+    .then(function(res){ return hubNewsParseApiRows(res.values||[]); })
+    .catch(function(){ return null; });
 }
 
 function hubNewsFetch(){
   var id=hubNewsSheetId();
   if(!id) return Promise.resolve(HUB_NEWS_DEFAULT.slice());
+  var pub=hubNewsFetchPublic(id);
   if(hubNewsAdmin()&&JB.isSignedIn()){
-    return hubNewsFetchApi(id).catch(function(){
-      return hubNewsFetchPublic(id);
+    return hubNewsFetchApi(id).then(function(items){
+      if(items&&items.length) return items;
+      return pub;
     }).then(function(items){
-      return items||HUB_NEWS_DEFAULT.slice();
+      return hubNewsCoerceItems(items);
+    }).catch(function(){
+      return pub.then(function(items){ return hubNewsCoerceItems(items); });
     });
   }
-  return hubNewsFetchPublic(id).then(function(items){
-    return items||HUB_NEWS_DEFAULT.slice();
-  }).catch(function(){ return HUB_NEWS_DEFAULT.slice(); });
+  return pub.then(function(items){ return hubNewsCoerceItems(items); });
 }
 
 function hubNewsInit(){
+  renderHubNews();
   return hubNewsFetch().then(function(items){
-    HUB_NEWS=(items||[]).slice(0,HUB_NEWS_LIMIT);
+    HUB_NEWS=items;
     renderHubNews();
-  }).catch(function(){ renderHubNews(); });
+  }).catch(function(){
+    HUB_NEWS=HUB_NEWS_DEFAULT.slice();
+    renderHubNews();
+  });
 }
 
 function renderHubNews(){
   var el=document.getElementById('hubNews'); if(!el) return;
-  var editBtn=hubNewsAdmin()?'<button type="button" class="nov-edit" onclick="openHubNewsEditor()" title="Editar novidades" aria-label="Editar novidades">✏</button>':'';
-  el.innerHTML='<div class="nov-head"><div class="nov-title">Novidades</div>'+editBtn+'</div><ul class="nov-list">'+HUB_NEWS.map(function(n){
-    return '<li class="nov-item"><div class="nov-meta"><span class="nov-app '+esc(n.app)+'">'+esc(HUB_NEWS_LABEL[n.app]||n.app)+'</span><span class="nov-kind '+esc(n.kind)+'">'+esc(HUB_NEWS_KIND[n.kind]||n.kind)+'</span></div>'+esc(n.text)+'</li>';
-  }).join('')+'</ul>';
+  try{
+    var list=HUB_NEWS.length?HUB_NEWS.map(function(n){
+      return '<li class="nov-item"><div class="nov-meta"><span class="nov-app '+esc(n.app)+'">'+esc(HUB_NEWS_LABEL[n.app]||n.app)+'</span><span class="nov-kind '+esc(n.kind)+'">'+esc(HUB_NEWS_KIND[n.kind]||n.kind)+'</span></div>'+esc(n.text)+'</li>';
+    }).join(''):'<li class="nov-item nov-empty">Nenhuma novidade publicada ainda.</li>';
+    var editBtn=hubNewsAdmin()?'<button type="button" class="nov-edit" onclick="openHubNewsEditor()" title="Editar novidades" aria-label="Editar novidades">✏</button>':'';
+    el.innerHTML='<div class="nov-head"><div class="nov-title">Novidades</div>'+editBtn+'</div><ul class="nov-list">'+list+'</ul>';
+  }catch(_){
+    HUB_NEWS=HUB_NEWS_DEFAULT.slice();
+    el.innerHTML='<div class="nov-head"><div class="nov-title">Novidades</div></div><ul class="nov-list">'+HUB_NEWS.map(function(n){
+      return '<li class="nov-item"><div class="nov-meta"><span class="nov-app '+n.app+'">'+esc(HUB_NEWS_LABEL[n.app]||n.app)+'</span><span class="nov-kind '+n.kind+'">'+(HUB_NEWS_KIND[n.kind]||n.kind)+'</span></div>'+esc(n.text)+'</li>';
+    }).join('')+'</ul>';
+  }
 }
 
 function hubNewsEnsureSheet(){
@@ -135,7 +162,7 @@ function openHubNewsEditor(){
     JB.signIn({ onSuccess:openHubNewsEditor });
     return;
   }
-  _hubNewsDraft=HUB_NEWS.map(function(n){ return { app:n.app, kind:n.kind, text:n.text }; });
+  _hubNewsDraft=(HUB_NEWS.length?HUB_NEWS:HUB_NEWS_DEFAULT).map(function(n){ return { app:n.app, kind:n.kind, text:n.text }; });
   hubNewsRenderEditor();
   var ov=$('hubNewsEditor'); if(ov) ov.classList.add('open');
 }

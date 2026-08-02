@@ -62,7 +62,9 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .notec{ @apply bg-surface border border-border rounded-[var(--radius)] p-4 cursor-pointer relative overflow-hidden; }
 .notec::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--kc,var(--primary)); }
 .nc-top{ @apply flex items-center gap-2.5 mb-1.5; }
-.nc-ico{ @apply w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-[18px] flex-[0_0_auto]; background:color-mix(in srgb, var(--kc,var(--primary)) 16%, var(--surface2)); }
+.nc-ico{ @apply w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-[18px] flex-[0_0_auto]; background:color-mix(in srgb, var(--kc,var(--primary)) 16%, var(--surface2)); border:0; cursor:pointer; font-family:inherit; padding:0; transition:transform .1s ease, border-color .15s ease; border:1px solid transparent; }
+.nc-ico:hover{ border-color:color-mix(in srgb, var(--kc,var(--primary)) 45%, var(--border)); }
+.nc-ico:active{ transform:scale(.94); }
 .nc-title{ @apply font-extrabold text-[15px] leading-tight flex-1 min-w-0; font-family:var(--font-display); word-break:break-word; }
 .nc-edit{ @apply bg-transparent border-0 text-muted cursor-pointer text-[13px] flex-[0_0_auto] opacity-60 px-1; }
 .nc-edit:hover{ color:var(--primary); opacity:1; }

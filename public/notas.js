@@ -369,11 +369,13 @@ function noteCard(n){
   var avatars = (typeof ncMemberAvatarsHtml==='function')?ncMemberAvatarsHtml(n):'';
   var sharedBadge = n.collabSheetId ? '<span class="nc-shared">Compartilhada</span>' : '';
   return '<div class="notec'+(n.collabSheetId?' notec-shared':'')+'" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')">'
-    +'<div class="nc-top"><span class="nc-ico">'+noteIcon(n)+'</span><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div>'+(n.collabSheetId?'':('<button class="nc-edit" onclick="startNoteRename(event,\''+n.id+'\')" title="Renomear">✎</button><button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button>'))+'</div>'
+    +'<div class="nc-top"><button type="button" class="nc-ico" onclick="startNoteIconEdit(event,\''+n.id+'\')" title="Alterar ícone" aria-label="Alterar ícone">'+noteIcon(n)+'</button><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div>'+(n.collabSheetId?'':('<button class="nc-edit" onclick="startNoteRename(event,\''+n.id+'\')" title="Renomear">✎</button><button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button>'))+'</div>'
     +'<div class="nc-kind">'+sharedBadge+esc(kd.label)+'</div>'
     +'<div class="nc-meta">'+metaCount+' · '+esc(relTime(n.atualizado||n.criado))+dueBadge(n)+'</div>'+(avatars?('<div class="nc-members">'+avatars+'</div>'):'')+prog+'</div>';
 }
 function startNoteRename(ev,id){ ev.stopPropagation(); _renameNoteId=id; renderHomeList(); setTimeout(function(){ var inp=document.querySelector('[data-rename="'+id+'"]'); if(inp){ inp.focus(); inp.select(); } },30); }
+function startNoteIconEdit(ev,id){ ev.stopPropagation(); openIconPicker(id); }
+function refreshAfterIconChange(ctx){ if(openNoteId===ctx) renderEditor(); else renderHomeList(); }
 function noteRenameKey(ev,id){ if(ev.key==='Enter'){ ev.preventDefault(); commitNoteRename(id,ev.target.value); } if(ev.key==='Escape'){ ev.preventDefault(); cancelNoteRename(); } }
 function commitNoteRename(id,val){ var n=note(id); if(n){ var v=(val||'').trim()||'(sem título)'; if(v!==n.titulo){ n.titulo=v; touchNote(n); } } _renameNoteId=null; renderHomeList(); }
 function cancelNoteRename(){ _renameNoteId=null; renderHomeList(); }
@@ -407,17 +409,22 @@ function renderIconPickerBody(ctx){
 }
 function renderNewIconPicker(){ var el=$('newIconWrap'); if(el) el.innerHTML=renderIconPickerBody('new'); }
 function openIconPicker(ctx){ _iconPickCtx=ctx; var b=$('iconPickBody'); if(b) b.innerHTML=renderIconPickerBody(ctx); var ov=$('iconOverlay'); if(ov) ov.classList.add('open'); }
-function closeIconPicker(){ var ov=$('iconOverlay'); if(ov) ov.classList.remove('open'); _iconPickCtx=null; }
+function closeIconPicker(){
+  var ctx=_iconPickCtx;
+  var ov=$('iconOverlay'); if(ov) ov.classList.remove('open');
+  _iconPickCtx=null;
+  if(ctx && ctx!=='new') refreshAfterIconChange(ctx);
+}
 function applyIconPreset(ctx,kind){
   if(ctx==='new'){ newKind=kind; newCustomIcon=''; renderNewIconPicker(); return; }
   var n=note(ctx); if(!n) return;
-  n.tipo=kind; n.cor=''; touchNote(n); saveNoteRow(n); closeIconPicker(); renderEditor();
+  n.tipo=kind; n.cor=''; touchNote(n); saveNoteRow(n); closeIconPicker();
 }
 function applyIconExtra(ctx,idx){
   var ic=ICON_EXTRAS[idx]; if(!ic) return;
   if(ctx==='new'){ newCustomIcon=ic; renderNewIconPicker(); return; }
   var n=note(ctx); if(!n) return;
-  n.cor=ic; touchNote(n); saveNoteRow(n); closeIconPicker(); renderEditor();
+  n.cor=ic; touchNote(n); saveNoteRow(n); closeIconPicker();
 }
 function applyIconCustom(ctx,val){
   var ic=normalizeIconInput(val);
@@ -425,11 +432,12 @@ function applyIconCustom(ctx,val){
   var n=note(ctx); if(!n) return;
   n.cor=ic; touchNote(n); saveNoteRow(n);
   var b=$('iconPickBody'); if(b) b.innerHTML=renderIconPickerBody(ctx);
+  refreshAfterIconChange(ctx);
 }
 function applyIconReset(ctx){
   if(ctx==='new'){ newCustomIcon=''; renderNewIconPicker(); return; }
   var n=note(ctx); if(!n) return;
-  n.cor=''; touchNote(n); saveNoteRow(n); closeIconPicker(); renderEditor();
+  n.cor=''; touchNote(n); saveNoteRow(n); closeIconPicker();
 }
 function createNote(){ var t=($('newTitle').value||'').trim(); var kd=kindDef(newKind); if(!t){ var d=new Date(); t=kd.label+' — '+MOFULL[d.getMonth()]; } var now=new Date().toISOString(); var n={ id:uuid(), titulo:t, tipo:newKind, cor:newCustomIcon||'', fixado:false, criado:now, atualizado:now, vence:newDue }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); closeNew(); openNote(n.id); }
 
@@ -1099,7 +1107,7 @@ function selEscKey(){
   selExitMode();
 }
 var _mq=null, _marqueeDidDrag=false, _MQ_MIN=6;
-function selMarqueeIgnore(el){ if(!el||!el.closest) return true; if(el.closest('.ihandle,button,input,textarea,.ichk,.itype,.idel,.gchev,.gadd,.gsub,.gctrl,.gctrls,.fmtbar,.selbar,.lnk,.iadd,.ed-add-card,.uwrap,.uhead,.fillrow,.ed-head,.ed-top,.ed-meta,.ed-menu,.ed-menu-wrap,.fillbtn,.door,.fab,.overlay,.header,.foot,.toast,.confirm-card,.nc-edit,.nc-rename-inp,.ed-done-toggle')) return true; if(el.closest('.ihdr')) return true; return false; }
+function selMarqueeIgnore(el){ if(!el||!el.closest) return true; if(el.closest('.ihandle,button,input,textarea,.ichk,.itype,.idel,.gchev,.gadd,.gsub,.gctrl,.gctrls,.fmtbar,.selbar,.lnk,.iadd,.ed-add-card,.uwrap,.uhead,.fillrow,.ed-head,.ed-top,.ed-meta,.ed-menu,.ed-menu-wrap,.fillbtn,.door,.fab,.overlay,.header,.foot,.toast,.confirm-card,.nc-edit,.nc-ico,.nc-rename-inp,.ed-done-toggle')) return true; if(el.closest('.ihdr')) return true; return false; }
 function selMarqueeZone(){ if(!openNoteId||!$('edItems')) return null; return { top:0, bottom:window.innerHeight, left:0, right:document.documentElement.clientWidth }; }
 function selMarqueeInZone(ev){ var z=selMarqueeZone(); if(!z) return false; return ev.clientX>=z.left && ev.clientX<=z.right && ev.clientY>=z.top && ev.clientY<=z.bottom; }
 function selMarqueeRect(){ var l=Math.min(_mq.sx,_mq.ox), t=Math.min(_mq.sy,_mq.oy), r=Math.max(_mq.sx,_mq.ox), b=Math.max(_mq.sy,_mq.oy); return {left:l,top:t,right:r,bottom:b,width:r-l,height:b-t}; }

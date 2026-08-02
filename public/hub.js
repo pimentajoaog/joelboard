@@ -17,6 +17,7 @@ var HUB_NEWS=HUB_NEWS_DEFAULT.slice();
 var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', mini:'Mini', hub:'Hub', study:'Study' };
 var HUB_NEWS_KIND={ novo:'Novo', correcao:'Correção' };
 var HUB_NEWS_APPS=['hub','finance','fit','study','notas','mini'];
+var _hubNewsIgnoreEnv=false;
 
 function hubNewsCleanId(raw){
   raw=String(raw||'').trim().replace(/^["']|["']$/g,'');
@@ -28,9 +29,24 @@ function hubNewsCoerceItems(items){
   return items.slice(0,HUB_NEWS_LIMIT);
 }
 function hubNewsAdmin(){ return (JB.email()||'').toLowerCase()===HUB_NEWS_ADMIN_EMAIL; }
+function hubNewsSheetMissing(err){
+  var m=String((err&&err.message)||'');
+  return m.indexOf('404')>-1||m.indexOf('NOT_FOUND')>-1;
+}
+function hubNewsErrMsg(err){
+  var m=String((err&&err.message)||'');
+  if(hubNewsSheetMissing(err)) return 'Planilha não encontrada — confira VITE_HUB_NEWS_SHEET_ID no Vercel (planilha Joelboard Novidades, aba Novidades; não use a Joelboard Mini).';
+  return m||'falha ao salvar';
+}
+function hubNewsInvalidateConfiguredId(){
+  _hubNewsIgnoreEnv=true;
+  hubNewsSetSheetId('');
+}
 function hubNewsSheetId(){
-  var id=hubNewsCleanId(HUB_NEWS_SHEET_ID);
-  if(id) return id;
+  if(!_hubNewsIgnoreEnv){
+    var id=hubNewsCleanId(HUB_NEWS_SHEET_ID);
+    if(id) return id;
+  }
   try{ return hubNewsCleanId(localStorage.getItem(HUB_NEWS_SHEET_LOCAL)||''); }catch(_){ return ''; }
 }
 function hubNewsSetSheetId(id){
@@ -123,14 +139,12 @@ function renderHubNews(){
   }
 }
 
-function hubNewsEnsureSheet(){
-  var id=hubNewsSheetId();
-  if(id) return Promise.resolve(id);
+function hubNewsCreateSheet(){
   return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets',{
     properties:{ title:'Joelboard Novidades' },
     sheets:[{ properties:{ title:'Novidades' } }]
   }).then(function(ss){
-    id=ss.spreadsheetId;
+    var id=ss.spreadsheetId;
     return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+id+'/values:batchUpdate',{
       valueInputOption:'RAW',
       data:[{ range:'Novidades!A1', values:[['App','Kind','Text']] }]
@@ -143,15 +157,50 @@ function hubNewsEnsureSheet(){
   });
 }
 
-function hubNewsSaveRows(items){
+function hubNewsEnsureNovidadesTab(id){
+  return JB.api('GET','https://sheets.googleapis.com/v4/spreadsheets/'+id+'?fields=sheets.properties.title').then(function(meta){
+    var has=(meta.sheets||[]).some(function(s){ return s.properties&&s.properties.title==='Novidades'; });
+    if(has) return id;
+    return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+id+':batchUpdate',{
+      requests:[{ addSheet:{ properties:{ title:'Novidades' } } }]
+    }).then(function(){
+      return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+id+'/values:batchUpdate',{
+        valueInputOption:'RAW',
+        data:[{ range:'Novidades!A1', values:[['App','Kind','Text']] }]
+      }).then(function(){ return id; });
+    });
+  });
+}
+
+function hubNewsEnsureSheet(){
+  var id=hubNewsSheetId();
+  if(id){
+    return hubNewsEnsureNovidadesTab(id).catch(function(err){
+      if(!hubNewsSheetMissing(err)) throw err;
+      hubNewsInvalidateConfiguredId();
+      return hubNewsCreateSheet();
+    });
+  }
+  return hubNewsCreateSheet();
+}
+
+function hubNewsWriteRows(id, values){
+  return JB.api('PUT','https://sheets.googleapis.com/v4/spreadsheets/'+id+'/values/Novidades!A1?valueInputOption=RAW',{ values:values });
+}
+
+function hubNewsSaveRows(items, retried){
   items=(items||[]).slice(0,HUB_NEWS_LIMIT);
   var values=[['App','Kind','Text']].concat(items.map(function(n){
     return [n.app||'hub', n.kind||'novo', n.text||''];
   }));
   return hubNewsEnsureSheet().then(function(id){
-    return JB.api('PUT','https://sheets.googleapis.com/v4/spreadsheets/'+id+'/values/Novidades!A1?valueInputOption=RAW',{ values:values }).then(function(){
-      return id;
-    });
+    return hubNewsWriteRows(id, values).then(function(){ return { id:id, recreated:!!retried||_hubNewsIgnoreEnv }; });
+  }).catch(function(err){
+    if(!retried&&hubNewsSheetMissing(err)){
+      hubNewsInvalidateConfiguredId();
+      return hubNewsSaveRows(items, true);
+    }
+    throw err;
   });
 }
 
@@ -164,6 +213,13 @@ function openHubNewsEditor(){
   }
   _hubNewsDraft=(HUB_NEWS.length?HUB_NEWS:HUB_NEWS_DEFAULT).map(function(n){ return { app:n.app, kind:n.kind, text:n.text }; });
   hubNewsRenderEditor();
+  var note=$('hubNewsSheetNote');
+  if(note){
+    var sid=hubNewsSheetId();
+    if(sid) note.textContent='Planilha: '+sid+' (aba Novidades). Se der erro 404, o ID no Vercel provavelmente está errado — use a planilha Joelboard Novidades, não a Mini.';
+    else if(HUB_NEWS_SHEET_ID&&!_hubNewsIgnoreEnv) note.textContent='VITE_HUB_NEWS_SHEET_ID no Vercel aponta para '+hubNewsCleanId(HUB_NEWS_SHEET_ID)+' — se inválido, Publicar criará uma planilha nova.';
+    else note.textContent='Na primeira publicação criamos a planilha Joelboard Novidades. Depois copie o ID para VITE_HUB_NEWS_SHEET_ID no Vercel.';
+  }
   var ov=$('hubNewsEditor'); if(ov) ov.classList.add('open');
 }
 function closeHubNewsEditor(){ var ov=$('hubNewsEditor'); if(ov) ov.classList.remove('open'); _hubNewsDraft=null; }
@@ -205,17 +261,19 @@ function hubNewsEditSave(){
   }).filter(function(n){ return n.text; }).slice(0,HUB_NEWS_LIMIT);
   if(!items.length){ if(JB.toast) JB.toast('Adicione ao menos uma novidade'); return; }
   var btn=$('hubNewsEditSave'); if(btn) btn.disabled=true;
-  hubNewsSaveRows(items).then(function(id){
+  hubNewsSaveRows(items).then(function(res){
     HUB_NEWS=items;
     renderHubNews();
     closeHubNewsEditor();
     if(JB.toast) JB.toast('✓ Novidades publicadas');
-    if(!HUB_NEWS_SHEET_ID){
-      var note=$('hubNewsSheetNote');
-      if(note) note.textContent='Planilha criada. Para todos verem sem você logado, adicione VITE_HUB_NEWS_SHEET_ID='+id+' no Vercel e redeploy.';
+    var note=$('hubNewsSheetNote');
+    if(note&&res&&res.id){
+      if(_hubNewsIgnoreEnv||!HUB_NEWS_SHEET_ID||hubNewsCleanId(HUB_NEWS_SHEET_ID)!==res.id){
+        note.textContent='Planilha criada/atualizada. Coloque no Vercel: VITE_HUB_NEWS_SHEET_ID='+res.id+' e redeploy.';
+      }
     }
   }).catch(function(e){
-    if(JB.toast) JB.toast('Erro: '+((e&&e.message)||'falha ao salvar'));
+    if(JB.toast) JB.toast('Erro: '+hubNewsErrMsg(e));
   }).finally(function(){ if(btn) btn.disabled=false; });
 }
 

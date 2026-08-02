@@ -43,7 +43,8 @@
 <div class="overlay" id="newOverlay" onclick="if(event.target===this)closeNew()">
   <div class="modal">
     <div class="mh"><div class="mt">Nova lista</div><button class="x" onclick="closeNew()">✕</button></div>
-    <div class="fg"><label class="fl">Tipo</label><div id="newKindWrap"></div></div>
+    <div class="fg"><label class="fl">Ícone</label><div id="newIconWrap"></div></div>
+    <div class="fg"><label class="fl">Tipo</label><div id="newKindWrap"></div><div class="rg">Define o comportamento da lista (marcáveis, sugestões…).</div></div>
     <div class="fg"><label class="fl">Título</label><input class="field" id="newTitle" placeholder="ex.: Compras do mês"></div>
     <div class="fg"><label class="fl">Prazo (opcional)</label><button type="button" class="field datebtn empty" id="newDateBtn" onclick="pickNewDate()">Escolher data…</button></div>
     <button class="btn-primary" onclick="createNote()">Criar</button>
@@ -169,6 +170,14 @@
   <button type="button" onpointerdown="fmtApply(event,'__')" title="Sublinhado"><u>U</u></button>
   <button type="button" onpointerdown="fmtApply(event,'~~')" title="Tachado"><s>S</s></button>
   <button type="button" class="fmtdone" onpointerdown="fmtDone(event)" title="Pronto">&#10003;</button>
+</div>
+
+<div class="overlay" id="iconOverlay" onclick="if(event.target===this)closeIconPicker()">
+  <div class="modal" style="max-width:360px">
+    <div class="mh"><div class="mt">Escolher ícone</div><button class="x" onclick="closeIconPicker()">✕</button></div>
+    <div id="iconPickBody"></div>
+    <button class="btn-primary" onclick="closeIconPicker()">Pronto</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>

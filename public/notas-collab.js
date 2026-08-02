@@ -277,10 +277,14 @@ function ncRefreshCollabOnly(force) {
         var t = String(metaRow[0] || cur.titulo);
         var u = String(metaRow[5] || cur.atualizado);
         var v = String(metaRow[7] || '');
-        if (t !== cur.titulo || u !== cur.atualizado || v !== cur.vence) changed = true;
+        var cor = String(metaRow[2] || '');
+        var tipo = String(metaRow[1] || cur.tipo);
+        if (t !== cur.titulo || u !== cur.atualizado || v !== cur.vence || cor !== cur.cor || tipo !== cur.tipo) changed = true;
         cur.titulo = t;
         cur.atualizado = u;
         cur.vence = v;
+        cur.cor = cor;
+        cur.tipo = tipo;
       }
       if (pack.membros && pack.membros.length) cur.collabMembers = ncParseMembers(pack.membros);
       return { changed: changed, remote: !!changed };

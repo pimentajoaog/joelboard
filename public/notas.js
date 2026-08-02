@@ -35,6 +35,7 @@ var KINDS=[
   {k:'nota',    label:'Nota',    icon:'📝', color:'#fbbf24', defCheck:false},
   {k:'viagem',  label:'Viagem',  icon:'🧳', color:'#22d3ee', defCheck:true}
 ];
+var ICON_EXTRAS=['📌','⭐','🎯','💡','🏠','🎵','📚','🐶','🐱','💼','🎁','🍕','☕','🌱','💪','🎨','📷','✈️','🚗','💊','🎮','❤️','🔥','🌈','📎','🗂️','💬','🔔','⏰','🏋️','🧘','🛠️','📦','🌸','🍀','🎬','🏖️','🧁','🍳'];
 var MOFULL=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 function $(id){ return document.getElementById(id); }
@@ -47,6 +48,10 @@ function toast(m){ JB.toast(m); }
 function notasWriteErr(e){ toast(JB.writeErrMessage ? JB.writeErrMessage(e) : ('Erro: '+((e&&e.message)||'falha ao salvar'))); }
 function notasRowErr(tab){ return new Error('Registro não encontrado em '+tab+' — atualize a página.'); }
 function kindDef(k){ for(var i=0;i<KINDS.length;i++){ if(KINDS[i].k===k) return KINDS[i]; } return KINDS[1]; }
+function isCustomIcon(s){ var t=String(s||'').trim(); if(!t) return false; if(/^#[0-9a-fA-F]{3,8}$/.test(t)) return false; return true; }
+function noteIcon(n){ if(!n) return '📝'; if(isCustomIcon(n.cor)) return String(n.cor).trim(); return kindDef(n.tipo).icon; }
+function normalizeIconInput(s){ var p=Array.from(String(s||'').trim()); return p.length?p.slice(0,2).join(''):''; }
+function noteIconDraft(tipo,cor){ return isCustomIcon(cor)?String(cor).trim():kindDef(tipo).icon; }
 function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate(); }
 function daysSince(iso){ if(!iso) return 1e9; var d=new Date(iso); if(isNaN(d)) return 1e9; return Math.floor((Date.now()-d.getTime())/86400000); }
 function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
@@ -65,7 +70,7 @@ function dueBadge(n){ if(!n.vence) return ''; if(noteDone(n)) return ' · <span 
 function dueStripHtml(){
   var ds=(DATA.notas||[]).filter(function(n){ return n.vence && !noteDone(n); }).filter(function(n){ var d=daysUntilD(n.vence); return d!=null && d<=14; }).sort(function(a,b){ return String(a.vence).localeCompare(String(b.vence)); }).slice(0,8);
   if(!ds.length) return '';
-  return '<div class="secbar" style="margin-bottom:8px"><div class="sect">⏳ Com prazo</div></div><div class="due-strip">'+ds.map(function(n){ var kd=kindDef(n.tipo); var open=noteOpen(n); return '<div class="due-row" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')"><span class="dr-ico">'+kd.icon+'</span><span class="dr-title">'+esc(n.titulo)+'</span>'+(open?'<span class="dr-rem">faltam '+open+'</span>':'')+'<span class="due-badge '+dueClass(n.vence)+'">'+esc(dueLabel(n.vence))+'</span></div>'; }).join('')+'</div>';
+  return '<div class="secbar" style="margin-bottom:8px"><div class="sect">⏳ Com prazo</div></div><div class="due-strip">'+ds.map(function(n){ var kd=kindDef(n.tipo); var open=noteOpen(n); return '<div class="due-row" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')"><span class="dr-ico">'+noteIcon(n)+'</span><span class="dr-title">'+esc(n.titulo)+'</span>'+(open?'<span class="dr-rem">faltam '+open+'</span>':'')+'<span class="due-badge '+dueClass(n.vence)+'">'+esc(dueLabel(n.vence))+'</span></div>'; }).join('')+'</div>';
 }
 function fmtDateBR(iso){ var p=String(iso||'').split('-'); return p.length===3? (p[2]+'/'+p[1]+'/'+p[0]) : iso; }
 function pickNewDate(){ JB.datePicker(newDue, function(iso){ newDue=iso; renderNewDate(); }); }
@@ -364,7 +369,7 @@ function noteCard(n){
   var avatars = (typeof ncMemberAvatarsHtml==='function')?ncMemberAvatarsHtml(n):'';
   var sharedBadge = n.collabSheetId ? '<span class="nc-shared">Compartilhada</span>' : '';
   return '<div class="notec'+(n.collabSheetId?' notec-shared':'')+'" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')">'
-    +'<div class="nc-top"><span class="nc-ico">'+kd.icon+'</span><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div>'+(n.collabSheetId?'':('<button class="nc-edit" onclick="startNoteRename(event,\''+n.id+'\')" title="Renomear">✎</button><button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button>'))+'</div>'
+    +'<div class="nc-top"><span class="nc-ico">'+noteIcon(n)+'</span><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div>'+(n.collabSheetId?'':('<button class="nc-edit" onclick="startNoteRename(event,\''+n.id+'\')" title="Renomear">✎</button><button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button>'))+'</div>'
     +'<div class="nc-kind">'+sharedBadge+esc(kd.label)+'</div>'
     +'<div class="nc-meta">'+metaCount+' · '+esc(relTime(n.atualizado||n.criado))+dueBadge(n)+'</div>'+(avatars?('<div class="nc-members">'+avatars+'</div>'):'')+prog+'</div>';
 }
@@ -375,12 +380,58 @@ function cancelNoteRename(){ _renameNoteId=null; renderHomeList(); }
 function togglePin(ev,id){ ev.stopPropagation(); var n=note(id); if(!n) return; n.fixado=!n.fixado; renderHomeList(); saveNoteRow(n); }
 
 /* ---- new note ---- */
-var newKind='tarefas';
-function openNew(){ newKind='tarefas'; renderNewKind(); $('newTitle').value=''; newDue=''; renderNewDate(); $('newOverlay').classList.add('open'); setTimeout(function(){ $('newTitle').focus(); },60); }
+var newKind='tarefas', newCustomIcon='', _iconPickCtx=null;
+function openNew(){ newKind='tarefas'; newCustomIcon=''; renderNewIconPicker(); renderNewKind(); $('newTitle').value=''; newDue=''; renderNewDate(); $('newOverlay').classList.add('open'); setTimeout(function(){ $('newTitle').focus(); },60); }
 function closeNew(){ $('newOverlay').classList.remove('open'); }
-function renderNewKind(){ var el=$('newKindWrap'); if(!el) return; var cur=kindDef(newKind); el.innerHTML='<div class="jb-dd"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>'+cur.icon+' '+esc(cur.label)+'</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">'+KINDS.map(function(k){return '<div class="jb-dd-opt'+(k.k===newKind?' is-sel':'')+'" onclick="pickNewKind(\''+k.k+'\')">'+k.icon+' '+esc(k.label)+'</div>';}).join('')+'</div></div>'; }
+function renderNewKind(){ var el=$('newKindWrap'); if(!el) return; var cur=kindDef(newKind); el.innerHTML='<div class="jb-dd"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>'+esc(cur.label)+'</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">'+KINDS.map(function(k){return '<div class="jb-dd-opt'+(k.k===newKind?' is-sel':'')+'" onclick="pickNewKind(\''+k.k+'\')">'+k.icon+' '+esc(k.label)+'</div>';}).join('')+'</div></div>'; }
 function pickNewKind(k){ newKind=k; if(window.JB&&JB.ddClose)JB.ddClose(); renderNewKind(); }
-function createNote(){ var t=($('newTitle').value||'').trim(); var kd=kindDef(newKind); if(!t){ var d=new Date(); t=kd.label+' — '+MOFULL[d.getMonth()]; } var now=new Date().toISOString(); var n={ id:uuid(), titulo:t, tipo:newKind, cor:'', fixado:false, criado:now, atualizado:now, vence:newDue }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); closeNew(); openNote(n.id); }
+function renderIconPickerBody(ctx){
+  var isNew=ctx==='new', n=isNew?null:note(ctx);
+  var curIcon=isNew?noteIconDraft(newKind,newCustomIcon):noteIcon(n);
+  var curKind=isNew?newKind:(n&&n.tipo)||'tarefas';
+  var customVal=isNew?(newCustomIcon||''):((n&&isCustomIcon(n.cor))?n.cor:'');
+  var h='<div class="icon-pick"><div class="icon-pick-preview">'+curIcon+'</div><div class="icon-pick-label">Presets</div><div class="icon-pick-grid">';
+  KINDS.forEach(function(k){
+    var on=k.k===curKind && !customVal;
+    h+='<button type="button" class="icon-pick-btn'+(on?' on':'')+'" onclick="applyIconPreset(\''+escAttr(String(ctx))+'\',\''+k.k+'\')" title="'+escAttr(k.label)+'">'+k.icon+'</button>';
+  });
+  h+='</div><div class="icon-pick-label">Mais</div><div class="icon-pick-grid icon-pick-grid-sm">';
+  ICON_EXTRAS.forEach(function(ic,i){
+    var on=curIcon===ic;
+    h+='<button type="button" class="icon-pick-btn'+(on?' on':'')+'" onclick="applyIconExtra(\''+escAttr(String(ctx))+'\','+i+')">'+ic+'</button>';
+  });
+  h+='</div><div class="icon-pick-custom"><label class="fl">Outro emoji</label><input class="field" id="iconPickCustom" maxlength="8" placeholder="Cole ou digite…" value="'+escAttr(customVal)+'" oninput="applyIconCustom(\''+escAttr(String(ctx))+'\',this.value)"></div>';
+  if(customVal) h+='<button type="button" class="btn ghost icon-pick-reset" onclick="applyIconReset(\''+escAttr(String(ctx))+'\')">Usar ícone do tipo</button>';
+  h+='</div>';
+  return h;
+}
+function renderNewIconPicker(){ var el=$('newIconWrap'); if(el) el.innerHTML=renderIconPickerBody('new'); }
+function openIconPicker(ctx){ _iconPickCtx=ctx; var b=$('iconPickBody'); if(b) b.innerHTML=renderIconPickerBody(ctx); var ov=$('iconOverlay'); if(ov) ov.classList.add('open'); }
+function closeIconPicker(){ var ov=$('iconOverlay'); if(ov) ov.classList.remove('open'); _iconPickCtx=null; }
+function applyIconPreset(ctx,kind){
+  if(ctx==='new'){ newKind=kind; newCustomIcon=''; renderNewIconPicker(); return; }
+  var n=note(ctx); if(!n) return;
+  n.tipo=kind; n.cor=''; touchNote(n); saveNoteRow(n); closeIconPicker(); renderEditor();
+}
+function applyIconExtra(ctx,idx){
+  var ic=ICON_EXTRAS[idx]; if(!ic) return;
+  if(ctx==='new'){ newCustomIcon=ic; renderNewIconPicker(); return; }
+  var n=note(ctx); if(!n) return;
+  n.cor=ic; touchNote(n); saveNoteRow(n); closeIconPicker(); renderEditor();
+}
+function applyIconCustom(ctx,val){
+  var ic=normalizeIconInput(val);
+  if(ctx==='new'){ newCustomIcon=ic; renderNewIconPicker(); return; }
+  var n=note(ctx); if(!n) return;
+  n.cor=ic; touchNote(n); saveNoteRow(n);
+  var b=$('iconPickBody'); if(b) b.innerHTML=renderIconPickerBody(ctx);
+}
+function applyIconReset(ctx){
+  if(ctx==='new'){ newCustomIcon=''; renderNewIconPicker(); return; }
+  var n=note(ctx); if(!n) return;
+  n.cor=''; touchNote(n); saveNoteRow(n); closeIconPicker(); renderEditor();
+}
+function createNote(){ var t=($('newTitle').value||'').trim(); var kd=kindDef(newKind); if(!t){ var d=new Date(); t=kd.label+' — '+MOFULL[d.getMonth()]; } var now=new Date().toISOString(); var n={ id:uuid(), titulo:t, tipo:newKind, cor:newCustomIcon||'', fixado:false, criado:now, atualizado:now, vence:newDue }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); closeNew(); openNote(n.id); }
 
 function noteProgressStats(){
   var its=itemsOf(openNoteId).filter(function(x){ return !isGroup(x) && x.marcavel; });
@@ -419,7 +470,7 @@ function renderEditor(){
   var avatars=(typeof ncMemberAvatarsHtml==='function'&&n.collabSheetId)?('<div class="ed-head-avatars">'+ncMemberAvatarsHtml(n)+'</div>'):'';
   var html='<div class="ed-shell" style="--kc:'+kd.color+'" onclick="closeEdMenu()">'
     +'<div class="ed-top"><button class="lnk ed-back" onclick="backHome()">← Listas</button>'+(_selMode?'':renderEdMenu(n,doneN))+'</div>'
-    +'<div class="ed-head"><span class="ed-ico">'+kd.icon+'</span><input class="ed-title" id="edTitle" value="'+escAttr(n.titulo)+'" placeholder="Nome da lista" aria-label="Nome da lista" onblur="commitTitle(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()">'+avatars+'</div>'
+    +'<div class="ed-head"><button type="button" class="ed-ico" onclick="openIconPicker(\''+n.id+'\')" title="Alterar ícone" aria-label="Alterar ícone">'+noteIcon(n)+'</button><input class="ed-title" id="edTitle" value="'+escAttr(n.titulo)+'" placeholder="Nome da lista" aria-label="Nome da lista" onblur="commitTitle(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()">'+avatars+'</div>'
     +'<div class="ed-meta">'
     +'<span class="ed-chip ed-kind">'+esc(kd.label)+'</span>'
     +renderEdProgress(n)
@@ -680,7 +731,7 @@ function checkDeadlines(){
   var pick=null; for(var i=0;i<cand.length;i++){ if((((DATA.config||{})['dlDis_'+cand[i].n.id])||'')===todayISO()) continue; pick=cand[i]; break; }
   if(!pick) return false; var n=pick.n, open=noteOpen(n), kd=kindDef(n.tipo);
   var when=pick.d<0?('está atrasada há '+(-pick.d)+(-pick.d>1?' dias':' dia')):(pick.d===0?'vence hoje':(pick.d===1?'vence amanhã':'vence em '+pick.d+' dias'));
-  var html=kd.icon+' <strong>'+esc(n.titulo)+'</strong> '+when+(open?(' — '+(open>1?'faltam '+open+' itens':'falta 1 item')):'')+'.';
+  var html=noteIcon(n)+' <strong>'+esc(n.titulo)+'</strong> '+when+(open?(' — '+(open>1?'faltam '+open+' itens':'falta 1 item')):'')+'.';
   showNudge(html, 'Abrir', function(){ openNote(n.id); }, 'dlDis_'+n.id); return true;
 }
 function checkRecurrence(){

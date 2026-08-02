@@ -109,7 +109,19 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .ed-back{ @apply text-sm; }
 .ed-head{ @apply flex items-center gap-2 mb-2 flex-wrap; }
 .ed-head-avatars{ @apply flex gap-1 flex-[0_0_auto]; }
-.ed-ico{ @apply w-[30px] h-[30px] rounded-[9px] flex items-center justify-center text-[16px] flex-[0_0_auto]; background:color-mix(in srgb, var(--kc,var(--primary)) 16%, var(--surface2)); }
+.ed-ico{ @apply w-[30px] h-[30px] rounded-[9px] flex items-center justify-center text-[16px] flex-[0_0_auto]; background:color-mix(in srgb, var(--kc,var(--primary)) 16%, var(--surface2)); border:0; cursor:pointer; font-family:inherit; transition:transform .1s ease, border-color .15s ease; border:1px solid transparent; }
+.ed-ico:hover{ border-color:color-mix(in srgb, var(--kc,var(--primary)) 45%, var(--border)); }
+.ed-ico:active{ transform:scale(.94); }
+.icon-pick-preview{ font-size:34px; line-height:1; text-align:center; margin-bottom:12px; }
+.icon-pick-label{ font-size:11px; font-weight:700; letter-spacing:.35px; text-transform:uppercase; color:var(--muted); margin:0 0 8px; }
+.icon-pick-grid{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+.icon-pick-grid-sm .icon-pick-btn{ width:34px; height:34px; font-size:16px; }
+.icon-pick-btn{ width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; transition:border-color .15s ease, background-color .15s ease, transform .1s ease; }
+.icon-pick-btn:hover{ border-color:var(--primary); }
+.icon-pick-btn.on{ border-color:var(--primary); background:color-mix(in srgb, var(--primary) 14%, var(--surface2)); }
+.icon-pick-btn:active{ transform:scale(.94); }
+.icon-pick-custom{ margin-top:4px; }
+.icon-pick-reset{ width:100%; margin-top:8px; }
 .ed-title{ @apply flex-1 min-w-[140px] bg-transparent border-0 text-ink text-xl font-extrabold p-0; font-family:var(--font-display); border-bottom:1px solid transparent; border-radius:0; }
 .ed-title:hover{ border-bottom-color:color-mix(in srgb, var(--border) 70%, transparent); }
 .ed-title:focus{ outline:none; border-bottom-color:var(--primary); }

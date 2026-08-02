@@ -211,26 +211,40 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .ihandle{ background:transparent; border:0; color:var(--muted); cursor:grab; flex:0 0 auto; font-size:14px; line-height:1; padding:0 2px; opacity:0; touch-action:none; transition:opacity .12s ease; }
 .irow:hover .ihandle,.ihdr:hover .ihandle,.irow.dragging .ihandle,.ihdr.dragging .ihandle{ opacity:.45; }
 .ihandle:hover{ opacity:.9 !important; }
-.itype,.idel,.gadd,.gsub{ opacity:0; transition:opacity .12s ease; }
-.irow:hover .itype,.irow:hover .idel,.ihdr:hover .gadd,.ihdr:hover .gsub,.ihdr:hover .idel,.irow:focus-within .itype,.irow:focus-within .idel,.ihdr:focus-within .gadd,.ihdr:focus-within .gsub,.ihdr:focus-within .idel{ opacity:.6; }
-.irow:hover .itype:hover,.irow:hover .idel:hover,.ihdr:hover .gadd:hover,.ihdr:hover .gsub:hover,.ihdr:hover .idel:hover{ opacity:1; }
+.itype,.idel,.gadd,.gsub,.gctrl{ opacity:0; transition:opacity .12s ease; }
+.irow:hover .itype,.irow:hover .idel,.ihdr:hover .gadd,.ihdr:hover .gsub,.ihdr:hover .gctrl,.ihdr:hover .idel,.irow:focus-within .itype,.irow:focus-within .idel,.ihdr:focus-within .gadd,.ihdr:focus-within .gsub,.ihdr:focus-within .gctrl,.ihdr:focus-within .idel{ opacity:.6; }
+.irow:hover .itype:hover,.irow:hover .idel:hover,.ihdr:hover .gadd:hover,.ihdr:hover .gsub:hover,.ihdr:hover .gctrl:not(.off):hover,.ihdr:hover .idel:hover{ opacity:1; }
 @media (hover:none){
   .ihandle{ opacity:.35; }
-  .itype,.idel,.gadd,.gsub{ opacity:.45; }
+  .itype,.idel,.gadd,.gsub,.gctrl{ opacity:.45; }
+  .gctrl.off{ opacity:.15; }
 }
 .ihandle:active{ cursor:grabbing; }
 .irow.dragging,.ihdr.dragging{ opacity:.55; }
 .irow.ihide,.ihdr.ihide{ display:none; }
 
-/* nested group indent */
-.ihdr[data-gd],.irow[data-gd]{ margin-left:calc(var(--gdepth, 0) * 18px); }
+/* nested group indent + hierarchy guides */
+.ed-items-tree{ position:relative; }
+.ihdr[data-gd],.irow[data-gd]{ margin-left:calc(var(--gdepth, 0) * 22px); }
+.ihdr[data-gd]:not([data-gd="0"]),.irow[data-gd]:not([data-gd="0"]){
+  position:relative;
+  padding-left:10px;
+  border-left:2px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+}
 .ihdr[data-gd]:not([data-gd="0"]){ margin-top:4px; padding-top:8px; }
 
-/* item text now wraps (textarea) instead of overflowing */
-textarea.itext{ resize:none; overflow:hidden; font-family:inherit; line-height:1.4; white-space:pre-wrap; word-break:break-word; }
-
-/* group header */
-.ihdr{ display:flex; align-items:center; gap:8px; padding:11px 0 7px; margin-top:8px; border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent); }
+/* group header — depth styling */
+.ihdr{ display:flex; align-items:center; gap:6px; padding:11px 8px 7px; margin-top:8px; border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent); border-radius:var(--radius-sm); }
+.ihdr.gdepth-0{
+  background:color-mix(in srgb, var(--kc, var(--primary)) 7%, transparent);
+  border-bottom:1px solid color-mix(in srgb, var(--kc, var(--primary)) 18%, var(--border));
+  margin-top:14px;
+}
+.ihdr.gdepth-1{ border-bottom-color:color-mix(in srgb, var(--primary) 28%, var(--border)); }
+.ihdr.gdepth-2,.ihdr.gdepth-3{ border-bottom-style:dashed; border-bottom-color:color-mix(in srgb, var(--muted) 40%, var(--border)); }
+.gdepth-0 .gname,.gdepth-0 .gname-view{ font-size:13px; }
+.gdepth-1 .gname,.gdepth-1 .gname-view{ font-size:12px; letter-spacing:.4px; }
+.gdepth-2 .gname,.gdepth-2 .gname-view,.gdepth-3 .gname,.gdepth-3 .gname-view{ font-size:11px; letter-spacing:.3px; text-transform:none; font-weight:700; }
 .gchev{ background:transparent; border:0; color:var(--muted); cursor:pointer; font-size:11px; flex:0 0 auto; padding:0; width:14px; }
 .gname{ flex:1; background:transparent; border:0; color:var(--text); font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:.6px; padding:0; min-width:0; }
 .gname:focus{ outline:none; }
@@ -273,6 +287,17 @@ textarea.itext{ resize:none; overflow:hidden; font-family:inherit; line-height:1
 .gsub{ background:transparent; border:0; color:var(--muted); cursor:pointer; font-size:15px; font-weight:800; line-height:1; flex:0 0 auto; padding:0 4px; }
 .gsub:hover{ color:var(--primary); }
 .gsub:active{ transform:scale(.9); }
+
+/* group indent / reorder controls */
+.gctrls{ display:inline-flex; align-items:center; gap:1px; flex:0 0 auto; margin:0 2px; }
+.gctrl{ background:transparent; border:0; color:var(--muted); cursor:pointer; font-size:11px; font-weight:800; line-height:1; flex:0 0 auto; padding:2px 3px; border-radius:4px; font-family:inherit; min-width:18px; }
+.gctrl:hover:not(.off):not(:disabled){ color:var(--primary); background:color-mix(in srgb, var(--primary) 10%, transparent); }
+.gctrl.off,.gctrl:disabled{ opacity:.2; cursor:default; pointer-events:none; }
+.gctrl:active:not(.off):not(:disabled){ transform:scale(.9); }
+.gname-view:focus{ outline:2px solid color-mix(in srgb, var(--primary) 35%, transparent); outline-offset:2px; border-radius:4px; }
+
+/* item text now wraps (textarea) instead of overflowing */
+textarea.itext{ resize:none; overflow:hidden; font-family:inherit; line-height:1.4; white-space:pre-wrap; word-break:break-word; }
 
 /* ===== multi-select ===== */
 .ed-actions{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }

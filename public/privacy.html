@@ -120,7 +120,8 @@
 
   <div class="privacy-card">
     <h2>Resumo</h2>
-    <p>Joelboard é um conjunto de apps web e extensões Chrome leves (<strong>Joelboard Mini</strong>). Projetamos o produto para que seus dados fiquem sob seu controle: em geral, no seu navegador e — se você optar — na sua conta Google (Sheets/Drive).</p>
+    <p>Joelboard é um conjunto de apps web e extensões Chrome leves (<strong>Joelboard Mini</strong>). Projetamos o produto para que seus dados fiquem sob seu controle: em geral, no seu navegador e na sua conta Google (Sheets/Drive).</p>
+    <p><strong>Apps web</strong> (Finance, Fit, Study, Notas, etc.) precisam de <strong>entrada com Google</strong> para funcionar — os dados ficam em planilhas no seu Drive. <strong>Extensões Mini</strong> funcionam localmente sem login; sync na nuvem (Replace) e login Google são opcionais.</p>
     <p><strong>Não vendemos dados.</strong> Não operamos um backend que armazena o conteúdo dos seus apps ou extensões.</p>
   </div>
 
@@ -133,8 +134,8 @@
   <div class="privacy-card">
     <h2>Site e apps Joelboard</h2>
     <ul>
-      <li><strong>Armazenamento local:</strong> preferências, rascunhos e dados dos apps ficam principalmente no <code>localStorage</code> / <code>sessionStorage</code> do seu navegador neste dispositivo.</li>
-      <li><strong>Login Google (opcional):</strong> se você entrar com Google, usamos OAuth para acessar planilhas e arquivos <em>na sua conta</em> (Google Sheets e Drive). O token fica no navegador; as chamadas vão direto às APIs do Google.</li>
+      <li><strong>Login Google (obrigatório nos apps):</strong> Finance, Fit, Study, Notas e os demais apps web exigem entrar com Google para criar e ler planilhas na <em>sua</em> conta (Google Sheets e Drive). Sem login, esses apps não funcionam. O token fica no navegador; as chamadas vão direto às APIs do Google.</li>
+      <li><strong>Armazenamento local:</strong> preferências de interface, sessão OAuth e IDs de planilha ficam também no <code>localStorage</code> / <code>sessionStorage</code> do seu navegador neste dispositivo.</li>
       <li><strong>Sem servidor Joelboard de dados:</strong> não enviamos o conteúdo das suas planilhas ou notas para servidores nossos.</li>
     </ul>
   </div>
@@ -209,7 +210,7 @@
 
   <div class="privacy-card">
     <h2>Contato</h2>
-    <p>Dúvidas sobre privacidade: use o e-mail de suporte informado na listagem da extensão na Chrome Web Store ou acesse <a href="https://joelboard.vercel.app">joelboard.vercel.app</a>.</p>
+    <p>Dúvidas sobre privacidade: <a href="mailto:joaogabrielpabarbosa@gmail.com">joaogabrielpabarbosa@gmail.com</a> ou acesse <a href="https://joelboard.vercel.app">joelboard.vercel.app</a>.</p>
   </div>
 
   <p class="privacy-footer">© 2026 Joel Soluções LTDA · <a href="/">Joelboard</a></p>

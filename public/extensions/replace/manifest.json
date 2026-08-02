@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Joelboard Replace",
   "short_name": "Replace",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "Expansão de texto leve — templates, gatilhos e variáveis. Sincroniza com Google Sheets. Parte do Joelboard Mini.",
   "permissions": ["storage", "clipboardRead", "tabs", "scripting", "alarms"],
   "host_permissions": ["https://www.googleapis.com/*", "https://joelboard.vercel.app/*"],

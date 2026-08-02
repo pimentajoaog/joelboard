@@ -54,7 +54,7 @@ Macros, variáveis e ajustes podem ficar na planilha **Joelboard Mini** no seu D
 
 **Opção A — popup da extensão:** Ajustes → **Nuvem** → Entrar com Google → Sincronizar. Alterações locais sobem automaticamente; a extensão puxa da planilha ao abrir o popup e a cada ~30 min.
 
-**Opção B — Hub:** Mini → **Sincronizar Replace agora** (com a extensão instalada nesta aba). Cria ou usa a planilha com abas `Replace`, `ReplaceVars`, `ReplaceSettings`.
+**Opção B — Hub:** Mini → **Sincronizar Replace agora** (com a extensão instalada nesta aba). Cria ou usa a planilha com abas `Replace`, `ReplaceVars`, `ReplaceSettings`, `ReplaceSites`.
 
 No segundo dispositivo: instale a extensão, entre com Google (ou use o Hub) e sincronize — os gatilhos aparecem.
 
@@ -116,4 +116,4 @@ Report roda **só no popup** — não injeta em páginas e não usa a lista de s
 
 ## Sites permitidos
 
-Hub e extensões compartilham a lista via `chrome.storage` / mensagem `jb-mini-sites-set`. Domínios sem permissão não recebem content script até você adicionar e conceder acesso no Chrome.
+Hub e extensões compartilham a lista via `chrome.storage` / mensagem `jb-mini-sites-set`. Com sync na nuvem ativo, a aba **ReplaceSites** da planilha Joelboard Mini guarda os domínios entre dispositivos. Domínios sem permissão não recebem content script até você adicionar e conceder acesso no Chrome.

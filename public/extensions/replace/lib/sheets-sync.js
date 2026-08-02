@@ -13,10 +13,20 @@ var JB_SHEETS = (function () {
   var TAB_SNIPPETS = 'Replace';
   var TAB_VARS = 'ReplaceVars';
   var TAB_SETTINGS = 'ReplaceSettings';
+  var TAB_SITES = 'ReplaceSites';
   var HDR_SNIPPETS = ['Nome', 'Trigger', 'Text', 'Enabled', 'ID'];
   var HDR_VARS = ['Chave', 'Valor'];
   var HDR_SETTINGS = ['Chave', 'Valor'];
-  var REQUIRED_TABS = [TAB_SNIPPETS, TAB_VARS, TAB_SETTINGS];
+  var HDR_SITES = ['Host'];
+  var CORE_TABS = [TAB_SNIPPETS, TAB_VARS, TAB_SETTINGS];
+  var ALL_TABS = CORE_TABS.concat([TAB_SITES]);
+
+  function hdrForTab(tab) {
+    if (tab === TAB_SNIPPETS) return HDR_SNIPPETS;
+    if (tab === TAB_VARS) return HDR_VARS;
+    if (tab === TAB_SETTINGS) return HDR_SETTINGS;
+    return HDR_SITES;
+  }
 
   var AUTH_URL = 'https://joelboard.vercel.app/mini/replace-auth.html';
   var AUTH_URL_LOCAL = 'http://localhost:5173/mini/replace-auth.html';
@@ -207,7 +217,7 @@ var JB_SHEETS = (function () {
 
   function trySheetId(id) {
     return sheetTabs(id).then(function (grid) {
-      var ok = REQUIRED_TABS.every(function (t) { return grid[t] != null; });
+      var ok = CORE_TABS.every(function (t) { return grid[t] != null; });
       return ok ? { id: id, grid: grid } : null;
     }, function (err) {
       var st = err.status || 0;
@@ -240,18 +250,36 @@ var JB_SHEETS = (function () {
     });
   }
 
+  function ensureMissingTabs(id, grid) {
+    var missing = ALL_TABS.filter(function (t) { return grid[t] == null; });
+    if (!missing.length) return Promise.resolve(grid);
+    return api('POST', ssUrl('/' + id + ':batchUpdate'), {
+      requests: missing.map(function (t) {
+        return { addSheet: { properties: { title: t } } };
+      })
+    }).then(function () {
+      return sheetTabs(id);
+    }).then(function (newGrid) {
+      var hdrData = missing.map(function (t) {
+        return { range: t + '!A1', values: [hdrForTab(t)] };
+      });
+      return api('POST', ssUrl('/' + id + '/values:batchUpdate'), {
+        valueInputOption: 'RAW',
+        data: hdrData
+      }).then(function () { return newGrid; });
+    });
+  }
+
   function createSheet() {
     return api('POST', ssUrl(''), {
       properties: { title: SHEET_TITLE },
-      sheets: REQUIRED_TABS.map(function (t) {
-        var hdr = t === TAB_SNIPPETS ? HDR_SNIPPETS : (t === TAB_VARS ? HDR_VARS : HDR_SETTINGS);
+      sheets: ALL_TABS.map(function (t) {
         return { properties: { title: t } };
       })
     }).then(function (ss) {
       var id = ss.spreadsheetId;
-      var data = REQUIRED_TABS.map(function (t) {
-        var hdr = t === TAB_SNIPPETS ? HDR_SNIPPETS : (t === TAB_VARS ? HDR_VARS : HDR_SETTINGS);
-        return { range: t + '!A1', values: [hdr] };
+      var data = ALL_TABS.map(function (t) {
+        return { range: t + '!A1', values: [hdrForTab(t)] };
       });
       return api('POST', ssUrl('/' + id + '/values:batchUpdate'), {
         valueInputOption: 'RAW',
@@ -261,7 +289,13 @@ var JB_SHEETS = (function () {
   }
 
   function ensureSheet() {
-    return resolveSheet().catch(function (err) {
+    return resolveSheet().then(function (ctx) {
+      return sheetTabs(ctx.id).then(function (grid) {
+        return ensureMissingTabs(ctx.id, grid).then(function (fullGrid) {
+          return { id: ctx.id, grid: fullGrid };
+        });
+      });
+    }).catch(function (err) {
       if (err.message === 'need_sheet') return createSheet();
       throw err;
     });
@@ -273,8 +307,7 @@ var JB_SHEETS = (function () {
   }
 
   function writeTab(id, tab, rows) {
-    var hdr = tab === TAB_SNIPPETS ? HDR_SNIPPETS : (tab === TAB_VARS ? HDR_VARS : HDR_SETTINGS);
-    var values = [hdr].concat(rows || []);
+    var values = [hdrForTab(tab)].concat(rows || []);
     return api('PUT', ssUrl('/' + id + '/values/' + encodeURIComponent(tab + '!A1') + '?valueInputOption=RAW'), {
       values: values
     });
@@ -295,6 +328,7 @@ var JB_SHEETS = (function () {
     TAB_SNIPPETS: TAB_SNIPPETS,
     TAB_VARS: TAB_VARS,
     TAB_SETTINGS: TAB_SETTINGS,
+    TAB_SITES: TAB_SITES,
     isSignedIn: isSignedIn,
     email: email,
     getSheetId: getSheetId,

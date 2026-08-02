@@ -2,6 +2,21 @@
 importScripts('lib/shared.js', 'lib/sites.js', 'lib/sheets-sync.js', 'lib/sheet-data.js');
 
 var pushTimer = null;
+var sitesPushTimer = null;
+
+function scheduleSitesPush() {
+  clearTimeout(sitesPushTimer);
+  sitesPushTimer = setTimeout(function () {
+    JB_SHEETS.isSignedIn().then(function (ok) {
+      if (!ok) return;
+      JB_SITES.loadSites(function (sites) {
+        JB_SHEETS.ensureSheet().then(function (ctx) {
+          JB_REPLACE_SHEET.pushSites(ctx, sites).catch(function () {});
+        }).catch(function () {});
+      });
+    });
+  }, 1500);
+}
 
 function tabExists(tabId, cb) {
   chrome.tabs.get(tabId, function (tab) {
@@ -166,16 +181,23 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
     return true;
   }
   if (msg.type === 'addSite') {
-    JB_SITES.addSite(msg.host, sendResponse);
+    JB_SITES.addSite(msg.host, function (res) {
+      if (res && res.ok) scheduleSitesPush();
+      sendResponse(res);
+    });
     return true;
   }
   if (msg.type === 'removeSite') {
-    JB_SITES.removeSite(msg.host, sendResponse);
+    JB_SITES.removeSite(msg.host, function (res) {
+      if (res && res.ok) scheduleSitesPush();
+      sendResponse(res);
+    });
     return true;
   }
   if (msg.type === 'setSites') {
     JB_SITES.saveSites(msg.sites, function () {
       JB_SITES.loadSites(function (sites) {
+        scheduleSitesPush();
         sendResponse({ ok: true, sites: sites });
       });
     });
@@ -191,6 +213,7 @@ chrome.runtime.onMessageExternal.addListener(function (msg, sender, sendResponse
   if (msg.type === 'setSites' && Array.isArray(msg.sites)) {
     JB_SITES.saveSites(msg.sites, function () {
       JB_SITES.loadSites(function (sites) {
+        scheduleSitesPush();
         sendResponse({ ok: true, sites: sites });
       });
     });

@@ -3,6 +3,7 @@
 var greetEl=document.getElementById("greet"), btnEl=document.getElementById("authbtn");
 var _hbooted=false;
 var HUB_NEWS=[
+  { app:'mini', kind:'novo', text:'Sites permitidos sincronizam na planilha Joelboard Mini (aba ReplaceSites) — entre Hub, Replace e Refresh.' },
   { app:'notas', kind:'novo', text:'Exportar listas: CSV e backup JSON em Ajustes → Sobre; Markdown por lista no botão 📤 Exportar.' },
   { app:'finance', kind:'novo', text:'Temas alinhados com Fit, Study e Notas — skins, dia/noite e Vault no mesmo seletor.' },
   { app:'fit', kind:'novo', text:'Ajustes → Macros: metas, refeições e alimentos custom num só lugar; arraste ⠿ para reordenar refeições.' },
@@ -249,7 +250,12 @@ function miniEnsureReplaceSheet() {
     if (String(err.message || '') !== 'JB_NEED_SHEET') throw err;
     return JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets', {
       properties: { title: 'Joelboard Mini' },
-      sheets: [{ properties: { title: 'Replace' } }, { properties: { title: 'ReplaceVars' } }, { properties: { title: 'ReplaceSettings' } }]
+      sheets: [
+        { properties: { title: 'Replace' } },
+        { properties: { title: 'ReplaceVars' } },
+        { properties: { title: 'ReplaceSettings' } },
+        { properties: { title: 'ReplaceSites' } }
+      ]
     }).then(function (ss) {
       JB.setSheetId('mini-replace', ss.spreadsheetId);
       return JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets/' + ss.spreadsheetId + '/values:batchUpdate', {
@@ -257,11 +263,65 @@ function miniEnsureReplaceSheet() {
         data: [
           { range: 'Replace!A1', values: [['Nome', 'Trigger', 'Text', 'Enabled', 'ID']] },
           { range: 'ReplaceVars!A1', values: [['Chave', 'Valor']] },
-          { range: 'ReplaceSettings!A1', values: [['Chave', 'Valor']] }
+          { range: 'ReplaceSettings!A1', values: [['Chave', 'Valor']] },
+          { range: 'ReplaceSites!A1', values: [['Host']] }
         ]
       }).then(function () {
         return JB.sheetTabs(ss.spreadsheetId).then(function (grid) { return { id: ss.spreadsheetId, grid: grid }; });
       });
+    });
+  });
+}
+
+function miniEnsureReplaceSitesTab(ctx) {
+  if (ctx.grid && ctx.grid.ReplaceSites != null) return Promise.resolve(ctx);
+  return JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets/' + ctx.id + ':batchUpdate', {
+    requests: [{ addSheet: { properties: { title: 'ReplaceSites' } } }]
+  }).then(function () {
+    return JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets/' + ctx.id + '/values:batchUpdate', {
+      valueInputOption: 'RAW',
+      data: [{ range: 'ReplaceSites!A1', values: [['Host']] }]
+    });
+  }).then(function () {
+    return JB.sheetTabs(ctx.id).then(function (grid) { ctx.grid = grid; return ctx; });
+  });
+}
+
+function miniMergeSites(a, b) {
+  var seen = {}, out = [];
+  (a || []).concat(b || []).forEach(function (h) {
+    h = miniNormHost(h);
+    if (h && !seen[h]) { seen[h] = 1; out.push(h); }
+  });
+  return out.length ? out : MINI_DEFAULT_SITES.slice();
+}
+
+function miniSitesFromRows(rows) {
+  return miniSheetBody(rows || []).map(function (r) { return miniNormHost(r[0]); }).filter(Boolean);
+}
+
+function miniPushSitesToSheet(sites) {
+  if (!JB.isSignedIn()) return Promise.resolve();
+  sites = miniSaveSites(sites || miniLoadSites());
+  return miniEnsureReplaceSheet().then(miniEnsureReplaceSitesTab).then(function (ctx) {
+    var rows = sites.map(function (h) { return [h]; });
+    return JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets/' + ctx.id + '/values:batchUpdate', {
+      valueInputOption: 'RAW',
+      data: [{ range: 'ReplaceSites!A1', values: [['Host']].concat(rows) }]
+    });
+  });
+}
+
+function miniApplySitesFromSheet() {
+  if (!JB.isSignedIn()) return Promise.resolve(miniLoadSites());
+  return miniEnsureReplaceSheet().then(miniEnsureReplaceSitesTab).then(function (ctx) {
+    return JB.api('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' + ctx.id + '/values/ReplaceSites?valueRenderOption=UNFORMATTED_VALUE').then(function (res) {
+      var remote = miniSitesFromRows(res.values || []);
+      var merged = miniMergeSites(miniLoadSites(), remote);
+      merged = miniSaveSites(merged);
+      miniSyncSitesToExtensions(merged);
+      miniRenderSites();
+      return merged;
     });
   });
 }
@@ -313,22 +373,28 @@ function miniReplaceToSheet(data) {
 }
 
 function miniSyncReplaceViaHub() {
-  return miniEnsureReplaceSheet().then(function (ctx) {
+  return miniEnsureReplaceSheet().then(miniEnsureReplaceSitesTab).then(function (ctx) {
     return miniReplaceMsg('jb-mini-replace-get').then(function (ext) {
       var local = ext.ok ? ext.data : null;
-      var ranges = ['Replace', 'ReplaceVars', 'ReplaceSettings'].map(function (t) {
+      var ranges = ['Replace', 'ReplaceVars', 'ReplaceSettings', 'ReplaceSites'].map(function (t) {
         return 'ranges=' + encodeURIComponent(t);
       }).join('&');
       return JB.api('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' + ctx.id + '/values:batchGet?' + ranges + '&valueRenderOption=UNFORMATTED_VALUE').then(function (res) {
-        var remote = miniReplaceFromSheet(res.valueRanges || []);
+        var vrs = res.valueRanges || [];
+        var remote = miniReplaceFromSheet(vrs);
         var merged = miniMergeReplaceData(local, remote);
         var rows = miniReplaceToSheet(merged);
+        var mergedSites = miniMergeSites(miniLoadSites(), miniSitesFromRows((vrs[3] && vrs[3].values) || []));
+        mergedSites = miniSaveSites(mergedSites);
+        miniSyncSitesToExtensions(mergedSites);
+        var siteRows = mergedSites.map(function (h) { return [h]; });
         return JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets/' + ctx.id + '/values:batchUpdate', {
           valueInputOption: 'RAW',
           data: [
             { range: 'Replace!A1', values: [['Nome', 'Trigger', 'Text', 'Enabled', 'ID']].concat(rows.snippets) },
             { range: 'ReplaceVars!A1', values: [['Chave', 'Valor']].concat(rows.vars) },
-            { range: 'ReplaceSettings!A1', values: [['Chave', 'Valor']].concat(rows.settings) }
+            { range: 'ReplaceSettings!A1', values: [['Chave', 'Valor']].concat(rows.settings) },
+            { range: 'ReplaceSites!A1', values: [['Host']].concat(siteRows) }
           ]
         }).then(function () {
           return miniReplaceMsg('jb-mini-replace-set-sheet', { sheetId: ctx.id }).then(function () {
@@ -349,13 +415,15 @@ function miniSyncReplace() {
   if (note) note.textContent = 'Sincronizando…';
   miniReplaceMsg('jb-mini-replace-sync').then(function (res) {
     if (res.ok) {
-      if (JB.toast) JB.toast('✓ Replace sincronizado');
-      if (note) note.textContent = 'Sincronizado via extensão.';
-      return;
+      return miniApplySitesFromSheet().then(function () {
+        if (JB.toast) JB.toast('✓ Replace sincronizado');
+        if (note) note.textContent = 'Sincronizado via extensão (macros + sites).';
+      });
     }
     return miniSyncReplaceViaHub().then(function () {
+      miniRenderSites();
       if (JB.toast) JB.toast('✓ Replace sincronizado via Hub');
-      if (note) note.textContent = 'Sincronizado via Hub (planilha Joelboard Mini).';
+      if (note) note.textContent = 'Sincronizado via Hub (macros + sites permitidos).';
     });
   }).catch(function (e) {
     if (JB.toast) JB.toast('Erro: ' + ((e && e.message) || 'falha ao sincronizar'));
@@ -399,11 +467,12 @@ function miniRenderSites(){
       var h=btn.getAttribute('data-host');
       var next=miniSaveSites(miniLoadSites().filter(function(s){return s!==h;}));
       miniSyncSitesToExtensions(next);
+      miniPushSitesToSheet(next).catch(function(){});
       miniRenderSites();
     };
   });
   var note=document.getElementById('miniSitesNote');
-  if(note) note.textContent='Lista salva no Hub. Com a extensão instalada, alterações aqui sincronizam automaticamente nesta aba.';
+  if(note) note.textContent='Lista salva no Hub e na planilha Joelboard Mini. Com a extensão instalada, alterações sincronizam nesta aba e entre dispositivos.';
 }
 function miniAddSite(){
   var inp=document.getElementById('miniSiteInput'); if(!inp) return;
@@ -411,17 +480,19 @@ function miniAddSite(){
   var sites=miniLoadSites(); if(sites.indexOf(h)<0) sites.push(h);
   sites=miniSaveSites(sites);
   miniSyncSitesToExtensions(sites);
+  miniPushSitesToSheet(sites).catch(function(){});
   inp.value='';
   miniRenderSites();
   if(JB.toast) JB.toast('Site adicionado');
 }
 function openMini(){
   if (!JB.isSignedIn()) {
-    JB.signIn({ onSuccess: function(){ setGreet(); document.getElementById('miniViewer').classList.add('open'); miniRenderSites(); } });
+    JB.signIn({ onSuccess: function(){ setGreet(); document.getElementById('miniViewer').classList.add('open'); miniRenderSites(); miniApplySitesFromSheet().catch(function(){}); } });
     return;
   }
   document.getElementById('miniViewer').classList.add('open');
   miniRenderSites();
+  if (JB.isSignedIn()) miniApplySitesFromSheet().catch(function () {});
 }
 JB.applySkin('hub');
 if (JB.hasSession()) { JB.ensureToken(false).then(setGreet).catch(setGreet); } else { setGreet(); }

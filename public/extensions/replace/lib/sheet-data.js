@@ -63,6 +63,49 @@ var JB_REPLACE_SHEET = (function () {
     return merged;
   }
 
+  function mergeSiteLists(a, b) {
+    var seen = {}, out = [];
+    (a || []).concat(b || []).forEach(function (h) {
+      h = JB_SITES.normalizeHost(h);
+      if (h && !seen[h]) { seen[h] = 1; out.push(h); }
+    });
+    return out.length ? out : JB_SITES.DEFAULT_SITES.slice();
+  }
+
+  function sitesFromRows(rows) {
+    return body(rows).map(function (r) { return JB_SITES.normalizeHost(r[0]); }).filter(Boolean);
+  }
+
+  function sitesToRows(sites) {
+    return (sites || []).map(function (h) { return [h]; });
+  }
+
+  function pullSites(ctx) {
+    return JB_SHEETS.batchGet(ctx.id, [JB_SHEETS.TAB_SITES]).then(function (res) {
+      var rows = (res.valueRanges[0] && res.valueRanges[0].values) || [];
+      return sitesFromRows(rows);
+    });
+  }
+
+  function pushSites(ctx, sites) {
+    return JB_SHEETS.writeTab(ctx.id, JB_SHEETS.TAB_SITES, sitesToRows(sites));
+  }
+
+  function syncSites() {
+    return JB_SHEETS.ensureSheet().then(function (ctx) {
+      return pullSites(ctx).then(function (remote) {
+        return new Promise(function (resolve, reject) {
+          JB_SITES.loadSites(function (local) {
+            var merged = mergeSiteLists(local, remote);
+            JB_SITES.saveSites(merged, function () {
+              pushSites(ctx, merged).then(function () { resolve(merged); }).catch(reject);
+            });
+          });
+        });
+      });
+    });
+  }
+
   function push(data) {
     return JB_SHEETS.ensureSheet().then(function (ctx) {
       var rows = rowsFromData(data);
@@ -98,7 +141,9 @@ var JB_REPLACE_SHEET = (function () {
     merge = merge !== false;
     return pull(merge).then(function (merged) {
       return JB_REPLACE.save(merged).then(function () {
-        return push(merged).then(function () { return merged; });
+        return push(merged).then(function () {
+          return syncSites().then(function () { return merged; });
+        });
       });
     });
   }
@@ -109,6 +154,10 @@ var JB_REPLACE_SHEET = (function () {
     mergeRemote: mergeRemote,
     push: push,
     pull: pull,
-    sync: sync
+    sync: sync,
+    syncSites: syncSites,
+    pushSites: pushSites,
+    pullSites: pullSites,
+    mergeSiteLists: mergeSiteLists
   };
 })();

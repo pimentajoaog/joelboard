@@ -89,6 +89,17 @@
   <div class="foot">© 2026 Joel Soluções LTDA · <a class="hub-legal-link" href="/privacy.html">Privacidade</a></div>
 </div>
 
+<div class="overlay" id="hubNewsEditor" onclick="if(event.target===this)closeHubNewsEditor()">
+  <div class="modal modal-wide hub-news-modal">
+    <div class="mh"><div class="mt">Editar Novidades</div><button class="x" type="button" onclick="closeHubNewsEditor()">✕</button></div>
+    <p class="hub-news-hint">Até 5 itens — visíveis para todos no Hub. Salva numa planilha Google (leitura pública).</p>
+    <div id="hubNewsEditList" class="hub-news-edit-list"></div>
+    <button type="button" class="mbtn" id="hubNewsEditAdd" onclick="hubNewsEditAdd()">+ Adicionar novidade</button>
+    <p class="hub-news-sheet-note" id="hubNewsSheetNote"></p>
+    <button type="button" class="btn-primary" id="hubNewsEditSave" onclick="hubNewsEditSave()">Publicar</button>
+  </div>
+</div>
+
 <div class="overlay" id="hubSet" onclick="if(event.target===this)closeHubSet()">
   <div class="modal">
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeHubSet()">✕</button></div>

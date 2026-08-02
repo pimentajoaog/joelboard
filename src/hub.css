@@ -39,7 +39,21 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 
 /* Novidades sidebar */
 .novidades{ position:sticky; top:24px; background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:18px 16px; }
-.nov-title{ font-size:13px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:var(--muted); margin-bottom:14px; font-family:var(--font-display); }
+.nov-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px; }
+.nov-title{ font-size:13px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; color:var(--muted); font-family:var(--font-display); }
+.nov-head .nov-title{ margin-bottom:0; }
+.nov-edit{ background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:8px; width:28px; height:28px; cursor:pointer; font-size:14px; line-height:1; flex-shrink:0; }
+.nov-edit:hover{ border-color:var(--primary); color:var(--primary); }
+.nov-app.study{ background:rgba(167,139,250,0.16); color:var(--study); }
+.hub-news-modal .hub-news-hint{ font-size:12px; color:var(--muted); margin:0 0 14px; line-height:1.45; }
+.hub-news-edit-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:12px; max-height:min(52vh,420px); overflow-y:auto; }
+.nov-edit-row{ display:grid; grid-template-columns:88px 92px 1fr 28px; gap:8px; align-items:start; }
+.nov-edit-row select,.nov-edit-row textarea{ background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:12px; padding:8px; font-family:inherit; width:100%; }
+.nov-edit-row textarea{ resize:vertical; min-height:52px; }
+.nov-edit-rm{ background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:8px; width:28px; height:28px; cursor:pointer; margin-top:4px; }
+.nov-edit-rm:hover{ border-color:#f87171; color:#f87171; }
+.hub-news-sheet-note{ font-size:11px; color:var(--muted); margin:10px 0 12px; line-height:1.4; word-break:break-all; }
+@media (max-width:520px){ .nov-edit-row{ grid-template-columns:1fr 1fr; } .nov-edit-row textarea{ grid-column:1/-1; } .nov-edit-rm{ grid-column:2; justify-self:end; } }
 .nov-list{ display:flex; flex-direction:column; gap:12px; list-style:none; }
 .nov-item{ font-size:12.5px; line-height:1.45; color:var(--text); }
 .nov-meta{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:5px; }

@@ -5,6 +5,7 @@ import { musicJsonResponse, proxyMusicRequest } from './lib/music-proxy.mjs';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const tmdbKey = JSON.stringify(env.VITE_TMDB_API_KEY || '');
+  const hubNewsSheetId = JSON.stringify(env.VITE_HUB_NEWS_SHEET_ID || '');
 
   async function handleMusicApi(req, res) {
     if (req.method === 'OPTIONS') {
@@ -82,6 +83,16 @@ export default defineConfig(({ mode }) => {
         handler(html, ctx) {
           if (!ctx.filename || ctx.filename.indexOf('prateleira') < 0) return html;
           var tag = '<script>window.JB_TMDB_KEY=' + tmdbKey + ';</script>';
+          return html.replace('<script src="/joelboard.js"></script>', tag + '\n<script src="/joelboard.js"></script>');
+        }
+      }
+    }, {
+      name: 'inject-hub-news-sheet-id',
+      transformIndexHtml: {
+        order: 'pre',
+        handler(html, ctx) {
+          if (!ctx.filename || !ctx.filename.endsWith('index.html')) return html;
+          var tag = '<script>window.JB_HUB_NEWS_SHEET_ID=' + hubNewsSheetId + ';</script>';
           return html.replace('<script src="/joelboard.js"></script>', tag + '\n<script src="/joelboard.js"></script>');
         }
       }

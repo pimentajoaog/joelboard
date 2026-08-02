@@ -2,24 +2,197 @@
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
 var greetEl=document.getElementById("greet"), btnEl=document.getElementById("authbtn");
 var _hbooted=false;
-var HUB_NEWS=[
+var HUB_NEWS_ADMIN_EMAIL='joaogabrielpabarbosa@gmail.com';
+var HUB_NEWS_SHEET_ID=(typeof window!=='undefined'&&window.JB_HUB_NEWS_SHEET_ID)||'';
+var HUB_NEWS_SHEET_LOCAL='jb_hub_news_sheet_id';
+var HUB_NEWS_LIMIT=5;
+var HUB_NEWS_DEFAULT=[
   { app:'mini', kind:'novo', text:'Sites permitidos sincronizam na planilha Joelboard Mini (aba ReplaceSites) — entre Hub, Replace e Refresh.' },
-  { app:'notas', kind:'novo', text:'Exportar listas: CSV e backup JSON em Ajustes → Sobre; Markdown por lista no botão 📤 Exportar.' },
-  { app:'finance', kind:'novo', text:'Temas alinhados com Fit, Study e Notas — skins, dia/noite e Vault no mesmo seletor.' },
-  { app:'fit', kind:'novo', text:'Ajustes → Macros: metas, refeições e alimentos custom num só lugar; arraste ⠿ para reordenar refeições.' },
-  { app:'fit', kind:'novo', text:'Alimentos custom: toque para editar ou ✕ para excluir da biblioteca.' },
-  { app:'fit', kind:'novo', text:'Aba Macros — registre alimentos por refeição e acompanhe metas de P/C/G e kcal.' },
-  { app:'finance', kind:'correcao', text:'Editar conta “só deste mês” não marca mais como paga automaticamente.' },
-  { app:'hub', kind:'novo', text:'Painel Novidades ao lado dos apps — últimas funcionalidades e correções.' }
+  { app:'notas', kind:'correcao', text:'Duplicatas fantasma em listas corrigidas; Remover duplicatas no menu ⋯ de cada lista.' },
+  { app:'notas', kind:'novo', text:'Ícones personalizados nas listas — presets e emoji no editor e na grade inicial.' },
+  { app:'mini', kind:'correcao', text:'Login e sync Replace com a extensão — página de auth espera a ponte antes de enviar o token.' },
+  { app:'hub', kind:'novo', text:'Ícone Joelboard no topo de cada app leva de volta ao Hub.' }
 ];
-var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', mini:'Mini', hub:'Hub' };
+var HUB_NEWS=HUB_NEWS_DEFAULT.slice();
+var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', mini:'Mini', hub:'Hub', study:'Study' };
 var HUB_NEWS_KIND={ novo:'Novo', correcao:'Correção' };
+var HUB_NEWS_APPS=['hub','finance','fit','study','notas','mini'];
+
+function hubNewsAdmin(){ return (JB.email()||'').toLowerCase()===HUB_NEWS_ADMIN_EMAIL; }
+function hubNewsSheetId(){
+  if(HUB_NEWS_SHEET_ID) return HUB_NEWS_SHEET_ID;
+  try{ return localStorage.getItem(HUB_NEWS_SHEET_LOCAL)||''; }catch(_){ return ''; }
+}
+function hubNewsSetSheetId(id){
+  try{ if(id) localStorage.setItem(HUB_NEWS_SHEET_LOCAL,id); else localStorage.removeItem(HUB_NEWS_SHEET_LOCAL); }catch(_){}
+}
+
+function hubNewsParseGviz(text){
+  var m=String(text||'').match(/google\.visualization\.Query\.setResponse\(([\s\S]+)\);?\s*$/);
+  if(!m) return null;
+  var data=JSON.parse(m[1]);
+  if(!data||data.status!=='ok'||!data.table) return null;
+  var out=[];
+  (data.table.rows||[]).forEach(function(row){
+    var c=row.c||[];
+    var textVal=c[2]&&(c[2].v!=null?String(c[2].v):'');
+    if(!textVal) return;
+    out.push({
+      app:String((c[0]&&c[0].v)||'hub').toLowerCase(),
+      kind:String((c[1]&&c[1].v)||'novo').toLowerCase(),
+      text:textVal
+    });
+  });
+  return out.length?out:null;
+}
+
+function hubNewsParseApiRows(rows){
+  var body=(rows||[]).slice(1), out=[];
+  body.forEach(function(r){
+    if(!r||!(r[2]||'').trim()) return;
+    out.push({ app:String(r[0]||'hub').toLowerCase(), kind:String(r[1]||'novo').toLowerCase(), text:String(r[2]||'') });
+  });
+  return out.length?out:null;
+}
+
+function hubNewsFetchPublic(id){
+  return fetch('https://docs.google.com/spreadsheets/d/'+encodeURIComponent(id)+'/gviz/tq?tqx=out:json&sheet=Novidades',{ cache:'no-store' })
+    .then(function(r){ return r.text(); })
+    .then(function(t){ return hubNewsParseGviz(t); });
+}
+
+function hubNewsFetchApi(id){
+  return JB.api('GET','https://sheets.googleapis.com/v4/spreadsheets/'+id+'/values/Novidades?valueRenderOption=UNFORMATTED_VALUE')
+    .then(function(res){ return hubNewsParseApiRows(res.values||[]); });
+}
+
+function hubNewsFetch(){
+  var id=hubNewsSheetId();
+  if(!id) return Promise.resolve(HUB_NEWS_DEFAULT.slice());
+  if(hubNewsAdmin()&&JB.isSignedIn()){
+    return hubNewsFetchApi(id).catch(function(){
+      return hubNewsFetchPublic(id);
+    }).then(function(items){
+      return items||HUB_NEWS_DEFAULT.slice();
+    });
+  }
+  return hubNewsFetchPublic(id).then(function(items){
+    return items||HUB_NEWS_DEFAULT.slice();
+  }).catch(function(){ return HUB_NEWS_DEFAULT.slice(); });
+}
+
+function hubNewsInit(){
+  return hubNewsFetch().then(function(items){
+    HUB_NEWS=(items||[]).slice(0,HUB_NEWS_LIMIT);
+    renderHubNews();
+  }).catch(function(){ renderHubNews(); });
+}
+
 function renderHubNews(){
   var el=document.getElementById('hubNews'); if(!el) return;
-  el.innerHTML='<div class="nov-title">Novidades</div><ul class="nov-list">'+HUB_NEWS.map(function(n){
-    return '<li class="nov-item"><div class="nov-meta"><span class="nov-app '+n.app+'">'+esc(HUB_NEWS_LABEL[n.app]||n.app)+'</span><span class="nov-kind '+n.kind+'">'+esc(HUB_NEWS_KIND[n.kind]||n.kind)+'</span></div>'+esc(n.text)+'</li>';
+  var editBtn=hubNewsAdmin()?'<button type="button" class="nov-edit" onclick="openHubNewsEditor()" title="Editar novidades" aria-label="Editar novidades">✏</button>':'';
+  el.innerHTML='<div class="nov-head"><div class="nov-title">Novidades</div>'+editBtn+'</div><ul class="nov-list">'+HUB_NEWS.map(function(n){
+    return '<li class="nov-item"><div class="nov-meta"><span class="nov-app '+esc(n.app)+'">'+esc(HUB_NEWS_LABEL[n.app]||n.app)+'</span><span class="nov-kind '+esc(n.kind)+'">'+esc(HUB_NEWS_KIND[n.kind]||n.kind)+'</span></div>'+esc(n.text)+'</li>';
   }).join('')+'</ul>';
 }
+
+function hubNewsEnsureSheet(){
+  var id=hubNewsSheetId();
+  if(id) return Promise.resolve(id);
+  return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets',{
+    properties:{ title:'Joelboard Novidades' },
+    sheets:[{ properties:{ title:'Novidades' } }]
+  }).then(function(ss){
+    id=ss.spreadsheetId;
+    return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+id+'/values:batchUpdate',{
+      valueInputOption:'RAW',
+      data:[{ range:'Novidades!A1', values:[['App','Kind','Text']] }]
+    }).then(function(){
+      return JB.api('POST','https://www.googleapis.com/drive/v3/files/'+id+'/permissions',{ role:'reader', type:'anyone' }).catch(function(){ return {}; }).then(function(){
+        hubNewsSetSheetId(id);
+        return id;
+      });
+    });
+  });
+}
+
+function hubNewsSaveRows(items){
+  items=(items||[]).slice(0,HUB_NEWS_LIMIT);
+  var values=[['App','Kind','Text']].concat(items.map(function(n){
+    return [n.app||'hub', n.kind||'novo', n.text||''];
+  }));
+  return hubNewsEnsureSheet().then(function(id){
+    return JB.api('PUT','https://sheets.googleapis.com/v4/spreadsheets/'+id+'/values/Novidades!A1?valueInputOption=RAW',{ values:values }).then(function(){
+      return id;
+    });
+  });
+}
+
+var _hubNewsDraft=null;
+function openHubNewsEditor(){
+  if(!hubNewsAdmin()) return;
+  if(!JB.isSignedIn()){
+    JB.signIn({ onSuccess:openHubNewsEditor });
+    return;
+  }
+  _hubNewsDraft=HUB_NEWS.map(function(n){ return { app:n.app, kind:n.kind, text:n.text }; });
+  hubNewsRenderEditor();
+  var ov=$('hubNewsEditor'); if(ov) ov.classList.add('open');
+}
+function closeHubNewsEditor(){ var ov=$('hubNewsEditor'); if(ov) ov.classList.remove('open'); _hubNewsDraft=null; }
+
+function hubNewsRenderEditor(){
+  var list=$('hubNewsEditList'); if(!list||!_hubNewsDraft) return;
+  var appOpts=function(sel){ return HUB_NEWS_APPS.map(function(a){ return '<option value="'+a+'"'+(sel===a?' selected':'')+'>'+esc(HUB_NEWS_LABEL[a]||a)+'</option>'; }).join(''); };
+  var kindOpts=function(sel){ return ['novo','correcao'].map(function(k){ return '<option value="'+k+'"'+(sel===k?' selected':'')+'>'+esc(HUB_NEWS_KIND[k])+'</option>'; }).join(''); };
+  list.innerHTML=_hubNewsDraft.map(function(n,i){
+    return '<div class="nov-edit-row" data-i="'+i+'">'
+      +'<select class="nov-edit-app" data-i="'+i+'">'+appOpts(n.app)+'</select>'
+      +'<select class="nov-edit-kind" data-i="'+i+'">'+kindOpts(n.kind)+'</select>'
+      +'<textarea class="nov-edit-text" data-i="'+i+'" rows="2" placeholder="Texto da novidade">'+esc(n.text)+'</textarea>'
+      +'<button type="button" class="nov-edit-rm" data-i="'+i+'" title="Remover">✕</button></div>';
+  }).join('');
+  list.querySelectorAll('.nov-edit-app').forEach(function(el){ el.onchange=function(){ _hubNewsDraft[+el.getAttribute('data-i')].app=el.value; }; });
+  list.querySelectorAll('.nov-edit-kind').forEach(function(el){ el.onchange=function(){ _hubNewsDraft[+el.getAttribute('data-i')].kind=el.value; }; });
+  list.querySelectorAll('.nov-edit-text').forEach(function(el){ el.oninput=function(){ _hubNewsDraft[+el.getAttribute('data-i')].text=el.value; }; });
+  list.querySelectorAll('.nov-edit-rm').forEach(function(btn){
+    btn.onclick=function(){
+      _hubNewsDraft.splice(+btn.getAttribute('data-i'),1);
+      hubNewsRenderEditor();
+    };
+  });
+  var add=$('hubNewsEditAdd');
+  if(add) add.style.display=_hubNewsDraft.length>=HUB_NEWS_LIMIT?'none':'';
+}
+
+function hubNewsEditAdd(){
+  if(!_hubNewsDraft||_hubNewsDraft.length>=HUB_NEWS_LIMIT) return;
+  _hubNewsDraft.push({ app:'hub', kind:'novo', text:'' });
+  hubNewsRenderEditor();
+}
+
+function hubNewsEditSave(){
+  if(!_hubNewsDraft) return;
+  var items=_hubNewsDraft.map(function(n){
+    return { app:(n.app||'hub').toLowerCase(), kind:(n.kind||'novo').toLowerCase(), text:(n.text||'').trim() };
+  }).filter(function(n){ return n.text; }).slice(0,HUB_NEWS_LIMIT);
+  if(!items.length){ if(JB.toast) JB.toast('Adicione ao menos uma novidade'); return; }
+  var btn=$('hubNewsEditSave'); if(btn) btn.disabled=true;
+  hubNewsSaveRows(items).then(function(id){
+    HUB_NEWS=items;
+    renderHubNews();
+    closeHubNewsEditor();
+    if(JB.toast) JB.toast('✓ Novidades publicadas');
+    if(!HUB_NEWS_SHEET_ID){
+      var note=$('hubNewsSheetNote');
+      if(note) note.textContent='Planilha criada. Para todos verem sem você logado, adicione VITE_HUB_NEWS_SHEET_ID='+id+' no Vercel e redeploy.';
+    }
+  }).catch(function(e){
+    if(JB.toast) JB.toast('Erro: '+((e&&e.message)||'falha ao salvar'));
+  }).finally(function(){ if(btn) btn.disabled=false; });
+}
+
+function $(id){ return document.getElementById(id); }
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só.' },
   { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas ou Mini (extensões Chrome).' },
@@ -128,7 +301,7 @@ function bootHubTours(){
   }
   maybeJulioelHint();
 }
-function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); applyJulioelUI(false); if(on && !_hbooted){ _hbooted=true; bootHubTours(); } }
+function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); applyJulioelUI(false); if(on && !_hbooted){ _hbooted=true; bootHubTours(); } hubNewsInit(); }
 function doIn(){ JB.signIn({ onSuccess: function(){ setGreet(); } }); }
 function doOut(){ try{ localStorage.removeItem(JULIOEL_KEY); }catch(_){} JB.signOut(); setGreet(); }
 /* ---- Feedback viewer (owner-only; reads the form-response sheet via Sheets API) ---- */
@@ -497,7 +670,7 @@ function openMini(){
 JB.applySkin('hub');
 if (JB.hasSession()) { JB.ensureToken(false).then(setGreet).catch(setGreet); } else { setGreet(); }
 document.addEventListener('DOMContentLoaded',function(){
-  renderHubNews();
+  hubNewsInit();
   var brand=document.getElementById('hubBrand');
   if(brand){
     brand.addEventListener('click', toggleJulioel);

@@ -7,8 +7,15 @@ var NC_COLLAB_TABS = [
 var NC_PROFILE_ICONS = ['🧑', '👩', '🧑‍💻', '🌸', '🐱', '🦊', '🐻', '🦁', '🐼', '🦉', '🐸', '🦄', '⭐', '🔥', '💜', '🛒', '✈️', '📝', '☕', '🌈'];
 var collabGrids = {};
 var _ncPollTimer = null;
+var _ncPollKick = null;
 var _ncSyncChain = Promise.resolve();
 var _ncCollabSig = {};
+var _ncPollTick = 0;
+var _ncLastActivity = 0;
+var _ncWatchedSid = null;
+var NC_POLL_FAST = 7000;
+var NC_POLL_SLOW = 40000;
+var NC_POLL_IDLE_MS = 90000;
 
 function ncWithSync(fn) {
   _ncSyncChain = _ncSyncChain.then(fn, fn);
@@ -140,27 +147,40 @@ function ncStripCollabFromData() {
   Object.keys(drop).forEach(function (id) { delete _ncCollabSig[id]; });
 }
 
-function ncFetchCollabPack(sid) {
+function ncFetchCollabPack(sid, opts) {
+  opts = opts || {};
   if (collabGrids[sid]) {
-    return ncLoadCollabSheetData(sid, collabGrids[sid]);
+    return ncLoadCollabSheetData(sid, collabGrids[sid], opts);
   }
   return JB.api('GET', ncCollabUrl(sid, '?fields=sheets.properties(sheetId,title)')).then(function (meta) {
     var grid = {};
     (meta.sheets || []).forEach(function (sh) { grid[sh.properties.title] = sh.properties.sheetId; });
     collabGrids[sid] = grid;
-    return ncLoadCollabSheetData(sid, grid);
+    return ncLoadCollabSheetData(sid, grid, opts);
   });
 }
 
-function ncLoadCollabSheetData(sid, grid) {
-  var tabs = ['Meta', 'Itens', 'Membros'].filter(function (t) { return grid[t] != null; });
+function ncLoadCollabSheetData(sid, grid, opts) {
+  opts = opts || {};
+  var tabs = ['Meta', 'Itens'];
+  if (opts.members !== false) tabs.push('Membros');
+  tabs = tabs.filter(function (t) { return grid[t] != null; });
   if (!tabs.length) return Promise.resolve(null);
   var q = tabs.map(function (t) { return 'ranges=' + encodeURIComponent(t); }).join('&');
   return JB.api('GET', ncCollabUrl(sid, '/values:batchGet?' + q + '&valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
     var by = {};
     (res.valueRanges || []).forEach(function (vr, i) { by[tabs[i]] = vr.values || []; });
-    return { sid: sid, grid: grid, meta: by.Meta || [], itens: by.Itens || [], membros: by.Membros || [] };
+    var pack = { sid: sid, grid: grid, meta: by.Meta || [], itens: by.Itens || [], membros: by.Membros || [] };
+    if (typeof seedRowCacheForSid === 'function') seedRowCacheForSid(sid, 'Itens', pack.itens, 5);
+    return pack;
   });
+}
+
+function ncPeekMetaAtualizado(sid) {
+  return JB.api('GET', ncCollabUrl(sid, '/values/Meta!F2?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
+    var v = (res.values || [])[0];
+    return v ? String(v[0] || '') : '';
+  }).catch(function () { return ''; });
 }
 
 function ncMergeRegistryRow(reg, pack) {
@@ -207,12 +227,12 @@ function ncLoadCollabLists() {
   }).catch(function () {});
 }
 
-function ncRefreshCollabOnly() {
+function ncRefreshCollabOnly(force) {
   var n = note(openNoteId);
   if (!n || !n.collabSheetId) return Promise.resolve({ changed: false });
   var noteId = n.id, sheetId = n.collabSheetId;
   return ncWithSync(function () {
-    return ncFetchCollabPack(sheetId).then(function (pack) {
+    function applyPack(pack) {
       if (!pack) return { changed: false };
       var cur = note(noteId);
       if (!cur || cur.collabSheetId !== sheetId) return { changed: false };
@@ -227,19 +247,62 @@ function ncRefreshCollabOnly() {
         cur.atualizado = u;
         cur.vence = v;
       }
-      cur.collabMembers = ncParseMembers(pack.membros);
+      if (pack.membros && pack.membros.length) cur.collabMembers = ncParseMembers(pack.membros);
       return { changed: changed };
-    });
+    }
+    if (!force) {
+      return ncPeekMetaAtualizado(sheetId).then(function (remoteAt) {
+        var cur = note(noteId);
+        if (cur && remoteAt && remoteAt === cur.atualizado && _ncCollabSig[noteId]) return { changed: false };
+        _ncPollTick++;
+        var fetchMembers = (_ncPollTick % 4 === 0);
+        return ncFetchCollabPack(sheetId, { members: fetchMembers }).then(applyPack);
+      });
+    }
+    return ncFetchCollabPack(sheetId).then(applyPack);
   });
 }
 
+function ncBumpCollabActivity() { _ncLastActivity = Date.now(); }
+
+function ncSetCollabWatch(sid) {
+  sid = sid || null;
+  if (_ncWatchedSid === sid) return;
+  if (_ncWatchedSid && JB.unwatchSheetId) JB.unwatchSheetId(_ncWatchedSid);
+  _ncWatchedSid = sid;
+  if (sid && JB.watchSheetId) {
+    JB.watchSheetId(sid, function () {
+      if (openNoteId && note(openNoteId) && note(openNoteId).collabSheetId === sid) {
+        ncRefreshCollabOnly(true).then(function (res) { if (res && res.changed) render(); }).catch(function () {});
+      }
+    });
+  }
+}
+
+function ncPollDelay() {
+  if (!_ncLastActivity || (Date.now() - _ncLastActivity) > NC_POLL_IDLE_MS) return NC_POLL_SLOW;
+  return NC_POLL_FAST;
+}
+
+function ncSchedulePoll() {
+  if (_ncPollTimer) clearTimeout(_ncPollTimer);
+  _ncPollTimer = setTimeout(function () {
+    _ncPollTimer = null;
+    if (!openNoteId || !note(openNoteId) || !note(openNoteId).collabSheetId) { ncSchedulePoll(); return; }
+    if (!document.hidden) {
+      ncRefreshCollabOnly().then(function (res) { if (res && res.changed) render(); }).catch(function () {});
+    }
+    ncSchedulePoll();
+  }, ncPollDelay());
+}
+
 function ncStartCollabPoll() {
-  if (_ncPollTimer) return;
-  _ncPollTimer = setInterval(function () {
-    if (!openNoteId || !note(openNoteId) || !note(openNoteId).collabSheetId) return;
-    if (document.hidden) return;
-    ncRefreshCollabOnly().then(function (res) { if (res && res.changed) render(); }).catch(function () {});
-  }, 20000);
+  if (_ncPollKick) return;
+  _ncPollKick = 1;
+  if (!_ncLastActivity) _ncLastActivity = Date.now();
+  document.addEventListener('pointerdown', ncBumpCollabActivity, { passive: true });
+  document.addEventListener('keydown', ncBumpCollabActivity, { passive: true });
+  ncSchedulePoll();
 }
 
 function ncRegistryRowVals(entry) {

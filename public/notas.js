@@ -5,10 +5,29 @@ var HIDE_DONE_KEY='jb_notas_hide_done';
 function hideDonePref(){ try{ return localStorage.getItem(HIDE_DONE_KEY)==='1'; }catch(_){ return false; } }
 function setHideDonePref(on){ try{ localStorage.setItem(HIDE_DONE_KEY, on?'1':'0'); }catch(_){} _doneCollapsed=!!on; }
 var _doneCollapsed=hideDonePref();
-var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']],['Compartilhadas',['Titulo','SheetID','Papel','Owner','ListaID','Atualizado']]];
+var _rowCache={};
+function ssCacheId(){ return (typeof ncSsId==='function')?ncSsId():JB.getSheetId('notas'); }
+function rowCacheKey(tab){ return ssCacheId()+'|'+tab; }
+function seedRowCacheForSid(sid, tab, rows, idCol){
+  var map={};
+  for(var i=1;i<(rows||[]).length;i++){ var id=String((rows[i]||[])[idCol]); if(id) map[id]=i+1; }
+  _rowCache[sid+'|'+tab]=map;
+}
+function seedRowCache(tab, rows, idCol){ seedRowCacheForSid(ssCacheId(), tab, rows, idCol); }
+function invalidateRowCache(tab){ delete _rowCache[rowCacheKey(tab)]; }
+function itemRowMap(tab, idCol){
+  idCol=(idCol==null)?5:idCol;
+  var key=rowCacheKey(tab), cached=_rowCache[key];
+  if(cached) return Promise.resolve(cached);
+  return JB.api('GET', ssUrl('/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+    seedRowCache(tab, res.values||[], idCol);
+    return _rowCache[key]||{};
+  });
+}
 function _ncSsId(){ return (typeof ncSsId==='function')?ncSsId():JB.getSheetId('notas'); }
 function _ncGrid(){ return (typeof ncGrid==='function')?ncGrid():notasGrid; }
 function noteDataTab(n){ return (n&&n.collabSheetId)?'Meta':'Notas'; }
+var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']],['Compartilhadas',['Titulo','SheetID','Papel','Owner','ListaID','Atualizado']]];
 var KINDS=[
   {k:'compras', label:'Compras', icon:'🛒', color:'#34d399', defCheck:true},
   {k:'tarefas', label:'Tarefas', icon:'✅', color:'#60a5fa', defCheck:true},
@@ -129,7 +148,7 @@ function buildNotas(t){
 function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+((typeof ncAcctLabel==='function')?ncAcctLabel():(JB.email()||'')); render(); if(!_nbooted){ _nbooted=true; if(typeof ncCheckJoinParam==='function') ncCheckJoinParam(); if(typeof ncStartCollabPoll==='function') ncStartCollabPoll(); if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('notas', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
-  if(typeof ncRefreshCollabOnly==='function' && openNoteId && note(openNoteId) && note(openNoteId).collabSheetId){ ncRefreshCollabOnly().then(function(res){ if(res && res.changed) render(); }).catch(function(){}); return; }
+  if(typeof ncRefreshCollabOnly==='function' && openNoteId && note(openNoteId) && note(openNoteId).collabSheetId){ ncRefreshCollabOnly(true).then(function(res){ if(res && res.changed) render(); }).catch(function(){}); return; }
   var want=NOTAS_TABS.map(function(t){return t[0];}).filter(function(t){return notasGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.syncWrap(JB.api('GET', personalSsUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
@@ -143,8 +162,8 @@ function refreshData(){
 /* ---- routing / render ---- */
 function note(id){ return (DATA.notas||[]).find(function(n){return n.id===id;}); }
 function render(){ var ed=!!(openNoteId&&note(openNoteId)); $('fab').style.display=ed?'none':'flex'; if(ed) renderEditor(); else renderHomeShell(); updateSelBar(); }
-function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; _renameNoteId=null; _edMenuOpen=false; render(); window.scrollTo(0,0); }
-function backHome(){ openNoteId=null; _edMenuOpen=false; render(); }
+function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; _renameNoteId=null; _edMenuOpen=false; if(typeof ncSetCollabWatch==='function'){ var nn=note(id); ncSetCollabWatch(nn&&nn.collabSheetId?nn.collabSheetId:null); } render(); window.scrollTo(0,0); }
+function backHome(){ openNoteId=null; _edMenuOpen=false; if(typeof ncSetCollabWatch==='function') ncSetCollabWatch(null); render(); }
 
 /* ---- home ---- */
 function renderHomeShell(){
@@ -510,11 +529,10 @@ function toggleGroupAll(gid){
 }
 function persistItems(arr){
   if(!arr||!arr.length) return;
+  if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
   JB.persist({
     run: function(){
-      return JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
-        var v=res.values||[]; var rowOf={};
-        for(var i=1;i<v.length;i++){ rowOf[String((v[i]||[])[5])]=i+1; }
+      return itemRowMap('Itens',5).then(function(rowOf){
         var data=arr.filter(function(x){return rowOf[x.id];}).map(function(x){
           return { range:'Itens!A'+rowOf[x.id]+':G'+rowOf[x.id], values:[itemRowVals(x)] };
         });
@@ -722,18 +740,21 @@ function saveNoteRow(n){
     onError: notasWriteErr
   });
 }
-function touchNote(n){ n.atualizado=new Date().toISOString(); saveNoteRow(n); }
+function touchNote(n){ n.atualizado=new Date().toISOString(); if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity(); saveNoteRow(n); }
 function appendItem(it){ appendItems([it]); }
 function appendItems(arr){
   if(!arr||!arr.length) return;
+  if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
   JB.persist({
     run: function(){
       return JB.api('POST', ssUrl('/values/Itens:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: arr.map(itemRowVals) });
     },
+    onSuccess: function(){ invalidateRowCache('Itens'); },
     onError: notasWriteErr
   });
 }
 function saveItemRow(it){
+  if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
   JB.persist({
     run: function(){
       return findRow('Itens',5,it.id).then(function(row){
@@ -744,7 +765,15 @@ function saveItemRow(it){
     onError: notasWriteErr
   });
 }
-function findRow(tab,idCol,id){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; for(var i=1;i<v.length;i++){ if(String((v[i]||[])[idCol])===String(id)) return i+1; } return -1; }); }
+function findRow(tab,idCol,id){
+  var key=rowCacheKey(tab), cached=_rowCache[key];
+  if(cached && cached[String(id)]!=null) return Promise.resolve(cached[String(id)]);
+  return JB.api('GET', ssUrl('/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+    seedRowCache(tab, res.values||[], idCol);
+    var row=_rowCache[key]?_rowCache[key][String(id)]:null;
+    return row!=null?row:-1;
+  });
+}
 function saveConfig(k,v){
   DATA.config=DATA.config||{};
   DATA.config[k]=v;
@@ -888,11 +917,10 @@ function addPaste(e){ var t=((e.clipboardData||window.clipboardData)||{}).getDat
 function itemPaste(e,id){ var t=((e.clipboardData||window.clipboardData)||{}).getData?((e.clipboardData||window.clipboardData).getData('text')):''; if(!t || !/\r?\n/.test(t)) return; e.preventDefault(); var lines=splitLines(t); if(!lines.length) return; var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; it.texto=lines[0]; saveItemRow(it); var base=it.ordem, rest=lines.slice(1); var kd=kindDef(note(openNoteId).tipo); var mk=(isGroup(it)?kd.defCheck:it.marcavel); var add=rest.map(function(L,k){ var nit={ id:uuid(), notaId:openNoteId, ordem:base+0.0001*(k+1), texto:L, marcavel:mk, feito:false, tipo:'' }; DATA.itens.push(nit); return nit; }); if(add.length) appendItems(add); normalizeOrder(); touchNote(note(openNoteId)); renderEditor(); }
 function normalizeOrder(){ var its=itemsOf(openNoteId); var changed=false; its.forEach(function(x,i){ if(x.ordem!==i+1){ x.ordem=i+1; changed=true; } }); if(changed) persistOrder(); }
 function persistOrder(){
+  if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
   JB.persist({
     run: function(){
-      return JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
-        var v=res.values||[]; var rowOf={};
-        for(var i=1;i<v.length;i++){ rowOf[String((v[i]||[])[5])]=i+1; }
+      return itemRowMap('Itens',5).then(function(rowOf){
         var data=(DATA.itens||[]).filter(function(x){return x.notaId===openNoteId && rowOf[x.id];}).map(function(x){
           return { range:'Itens!B'+rowOf[x.id], values:[[x.ordem]] };
         });
@@ -1022,11 +1050,14 @@ function selToggle(id){ if(_marqueeDidDrag||_dragDidMove) return; if(_sel[id]) d
 function selAll(){ var its=itemsOf(openNoteId).filter(function(x){return !isGroup(x);}); var all=its.length>0 && its.every(function(x){return _sel[x.id];}); _sel={}; if(!all) its.forEach(function(x){ _sel[x.id]=1; }); if(selExitIfEmpty()) return; renderItems(); }
 function selMark(v){ var ids=Object.keys(_sel); if(!ids.length) return; var changed=[]; ids.forEach(function(id){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(it && it.marcavel && it.feito!==v){ it.feito=v; changed.push(it); } }); renderItems(); if(changed.length) persistItems(changed); var n=note(openNoteId); if(n) touchNote(n); }
 function delItemRows(ids){
-  return JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
-    var v=res.values||[]; var rows=[];
-    for(var i=1;i<v.length;i++){ if(ids[String((v[i]||[])[5])]) rows.push(i+1); }
+  return itemRowMap('Itens',5).then(function(rowOf){
+    var rows=[];
+    Object.keys(ids).forEach(function(id){ if(rowOf[id]) rows.push(rowOf[id]); });
     rows.sort(function(a,b){return b-a;});
-    if(rows.length) return JB.api('POST', ssUrl(':batchUpdate'), { requests: rows.map(function(r){ return { deleteDimension:{ range:{ sheetId:_ncGrid()['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }; }) });
+    if(!rows.length) return;
+    return JB.api('POST', ssUrl(':batchUpdate'), { requests: rows.map(function(r){ return { deleteDimension:{ range:{ sheetId:_ncGrid()['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }; }) }).then(function(){
+      invalidateRowCache('Itens');
+    });
   });
 }
 function selDelete(){ var ids=Object.keys(_sel); if(!ids.length) return; var m={}; ids.forEach(function(i){m[i]=1;}); JB.confirm('Excluir selecionados?', ids.length+(ids.length>1?' itens serão removidos.':' item será removido.'), function(){

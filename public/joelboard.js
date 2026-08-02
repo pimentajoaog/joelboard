@@ -480,6 +480,13 @@
     if (!sid || typeof onStale !== 'function') return;
     sheetWatchers[sid] = { localGen: Number(lg(genKey(sid)) || 0), fn: onStale, app: app };
   }
+  function watchSheetId(sid, onStale){
+    if (!sid || typeof onStale !== 'function') return;
+    sheetWatchers[sid] = { localGen: Number(lg(genKey(sid)) || 0), fn: onStale, app: null };
+  }
+  function unwatchSheetId(sid){
+    if (sid) delete sheetWatchers[sid];
+  }
   function initSheetSync(){
     window.addEventListener('storage', function (e) {
       if (!e.key || e.key.indexOf('jb_gen_') !== 0) return;
@@ -1207,7 +1214,7 @@
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,
-    toast: jbToast, persist: persist, onTabVisible: onTabVisible, watchSheet: watchSheet, confirm: confirm, whenReady: whenReady,
+    toast: jbToast, persist: persist, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis
   };

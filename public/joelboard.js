@@ -612,6 +612,61 @@
     sync();
   }
   function whenReady(fn){ if (document.body) fn(); else document.addEventListener('DOMContentLoaded', fn); }
+
+  // --- copyright easter egg (5 taps → Maria Júlia ♥) — shared across apps ---
+  var eggClicks = 0, eggTimer = null, eggWired = false;
+  function eggEnsureOverlay() {
+    var ov = document.getElementById('eggOverlay');
+    if (ov) return ov;
+    ov = document.createElement('div');
+    ov.id = 'eggOverlay';
+    ov.className = 'egg-overlay';
+    ov.innerHTML = '<div class="egg-card">Maria Júlia <span style="color:#f9a8d4">♥</span></div>';
+    ov.addEventListener('click', eggClose);
+    document.body.appendChild(ov);
+    return ov;
+  }
+  function eggTap() {
+    eggClicks++;
+    clearTimeout(eggTimer);
+    eggTimer = setTimeout(function () { eggClicks = 0; }, 2200);
+    if (eggClicks >= 5) { eggClicks = 0; clearTimeout(eggTimer); eggTrigger(); }
+  }
+  function eggTrigger() {
+    eggEnsureOverlay().classList.add('show');
+    var root = document.getElementById('app') || document.querySelector('.wrap');
+    if (root) { root.classList.add('egg-shake'); setTimeout(function () { root.classList.remove('egg-shake'); }, 650); }
+    eggConfetti();
+    setTimeout(eggClose, 4500);
+  }
+  function eggClose() { var ov = document.getElementById('eggOverlay'); if (ov) ov.classList.remove('show'); }
+  function eggConfetti() {
+    var colors = ['#ec4899', '#f9a8d4', '#a78bfa', '#34d399', '#fbbf24', '#60a5fa'];
+    for (var i = 0; i < 100; i++) {
+      var p = document.createElement('div'); p.className = 'confetti-pc';
+      var sz = 6 + Math.random() * 9;
+      p.style.left = (Math.random() * 100) + 'vw'; p.style.width = sz + 'px'; p.style.height = (sz * 0.6) + 'px';
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      var dur = 2.2 + Math.random() * 1.9;
+      p.style.animation = 'confetti-fall ' + dur + 's linear ' + (Math.random() * 0.5) + 's forwards';
+      document.body.appendChild(p);
+      (function (el, ms) { setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, ms); })(p, (dur + 1) * 1000);
+    }
+  }
+  function wireEggFooter() {
+    if (eggWired) return;
+    var footer = document.getElementById('appFooter') || document.querySelector('.foot');
+    if (!footer) return;
+    eggWired = true;
+    footer.classList.add('jb-egg-foot');
+    footer.addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('a')) return;
+      eggTap();
+    });
+    eggEnsureOverlay();
+  }
+  whenReady(wireEggFooter);
+
   whenReady(initScrollLock);
   whenReady(initAuthPersistence);
   whenReady(initTabSync);
@@ -1237,7 +1292,7 @@
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,
-    toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady,
+    toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady, wireEggFooter: wireEggFooter,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis
   };

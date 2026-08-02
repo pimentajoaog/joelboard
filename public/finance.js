@@ -569,7 +569,6 @@ function applyStaticI18n(){
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
   document.querySelectorAll('[data-i18n-title]').forEach(el => { el.setAttribute('title', t(el.getAttribute('data-i18n-title'))); });
   var _f=document.getElementById('appFooter'); if (_f) _f.textContent = '© ' + new Date().getFullYear() + ' Joel Soluções LTDA · ' + t('footer.rights');
-  wireEggFooter();
   document.documentElement.lang = lang()==='en' ? 'en' : 'pt-BR';
   var _hb=document.getElementById('hubBtn'); if (_hb) _hb.style.display = (HUB_URL && HUB_URL.indexOf('PASTE_HUB_URL') < 0) ? '' : 'none';
 }
@@ -641,7 +640,6 @@ var itemUnit = FinMath.itemUnit, sumAssign = FinMath.sumAssign;
 
 window.addEventListener('DOMContentLoaded', () => {
   applyStaticI18n();
-  wireEggFooter();
   setDefaultDate();
   document.addEventListener('click', e => { const w=document.querySelector('.month-picker-wrap'); if (w && !w.contains(e.target)) closeMonthPicker(); });
   jbStartAuth();
@@ -2603,44 +2601,6 @@ function delBillThisMonth() {
   (DATA.payments=DATA.payments||[]).push({ month:cur, type:'skip', itemId:String(id), paid:true, actualAmount:null, paidDate:'' });
   renderAll(); showToast(t('toast.billSkipped'));
   jbRun('setBillSkip', cur, id).catch(e=>{ showToast(t('err.prefix')+e.message,'error'); reload(); });
-}
-/* ---------- Easter egg: 5 taps on the copyright ---------- */
-let eggClicks=0, eggTimer=null, eggWired=false;
-function eggTap() {
-  eggClicks++;
-  clearTimeout(eggTimer);
-  eggTimer=setTimeout(function(){ eggClicks=0; }, 2200);
-  if (eggClicks>=5) { eggClicks=0; clearTimeout(eggTimer); triggerEgg(); }
-}
-function wireEggFooter() {
-  if (eggWired) return;
-  const footer=document.getElementById('appFooter');
-  const overlay=document.getElementById('eggOverlay');
-  if (!footer) return;
-  eggWired=true;
-  footer.addEventListener('click', eggTap);
-  if (overlay) overlay.addEventListener('click', closeEgg);
-}
-function triggerEgg() {
-  const ov=document.getElementById('eggOverlay'); if (ov) ov.classList.add('show');
-  const app=document.getElementById('app'); if (app) { app.classList.add('egg-shake'); setTimeout(function(){ app.classList.remove('egg-shake'); }, 650); }
-  confettiBurst();
-  setTimeout(closeEgg, 4500);
-}
-function closeEgg() { const ov=document.getElementById('eggOverlay'); if (ov) ov.classList.remove('show'); }
-window.eggTap=eggTap; window.closeEgg=closeEgg;
-function confettiBurst() {
-  const colors=['#ec4899','#f9a8d4','#a78bfa','#34d399','#fbbf24','#60a5fa'];
-  for (let i=0;i<100;i++) {
-    const p=document.createElement('div'); p.className='confetti-pc';
-    const sz=6+Math.random()*9;
-    p.style.left=(Math.random()*100)+'vw'; p.style.width=sz+'px'; p.style.height=(sz*0.6)+'px';
-    p.style.background=colors[Math.floor(Math.random()*colors.length)];
-    const dur=2.2+Math.random()*1.9;
-    p.style.animation='confetti-fall '+dur+'s linear '+(Math.random()*0.5)+'s forwards';
-    document.body.appendChild(p);
-    (function(el,ms){ setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, ms); })(p, (dur+1)*1000);
-  }
 }
 function showToast(msg, type, undoFn) {
   const el=document.getElementById('toast');

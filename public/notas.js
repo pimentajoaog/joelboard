@@ -1,6 +1,10 @@
 /* Joelboard Notas — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
-var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={}, _renameNoteId=null, _doneCollapsed=true, _edMenuOpen=false;
+var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={}, _renameNoteId=null, _edMenuOpen=false;
+var HIDE_DONE_KEY='jb_notas_hide_done';
+function hideDonePref(){ try{ return localStorage.getItem(HIDE_DONE_KEY)==='1'; }catch(_){ return false; } }
+function setHideDonePref(on){ try{ localStorage.setItem(HIDE_DONE_KEY, on?'1':'0'); }catch(_){} _doneCollapsed=!!on; }
+var _doneCollapsed=hideDonePref();
 var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']],['Compartilhadas',['Titulo','SheetID','Papel','Owner','ListaID','Atualizado']]];
 function _ncSsId(){ return (typeof ncSsId==='function')?ncSsId():JB.getSheetId('notas'); }
 function _ncGrid(){ return (typeof ncGrid==='function')?ncGrid():notasGrid; }
@@ -139,7 +143,7 @@ function refreshData(){
 /* ---- routing / render ---- */
 function note(id){ return (DATA.notas||[]).find(function(n){return n.id===id;}); }
 function render(){ var ed=!!(openNoteId&&note(openNoteId)); $('fab').style.display=ed?'none':'flex'; if(ed) renderEditor(); else renderHomeShell(); updateSelBar(); }
-function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; _renameNoteId=null; _doneCollapsed=true; _edMenuOpen=false; render(); window.scrollTo(0,0); }
+function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; _renameNoteId=null; _edMenuOpen=false; render(); window.scrollTo(0,0); }
 function backHome(){ openNoteId=null; _edMenuOpen=false; render(); }
 
 /* ---- home ---- */
@@ -280,7 +284,8 @@ function noteProgressStats(){
   var done=0; its.forEach(function(x){ if(x.feito) done++; });
   return { total:its.length, done:done, open:its.length-done, pct:its.length?Math.round(done/its.length*100):0 };
 }
-function toggleDoneCollapsed(){ _doneCollapsed=!_doneCollapsed; renderItems(); }
+function toggleDoneCollapsed(){ setHideDonePref(!_doneCollapsed); renderItems(); }
+function toggleHideDonePref(){ setHideDonePref(!hideDonePref()); var el=$('setHideDone'); if(el) el.classList.toggle('on', hideDonePref()); if(openNoteId) renderItems(); }
 function toggleEdMenu(ev){ if(ev) ev.stopPropagation(); _edMenuOpen=!_edMenuOpen; var m=$('edMenu'); if(m) m.classList.toggle('open', _edMenuOpen); }
 function closeEdMenu(){ _edMenuOpen=false; var m=$('edMenu'); if(m) m.classList.remove('open'); }
 function edMenuDelChecked(){ closeEdMenu(); deleteChecked(); }
@@ -298,9 +303,10 @@ function renderEdMenu(n, doneN){
   var shareBtn=n.collabSheetId?'<button type="button" class="ed-menu-item" onclick="closeEdMenu();ncOpenShare()">👥 Compartilhar</button>':'<button type="button" class="ed-menu-item" onclick="closeEdMenu();ncShareFromPrivate()">👥 Tornar compartilhada</button>';
   var dueBtn=n.vence?'<button type="button" class="ed-menu-item" onclick="closeEdMenu();pickDue()">📅 Alterar prazo</button><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();clearDue()">Remover prazo</button>':'<button type="button" class="ed-menu-item" onclick="closeEdMenu();pickDue()">📅 Definir prazo</button>';
   var delChecked='<button type="button" class="ed-menu-item danger" id="edMenuDelChecked" onclick="edMenuDelChecked()" style="display:'+(doneN?'':'none')+'">🗑 Excluir marcados ('+doneN+')</button>';
+  var hideDoneBtn=doneN>0?('<button type="button" class="ed-menu-item" onclick="closeEdMenu();toggleDoneCollapsed()">'+(_doneCollapsed?'👁 Mostrar concluídos ('+doneN+')':'📦 Ocultar concluídos ('+doneN+')')+'</button>'):'';
   var leaveLabel=n.collabSheetId?(n.collabRole==='owner'?'Excluir lista compartilhada':'Sair da lista'):'Excluir lista';
   var leaveFn=n.collabSheetId?'ncLeaveOrDelete()':'deleteNote()';
-  return '<div class="ed-menu-wrap"><button type="button" class="ed-menu-btn" onclick="toggleEdMenu(event)" aria-label="Mais opções">⋯</button><div class="ed-menu" id="edMenu" onclick="event.stopPropagation()"><button type="button" class="ed-menu-item" onclick="closeEdMenu();exportCurrentList()">📤 Exportar</button>'+shareBtn+dueBtn+delChecked+'<div class="ed-menu-div"></div><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();'+leaveFn+'">'+esc(leaveLabel)+'</button></div></div>';
+  return '<div class="ed-menu-wrap"><button type="button" class="ed-menu-btn" onclick="toggleEdMenu(event)" aria-label="Mais opções">⋯</button><div class="ed-menu" id="edMenu" onclick="event.stopPropagation()"><button type="button" class="ed-menu-item" onclick="closeEdMenu();exportCurrentList()">📤 Exportar</button>'+shareBtn+dueBtn+hideDoneBtn+delChecked+'<div class="ed-menu-div"></div><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();'+leaveFn+'">'+esc(leaveLabel)+'</button></div></div>';
 }
 
 /* ---- editor ---- */
@@ -337,20 +343,19 @@ function renderItems(){
     if(m.isGroup){ html+=groupRow(m.item,m.depth,m.hidden); return; }
     var isDone=m.item.marcavel && m.item.feito;
     var hideDone=isDone && _doneCollapsed && m.item.id!==_editId;
-    if(!togglePlaced && isDone && !m.hidden && doneN>0){
+    if(_doneCollapsed && !togglePlaced && isDone && !m.hidden && doneN>0){
       html+=doneToggleRow(doneN);
       togglePlaced=true;
     }
     html+=itemRow(m.item, m.hidden||hideDone, m.depth);
   });
-  if(!togglePlaced && doneN>0) html+=doneToggleRow(doneN);
+  if(_doneCollapsed && !togglePlaced && doneN>0) html+=doneToggleRow(doneN);
   el.innerHTML=html;
   var ed=el.querySelector('#editTA'); if(ed){ ed.focus(); try{ var L=ed.value.length; ed.setSelectionRange(L,L); }catch(e){} if(ed.tagName==='TEXTAREA') autoGrow(ed); }
   updateDelChecked(); updateSelBar();
 }
 function doneToggleRow(n){
-  var label=_doneCollapsed?('✓ '+n+' concluído'+(n>1?'s':'')+' — mostrar'):('✓ '+n+' concluído'+(n>1?'s':'')+' — ocultar');
-  return '<button type="button" class="ed-done-toggle" onclick="toggleDoneCollapsed()">'+label+'</button>';
+  return '<button type="button" class="ed-done-toggle" onclick="toggleDoneCollapsed()">✓ '+n+' concluído'+(n>1?'s':'')+' — mostrar</button>';
 }
 function updateDelChecked(){ var b=$('edMenuDelChecked'); if(!b) return; var dn=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}).length; b.style.display=dn?'':'none'; b.textContent='🗑 Excluir marcados ('+dn+')'; }
 function autoGrow(t){ if(!t) return; t.style.height='auto'; t.style.height=(t.scrollHeight)+'px'; }
@@ -753,7 +758,7 @@ function exportCurrentList(){
   notasDownloadCsv(safeFilename(n.titulo)+'.csv', buildListCsv(n));
   toast('✓ Lista exportada');
 }
-function openSettings(){ switchSet('tema'); JB.renderSkinPicker('notas', $('setSkins')); $('setNudge').classList.toggle('on', (DATA.config&&DATA.config.nudgePref)!=='off'); if(typeof ncInitProfileSettings==='function') ncInitProfileSettings(); $('setOverlay').classList.add('open'); }
+function openSettings(){ switchSet('tema'); JB.renderSkinPicker('notas', $('setSkins')); $('setNudge').classList.toggle('on', (DATA.config&&DATA.config.nudgePref)!=='off'); $('setHideDone').classList.toggle('on', hideDonePref()); if(typeof ncInitProfileSettings==='function') ncInitProfileSettings(); $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++){ var on=ps[j].getAttribute('data-pane')===name; ps[j].style.display=on?'':'none'; ps[j].classList.toggle('active', on); } }
 function toggleNudgePref(){ var off=(DATA.config&&DATA.config.nudgePref)==='off'; var nv=off?'on':'off'; saveConfig('nudgePref', nv); $('setNudge').classList.toggle('on', nv!=='off'); }

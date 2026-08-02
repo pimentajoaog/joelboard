@@ -44,7 +44,7 @@ function escAttr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/
 function normText(s){ return String(s==null?'':s).trim().toLowerCase(); }
 function loadingHtml(h){ $('loading').style.display='block'; $('loading').innerHTML=h; }
 function toast(m){ JB.toast(m); }
-function notasWriteErr(e){ toast('Erro: '+((e&&e.message)||'falha ao salvar')); }
+function notasWriteErr(e){ toast(JB.writeErrMessage ? JB.writeErrMessage(e) : ('Erro: '+((e&&e.message)||'falha ao salvar'))); }
 function notasRowErr(tab){ return new Error('Registro não encontrado em '+tab+' — atualize a página.'); }
 function kindDef(k){ for(var i=0;i<KINDS.length;i++){ if(KINDS[i].k===k) return KINDS[i]; } return KINDS[1]; }
 function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate(); }

@@ -310,7 +310,10 @@
     }
     function handle(r, allowRefresh){
       if (r.status === 401 && allowRefresh) {
-        return requestToken(false, { force: true }).then(function (nt) { return doFetch(nt).then(function (r2) { return handle(r2, false); }); });
+        return requestToken(false, { force: true }).catch(function (err) {
+          if (isSessionErr(err)) return requestToken(true);
+          throw err;
+        }).then(function (nt) { return doFetch(nt).then(function (r2) { return handle(r2, false); }); });
       }
       if (!r.ok) return r.text().then(function (tx) {
         var e = new Error('HTTP ' + r.status + ' — ' + tx.slice(0, 200));
@@ -320,7 +323,7 @@
       return (r.status === 204) ? {} : r.json();
     }
     var tok = cachedToken();
-    if (!tok) return requestToken(false).then(function (t) { return doFetch(t).then(function (r) { return handle(r, true); }); });
+    if (!tok) return tokenForApi().then(function (t) { return doFetch(t).then(function (r) { return handle(r, true); }); });
     return doFetch(tok).then(function (r) { return handle(r, true); });
   }
   function api(method, url, body, opts){
@@ -523,7 +526,23 @@
       .then(function (res) { return res.files || []; });
   }
   // opts {app, namePart, requiredTabs}. Resolves {id, grid}. Rejects Error('JB_NEED_SHEET') with .files (0 or >1) when the app must show its gate/picker.
-  function isAuthErr(err){ var m = String((err && err.message) || ''); return m.indexOf('silent_timeout') > -1 || m.indexOf('auth_failed') > -1 || m.indexOf('401') > -1 || m.indexOf('cancelled') > -1; }
+  function isAuthErr(err){ var m = String((err && err.message) || ''); return m.indexOf('silent_timeout') > -1 || m.indexOf('silent_cooldown') > -1 || m.indexOf('signed_out') > -1 || m.indexOf('auth_failed') > -1 || m.indexOf('401') > -1 || m.indexOf('cancelled') > -1; }
+  function isSessionErr(err){ var m = String((err && err.message) || ''); return m === 'silent_cooldown' || m === 'silent_timeout' || m === 'signed_out' || m === 'auth_failed' || m.indexOf('401') > -1; }
+  function writeErrMessage(err){
+    var m = String((err && err.message) || '');
+    if (m === 'silent_cooldown' || m === 'silent_timeout') return 'Sessão expirou — entre de novo com Google.';
+    if (m === 'signed_out') return 'Você saiu. Entre de novo com Google.';
+    if (m === 'auth_failed') return 'Não foi possível entrar. Tente de novo.';
+    if (m === 'JB_WRITE_LOCK') return 'Outra aba está salvando. Tente em instantes.';
+    return m || 'falha ao salvar';
+  }
+  function tokenForApi(){
+    if (isTokenValid()) return Promise.resolve(readToken());
+    return requestToken(false, { force: true }).catch(function (err) {
+      if (isSessionErr(err)) return requestToken(true);
+      throw err;
+    });
+  }
   function resolveSheet(opts){
     var app = opts.app, namePart = opts.namePart, need = opts.requiredTabs || [];
     function valid(grid){ return need.length ? need.some(function (t) { return grid[t] != null; }) : true; }
@@ -786,25 +805,29 @@
     var btn = opts.btn, prevLabel = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; if (opts.busy) btn.textContent = opts.busy; }
     function restore(){ if (btn) { btn.disabled = false; btn.textContent = prevLabel; } }
-    function attempt(retry){
+    function attempt(retry, authRetry){
       return Promise.resolve().then(function(){ return opts.run(); })
         .then(function(res){ restore(); if (opts.onSuccess) opts.onSuccess(res); return res; })
         .catch(function(err){
           if (!retry && err && err.message === 'JB_WRITE_LOCK') {
             jbToast('Outra aba está salvando — tentando de novo…');
-            return new Promise(function (r) { setTimeout(r, 900); }).then(function () { return attempt(true); });
+            return new Promise(function (r) { setTimeout(r, 900); }).then(function () { return attempt(true, authRetry); });
+          }
+          if (!authRetry && isSessionErr(err)) {
+            jbToast('Sessão expirou — reconectando…');
+            return requestToken(true).then(function () { return attempt(retry, true); });
           }
           restore();
           if (opts.onError) opts.onError(err);
-          else if (err && err.message === 'JB_WRITE_LOCK') jbToast('Outra aba está salvando. Tente de novo em instantes.');
-          else jbToast('Não foi possível salvar. Tente de novo.');
+          else if (err && err.message === 'JB_WRITE_LOCK') jbToast(writeErrMessage(err));
+          else jbToast('Não foi possível salvar. ' + writeErrMessage(err));
           return Promise.reject(err);
         });
     }
-    return attempt(false);
+    return attempt(false, false);
   }
 
-  var SIGNIN_ERR = { auth_failed: 'Não foi possível entrar. Tente de novo.', cancelled: 'Login cancelado.', silent_timeout: 'Login expirou. Tente de novo.', signed_out: 'Você saiu. Entre de novo.' };
+  var SIGNIN_ERR = { auth_failed: 'Não foi possível entrar. Tente de novo.', cancelled: 'Login cancelado.', silent_timeout: 'Login expirou. Tente de novo.', silent_cooldown: 'Sessão expirou. Tente de novo.', signed_out: 'Você saiu. Entre de novo.' };
   function signIn(opts){
     opts = opts || {};
     return requestToken(true).then(function (tok) {
@@ -1214,7 +1237,7 @@
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,
-    toast: jbToast, persist: persist, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady,
+    toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis
   };

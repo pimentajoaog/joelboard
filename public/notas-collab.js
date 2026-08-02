@@ -55,10 +55,28 @@ function ncItemsSignature(items) {
   }).join('\n');
 }
 
+function ncCollabLocalItemDrift(notaId, items) {
+  var local = (DATA.itens || []).filter(function (it) { return it.notaId === notaId; });
+  if (local.length !== (items || []).length) return true;
+  var ids = {}, dup = false;
+  local.forEach(function (it) {
+    if (ids[it.id]) dup = true;
+    ids[it.id] = 1;
+  });
+  return dup;
+}
+
 function ncSetCollabItems(notaId, items, opts) {
   opts = opts || {};
+  var byId = {}, deduped = [];
+  (items || []).forEach(function (it) {
+    if (byId[it.id]) return;
+    byId[it.id] = 1;
+    deduped.push(it);
+  });
+  items = deduped;
   var sig = ncItemsSignature(items);
-  if (_ncCollabSig[notaId] === sig) return false;
+  if (_ncCollabSig[notaId] === sig && !ncCollabLocalItemDrift(notaId, items)) return false;
   _ncCollabSig[notaId] = sig;
   if (opts.sheetId && typeof invalidateRowCacheForSid === 'function') invalidateRowCacheForSid(opts.sheetId, 'Itens');
   DATA.itens = (DATA.itens || []).filter(function (it) { return it.notaId !== notaId; });

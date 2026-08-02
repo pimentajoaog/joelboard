@@ -143,11 +143,32 @@ function loadData(){
     collabLoad.then(function(){ show(); }).catch(function(){ show(); });
   }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('notas'); bootSheet(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(e.message)+'</div></div>'); });
 }
+function parsePersonalItemRows(rows){
+  var byId={}, out=[];
+  body(rows).forEach(function(r){
+    if(!r[5]) return;
+    var id=String(r[5]);
+    if(byId[id]) return;
+    byId[id]=1;
+    out.push({ id:r[5], notaId:String(r[0]||''), ordem:Number(r[1])||0, texto:String(r[2]||''), marcavel:!!r[3], feito:!!r[4], tipo:String(r[6]||'') });
+  });
+  return out;
+}
+function scrubItemDupes(scopeNotaId){
+  var seen={}, changed=false;
+  DATA.itens=(DATA.itens||[]).filter(function(x){
+    if(scopeNotaId && x.notaId!==scopeNotaId) return true;
+    if(seen[x.id]){ changed=true; return false; }
+    seen[x.id]=1;
+    return true;
+  });
+  return changed;
+}
 function buildNotas(t){
   var config={}; body(t.Config).forEach(function(r){ if(r[0]) config[r[0]]=r[1]; });
   return {
     notas: body(t.Notas).filter(function(r){return r[6];}).map(function(r){ return { id:r[6], titulo:String(r[0]||''), tipo:String(r[1]||'tarefas'), cor:String(r[2]||''), fixado:!!r[3], criado:String(r[4]||''), atualizado:String(r[5]||''), vence:String(r[7]||'') }; }),
-    itens: body(t.Itens).filter(function(r){return r[5];}).map(function(r){ return { id:r[5], notaId:String(r[0]||''), ordem:Number(r[1])||0, texto:String(r[2]||''), marcavel:!!r[3], feito:!!r[4], tipo:String(r[6]||'') }; }),
+    itens: parsePersonalItemRows(t.Itens),
     config: config
   };
 }
@@ -181,7 +202,15 @@ function renderHomeShell(){
 }
 function onHomeSearch(v){ homeQuery=v; JB.searchClearVis('homeSearch','homeSearchClear',!!v); renderHomeList(); }
 function clearHomeSearch(){ homeQuery=''; var i=$('homeSearch'); if(i) i.value=''; JB.searchClearVis('homeSearch','homeSearchClear',false); renderHomeList(); }
-function itemsOf(id){ return (DATA.itens||[]).filter(function(x){return x.notaId===id;}).sort(function(a,b){ return a.ordem-b.ordem; }); }
+function itemsOf(id){
+  var seen={}, out=[];
+  (DATA.itens||[]).filter(function(x){return x.notaId===id;}).sort(function(a,b){ return a.ordem-b.ordem; }).forEach(function(x){
+    if(seen[x.id]) return;
+    seen[x.id]=1;
+    out.push(x);
+  });
+  return out;
+}
 function isGroup(it){ return !!(it && (it.tipo==='g' || /^g\d+$/.test(String(it.tipo)))); }
 function groupDepth(it){ if(!isGroup(it)) return -1; if(it.tipo==='g') return 0; var m=String(it.tipo).match(/^g(\d+)$/); return m?parseInt(m[1],10):0; }
 function makeGroupTipo(d){ d=d|0; return d<=0?'g':('g'+d); }
@@ -497,6 +526,7 @@ function renderEditor(){
   if(_edMenuOpen){ var m=$('edMenu'); if(m) m.classList.add('open'); }
 }
 function renderItems(){
+  scrubItemDupes(openNoteId);
   var el=$('edItems'); if(!el) return; var n=note(openNoteId); var its=itemsOf(openNoteId);
   if(!its.length){ el.innerHTML='<div class="rg" style="padding:8px 0">Lista vazia. Adicione itens abaixo'+(kindDef(n.tipo).defCheck?'':' — toque em ☑ para tornar uma linha marcável')+'.</div>'; return; }
   var layout=listCollapseStack(its), html='', togglePlaced=false;
@@ -1064,33 +1094,35 @@ function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return
 
 function dedupeItems(){
   var scopeId=openNoteId||null;
-  var pool=(DATA.itens||[]).filter(function(x){
-    if(scopeId) return x.notaId===scopeId;
-    var nn=note(x.notaId);
-    return !nn || !nn.collabSheetId;
-  });
+  var pool=(DATA.itens||[]).filter(function(x){ return !scopeId || x.notaId===scopeId; });
   if(!pool.length){ toast('Nenhuma duplicata 🎉'); return; }
-  var seenId={}, seenText={}, dups=[], dupIds={};
+  var seenId={}, seenText={}, idDupN=0, sheetDups=[], dupIds={};
   pool.slice().sort(function(a,b){ return a.ordem-b.ordem; }).forEach(function(x){
-    if(seenId[x.id]){ dups.push(x); return; }
+    if(seenId[x.id]){ idDupN++; return; }
     seenId[x.id]=1;
     if(isGroup(x)) return;
     var t=normText(x.texto);
     if(!t) return;
     var k=x.notaId+'|'+t;
-    if(seenText[k]) dups.push(x);
+    if(seenText[k]) sheetDups.push(x);
     else seenText[k]=1;
   });
-  dups.forEach(function(x){ dupIds[x.id]=1; });
-  if(!dups.length){ toast('Nenhuma duplicata 🎉'); return; }
+  sheetDups.forEach(function(x){ dupIds[x.id]=1; });
+  if(idDupN && scrubItemDupes(scopeId)){
+    if(!sheetDups.length){ closeSettings(); render(); toast('✓ '+idDupN+' fantasma'+(idDupN>1?'s':'')+' removido'+(idDupN>1?'s':'')); return; }
+  }
+  if(!idDupN && !sheetDups.length){ toast('Nenhuma duplicata 🎉'); return; }
   var keepN=pool.filter(function(x){ return !dupIds[x.id]; }).length;
   if(!keepN){ toast('Nada a remover — evitaria esvaziar a lista'); return; }
-  JB.confirm('Remover duplicatas?', dups.length+(dups.length>1?' itens repetidos':' item repetido')+' serão removidos. Um de cada é mantido.', function(){
+  var msg=sheetDups.length+(sheetDups.length>1?' itens repetidos':' item repetido')+' serão removidos. Um de cada é mantido.';
+  if(idDupN) msg+=' '+idDupN+' fantasma'+(idDupN>1?'s':'')+' também será'+(idDupN>1?'ão':'á')+' limpo'+(idDupN>1?'s':'')+'.';
+  JB.confirm('Remover duplicatas?', msg, function(){
     notasPersist({
       run: function(){ return delItemRows(dupIds); },
       onSuccess: function(){
         DATA.itens=(DATA.itens||[]).filter(function(x){ return !dupIds[x.id]; });
-        closeSettings(); render(); toast('✓ '+dups.length+' removidos');
+        scrubItemDupes(scopeId);
+        closeSettings(); render(); toast('✓ '+(sheetDups.length+idDupN)+' removidos');
       },
       onError: notasWriteErr
     });

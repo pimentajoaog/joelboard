@@ -495,9 +495,10 @@ function renderEdMenu(n, doneN){
   var dueBtn=n.vence?'<button type="button" class="ed-menu-item" onclick="closeEdMenu();pickDue()">📅 Alterar prazo</button><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();clearDue()">Remover prazo</button>':'<button type="button" class="ed-menu-item" onclick="closeEdMenu();pickDue()">📅 Definir prazo</button>';
   var delChecked='<button type="button" class="ed-menu-item danger" id="edMenuDelChecked" onclick="edMenuDelChecked()" style="display:'+(doneN?'':'none')+'">🗑 Excluir marcados ('+doneN+')</button>';
   var hideDoneBtn=doneN>0?('<button type="button" class="ed-menu-item" onclick="closeEdMenu();toggleDoneCollapsed()">'+(_doneCollapsed?'👁 Mostrar concluídos ('+doneN+')':'📦 Ocultar concluídos ('+doneN+')')+'</button>'):'';
+  var dedupeBtn='<button type="button" class="ed-menu-item" onclick="closeEdMenu();dedupeItems(\''+n.id+'\')">🧹 Remover duplicatas</button>';
   var leaveLabel=n.collabSheetId?(n.collabRole==='owner'?'Excluir lista compartilhada':'Sair da lista'):'Excluir lista';
   var leaveFn=n.collabSheetId?'ncLeaveOrDelete()':'deleteNote()';
-  return '<div class="ed-menu-wrap"><button type="button" class="ed-menu-btn" onclick="toggleEdMenu(event)" aria-label="Mais opções">⋯</button><div class="ed-menu" id="edMenu" onclick="event.stopPropagation()"><button type="button" class="ed-menu-item" onclick="closeEdMenu();exportCurrentList()">📤 Exportar</button>'+shareBtn+dueBtn+hideDoneBtn+delChecked+'<div class="ed-menu-div"></div><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();'+leaveFn+'">'+esc(leaveLabel)+'</button></div></div>';
+  return '<div class="ed-menu-wrap"><button type="button" class="ed-menu-btn" onclick="toggleEdMenu(event)" aria-label="Mais opções">⋯</button><div class="ed-menu" id="edMenu" onclick="event.stopPropagation()"><button type="button" class="ed-menu-item" onclick="closeEdMenu();exportCurrentList()">📤 Exportar</button>'+shareBtn+dueBtn+hideDoneBtn+delChecked+dedupeBtn+'<div class="ed-menu-div"></div><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();'+leaveFn+'">'+esc(leaveLabel)+'</button></div></div>';
 }
 
 /* ---- editor ---- */
@@ -1092,8 +1093,14 @@ function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return
   });
 }, { yes:'Excluir', no:'Cancelar', danger:true }); }
 
-function dedupeItems(){
-  var scopeId=openNoteId||null;
+function dedupeFinish(scopeId){
+  closeEdMenu();
+  closeSettings();
+  if(scopeId && openNoteId===scopeId) renderEditor();
+  else render();
+}
+function dedupeItems(scopeNotaId){
+  var scopeId=scopeNotaId===undefined?openNoteId:scopeNotaId;
   var pool=(DATA.itens||[]).filter(function(x){ return !scopeId || x.notaId===scopeId; });
   if(!pool.length){ toast('Nenhuma duplicata 🎉'); return; }
   var seenId={}, seenText={}, idDupN=0, sheetDups=[], dupIds={};
@@ -1109,12 +1116,13 @@ function dedupeItems(){
   });
   sheetDups.forEach(function(x){ dupIds[x.id]=1; });
   if(idDupN && scrubItemDupes(scopeId)){
-    if(!sheetDups.length){ closeSettings(); render(); toast('✓ '+idDupN+' fantasma'+(idDupN>1?'s':'')+' removido'+(idDupN>1?'s':'')); return; }
+    if(!sheetDups.length){ dedupeFinish(scopeId); toast('✓ '+idDupN+' fantasma'+(idDupN>1?'s':'')+' removido'+(idDupN>1?'s':'')); return; }
   }
   if(!idDupN && !sheetDups.length){ toast('Nenhuma duplicata 🎉'); return; }
   var keepN=pool.filter(function(x){ return !dupIds[x.id]; }).length;
   if(!keepN){ toast('Nada a remover — evitaria esvaziar a lista'); return; }
-  var msg=sheetDups.length+(sheetDups.length>1?' itens repetidos':' item repetido')+' serão removidos. Um de cada é mantido.';
+  var scopeLabel=scopeId?(note(scopeId)?' nesta lista':' nesta lista'):' em todas as listas';
+  var msg=sheetDups.length+(sheetDups.length>1?' itens repetidos':' item repetido')+scopeLabel+' serão removidos. Um de cada é mantido.';
   if(idDupN) msg+=' '+idDupN+' fantasma'+(idDupN>1?'s':'')+' também será'+(idDupN>1?'ão':'á')+' limpo'+(idDupN>1?'s':'')+'.';
   JB.confirm('Remover duplicatas?', msg, function(){
     notasPersist({
@@ -1122,7 +1130,7 @@ function dedupeItems(){
       onSuccess: function(){
         DATA.itens=(DATA.itens||[]).filter(function(x){ return !dupIds[x.id]; });
         scrubItemDupes(scopeId);
-        closeSettings(); render(); toast('✓ '+(sheetDups.length+idDupN)+' removidos');
+        dedupeFinish(scopeId); toast('✓ '+(sheetDups.length+idDupN)+' removidos');
       },
       onError: notasWriteErr
     });

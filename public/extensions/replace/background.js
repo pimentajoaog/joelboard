@@ -37,6 +37,15 @@ function injectReplace(tabId, cb) {
   });
 }
 
+function maybeInjectHubBridge(tabId, url) {
+  if (!url || url.indexOf('/mini/replace-auth.html') < 0) return;
+  if (!/^https:\/\/joelboard\.vercel\.app\//.test(url) && !/^http:\/\/localhost/.test(url) && !/^http:\/\/127\.0\.0\.1/.test(url)) return;
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    files: ['hub-bridge.js']
+  });
+}
+
 function maybeInject(tabId, url) {
   if (!JB_SITES.isInjectableUrl(url)) return;
   JB_SITES.checkPermissions(url, function (perm) {
@@ -88,7 +97,10 @@ function schedulePush() {
 }
 
 chrome.tabs.onUpdated.addListener(function (tabId, info, tab) {
-  if (info.status === 'complete' && tab.url) maybeInject(tabId, tab.url);
+  if (info.status === 'complete' && tab.url) {
+    maybeInjectHubBridge(tabId, tab.url);
+    maybeInject(tabId, tab.url);
+  }
 });
 
 chrome.storage.onChanged.addListener(function (chg) {

@@ -37,6 +37,25 @@
     status.className = cls || '';
   }
 
+  function whenBridgeReady(fn) {
+    if (window.__JB_REPLACE_HUB__) { fn(); return; }
+    var done = false;
+    function go() {
+      if (done) return;
+      done = true;
+      window.removeEventListener('jb-replace-bridge-ready', go);
+      fn();
+    }
+    window.addEventListener('jb-replace-bridge-ready', go);
+    var tries = 0;
+    var iv = setInterval(function () {
+      if (window.__JB_REPLACE_HUB__ || ++tries > 80) {
+        clearInterval(iv);
+        go();
+      }
+    }, 75);
+  }
+
   function deliver() {
     if (delivered) return;
     var tok = JB.cachedToken();
@@ -50,22 +69,24 @@
     var em = JB.email() || '';
     var sheetId = JB.getSheetId('mini-replace') || '';
     setStatus('Enviando para a extensão…');
-    window.postMessage({
-      type: 'jb-mini-replace-auth',
-      requestId: rid,
-      token: tok,
-      exp: exp,
-      email: em,
-      sheetId: sheetId
-    }, '*');
-    setTimeout(function () {
-      if (status.textContent.indexOf('Enviando') >= 0) {
-        delivered = false;
-        setStatus('Extensão Replace não respondeu. Instale-a e recarregue esta página.', 'err');
-        btn.disabled = false;
-        btn.style.display = '';
-      }
-    }, 6000);
+    whenBridgeReady(function () {
+      window.postMessage({
+        type: 'jb-mini-replace-auth',
+        requestId: rid,
+        token: tok,
+        exp: exp,
+        email: em,
+        sheetId: sheetId
+      }, '*');
+      setTimeout(function () {
+        if (status.textContent.indexOf('Enviando') >= 0) {
+          delivered = false;
+          setStatus('Extensão Replace não respondeu. Recarregue esta aba (F5) e tente de novo — se acabou de instalar ou atualizar a extensão, recarregue-a em chrome://extensions.', 'err');
+          btn.disabled = false;
+          btn.style.display = '';
+        }
+      }, 6000);
+    });
   }
 
   window.addEventListener('message', function (ev) {

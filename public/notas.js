@@ -15,6 +15,7 @@ function seedRowCacheForSid(sid, tab, rows, idCol){
 }
 function seedRowCache(tab, rows, idCol){ seedRowCacheForSid(ssCacheId(), tab, rows, idCol); }
 function invalidateRowCache(tab){ delete _rowCache[rowCacheKey(tab)]; }
+function invalidateRowCacheForSid(sid, tab){ delete _rowCache[sid+'|'+tab]; }
 function itemRowMap(tab, idCol){
   idCol=(idCol==null)?5:idCol;
   var key=rowCacheKey(tab), cached=_rowCache[key];
@@ -148,7 +149,7 @@ function buildNotas(t){
 function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+((typeof ncAcctLabel==='function')?ncAcctLabel():(JB.email()||'')); render(); if(!_nbooted){ _nbooted=true; if(typeof ncCheckJoinParam==='function') ncCheckJoinParam(); if(typeof ncStartCollabPoll==='function') ncStartCollabPoll(); if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('notas', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
-  if(typeof ncRefreshCollabOnly==='function' && openNoteId && note(openNoteId) && note(openNoteId).collabSheetId){ ncRefreshCollabOnly(true).then(function(res){ if(res && res.changed) render(); }).catch(function(){}); return; }
+  if(typeof ncRefreshCollabOnly==='function' && openNoteId && note(openNoteId) && note(openNoteId).collabSheetId){ ncRefreshCollabOnly(true).then(function(res){ if(typeof ncHandlePollResult==='function') ncHandlePollResult(res); else if(res && res.changed) render(); }).catch(function(){}); return; }
   var want=NOTAS_TABS.map(function(t){return t[0];}).filter(function(t){return notasGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.syncWrap(JB.api('GET', personalSsUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
@@ -530,7 +531,7 @@ function toggleGroupAll(gid){
 function persistItems(arr){
   if(!arr||!arr.length) return;
   if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
-  JB.persist({
+  notasPersist({
     run: function(){
       return itemRowMap('Itens',5).then(function(rowOf){
         var data=arr.filter(function(x){return rowOf[x.id];}).map(function(x){
@@ -607,7 +608,7 @@ function convertItem(id,mk){ var it=(DATA.itens||[]).find(function(x){return x.i
 function commitText(id,val){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; var v=val.replace(/\s+$/,''); if(isGroup(it)){ if(v===it.texto) return; it.texto=v; saveItemRow(it); var ng=note(openNoteId); if(ng) touchNote(ng); return; } if(!v.trim()){ deleteItem(id); return; } if(v===it.texto) return; it.texto=v; saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
 function deleteItem(id){
   var n=note(openNoteId);
-  JB.persist({
+  notasPersist({
     run: function(){
       return findRow('Itens',5,id).then(function(row){
         if(row<0) throw notasRowErr('Itens');
@@ -625,7 +626,7 @@ function deleteItem(id){
 function commitTitle(val){ var n=note(openNoteId); if(!n) return; var v=(val||'').trim()||'(sem título)'; if(v===n.titulo) return; n.titulo=v; touchNote(n); }
 function deleteNote(){ var id=openNoteId; var n=note(id); if(!n) return; if(n.collabSheetId && typeof ncLeaveOrDelete==='function'){ ncLeaveOrDelete(); return; }
   JB.confirm('Excluir lista?','"'+(n.titulo||'')+'" e seus itens serão removidos.', function(){
-  JB.persist({
+  notasPersist({
     run: function(){
       return findRow('Notas',6,id).then(function(noteRow){
         if(noteRow<0) throw notasRowErr('Notas');
@@ -700,10 +701,20 @@ function checkRecurrence(){
 function createNoteFromKind(kind,titulo,fill){ var now=new Date().toISOString(); var n={ id:uuid(), titulo:titulo, tipo:kind, cor:'', fixado:false, criado:now, atualizado:now, vence:'' }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); openNoteId=n.id; if(fill){ var src=lastNoteOfKind(kind,n.id); if(src){ var ord=1, add=[]; (DATA.itens||[]).filter(function(x){return x.notaId===src.id && !isGroup(x) && (x.texto||'').trim();}).sort(function(a,b){return a.ordem-b.ordem;}).forEach(function(s){ var it={id:uuid(),notaId:n.id,ordem:ord++,texto:s.texto,marcavel:s.marcavel,feito:false,tipo:''}; DATA.itens.push(it); add.push(it); }); appendItems(add); } } render(); window.scrollTo(0,0); }
 
 /* ---- persistence ---- */
+function notasCollabOpen(){ var n=openNoteId&&note(openNoteId); return !!(n&&n.collabSheetId); }
+function notasPersist(opts){
+  opts=opts||{};
+  var track=notasCollabOpen();
+  if(track && typeof ncWriteBegin==='function') ncWriteBegin();
+  var os=opts.onSuccess, oe=opts.onError;
+  opts.onSuccess=function(r){ if(track && typeof ncWriteEnd==='function') ncWriteEnd(); if(os) os(r); };
+  opts.onError=function(e){ if(track && typeof ncWriteEnd==='function') ncWriteEnd(); if(oe) oe(e); };
+  return JB.persist(opts);
+}
 function noteRowVals(n){ return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.criado,n.atualizado,n.id,n.vence||'']; }
 function mdToHtml(t){ var s=esc(t); s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>'); s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>'); s=s.replace(/__([^_\n]+)__/g,'<u>$1</u>'); s=s.replace(/~~([^~\n]+)~~/g,'<s>$1</s>'); return s; }
 function startEdit(id){ if(_marqueeDidDrag) return; _editId=id; renderItems(); var bar=$('fmtBar'); if(bar) bar.classList.add('show'); positionFmtBar(); updateSelBar(); }
-function exitEdit(){ if(_editId==null) return; _editId=null; var bar=$('fmtBar'); if(bar) bar.classList.remove('show'); renderItems(); updateSelBar(); }
+function exitEdit(){ if(_editId==null) return; _editId=null; var bar=$('fmtBar'); if(bar) bar.classList.remove('show'); renderItems(); updateSelBar(); if(typeof ncFlushPollStale==='function') ncFlushPollStale(); }
 function wordAt(v,pos){ var i=pos,j=pos; var isW=function(c){ return c && /\S/.test(c) && c!=='*' && c!=='_' && c!=='~'; }; while(i>0 && isW(v[i-1])) i--; while(j<v.length && isW(v[j])) j++; return [i,j]; }
 function fmt(mk){ var ta=$('editTA'); if(!ta) return; var v=ta.value, sS=ta.selectionStart||0, sE=ta.selectionEnd||0, L=mk.length, sel0=v.slice(sS,sE);
   // (a) selection already includes the markers -> strip them
@@ -721,7 +732,7 @@ function positionFmtBar(){ var bar=$('fmtBar'); if(!bar||!bar.classList.contains
 if(window.visualViewport){ window.visualViewport.addEventListener('resize', positionFmtBar); window.visualViewport.addEventListener('scroll', positionFmtBar); }
 function itemRowVals(it){ return [it.notaId,it.ordem,it.texto,it.marcavel?'1':'',it.feito?'1':'',it.id,it.tipo||'']; }
 function appendNote(n){
-  JB.persist({
+  notasPersist({
     run: function(){
       return JB.api('POST', ssUrl('/values/Notas:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[noteRowVals(n)] });
     },
@@ -730,7 +741,7 @@ function appendNote(n){
 }
 function saveNoteRow(n){
   var tab=noteDataTab(n);
-  JB.persist({
+  notasPersist({
     run: function(){
       return findRow(tab,6,n.id).then(function(row){
         if(row<0) throw notasRowErr(tab);
@@ -745,7 +756,7 @@ function appendItem(it){ appendItems([it]); }
 function appendItems(arr){
   if(!arr||!arr.length) return;
   if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
-  JB.persist({
+  notasPersist({
     run: function(){
       return JB.api('POST', ssUrl('/values/Itens:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: arr.map(itemRowVals) });
     },
@@ -755,7 +766,7 @@ function appendItems(arr){
 }
 function saveItemRow(it){
   if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
-  JB.persist({
+  notasPersist({
     run: function(){
       return findRow('Itens',5,it.id).then(function(row){
         if(row<0) throw notasRowErr('Itens');
@@ -777,7 +788,7 @@ function findRow(tab,idCol,id){
 function saveConfig(k,v){
   DATA.config=DATA.config||{};
   DATA.config[k]=v;
-  JB.persist({
+  notasPersist({
     run: function(){
       return JB.api('GET', personalSsUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
         var vals=res.values||[];
@@ -895,7 +906,7 @@ function addGroup(){ var n=note(openNoteId); if(!n) return; var g={ id:uuid(), n
 function toggleGroup(id){ var g=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!g) return; g.feito=!g.feito; saveItemRow(g); renderItems(); }
 function deleteGroup(id){
   var n=note(openNoteId);
-  JB.persist({
+  notasPersist({
     run: function(){
       return findRow('Itens',5,id).then(function(row){
         if(row<0) throw notasRowErr('Itens');
@@ -918,7 +929,7 @@ function itemPaste(e,id){ var t=((e.clipboardData||window.clipboardData)||{}).ge
 function normalizeOrder(){ var its=itemsOf(openNoteId); var changed=false; its.forEach(function(x,i){ if(x.ordem!==i+1){ x.ordem=i+1; changed=true; } }); if(changed) persistOrder(); }
 function persistOrder(){
   if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
-  JB.persist({
+  notasPersist({
     run: function(){
       return itemRowMap('Itens',5).then(function(rowOf){
         var data=(DATA.itens||[]).filter(function(x){return x.notaId===openNoteId && rowOf[x.id];}).map(function(x){
@@ -978,7 +989,7 @@ function dragMove(ev){ if(!_drag) return; ev.preventDefault(); _drag.moved=true;
 function dragEnd(){ if(!_drag) return; document.removeEventListener('pointermove', dragMove); _drag.block.forEach(function(b){ b.classList.remove('dragging'); }); var cont=_drag.cont, moved=_drag.moved; _drag=null; if(moved){ _dragDidMove=true; setTimeout(function(){ _dragDidMove=false; }, 320); } if(!moved) return; var ids=[].slice.call(cont.children).filter(function(r){return r.getAttribute && r.getAttribute('data-id');}).map(function(r){return r.getAttribute('data-id');}); if(!dragOrderValid(ids)){ renderItems(); return; } applyOrder(ids); }
 
 function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}); if(!done.length) return; var ids={}; done.forEach(function(x){ids[x.id]=1;}); JB.confirm('Excluir marcados?', done.length+(done.length>1?' itens marcados serão removidos.':' item marcado será removido.'), function(){
-  JB.persist({
+  notasPersist({
     run: function(){ return delItemRows(ids); },
     onSuccess: function(){
       DATA.itens=(DATA.itens||[]).filter(function(x){return !ids[x.id];});
@@ -1014,7 +1025,7 @@ function dedupeItems(){
   var keepN=pool.filter(function(x){ return !dupIds[x.id]; }).length;
   if(!keepN){ toast('Nada a remover — evitaria esvaziar a lista'); return; }
   JB.confirm('Remover duplicatas?', dups.length+(dups.length>1?' itens repetidos':' item repetido')+' serão removidos. Um de cada é mantido.', function(){
-    JB.persist({
+    notasPersist({
       run: function(){ return delItemRows(dupIds); },
       onSuccess: function(){
         DATA.itens=(DATA.itens||[]).filter(function(x){ return !dupIds[x.id]; });
@@ -1061,7 +1072,7 @@ function delItemRows(ids){
   });
 }
 function selDelete(){ var ids=Object.keys(_sel); if(!ids.length) return; var m={}; ids.forEach(function(i){m[i]=1;}); JB.confirm('Excluir selecionados?', ids.length+(ids.length>1?' itens serão removidos.':' item será removido.'), function(){
-  JB.persist({
+  notasPersist({
     run: function(){ return delItemRows(m); },
     onSuccess: function(){
       DATA.itens=(DATA.itens||[]).filter(function(x){return !m[x.id];});

@@ -13,6 +13,8 @@ var _ncCollabSig = {};
 var _ncPollTick = 0;
 var _ncLastActivity = 0;
 var _ncWatchedSid = null;
+var _ncPollStale = false;
+var _ncWritePending = 0;
 var NC_POLL_FAST = 7000;
 var NC_POLL_SLOW = 40000;
 var NC_POLL_IDLE_MS = 90000;
@@ -53,13 +55,41 @@ function ncItemsSignature(items) {
   }).join('\n');
 }
 
-function ncSetCollabItems(notaId, items) {
+function ncSetCollabItems(notaId, items, opts) {
+  opts = opts || {};
   var sig = ncItemsSignature(items);
   if (_ncCollabSig[notaId] === sig) return false;
   _ncCollabSig[notaId] = sig;
+  if (opts.sheetId && typeof invalidateRowCacheForSid === 'function') invalidateRowCacheForSid(opts.sheetId, 'Itens');
   DATA.itens = (DATA.itens || []).filter(function (it) { return it.notaId !== notaId; });
   items.forEach(function (it) { DATA.itens.push(it); });
+  if (opts.sheetId && opts.itemRows && typeof seedRowCacheForSid === 'function') seedRowCacheForSid(opts.sheetId, 'Itens', opts.itemRows, 5);
   return true;
+}
+
+function ncWriteBegin() { _ncWritePending++; }
+function ncWriteEnd() {
+  _ncWritePending = Math.max(0, _ncWritePending - 1);
+  ncFlushPollStale();
+}
+function ncCollabSyncBlocked() {
+  if (typeof _editId !== 'undefined' && _editId) return true;
+  if (_ncWritePending > 0) return true;
+  if (typeof JB !== 'undefined' && JB.outboxCount && JB.outboxCount() > 0) return true;
+  return false;
+}
+function ncPollDefer() { _ncPollStale = true; }
+function ncFlushPollStale() {
+  if (!_ncPollStale || ncCollabSyncBlocked()) return;
+  _ncPollStale = false;
+  if (!openNoteId || !note(openNoteId) || !note(openNoteId).collabSheetId) return;
+  ncRefreshCollabOnly(true).then(ncHandlePollResult).catch(function () {});
+}
+function ncHandlePollResult(res) {
+  if (!res || !res.changed) return;
+  if (ncCollabSyncBlocked()) { ncPollDefer(); return; }
+  if (res.remote) toast('Lista atualizada em outro dispositivo');
+  render();
 }
 
 function ncCollabUrl(sid, p) {
@@ -220,7 +250,7 @@ function ncLoadCollabLists() {
           var n = ncMergeRegistryRow(reg, pack);
           if (!n) return;
           DATA.notas.push(n);
-          ncSetCollabItems(n.id, ncParseItemRows(pack.itens, n.id));
+          ncSetCollabItems(n.id, ncParseItemRows(pack.itens, n.id), { sheetId: pack.sid, itemRows: pack.itens });
         }).catch(function () {});
       }));
     });
@@ -230,13 +260,18 @@ function ncLoadCollabLists() {
 function ncRefreshCollabOnly(force) {
   var n = note(openNoteId);
   if (!n || !n.collabSheetId) return Promise.resolve({ changed: false });
+  if (!force && ncCollabSyncBlocked()) {
+    ncPollDefer();
+    return Promise.resolve({ changed: false });
+  }
   var noteId = n.id, sheetId = n.collabSheetId;
   return ncWithSync(function () {
     function applyPack(pack) {
       if (!pack) return { changed: false };
       var cur = note(noteId);
       if (!cur || cur.collabSheetId !== sheetId) return { changed: false };
-      var changed = ncSetCollabItems(cur.id, ncParseItemRows(pack.itens, cur.id));
+      var itemOpts = { sheetId: sheetId, itemRows: pack.itens };
+      var changed = ncSetCollabItems(cur.id, ncParseItemRows(pack.itens, cur.id), itemOpts);
       var metaRow = body(pack.meta)[0];
       if (metaRow) {
         var t = String(metaRow[0] || cur.titulo);
@@ -248,7 +283,7 @@ function ncRefreshCollabOnly(force) {
         cur.vence = v;
       }
       if (pack.membros && pack.membros.length) cur.collabMembers = ncParseMembers(pack.membros);
-      return { changed: changed };
+      return { changed: changed, remote: !!changed };
     }
     if (!force) {
       return ncPeekMetaAtualizado(sheetId).then(function (remoteAt) {
@@ -273,7 +308,7 @@ function ncSetCollabWatch(sid) {
   if (sid && JB.watchSheetId) {
     JB.watchSheetId(sid, function () {
       if (openNoteId && note(openNoteId) && note(openNoteId).collabSheetId === sid) {
-        ncRefreshCollabOnly(true).then(function (res) { if (res && res.changed) render(); }).catch(function () {});
+        ncRefreshCollabOnly(true).then(ncHandlePollResult).catch(function () {});
       }
     });
   }
@@ -290,7 +325,7 @@ function ncSchedulePoll() {
     _ncPollTimer = null;
     if (!openNoteId || !note(openNoteId) || !note(openNoteId).collabSheetId) { ncSchedulePoll(); return; }
     if (!document.hidden) {
-      ncRefreshCollabOnly().then(function (res) { if (res && res.changed) render(); }).catch(function () {});
+      ncRefreshCollabOnly().then(ncHandlePollResult).catch(function () {});
     }
     ncSchedulePoll();
   }, ncPollDelay());

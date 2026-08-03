@@ -47,13 +47,17 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 .nov-app.study{ background:rgba(167,139,250,0.16); color:var(--study); }
 .hub-news-modal .hub-news-hint{ font-size:12px; color:var(--muted); margin:0 0 14px; line-height:1.45; }
 .hub-news-edit-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:12px; max-height:min(52vh,420px); overflow-y:auto; }
-.nov-edit-row{ display:grid; grid-template-columns:88px 92px 1fr 28px; gap:8px; align-items:start; }
+.hub-news-add-top{ width:100%; margin-bottom:10px; }
+.nov-edit-row{ display:grid; grid-template-columns:24px 88px 92px 1fr 28px; gap:8px; align-items:start; }
+.nov-dh{ flex:0 0 auto; cursor:grab; color:var(--muted); font-size:16px; line-height:1; padding:8px 0; user-select:none; touch-action:none; }
+.nov-dh:active{ cursor:grabbing; }
+.sortable-ghost{ opacity:.45; }
 .nov-edit-row select,.nov-edit-row textarea{ background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:12px; padding:8px; font-family:inherit; width:100%; }
 .nov-edit-row textarea{ resize:vertical; min-height:52px; }
 .nov-edit-rm{ background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:8px; width:28px; height:28px; cursor:pointer; margin-top:4px; }
 .nov-edit-rm:hover{ border-color:#f87171; color:#f87171; }
 .hub-news-sheet-note code.hub-news-id{ display:block; margin-top:8px; padding:8px 10px; font-size:12px; word-break:break-all; user-select:all; }
-@media (max-width:520px){ .nov-edit-row{ grid-template-columns:1fr 1fr; } .nov-edit-row textarea{ grid-column:1/-1; } .nov-edit-rm{ grid-column:2; justify-self:end; } }
+@media (max-width:520px){ .nov-edit-row{ grid-template-columns:24px 1fr 1fr; } .nov-edit-row textarea{ grid-column:2/-1; } .nov-edit-rm{ grid-column:3; justify-self:end; } .nov-dh{ grid-row:1; } }
 .nov-empty{ color:var(--muted); font-style:italic; }
 .nov-list{ display:flex; flex-direction:column; gap:12px; list-style:none; }
 .nov-item{ font-size:12.5px; line-height:1.45; color:var(--text); }

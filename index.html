@@ -92,9 +92,9 @@
 <div class="overlay" id="hubNewsEditor" onclick="if(event.target===this)closeHubNewsEditor()">
   <div class="modal modal-wide hub-news-modal">
     <div class="mh"><div class="mt">Editar Novidades</div><button class="x" type="button" onclick="closeHubNewsEditor()">✕</button></div>
-    <p class="hub-news-hint">Até 5 itens — visíveis para todos no Hub. Salva numa planilha Google (leitura pública).</p>
+    <p class="hub-news-hint">Até 5 itens — visíveis para todos no Hub. Arraste ⠿ para reordenar. <b>Nova entrada</b> entra no topo e remove a última se já houver 5.</p>
+    <button type="button" class="mbtn hub-news-add-top" id="hubNewsEditAdd" onclick="hubNewsEditAdd()">+ Nova entrada</button>
     <div id="hubNewsEditList" class="hub-news-edit-list"></div>
-    <button type="button" class="mbtn" id="hubNewsEditAdd" onclick="hubNewsEditAdd()">+ Adicionar novidade</button>
     <p class="hub-news-sheet-note" id="hubNewsSheetNote"></p>
     <button type="button" class="btn-primary" id="hubNewsEditSave" onclick="hubNewsEditSave()">Publicar</button>
   </div>
@@ -197,6 +197,7 @@
     </div>
   </div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="/joelboard.js"></script>
 <script src="/hub.js"></script>

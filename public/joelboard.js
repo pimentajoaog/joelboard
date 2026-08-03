@@ -49,13 +49,16 @@
     if (ms < 30000) ms = 30000;
     refreshTimer = setTimeout(function () {
       if (!email() && !readToken()) return;
-      requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {});
+      requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {
+        if (needsReLogin()) promptReLogin('refresh_timer');
+      });
     }, Math.min(ms, 2147483647));
   }
   function saveToken(tok, expiresIn){
     var exp = Date.now() + (Number(expiresIn) || 3600) * 1000 - 120000;
     persistTokenStore(tok, exp);
     lr('jb_signedout');
+    hideReLoginBar();
     scheduleTokenRefresh();
     if (AUTH_BC) try { AUTH_BC.postMessage({ t: 'tok', tok: tok, exp: exp, from: TAB_ID }); } catch (_) {}
   }
@@ -80,15 +83,69 @@
       if (d.t === 'tok' && d.tok && d.exp && d.exp > Date.now()) {
         persistTokenStore(d.tok, d.exp);
         lr('jb_signedout');
+        hideReLoginBar();
         scheduleTokenRefresh();
       } else if (d.t === 'out') {
         clearTokenStorage();
         ls('jb_signedout', '1');
+        hideReLoginBar();
       }
     };
   }
 
   function isSignedIn(){ return isTokenValid() && !!email(); }
+  function needsReLogin(){ if (lg('jb_signedout')) return false; return hasSession() && !isTokenValid(); }
+
+  var reloginListeners = [], reloginShown = false, reloginPromptAt = 0;
+  function onSessionExpired(fn){ if (typeof fn === 'function') reloginListeners.push(fn); }
+  function notifySessionExpired(reason){
+    reloginListeners.forEach(function (fn) { try { fn(reason); } catch (_) {} });
+    try { document.dispatchEvent(new CustomEvent('jb-session-expired', { detail: { reason: reason } })); } catch (_) {}
+  }
+  function ensureReLoginBar(){
+    var bar = document.getElementById('jbReloginBar');
+    if (bar) return bar;
+    bar = document.createElement('div');
+    bar.id = 'jbReloginBar';
+    bar.setAttribute('role', 'alert');
+    bar.innerHTML = '<span class="jb-relogin-msg">Sua sessão expirou. Entre de novo com Google para continuar usando o app.</span>'
+      + '<button type="button" class="jb-relogin-btn">Entrar de novo</button>';
+    bar.querySelector('.jb-relogin-btn').onclick = function () {
+      signIn({ onSuccess: function () { hideReLoginBar(); } });
+    };
+    whenReady(function () {
+      if (bar.parentNode) return;
+      if (document.body.firstChild) document.body.insertBefore(bar, document.body.firstChild);
+      else document.body.appendChild(bar);
+    });
+    return bar;
+  }
+  function showReLoginBar(){
+    if (reloginShown || lg('jb_signedout')) return;
+    reloginShown = true;
+    whenReady(function () {
+      var bar = ensureReLoginBar();
+      bar.classList.add('show');
+      document.documentElement.classList.add('jb-relogin-bar');
+      if (document.body) document.body.classList.add('jb-relogin-bar');
+    });
+  }
+  function hideReLoginBar(){
+    reloginShown = false;
+    var bar = document.getElementById('jbReloginBar');
+    if (bar) bar.classList.remove('show');
+    document.documentElement.classList.remove('jb-relogin-bar');
+    if (document.body) document.body.classList.remove('jb-relogin-bar');
+  }
+  function promptReLogin(reason){
+    if (lg('jb_signedout') || (!hasSession() && !email())) return;
+    var now = Date.now();
+    if (now - reloginPromptAt < 8000) { showReLoginBar(); return; }
+    reloginPromptAt = now;
+    showReLoginBar();
+    jbToast('Sessão expirada — entre de novo com Google.');
+    notifySessionExpired(reason || 'session');
+  }
 
   function clearRefreshTimer(){ if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; } }
 
@@ -311,9 +368,22 @@
     function handle(r, allowRefresh){
       if (r.status === 401 && allowRefresh) {
         return requestToken(false, { force: true }).catch(function (err) {
-          if (isSessionErr(err)) return requestToken(true);
+          if (isSessionErr(err)) {
+            return requestToken(true).then(function (t) { hideReLoginBar(); return t; }).catch(function (e2) {
+              promptReLogin('api_refresh');
+              throw e2;
+            });
+          }
           throw err;
         }).then(function (nt) { return doFetch(nt).then(function (r2) { return handle(r2, false); }); });
+      }
+      if (r.status === 401) {
+        promptReLogin('api401');
+        return r.text().then(function (tx) {
+          var e = new Error('HTTP ' + r.status + ' — ' + tx.slice(0, 200));
+          e.status = r.status;
+          throw e;
+        });
       }
       if (!r.ok) return r.text().then(function (tx) {
         var e = new Error('HTTP ' + r.status + ' — ' + tx.slice(0, 200));
@@ -347,6 +417,7 @@
       });
     }
     return runLive().catch(function (err) {
+      if (isSessionErr(err)) promptReLogin('api');
       if (!canQueue || !isQueueableError(err)) return Promise.reject(err);
       return outboxEnqueue(m, url, body).then(function (item) {
         queueToast();
@@ -539,7 +610,12 @@
   function tokenForApi(){
     if (isTokenValid()) return Promise.resolve(readToken());
     return requestToken(false, { force: true }).catch(function (err) {
-      if (isSessionErr(err)) return requestToken(true);
+      if (isSessionErr(err)) {
+        return requestToken(true).then(function (t) { hideReLoginBar(); return t; }).catch(function (e2) {
+          promptReLogin('token');
+          throw e2;
+        });
+      }
       throw err;
     });
   }
@@ -564,6 +640,7 @@
 
   function signOut(){
     clearRefreshTimer();
+    hideReLoginBar();
     var t = readToken();
     try { if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function () {}); } catch (_) {}
     clearTokenStorage();
@@ -578,13 +655,18 @@
     clearStaleToken();
     if (hasSession()) {
       if (isTokenValid()) scheduleTokenRefresh();
-      else ensureToken(false).then(scheduleTokenRefresh).catch(clearStaleToken);
+      else ensureToken(false).then(scheduleTokenRefresh).catch(function () {
+        clearStaleToken();
+        if (needsReLogin()) promptReLogin('boot');
+      });
     }
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState !== 'visible' || lg('jb_signedout')) return;
       if (!email() && !readToken()) return;
       if (isTokenValid() && readExp() - Date.now() > 240000) return;
-      requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {});
+      requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {
+        if (needsReLogin()) promptReLogin('visible');
+      });
     });
   }
 
@@ -870,7 +952,13 @@
           }
           if (!authRetry && isSessionErr(err)) {
             jbToast('Sessão expirou — reconectando…');
-            return requestToken(true).then(function () { return attempt(retry, true); });
+            return requestToken(true).then(function () { hideReLoginBar(); return attempt(retry, true); }).catch(function (e2) {
+              promptReLogin('persist');
+              restore();
+              if (opts.onError) opts.onError(e2);
+              else jbToast('Não foi possível salvar. ' + writeErrMessage(e2));
+              return Promise.reject(e2);
+            });
           }
           restore();
           if (opts.onError) opts.onError(err);
@@ -1287,7 +1375,7 @@
 
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
-    cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
+    cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, onSessionExpired: onSessionExpired, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
     requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,

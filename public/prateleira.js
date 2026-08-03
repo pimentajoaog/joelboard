@@ -2109,5 +2109,10 @@ function startPrateleira() {
   }, 16000);
 }
 
+JB.onSessionExpired(function () {
+  authDone = false;
+  showAuthGate('Sessão expirada. Entre de novo com Google para continuar.');
+});
+
 JB.applySkin(APP);
 startPrateleira();

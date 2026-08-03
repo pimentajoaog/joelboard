@@ -86,7 +86,8 @@ function startAuth(){
   JB.requestToken(false).then(function(){ authDone=true; afterAuth(); }).catch(showSignIn);
   setTimeout(function(){ if(!authDone && !JB.cachedToken()) showSignIn(); }, 16000);
 }
-function showSignIn(){ loadingHtml('<div class="gate"><div class="gt">📝 Joelboard Notas</div><div class="gs">Listas e notas que você marca — num lugar só.</div><button class="btn" onclick="doSignIn()">Entrar com Google</button></div>'); }
+JB.onSessionExpired(function(){ authDone=false; showSignIn(true); });
+function showSignIn(expired){ loadingHtml('<div class="gate"><div class="gt">📝 Joelboard Notas</div><div class="gs">'+(expired?'Sua sessão expirou. Entre de novo com Google para continuar.':'Listas e notas que você marca — num lugar só.')+'</div><button class="btn" onclick="doSignIn()">Entrar com Google</button></div>'); }
 function doSignIn(){ JB.signIn({ onSuccess: function(){ authDone=true; afterAuth(); } }); }
 function notasSignOut(){ JB.signOut(); location.reload(); }
 function afterAuth(){ loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>'); JB.fetchEmail().then(bootSheet); }

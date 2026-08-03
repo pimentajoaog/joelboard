@@ -7,11 +7,11 @@ var HUB_NEWS_SHEET_ID=hubNewsCleanId((typeof window!=='undefined'&&window.JB_HUB
 var HUB_NEWS_SHEET_LOCAL='jb_hub_news_sheet_id';
 var HUB_NEWS_LIMIT=5;
 var HUB_NEWS_DEFAULT=[
+  { app:'hub', kind:'novo', text:'Sessão expirada avisa para entrar de novo — banner no topo e tela de login em todos os apps, em vez de falhar no meio de uma ação.' },
   { app:'mini', kind:'novo', text:'Sites permitidos sincronizam na planilha Joelboard Mini (aba ReplaceSites) — entre Hub, Replace e Refresh.' },
   { app:'notas', kind:'correcao', text:'Duplicatas fantasma em listas corrigidas; Remover duplicatas no menu ⋯ de cada lista.' },
   { app:'notas', kind:'novo', text:'Ícones personalizados nas listas — presets e emoji no editor e na grade inicial.' },
-  { app:'mini', kind:'correcao', text:'Login e sync Replace com a extensão — página de auth espera a ponte antes de enviar o token.' },
-  { app:'hub', kind:'novo', text:'Ícone Joelboard no topo de cada app leva de volta ao Hub.' }
+  { app:'mini', kind:'correcao', text:'Login e sync Replace com a extensão — página de auth espera a ponte antes de enviar o token.' }
 ];
 var HUB_NEWS=HUB_NEWS_DEFAULT.slice();
 var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', mini:'Mini', hub:'Hub', study:'Study' };

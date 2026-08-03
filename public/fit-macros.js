@@ -20,7 +20,7 @@ var MACRO_PRESETS_GLOBAL = [
   { l: '100 g', g: 100 }, { l: '50 g', g: 50 }, { l: '30 g', g: 30 },
   { l: '1 colher sopa (~15 g)', g: 15 }, { l: '1 colher chá (~5 g)', g: 5 }
 ];
-var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _macroMealsSortable = null, _offCache = {}, _stMacros = false, _macroVpBound = false;
+var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _macroMealsSortable = null, _offCache = {}, _stMacros = false, _macroVpBound = false, _macroWaterOpen = false, _macroWaterPour = false;
 
 function macroToday() { return new Date().toISOString().slice(0, 10); }
 function macroDate() { return _macroDate || macroToday(); }
@@ -57,9 +57,16 @@ function macroAddWater(ml) {
   if (!ml) return;
   var date = macroDate(), log = macroWaterLog();
   log[date] = Math.max(0, macroWaterFor(date) + ml);
+  _macroWaterPour = true;
   macroSaveWaterLog(log);
   renderMacros();
-  toast('💧 +' + ml + ' ml');
+}
+function macroAddWaterCustom() {
+  var raw = ($('macroWaterCustom') && $('macroWaterCustom').value) || '';
+  var v = Number(String(raw).replace(',', '.')) || 0;
+  if (!(v > 0)) { toast('Informe os ml'); return; }
+  macroAddWater(v);
+  if ($('macroWaterCustom')) $('macroWaterCustom').value = '';
 }
 function macroResetWater() {
   var date = macroDate(), log = macroWaterLog();
@@ -69,30 +76,82 @@ function macroResetWater() {
   renderMacros();
   toast('💧 Água zerada');
 }
-function macroWaterCardHtml(ml, goal) {
+function macroToggleWater() {
+  _macroWaterOpen = !_macroWaterOpen;
+  var bar = document.querySelector('.mrings-bar');
+  var w = document.querySelector('.mwater-widget');
+  if (bar && w) {
+    bar.classList.toggle('mwater-expanded', _macroWaterOpen);
+    w.classList.toggle('open', _macroWaterOpen);
+    var hit = w.querySelector('.mwater-hit');
+    if (hit) hit.setAttribute('aria-expanded', _macroWaterOpen ? 'true' : 'false');
+    if (_macroWaterOpen) {
+      setTimeout(function () {
+        var i = $('macroWaterCustom');
+        if (i) try { i.focus({ preventScroll: true }); } catch (e) { i.focus(); }
+      }, 380);
+    }
+  } else {
+    renderMacros();
+  }
+}
+function macroWaterFmtMl(ml) {
+  ml = Number(ml) || 0;
+  if (ml >= 1000) return (Math.round(ml / 100) / 10) + 'L';
+  return ml + ' ml';
+}
+function macroWaterWidgetHtml(ml, goal) {
   var pct = Math.min(100, Math.round((ml / Math.max(goal, 1)) * 100));
   var done = pct >= 100;
-  return '<div class="mwater' + (done ? ' mwater-done' : '') + '">'
-    + '<div class="mwater-top"><span class="mwater-lbl">💧 Água</span><span class="mwater-stats">' + ml + ' / ' + goal + ' ml</span></div>'
-    + '<div class="mwater-body">'
-    + '<div class="mwater-glass" aria-hidden="true"><div class="mwater-fill" data-pct="' + pct + '"><div class="mwater-wave"></div></div></div>'
-    + '<div class="mwater-side"><div class="mwater-pct">' + pct + '%</div>'
-    + (done ? '<div class="mwater-done-lbl">Meta!</div>' : '')
-    + '<button type="button" class="lnk mwater-reset" onclick="macroResetWater()" title="Zerar hoje">↺</button></div>'
+  var open = _macroWaterOpen;
+  return '<aside class="mwater-widget' + (open ? ' open' : '') + (done ? ' mwater-done' : '') + '" aria-label="Água">'
+    + '<button type="button" class="mwater-hit" onclick="macroToggleWater()" aria-expanded="' + (open ? 'true' : 'false') + '" title="Água — toque para adicionar">'
+    + '<div class="mwater-glass" aria-hidden="true">'
+    + '<div class="mwater-pour-stream"></div>'
+    + '<div class="mwater-fill" data-pct="' + pct + '">'
+    + '<div class="mwater-wave"></div><div class="mwater-wave mwater-wave2"></div>'
+    + '</div></div>'
+    + '<div class="mwater-mini">'
+    + '<span class="mwater-mini-pct">' + pct + '%</span>'
+    + '<span class="mwater-mini-ml">' + macroWaterFmtMl(ml) + '</span>'
+    + (done ? '<span class="mwater-mini-done">✓</span>' : '')
+    + '</div></button>'
+    + '<div class="mwater-drawer" onclick="event.stopPropagation()">'
+    + '<div class="mwater-drawer-hd">' + ml + ' / ' + goal + ' ml</div>'
+    + '<div class="mwater-btns">' + [200, 250, 500].map(function (n) {
+      return '<button type="button" class="mw-btn" onclick="macroAddWater(' + n + ')">+' + n + '</button>';
+    }).join('') + '</div>'
+    + '<div class="mwater-custom">'
+    + '<input class="field mwater-in" id="macroWaterCustom" type="number" inputmode="numeric" placeholder="ml…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();macroAddWaterCustom();}">'
+    + '<button type="button" class="mw-btn mw-add" onclick="macroAddWaterCustom()">+</button>'
     + '</div>'
-    + '<div class="mwater-btns">'
-    + [200, 250, 500].map(function (n) {
-      return '<button type="button" class="mw-btn" onclick="macroAddWater(' + n + ')">+' + n + ' ml</button>';
-    }).join('')
-    + '</div></div>';
+    + '<button type="button" class="lnk mwater-reset" onclick="macroResetWater()">Zerar hoje</button>'
+    + '</div></aside>';
 }
-function animateWaterFill(root) {
+function animateWaterFill(root, pour) {
   root = root || document;
   requestAnimationFrame(function () {
     requestAnimationFrame(function () {
-      var fills = root.querySelectorAll ? root.querySelectorAll('.mwater-fill') : [];
-      for (var i = 0; i < fills.length; i++) {
-        fills[i].style.height = (fills[i].getAttribute('data-pct') || 0) + '%';
+      var widgets = root.querySelectorAll ? root.querySelectorAll('.mwater-widget') : [];
+      for (var w = 0; w < widgets.length; w++) {
+        var glass = widgets[w].querySelector('.mwater-glass');
+        var fill = widgets[w].querySelector('.mwater-fill');
+        var stream = widgets[w].querySelector('.mwater-pour-stream');
+        if (!fill) continue;
+        var pct = fill.getAttribute('data-pct') || 0;
+        if (pour && glass) {
+          glass.classList.add('mwater-pouring');
+          fill.classList.add('mwater-fill-pour');
+          if (stream) stream.classList.add('on');
+          (function (g, f, s) {
+            setTimeout(function () {
+              g.classList.remove('mwater-pouring');
+              f.classList.remove('mwater-fill-pour');
+              if (s) s.classList.remove('on');
+            }, 780);
+          })(glass, fill, stream);
+        }
+        fill.style.height = pct + '%';
       }
     });
   });
@@ -424,7 +483,12 @@ function renderMacros() {
       return '<button class="mfav-btn" onclick="macroQuickFav(\'' + escAttr(f.key) + '\')">' + esc(f.name) + '</button>';
     }).join('') + '</div></div>' : '';
 
-  var waterHtml = (show.water && goals.water > 0) ? macroWaterCardHtml(macroWaterFor(date), goals.water) : '';
+  var waterWidget = (show.water && goals.water > 0) ? macroWaterWidgetHtml(macroWaterFor(date), goals.water) : '';
+  var ringsInner = rings || '<div class="rg">Defina metas em <button class="lnk" onclick="macroOpenCalc()">Calcular metas</button> ou <button class="lnk" onclick="openMacroSettings()">Ajustes → Macros</button></div>';
+  var ringsBar = '<div class="mrings-bar' + (_macroWaterOpen ? ' mwater-expanded' : '') + '">'
+    + '<div class="mrings mrings-main">' + ringsInner + '</div>'
+    + waterWidget
+    + '</div>';
 
   el.innerHTML = macroCalcBannerHtml()
     + '<div class="mhead">'
@@ -433,11 +497,11 @@ function renderMacros() {
     + '<button class="lnk" onclick="macroNav(1)">›</button>'
     + '<button class="lnk" onclick="macroCopyYesterday()" title="Copiar ontem">↻</button>'
     + '</div>'
-    + waterHtml
-    + '<div class="mrings">' + (rings || '<div class="rg">Defina metas em <button class="lnk" onclick="macroOpenCalc()">Calcular metas</button> ou <button class="lnk" onclick="openMacroSettings()">Ajustes → Macros</button></div>') + '</div>'
+    + ringsBar
     + favHtml + '<div class="jb-meal-list">' + mealHtml + '</div>';
   animateMacroRings(el);
-  animateWaterFill(el);
+  animateWaterFill(el, _macroWaterPour);
+  _macroWaterPour = false;
   if (!_stMacros) {
     _stMacros = true;
     var ml = el.querySelector('.jb-meal-list');

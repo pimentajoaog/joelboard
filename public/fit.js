@@ -297,10 +297,10 @@ function suggestProg(exId,item){
   if(mode==='time') return { mode:mode, kind:'time', weight:'', sets:tSets, rest:rest };
   var m=sessMetrics(h[h.length-1]); var W=m.W; var capped=m.repsMin>=rmax;
   if(mode==='bw'){
-    if(!capped) return { mode:mode, kind:'bw-reps', weight:'', sets:Math.max(tSets,m.nSets), rest:rest };
-    if(m.nSets<5) return { mode:mode, kind:'bw-set', weight:'', sets:m.nSets+1, rest:rest };
-    if(rest>45) return { mode:mode, kind:'bw-rest', weight:'', sets:m.nSets, rest:Math.max(45,rest-15) };
-    return { mode:mode, kind:'bw-harder', weight:'', sets:m.nSets, rest:rest, harder:(VARMAP[(exName(exId)||'').toLowerCase()]||'') };
+    if(!capped) return { mode:mode, kind:'bw-reps', weight:'', sets:tSets, rest:rest };
+    if(m.nSets<5) return { mode:mode, kind:'bw-set', weight:'', sets:tSets, nextSets:m.nSets+1, rest:rest };
+    if(rest>45) return { mode:mode, kind:'bw-rest', weight:'', sets:tSets, rest:Math.max(45,rest-15) };
+    return { mode:mode, kind:'bw-harder', weight:'', sets:tSets, rest:rest, harder:(VARMAP[(exName(exId)||'').toLowerCase()]||'') };
   }
   var inc=incDefault();
   if(capped){ var to=Math.round((W+inc)*100)/100; return { mode:mode, kind:'up', weight:to, from:W, to:to, sets:tSets, rest:rest }; }
@@ -314,12 +314,12 @@ function progHint(sg,rmax){ if(!sg||!sg.kind) return ''; var u=unit();
   if(sg.kind==='hold') return '<div class="pghint hold">➡ Manter '+sg.from+u+' — busque chegar a '+rmax+' reps</div>';
   if(sg.kind==='stall') return '<div class="pghint stall">⚠ Empacado há 3 sessões — tente deload p/ '+sg.to+u+' ou uma variação mais difícil</div>';
   if(sg.kind==='bw-reps') return '<div class="pghint hold">➡ Peso corporal — aumente as reps (alvo '+rmax+')</div>';
-  if(sg.kind==='bw-set') return '<div class="pghint up">⬆ Você dominou! Adicione 1 série (vá pra '+sg.sets+')</div>';
+  if(sg.kind==='bw-set') return '<div class="pghint up">⬆ Você dominou! Na próxima sessão, considere '+(sg.nextSets!=null?sg.nextSets:(Number(sg.sets)||0)+1)+' séries</div>';
   if(sg.kind==='bw-rest') return '<div class="pghint up">⬆ Mais densidade — descanse só '+sg.rest+'s</div>';
   if(sg.kind==='bw-harder') return '<div class="pghint up">⬆ Hora de evoluir'+(sg.harder?(': tente <b>'+esc(sg.harder)+'</b>'):' p/ uma variação mais difícil')+'</div>';
   if(sg.kind==='time') return '<div class="pghint hold">⏱ Segure pelo tempo alvo</div>';
   return ''; }
-function buildRunItem(ex,sets,rmin,rmax,rest){ rmin=Number(rmin)||8; rmax=Number(rmax)||12; var baseSets=Number(sets)||3; var baseRest=(rest!=null?Number(rest):null); var sg=suggestProg(ex,{rmin:rmin,rmax:rmax,sets:baseSets,rest:(baseRest!=null?baseRest:restDefault())}); var nSets=Number(sg.sets)||baseSets; var pw=(sg.weight!==''&&sg.weight!=null)?sg.weight:''; var arr=[]; for(var i=0;i<nSets;i++){ arr.push({reps:'',peso:pw,done:false}); } return { ex:ex, name:exName(ex), mode:sg.mode, sets:arr, rmin:rmin, rmax:rmax, rest:(sg.rest!=null?sg.rest:baseRest), sg:sg }; }
+function buildRunItem(ex,sets,rmin,rmax,rest){ rmin=Number(rmin)||8; rmax=Number(rmax)||12; var baseSets=Number(sets)||3; var baseRest=(rest!=null?Number(rest):null); var sg=suggestProg(ex,{rmin:rmin,rmax:rmax,sets:baseSets,rest:(baseRest!=null?baseRest:restDefault())}); var nSets=baseSets; var pw=(sg.weight!==''&&sg.weight!=null)?sg.weight:''; var arr=[]; for(var i=0;i<nSets;i++){ arr.push({reps:'',peso:pw,done:false}); } return { ex:ex, name:exName(ex), mode:sg.mode, sets:arr, rmin:rmin, rmax:rmax, rest:(sg.rest!=null?sg.rest:baseRest), sg:sg }; }
 function startSession(tid){ var date=new Date().toISOString().slice(0,10); var name='Avulso', items=[]; if(tid){ var r=(DATA.treinos||[]).find(function(x){return x.id===tid;}); if(r){ name=r.name; items=(r.items||[]).map(function(it){ return buildRunItem(it.ex,it.sets,it.rmin,it.rmax,it.rest); }); } } sess={ treinoName:name, date:date, cur:0, items:items }; runPhase='ready'; stopRest(); $('runOverlay').classList.add('open'); renderRun(); }
 var runPhase='ready';
 function restFor(it){ return (it&&it.rest!=null)?it.rest:restDefault(); }
@@ -441,8 +441,8 @@ function progNextMsg(sg,t){ var u=unit(); switch(sg.kind){
   case 'up': return 'Você bateu o topo! Próxima sessão: <b>subir p/ '+sg.to+u+'</b>.';
   case 'hold': return 'Agora: <b>'+sg.from+u+'</b> — busque <b>'+t.rmax+' reps</b> em todas as séries. Ao completar → <b>'+(Math.round((sg.from+incDefault())*100)/100)+u+'</b>.';
   case 'stall': return 'Travado há 3 sessões em '+sg.from+u+'. Sugestão: <b>deload p/ '+sg.to+u+'</b> ou variação mais difícil.';
-  case 'bw-reps': return 'Agora: subir reps até <b>'+t.rmax+'</b> em todas as séries. Ao completar → <b>+1 série</b>.';
-  case 'bw-set': return 'Você dominou! Próxima sessão: <b>adicione a '+sg.sets+'ª série</b>.';
+  case 'bw-reps': return 'Agora: subir reps até <b>'+t.rmax+'</b> em todas as séries. Ao completar, considere <b>+1 série</b> na próxima sessão.';
+  case 'bw-set': return 'Você dominou! Próxima sessão: considere <b>'+(sg.nextSets!=null?sg.nextSets:(t.sets+1))+' séries</b> (ajuste no treino se quiser).';
   case 'bw-rest': return 'Você dominou! Próxima sessão: <b>reduza o descanso p/ '+sg.rest+'s</b>.';
   case 'bw-harder': return 'Você dominou! Próximo: <b>'+esc(sg.harder||'uma variação mais difícil')+'</b>.';
   default: return 'Registre uma sessão para ver a sugestão.';

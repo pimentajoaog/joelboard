@@ -2120,6 +2120,11 @@ JB.onSessionExpired(function () {
   authDone = false;
   showAuthGate('Sessão expirada. Entre de novo com Google para continuar.');
 });
+JB.onAuthRestored(function () {
+  if (!JB.isSignedIn() || authDone) return;
+  authDone = true;
+  boot();
+});
 
 JB.applySkin(APP);
 startPrateleira();

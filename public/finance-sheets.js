@@ -132,6 +132,7 @@ function jbStartAuth(){
   setTimeout(function(){ if (!jbAuthDone && !JB.cachedToken()) jbShowSignIn(); }, 16000);
 }
 JB.onSessionExpired(function(){ jbAuthDone=false; jbShowSignIn(true); });
+JB.onAuthRestored(function(){ if(!JB.isSignedIn()||jbAuthDone) return; jbAuthDone=true; jbAfterSignIn(); });
 function jbShowSignIn(expired){ jbLoadingHtml('<div style="text-align:center;padding:48px 20px"><div style="font-size:24px;font-weight:800;letter-spacing:-.5px">💰 Joelboard</div><div style="color:var(--muted);font-size:13px;margin:6px 0 26px">'+(expired?'Sua sessão expirou. Entre de novo com Google para continuar.':'Suas finanças pessoais')+'</div><button onclick="jbSignIn()" style="background:#fff;color:#1f2430;border:none;border-radius:12px;padding:13px 22px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Entrar com Google</button></div>'); }
 function jbSignIn(){ JB.signIn({ onSuccess: function(){ jbAuthDone = true; jbAfterSignIn(); } }); }
 function jbAfterSignIn(){

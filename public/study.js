@@ -33,6 +33,7 @@ function startAuth(){
   setTimeout(function(){ if(!authDone && !JB.cachedToken()) showSignIn(); }, 16000);
 }
 JB.onSessionExpired(function(){ authDone=false; showSignIn(true); });
+JB.onAuthRestored(function(){ if(!JB.isSignedIn()||authDone) return; authDone=true; afterAuth(); });
 function showSignIn(expired){ loadingHtml('<div class="gate"><div class="gt">📚 Joelboard Study</div><div class="gs">'+(expired?'Sua sessão expirou. Entre de novo com Google para continuar.':'Provas, trabalhos e matérias num lugar só.')+'</div><button class="btn" onclick="doSignIn()">Entrar com Google</button></div>'); }
 function doSignIn(){ JB.signIn({ onSuccess: function(){ authDone=true; afterAuth(); } }); }
 function studySignOut(){ JB.signOut(); location.reload(); }

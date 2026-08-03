@@ -94,13 +94,19 @@
   }
 
   function isSignedIn(){ return isTokenValid() && !!email(); }
-  function needsReLogin(){ if (lg('jb_signedout')) return false; return hasSession() && !isTokenValid(); }
+  function needsReLogin(){ if (lg('jb_signedout')) return false; return !!email() && !isTokenValid(); }
 
   var reloginListeners = [], reloginShown = false, reloginPromptAt = 0;
+  var authRestoredListeners = [];
   function onSessionExpired(fn){ if (typeof fn === 'function') reloginListeners.push(fn); }
+  function onAuthRestored(fn){ if (typeof fn === 'function') authRestoredListeners.push(fn); }
   function notifySessionExpired(reason){
     reloginListeners.forEach(function (fn) { try { fn(reason); } catch (_) {} });
     try { document.dispatchEvent(new CustomEvent('jb-session-expired', { detail: { reason: reason } })); } catch (_) {}
+  }
+  function notifyAuthRestored(reason){
+    authRestoredListeners.forEach(function (fn) { try { fn(reason); } catch (_) {} });
+    try { document.dispatchEvent(new CustomEvent('jb-auth-restored', { detail: { reason: reason } })); } catch (_) {}
   }
   function ensureReLoginBar(){
     var bar = document.getElementById('jbReloginBar');
@@ -121,7 +127,7 @@
     return bar;
   }
   function showReLoginBar(){
-    if (reloginShown || lg('jb_signedout')) return;
+    if (reloginShown || lg('jb_signedout') || !email()) return;
     reloginShown = true;
     whenReady(function () {
       var bar = ensureReLoginBar();
@@ -138,7 +144,7 @@
     if (document.body) document.body.classList.remove('jb-relogin-bar');
   }
   function promptReLogin(reason){
-    if (lg('jb_signedout') || (!hasSession() && !email())) return;
+    if (lg('jb_signedout') || !email()) return;
     var now = Date.now();
     if (now - reloginPromptAt < 8000) { showReLoginBar(); return; }
     reloginPromptAt = now;
@@ -666,7 +672,7 @@
       if (isTokenValid()) scheduleTokenRefresh();
       else {
         clearStaleToken();
-        promptReLogin('boot');
+        if (needsReLogin()) promptReLogin('boot');
         requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {});
       }
     }
@@ -986,6 +992,7 @@
     return requestToken(true).then(function (tok) {
       return fetchEmail(tok).then(function (em) {
         if (opts.onSuccess) opts.onSuccess(tok, em);
+        notifyAuthRestored('signin');
         return { token: tok, email: em };
       });
     }).catch(function (err) {
@@ -1385,7 +1392,7 @@
 
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
-    cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, bootAuthIfExpired: bootAuthIfExpired, onSessionExpired: onSessionExpired, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
+    cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, bootAuthIfExpired: bootAuthIfExpired, onSessionExpired: onSessionExpired, onAuthRestored: onAuthRestored, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
     requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,

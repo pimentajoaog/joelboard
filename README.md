@@ -57,7 +57,7 @@ Open the URL Vite prints (usually `http://localhost:5173`). Google Sign-In works
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_TMDB_API_KEY` | Film/series search (injected at build) |
+| `TMDB_API_KEY` | Film/series search via `/api/tmdb` (Prateleira; server-side only) |
 | `TWITCH_CLIENT_ID` | Game search via IGDB (primary, `/api/games`) |
 | `TWITCH_CLIENT_SECRET` | IGDB OAuth (server-side only) |
 | `RAWG_API_KEY` | Optional game search fallback if IGDB fails |

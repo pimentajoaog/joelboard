@@ -4,6 +4,7 @@ var JULIOEL_EMAILS = ['joaogabrielpabarbosa@gmail.com', 'juliazin182@gmail.com']
 var PRATELEIRA_SHARED_SHEET = '1Dw2WXmeBTqic1whtVe4fwSBM-UJ8VDBTCIJspxHYCAo';
 var REVIEW_MAX = 200;
 var TMDB_IMG = 'https://image.tmdb.org/t/p/w342';
+var _tmdbOk = null;
 var USER_NAMES = {
   'joaogabrielpabarbosa@gmail.com': 'Joel',
   'juliazin182@gmail.com': 'Julia'
@@ -174,7 +175,17 @@ function userIconHtml(em) {
 function julioelAllowed() { return JULIOEL_EMAILS.indexOf((JB.email() || '').toLowerCase()) > -1; }
 function julioelUnlocked() { try { return localStorage.getItem('jb_julioel') === '1'; } catch (_) { return false; } }
 function julioelOk() { return JB.isSignedIn() && julioelAllowed() && julioelUnlocked(); }
-function tmdbKey() { return window.JB_TMDB_KEY || ''; }
+function tmdbAvailable() { return _tmdbOk === true; }
+function tmdbFetch(params) {
+  var qs = new URLSearchParams(params);
+  return fetch('/api/tmdb?' + qs.toString())
+    .then(function (r) {
+      if (r.status === 503) { _tmdbOk = false; return null; }
+      if (!r.ok) throw new Error('tmdb-' + r.status);
+      _tmdbOk = true;
+      return r.json();
+    });
+}
 function gamesUrl(params) {
   var qs = new URLSearchParams(params || {});
   return '/api/games?' + qs.toString();
@@ -592,11 +603,9 @@ function handlePrateleiraErr(e, opts) {
 }
 
 function whenTmdbReady(fn) {
-  if (tmdbKey()) { fn(); return; }
-  var n = 0;
-  var t = setInterval(function () {
-    if (tmdbKey() || ++n > 40) { clearInterval(t); fn(); }
-  }, 25);
+  tmdbFetch({ ping: '1' })
+    .then(function (d) { _tmdbOk = !!(d && d.ok); fn(); })
+    .catch(function () { _tmdbOk = false; fn(); });
 }
 
 function boot() {
@@ -746,7 +755,7 @@ function refreshMissingPosters() {
     if (!mediaNeedsPoster(m)) return false;
     if (m.type === 'game') return isCatalogGameId(parseMediaId(m.key).id);
     if (m.type === 'music') return isCatalogMusicId(parseMediaId(m.key).id);
-    return !!tmdbKey();
+    return tmdbAvailable();
   });
   if (!todo.length) return Promise.resolve();
   var CONC = 4;
@@ -878,11 +887,10 @@ function fetchPosterFromMusic(m) {
 function fetchPosterFromTmdb(m) {
   var parsed = parseMediaId(m.key);
   if (parsed.type === 'game' || parsed.type === 'music') return Promise.resolve();
-  var apiPath = parsed.type === 'tv' ? ('/tv/' + parsed.id) : ('/movie/' + parsed.id);
-  return fetch('https://api.themoviedb.org/3' + apiPath + '?api_key=' + encodeURIComponent(tmdbKey()) + '&language=pt-BR')
-    .then(function (r) { return r.json(); })
+  var params = parsed.type === 'tv' ? { tv: parsed.id } : { movie: parsed.id };
+  return tmdbFetch(params)
     .then(function (item) {
-      if (!item.poster_path) return;
+      if (!item || !item.poster_path) return;
       m.poster = item.poster_path;
       posterCache[m.key] = item.poster_path;
       if (!m.sheetRow) return;
@@ -1435,11 +1443,11 @@ function runUniversalSearch(q) {
   var jobs = [];
   var wantScreen = searchFilters.movie || searchFilters.tv;
 
-  if (wantScreen && tmdbKey()) {
+  if (wantScreen && tmdbAvailable()) {
     jobs.push(
-      fetch('https://api.themoviedb.org/3/search/multi?api_key=' + encodeURIComponent(tmdbKey()) + '&language=pt-BR&query=' + encodeURIComponent(q))
-        .then(function (r) { return r.json(); })
+      tmdbFetch({ search: q })
         .then(function (data) {
+          if (!data) return { kind: 'tmdb', noKey: true, list: [] };
           var list = (data.results || []).filter(function (x) {
             if (x.media_type === 'movie') return searchFilters.movie;
             if (x.media_type === 'tv') return searchFilters.tv;
@@ -1630,11 +1638,11 @@ function addFromTmdb(type, tmdbId) {
     return;
   }
   if (!lockAdd(key)) return;
-  if (!tmdbKey()) { unlockAdd(key); return; }
-  var path = type === 'tv' ? ('/tv/' + tmdbId) : ('/movie/' + tmdbId);
-  fetch('https://api.themoviedb.org/3' + path + '?api_key=' + encodeURIComponent(tmdbKey()) + '&language=pt-BR')
-    .then(function (r) { return r.json(); })
+  if (!tmdbAvailable()) { unlockAdd(key); return; }
+  var params = type === 'tv' ? { tv: tmdbId } : { movie: tmdbId };
+  tmdbFetch(params)
     .then(function (item) {
+      if (!item) return;
       if (media.some(function (m) { return m.key === key; })) {
         openDetail(key);
         return;

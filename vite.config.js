@@ -1,10 +1,10 @@
 import { defineConfig, loadEnv } from 'vite';
 import { gamesJsonResponse, proxyGamesRequest } from './lib/games-proxy.mjs';
 import { musicJsonResponse, proxyMusicRequest } from './lib/music-proxy.mjs';
+import { tmdbJsonResponse, proxyTmdbRequest } from './lib/tmdb-proxy.mjs';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const tmdbKey = JSON.stringify(env.VITE_TMDB_API_KEY || '');
   const hubNewsSheetId = JSON.stringify(env.VITE_HUB_NEWS_SHEET_ID || '');
 
   async function handleMusicApi(req, res) {
@@ -30,6 +30,32 @@ export default defineConfig(({ mode }) => {
       res.statusCode = 502;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ error: 'Music catalog proxy failed' }));
+    }
+  }
+
+  async function handleTmdbApi(req, res) {
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204;
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.end();
+      return;
+    }
+    if (req.method !== 'GET') {
+      res.statusCode = 405;
+      res.end(JSON.stringify({ error: 'Method not allowed' }));
+      return;
+    }
+    try {
+      var tmdbResult = await proxyTmdbRequest(req.url.replace(/^\/api\/tmdb/, '/api/tmdb'), env);
+      var tmdbResponse = tmdbJsonResponse(tmdbResult);
+      res.statusCode = tmdbResponse.status;
+      tmdbResponse.headers.forEach(function (v, k) { res.setHeader(k, v); });
+      res.end(await tmdbResponse.text());
+    } catch (_) {
+      res.statusCode = 502;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: 'TMDB proxy failed' }));
     }
   }
 
@@ -77,16 +103,6 @@ export default defineConfig(({ mode }) => {
       }
     },
     plugins: [{
-      name: 'inject-tmdb-key',
-      transformIndexHtml: {
-        order: 'pre',
-        handler(html, ctx) {
-          if (!ctx.filename || ctx.filename.indexOf('prateleira') < 0) return html;
-          var tag = '<script>window.JB_TMDB_KEY=' + tmdbKey + ';</script>';
-          return html.replace('<script src="/joelboard.js"></script>', tag + '\n<script src="/joelboard.js"></script>');
-        }
-      }
-    }, {
       name: 'inject-hub-news-sheet-id',
       transformIndexHtml: {
         order: 'pre',
@@ -101,6 +117,10 @@ export default defineConfig(({ mode }) => {
       configureServer(server) {
         server.middlewares.use(async function (req, res, next) {
           if (!req.url) return next();
+          if (req.url.indexOf('/api/tmdb') === 0) {
+            await handleTmdbApi(req, res);
+            return;
+          }
           if (req.url.indexOf('/api/music') === 0) {
             await handleMusicApi(req, res);
             return;

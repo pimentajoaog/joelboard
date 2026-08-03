@@ -1,18 +1,26 @@
 import { defineConfig, loadEnv } from 'vite';
-import { gamesJsonResponse, proxyGamesRequest } from './lib/games-proxy.mjs';
-import { musicJsonResponse, proxyMusicRequest } from './lib/music-proxy.mjs';
-import { tmdbJsonResponse, proxyTmdbRequest } from './lib/tmdb-proxy.mjs';
+import { proxyGamesRequest } from './lib/games-proxy.mjs';
+import { proxyMusicRequest } from './lib/music-proxy.mjs';
+import { proxyTmdbRequest } from './lib/tmdb-proxy.mjs';
+import { applyApiCors, guardNodeApi } from './lib/api-guard.mjs';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const hubNewsSheetId = JSON.stringify(env.VITE_HUB_NEWS_SHEET_ID || '');
 
+  function preflight(req, res, access) {
+    applyApiCors(res, access);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.statusCode = 204;
+    res.end();
+  }
+
   async function handleMusicApi(req, res) {
     if (req.method === 'OPTIONS') {
-      res.statusCode = 204;
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-      res.end();
+      var optAccess = guardNodeApi(req, res);
+      if (!optAccess) return;
+      preflight(req, res, optAccess);
       return;
     }
     if (req.method !== 'GET') {
@@ -20,12 +28,14 @@ export default defineConfig(({ mode }) => {
       res.end(JSON.stringify({ error: 'Method not allowed' }));
       return;
     }
+    var access = guardNodeApi(req, res);
+    if (!access) return;
     try {
       var musicResult = await proxyMusicRequest(req.url.replace(/^\/api\/music/, '/api/music'), env);
-      var musicResponse = musicJsonResponse(musicResult);
-      res.statusCode = musicResponse.status;
-      musicResponse.headers.forEach(function (v, k) { res.setHeader(k, v); });
-      res.end(await musicResponse.text());
+      applyApiCors(res, access);
+      res.statusCode = musicResult.status;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(musicResult.body);
     } catch (_) {
       res.statusCode = 502;
       res.setHeader('Content-Type', 'application/json');
@@ -35,10 +45,9 @@ export default defineConfig(({ mode }) => {
 
   async function handleTmdbApi(req, res) {
     if (req.method === 'OPTIONS') {
-      res.statusCode = 204;
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-      res.end();
+      var optAccess = guardNodeApi(req, res);
+      if (!optAccess) return;
+      preflight(req, res, optAccess);
       return;
     }
     if (req.method !== 'GET') {
@@ -46,12 +55,14 @@ export default defineConfig(({ mode }) => {
       res.end(JSON.stringify({ error: 'Method not allowed' }));
       return;
     }
+    var access = guardNodeApi(req, res);
+    if (!access) return;
     try {
       var tmdbResult = await proxyTmdbRequest(req.url.replace(/^\/api\/tmdb/, '/api/tmdb'), env);
-      var tmdbResponse = tmdbJsonResponse(tmdbResult);
-      res.statusCode = tmdbResponse.status;
-      tmdbResponse.headers.forEach(function (v, k) { res.setHeader(k, v); });
-      res.end(await tmdbResponse.text());
+      applyApiCors(res, access);
+      res.statusCode = tmdbResult.status;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(tmdbResult.body);
     } catch (_) {
       res.statusCode = 502;
       res.setHeader('Content-Type', 'application/json');
@@ -61,10 +72,9 @@ export default defineConfig(({ mode }) => {
 
   async function handleGamesApi(req, res) {
     if (req.method === 'OPTIONS') {
-      res.statusCode = 204;
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-      res.end();
+      var optAccess = guardNodeApi(req, res);
+      if (!optAccess) return;
+      preflight(req, res, optAccess);
       return;
     }
     if (req.method !== 'GET') {
@@ -72,12 +82,14 @@ export default defineConfig(({ mode }) => {
       res.end(JSON.stringify({ error: 'Method not allowed' }));
       return;
     }
+    var access = guardNodeApi(req, res);
+    if (!access) return;
     try {
       var result = await proxyGamesRequest(req.url.replace(/^\/api\/(games|rawg)/, '/api/games'), env);
-      var response = gamesJsonResponse(result);
-      res.statusCode = response.status;
-      response.headers.forEach(function (v, k) { res.setHeader(k, v); });
-      res.end(await response.text());
+      applyApiCors(res, access);
+      res.statusCode = result.status;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(result.body);
     } catch (_) {
       res.statusCode = 502;
       res.setHeader('Content-Type', 'application/json');

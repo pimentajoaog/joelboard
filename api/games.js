@@ -1,9 +1,5 @@
 import { proxyGamesRequest } from '../lib/games-proxy.mjs';
-
-function sendCors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'public, max-age=300');
-}
+import { applyApiCors, checkApiAccess } from '../lib/api-guard.mjs';
 
 function requestUrl(req) {
   if (req.url && req.url.indexOf('?') >= 0) return req.url;
@@ -15,7 +11,9 @@ function requestUrl(req) {
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
-    sendCors(res);
+    var optAccess = checkApiAccess(req.headers);
+    if (!optAccess.ok) { res.status(403).json({ error: 'Forbidden' }); return; }
+    applyApiCors(res, optAccess);
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.status(204).end();
@@ -25,9 +23,11 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
+  var access = checkApiAccess(req.headers);
+  if (!access.ok) { res.status(403).json({ error: 'Forbidden' }); return; }
   try {
     var result = await proxyGamesRequest(requestUrl(req), process.env);
-    sendCors(res);
+    applyApiCors(res, access);
     res.setHeader('Content-Type', 'application/json');
     res.status(result.status).end(result.body);
   } catch (_) {

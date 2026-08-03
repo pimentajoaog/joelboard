@@ -5,5 +5,13 @@
     "api/**/*.js": {
       "includeFiles": "lib/**"
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Vary", "value": "Origin" }
+      ]
+    }
+  ]
 }

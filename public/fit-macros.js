@@ -20,7 +20,7 @@ var MACRO_PRESETS_GLOBAL = [
   { l: '100 g', g: 100 }, { l: '50 g', g: 50 }, { l: '30 g', g: 30 },
   { l: '1 colher sopa (~15 g)', g: 15 }, { l: '1 colher chá (~5 g)', g: 5 }
 ];
-var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _macroMealsSortable = null, _offCache = {}, _stMacros = false, _macroVpBound = false, _macroWaterOpen = false, _macroWaterPour = false;
+var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _macroMealsSortable = null, _offCache = {}, _stMacros = false, _macroVpBound = false, _macroWaterOpen = false, _macroWaterPour = false, _macroWaterOutsideBound = false;
 
 function macroToday() { return new Date().toISOString().slice(0, 10); }
 function macroDate() { return _macroDate || macroToday(); }
@@ -76,8 +76,8 @@ function macroResetWater() {
   renderMacros();
   toast('💧 Água zerada');
 }
-function macroToggleWater() {
-  _macroWaterOpen = !_macroWaterOpen;
+function macroSetWaterOpen(open, focusCustom) {
+  _macroWaterOpen = !!open;
   var bar = document.querySelector('.mrings-bar');
   var w = document.querySelector('.mwater-widget');
   if (bar && w) {
@@ -85,15 +85,43 @@ function macroToggleWater() {
     w.classList.toggle('open', _macroWaterOpen);
     var hit = w.querySelector('.mwater-hit');
     if (hit) hit.setAttribute('aria-expanded', _macroWaterOpen ? 'true' : 'false');
-    if (_macroWaterOpen) {
+  }
+  if (_macroWaterOpen) {
+    macroBindWaterOutside();
+    if (focusCustom !== false) {
       setTimeout(function () {
         var i = $('macroWaterCustom');
         if (i) try { i.focus({ preventScroll: true }); } catch (e) { i.focus(); }
       }, 380);
     }
   } else {
-    renderMacros();
+    macroUnbindWaterOutside();
   }
+}
+function macroToggleWater() {
+  macroSetWaterOpen(!_macroWaterOpen);
+}
+function macroCloseWater() {
+  if (!_macroWaterOpen) return;
+  macroSetWaterOpen(false, false);
+}
+function macroBindWaterOutside() {
+  if (_macroWaterOutsideBound) return;
+  _macroWaterOutsideBound = true;
+  setTimeout(function () {
+    document.addEventListener('click', macroWaterOutsideClick, true);
+  }, 0);
+}
+function macroUnbindWaterOutside() {
+  if (!_macroWaterOutsideBound) return;
+  _macroWaterOutsideBound = false;
+  document.removeEventListener('click', macroWaterOutsideClick, true);
+}
+function macroWaterOutsideClick(e) {
+  if (!_macroWaterOpen) return;
+  var w = document.querySelector('.mwater-widget');
+  if (w && w.contains(e.target)) return;
+  macroCloseWater();
 }
 function macroWaterFmtMl(ml) {
   ml = Number(ml) || 0;
@@ -502,6 +530,7 @@ function renderMacros() {
   animateMacroRings(el);
   animateWaterFill(el, _macroWaterPour);
   _macroWaterPour = false;
+  if (_macroWaterOpen) macroBindWaterOutside();
   if (!_stMacros) {
     _stMacros = true;
     var ml = el.querySelector('.jb-meal-list');

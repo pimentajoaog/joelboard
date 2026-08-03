@@ -146,6 +146,15 @@
     jbToast('Sessão expirada — entre de novo com Google.');
     notifySessionExpired(reason || 'session');
   }
+  // Expired local token but user was signed in — show re-login UI now; try silent GIS in background.
+  function bootAuthIfExpired(onExpired, onSilentOk){
+    if (!needsReLogin()) return false;
+    if (typeof onExpired === 'function') onExpired();
+    requestToken(false).then(function () {
+      if (isTokenValid() && typeof onSilentOk === 'function') onSilentOk();
+    }).catch(function () {});
+    return true;
+  }
 
   function clearRefreshTimer(){ if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; } }
 
@@ -655,10 +664,11 @@
     clearStaleToken();
     if (hasSession()) {
       if (isTokenValid()) scheduleTokenRefresh();
-      else ensureToken(false).then(scheduleTokenRefresh).catch(function () {
+      else {
         clearStaleToken();
-        if (needsReLogin()) promptReLogin('boot');
-      });
+        promptReLogin('boot');
+        requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {});
+      }
     }
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState !== 'visible' || lg('jb_signedout')) return;
@@ -1375,7 +1385,7 @@
 
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
-    cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, onSessionExpired: onSessionExpired, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
+    cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, bootAuthIfExpired: bootAuthIfExpired, onSessionExpired: onSessionExpired, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
     requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,

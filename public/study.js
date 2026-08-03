@@ -27,6 +27,7 @@ function nearClass(iso,done){ if(done) return ''; var n=daysUntil(iso); if(n<0) 
 /* ---- auth (shared core) ---- */
 function startAuth(){
   if (JB.cachedToken()){ afterAuth(); return; }
+  if (JB.bootAuthIfExpired(function(){ authDone=false; showSignIn(true); }, function(){ authDone=true; afterAuth(); })) return;
   loadingHtml('<div class="gate"><div class="gt">📚 Joelboard Study</div><div class="gs">Entrando…</div></div>');
   JB.requestToken(false).then(function(){ authDone=true; afterAuth(); }).catch(showSignIn);
   setTimeout(function(){ if(!authDone && !JB.cachedToken()) showSignIn(); }, 16000);

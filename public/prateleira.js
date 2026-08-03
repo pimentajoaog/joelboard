@@ -2097,6 +2097,13 @@ function startPrateleira() {
     showAuthGate('Entre com Google para acessar a Prateleira.');
     return;
   }
+  if (JB.bootAuthIfExpired(function () {
+    authDone = false;
+    showAuthGate('Sessão expirada. Entre de novo com Google para continuar.');
+  }, function () {
+    authDone = true;
+    boot();
+  })) return;
   loadingHtml(gateHtml('Julioelboard Prateleira', 'Entrando…', ''));
   JB.requestToken(false).then(function () {
     authDone = true;

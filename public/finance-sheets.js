@@ -126,6 +126,7 @@ function jbCachedToken(){ return JB.cachedToken(); }
 function jbLogout(){ JB.signOut(); location.reload(); }
 function jbStartAuth(){
   if (JB.cachedToken()){ jbEmail = JB.email(); jbAfterSignIn(); return; }
+  if (JB.bootAuthIfExpired(function(){ jbAuthDone=false; jbShowSignIn(true); }, function(){ jbAuthDone=true; jbAfterSignIn(); })) return;
   jbLoadingHtml('<div style="text-align:center;padding:44px;color:var(--muted)">Entrando…</div>');
   JB.requestToken(false).then(function(){ jbAuthDone = true; jbAfterSignIn(); }).catch(function(){ jbShowSignIn(); });
   setTimeout(function(){ if (!jbAuthDone && !JB.cachedToken()) jbShowSignIn(); }, 16000);

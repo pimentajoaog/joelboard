@@ -485,7 +485,11 @@ function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function renderSettings(){
   var u=unit();
   JB.renderSkinPicker('fit', $('setSkins'));
-  $('setUnit').innerHTML=['kg','lb'].map(function(x){ return '<button class="btn '+(x===u?'':'ghost')+'" style="margin-right:8px" onclick="setUnitS(\''+x+'\')">'+x+'</button>'; }).join('');
+  $('setUnit').innerHTML = '<div class="unit-seg" role="group" aria-label="Unidade de peso">'
+    + ['kg', 'lb'].map(function (x) {
+      return '<button type="button" class="unit-seg-btn' + (x === u ? ' on' : '') + '" onclick="setUnitS(\'' + x + '\')">' + x + '</button>';
+    }).join('')
+    + '</div><div class="unit-seg-hint">Peso corporal e cargas nos treinos</div>';
   var tags=(DATA.config&&DATA.config.tags)||DEFAULT_TAGS;
   $('setTags').innerHTML=tags.map(function(t,i){ return '<span class="tagchip">'+esc(t)+'<span class="tx" onclick="removeTag('+i+')">✕</span></span>'; }).join('')||'<div class="rg">Nenhum grupo.</div>';
   if($('setRest')) $('setRest').value=restDefault(); if($('setInc')) $('setInc').value=incDefault();

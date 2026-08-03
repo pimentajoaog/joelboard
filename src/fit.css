@@ -146,6 +146,24 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .set-tab{ @apply bg-transparent border-0 border-b-2 border-b-transparent text-muted text-[13px] font-bold px-3 py-2 cursor-pointer -mb-px whitespace-nowrap flex-[0_0_auto]; font-family:inherit; }
 .set-tab.active{ @apply text-primary; border-bottom-color:var(--primary); }
 
+.unit-seg{
+  display:flex; gap:0; padding:4px; width:100%; max-width:240px;
+  background:var(--surface2); border:1px solid var(--border); border-radius:14px;
+}
+.unit-seg-btn{
+  flex:1; border:0; border-radius:10px; padding:11px 12px;
+  font-size:14px; font-weight:800; letter-spacing:.3px; cursor:pointer;
+  background:transparent; color:var(--muted); font-family:inherit;
+  transition:background .15s ease,color .15s ease,box-shadow .15s ease,transform .09s ease;
+}
+.unit-seg-btn.on{
+  background:color-mix(in srgb, var(--primary) 12%, var(--surface));
+  color:var(--primary);
+  box-shadow:0 2px 8px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.unit-seg-btn:active{ transform:scale(0.97); }
+.unit-seg-hint{ font-size:11px; color:var(--muted); margin-top:8px; line-height:1.4; }
+
 .modebadge{ @apply text-[10px] font-bold text-primary rounded-md px-1.5 py-0.5 align-middle ml-1; background:var(--surface2); background:color-mix(in srgb, var(--primary) 15%, var(--surface)); }
 .bwtag{ @apply text-[10px] font-bold text-primary rounded-md px-[7px] py-0.5 align-middle ml-1; background:var(--surface2); background:color-mix(in srgb, var(--primary) 15%, var(--surface)); }
 

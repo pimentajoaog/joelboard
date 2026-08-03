@@ -66,6 +66,62 @@ body.jb-noscroll { overflow: hidden; }
 .x { background: transparent; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; font-family: inherit; }
 .field { width: 100%; padding: 10px 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; transition: border-color 0.2s; }
 .field:focus { border-color: var(--primary); }
+
+/* Custom number steppers — hide native spinners suite-wide */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+.jb-num-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  vertical-align: middle;
+}
+.jb-num-wrap:has(> .field),
+.jb-num-wrap.jb-num-block { display: flex; width: 100%; }
+.jb-num-wrap > input[type=number] {
+  width: 100%;
+  min-width: 0;
+  padding-right: 28px;
+}
+.jb-num-wrap.jb-num-compact > input[type=number] { padding-right: 22px; }
+.jb-num-spin {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  bottom: 3px;
+  display: flex;
+  flex-direction: column;
+  width: 22px;
+  border-radius: calc(var(--radius-sm, 8px) - 3px);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+.jb-num-wrap.jb-num-compact .jb-num-spin { width: 18px; right: 2px; top: 2px; bottom: 2px; }
+.jb-num-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.jb-num-wrap.jb-num-compact .jb-num-btn { font-size: 7px; }
+.jb-num-btn + .jb-num-btn { border-top: 1px solid var(--border); }
+.jb-num-btn:hover:not(:disabled) { background: var(--border); color: var(--text); }
+.jb-num-btn:active:not(:disabled) { background: var(--primary); color: var(--on-brand, #fff); }
+.jb-num-btn:disabled { opacity: 0.35; cursor: default; }
+.jb-num-btn svg { display: block; pointer-events: none; }
+
 .btn-primary { width: 100%; padding: 12px; background: var(--brand, var(--primary)); border: none; border-radius: var(--radius-sm); color: var(--on-brand); font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 6px; font-family: inherit; transition: opacity 0.2s, transform 0.09s ease; }
 .btn-primary:hover { opacity: 0.88; }
 .btn-ghost, .btn.ghost { width: 100%; padding: 11px 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: center; text-decoration: none; display: inline-block; transition: border-color 0.15s ease, transform 0.09s ease, opacity 0.2s ease; }

@@ -751,6 +751,93 @@
       (function (el, ms) { setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, ms); })(p, (dur + 1) * 1000);
     }
   }
+  var NUM_COMPACT_RE = /\b(ti|vmini|calc-input-sm|grp-amt|cal-hours-input|sb-input|cc-input|wfield|si-qty|num)\b/;
+  var NUM_SVG_UP = '<svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true"><path fill="currentColor" d="M5 0 10 6H0z"/></svg>';
+  var NUM_SVG_DOWN = '<svg viewBox="0 0 10 6" width="10" height="6" aria-hidden="true"><path fill="currentColor" d="M0 0h10L5 6z"/></svg>';
+  var numObs = null;
+
+  function numBounds(input) {
+    var step = input.step !== '' && !isNaN(parseFloat(input.step)) ? parseFloat(input.step) : 1;
+    var min = input.min !== '' && !isNaN(parseFloat(input.min)) ? parseFloat(input.min) : null;
+    var max = input.max !== '' && !isNaN(parseFloat(input.max)) ? parseFloat(input.max) : null;
+    return { step: step, min: min, max: max };
+  }
+  function parseNumVal(input) {
+    if (input.value === '' || input.value == null) return null;
+    var v = parseFloat(input.value);
+    return isNaN(v) ? null : v;
+  }
+  function stepNumber(input, dir) {
+    var b = numBounds(input);
+    var val = parseNumVal(input);
+    if (val === null) val = b.min !== null ? b.min : 0;
+    var next = val + dir * b.step;
+    var dec = (String(b.step).split('.')[1] || '').length;
+    if (dec) next = Math.round(next * Math.pow(10, dec)) / Math.pow(10, dec);
+    if (b.max !== null) next = Math.min(b.max, next);
+    if (b.min !== null) next = Math.max(b.min, next);
+    input.value = String(next);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  function syncNumBtns(input, wrap) {
+    var up = wrap.querySelector('.jb-num-up');
+    var down = wrap.querySelector('.jb-num-down');
+    if (!up || !down) return;
+    var b = numBounds(input);
+    var val = parseNumVal(input);
+    var off = input.disabled || input.readOnly;
+    up.disabled = off || (b.max !== null && val !== null && val >= b.max);
+    down.disabled = off || (b.min !== null && val !== null && val <= b.min);
+  }
+  function wireNumberStepper(input) {
+    if (!input || input.type !== 'number' || input.dataset.jbNum) return;
+    if (input.closest('[data-jb-no-num]')) return;
+    if (input.closest('.jb-num-wrap')) return;
+    input.dataset.jbNum = '1';
+    var wrap = document.createElement('span');
+    wrap.className = 'jb-num-wrap';
+    if (input.classList.contains('field')) wrap.classList.add('jb-num-block');
+    if (NUM_COMPACT_RE.test(input.className)) wrap.classList.add('jb-num-compact');
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    var spin = document.createElement('span');
+    spin.className = 'jb-num-spin';
+    spin.innerHTML = '<button type="button" class="jb-num-btn jb-num-up" tabindex="-1" aria-label="Aumentar">' + NUM_SVG_UP + '</button>'
+      + '<button type="button" class="jb-num-btn jb-num-down" tabindex="-1" aria-label="Diminuir">' + NUM_SVG_DOWN + '</button>';
+    wrap.appendChild(spin);
+    spin.querySelector('.jb-num-up').addEventListener('click', function (e) {
+      e.preventDefault();
+      stepNumber(input, 1);
+      syncNumBtns(input, wrap);
+    });
+    spin.querySelector('.jb-num-down').addEventListener('click', function (e) {
+      e.preventDefault();
+      stepNumber(input, -1);
+      syncNumBtns(input, wrap);
+    });
+    input.addEventListener('input', function () { syncNumBtns(input, wrap); });
+    input.addEventListener('change', function () { syncNumBtns(input, wrap); });
+    syncNumBtns(input, wrap);
+  }
+  function scanNumberSteppers(root) {
+    if (!root || root.nodeType !== 1) return;
+    if (root.matches && root.matches('input[type="number"]')) wireNumberStepper(root);
+    if (root.querySelectorAll) root.querySelectorAll('input[type="number"]').forEach(wireNumberStepper);
+  }
+  function initNumberSteppers() {
+    scanNumberSteppers(document.body);
+    if (numObs || !document.body) return;
+    numObs = new MutationObserver(function (muts) {
+      muts.forEach(function (m) {
+        [].forEach.call(m.addedNodes, function (n) {
+          if (n.nodeType === 1) scanNumberSteppers(n);
+        });
+      });
+    });
+    numObs.observe(document.body, { childList: true, subtree: true });
+  }
+
   function wireEggFooter() {
     if (eggWired) return;
     var footer = document.getElementById('appFooter') || document.querySelector('.foot');
@@ -764,6 +851,7 @@
     eggEnsureOverlay();
   }
   whenReady(wireEggFooter);
+  whenReady(initNumberSteppers);
 
   whenReady(initScrollLock);
   whenReady(initAuthPersistence);
@@ -1397,7 +1485,7 @@
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,
-    toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady, wireEggFooter: wireEggFooter,
+    toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady, wireEggFooter: wireEggFooter, refreshNumberSteppers: scanNumberSteppers,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis
   };

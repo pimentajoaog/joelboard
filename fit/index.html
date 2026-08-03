@@ -195,6 +195,7 @@
           <div><span class="fl">Fibra (g)</span><input class="field" id="macroGoalF" type="number" onchange="macroSaveGoalsFromInputs()"></div>
           <div><span class="fl">Fibra solúvel (g)</span><input class="field" id="macroGoalSF" type="number" onchange="macroSaveGoalsFromInputs()"></div>
           <div><span class="fl">Kcal</span><input class="field" id="macroGoalK" type="number" onchange="macroSaveGoalsFromInputs()"></div>
+          <div><span class="fl">Água (ml/dia)</span><input class="field" id="macroGoalWater" type="number" inputmode="numeric" onchange="macroSaveGoalsFromInputs()"></div>
         </div>
       </div>
       <div class="fg"><label class="fl">Exibir no resumo</label>
@@ -205,6 +206,7 @@
           <button class="mtoggle on" id="macroShowG" onclick="toggleMacroShow(this)">Gordura</button>
           <button class="mtoggle on" id="macroShowF" onclick="toggleMacroShow(this)">Fibra</button>
           <button class="mtoggle on" id="macroShowSF" onclick="toggleMacroShow(this)">Fibra sol.</button>
+          <button class="mtoggle on" id="macroShowWater" onclick="toggleMacroShow(this)">Água</button>
         </div>
       </div>
       <div class="fg"><label class="fl">Refeições</label><div class="rg" style="font-size:11px;margin-bottom:8px">Arraste ⠿ para reordenar — a ordem aparece na aba Macros.</div><div id="macroMealsEdit"></div><button class="btn ghost" style="width:100%;margin-top:8px" onclick="macroAddMeal()">+ Nova refeição</button></div>

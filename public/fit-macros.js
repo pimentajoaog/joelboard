@@ -5,8 +5,8 @@ var MACRO_MEALS_DEFAULT = [
   { id: 'dinner', name: 'Jantar', order: 2 },
   { id: 'snacks', name: 'Lanches', order: 3 }
 ];
-var MACRO_GOALS_DEFAULT = { p: 150, c: 200, g: 65, f: 25, sf: 10, kcal: 2200 };
-var MACRO_SHOW_DEFAULT = { p: true, c: true, g: true, f: true, sf: true, kcal: true };
+var MACRO_GOALS_DEFAULT = { p: 150, c: 200, g: 65, f: 25, sf: 10, kcal: 2200, water: 2000 };
+var MACRO_SHOW_DEFAULT = { p: true, c: true, g: true, f: true, sf: true, kcal: true, water: true };
 var MACRO_ACTIVITY = [
   { id: 'sedentary', mult: 1.2 },
   { id: 'light', mult: 1.375 },
@@ -33,11 +33,69 @@ function macroMeals() {
 }
 function macroGoals() {
   var g = (DATA.config && DATA.config.macrogoals) || {};
-  return { p: Number(g.p) || MACRO_GOALS_DEFAULT.p, c: Number(g.c) || MACRO_GOALS_DEFAULT.c, g: Number(g.g) || MACRO_GOALS_DEFAULT.g, f: Number(g.f) || MACRO_GOALS_DEFAULT.f, sf: Number(g.sf) || MACRO_GOALS_DEFAULT.sf, kcal: Number(g.kcal) || MACRO_GOALS_DEFAULT.kcal };
+  var water = g.water != null && g.water !== '' ? Number(g.water) : MACRO_GOALS_DEFAULT.water;
+  if (isNaN(water)) water = MACRO_GOALS_DEFAULT.water;
+  return { p: Number(g.p) || MACRO_GOALS_DEFAULT.p, c: Number(g.c) || MACRO_GOALS_DEFAULT.c, g: Number(g.g) || MACRO_GOALS_DEFAULT.g, f: Number(g.f) || MACRO_GOALS_DEFAULT.f, sf: Number(g.sf) || MACRO_GOALS_DEFAULT.sf, kcal: Number(g.kcal) || MACRO_GOALS_DEFAULT.kcal, water: water };
 }
 function macroShow() {
   var s = (DATA.config && DATA.config.macroshow) || {};
-  return { p: s.p !== false, c: s.c !== false, g: s.g !== false, f: s.f !== false, sf: s.sf !== false, kcal: s.kcal !== false };
+  return { p: s.p !== false, c: s.c !== false, g: s.g !== false, f: s.f !== false, sf: s.sf !== false, kcal: s.kcal !== false, water: s.water !== false };
+}
+function macroWaterLog() {
+  return (DATA.config && DATA.config.macrowaterlog) || {};
+}
+function macroWaterFor(date) {
+  return Number(macroWaterLog()[date]) || 0;
+}
+function macroSaveWaterLog(log) {
+  DATA.config = DATA.config || {};
+  DATA.config.macrowaterlog = log;
+  saveConfig('macrowaterlog', JSON.stringify(log));
+}
+function macroAddWater(ml) {
+  ml = Number(ml) || 0;
+  if (!ml) return;
+  var date = macroDate(), log = macroWaterLog();
+  log[date] = Math.max(0, macroWaterFor(date) + ml);
+  macroSaveWaterLog(log);
+  renderMacros();
+  toast('💧 +' + ml + ' ml');
+}
+function macroResetWater() {
+  var date = macroDate(), log = macroWaterLog();
+  if (!macroWaterFor(date)) return;
+  log[date] = 0;
+  macroSaveWaterLog(log);
+  renderMacros();
+  toast('💧 Água zerada');
+}
+function macroWaterCardHtml(ml, goal) {
+  var pct = Math.min(100, Math.round((ml / Math.max(goal, 1)) * 100));
+  var done = pct >= 100;
+  return '<div class="mwater' + (done ? ' mwater-done' : '') + '">'
+    + '<div class="mwater-top"><span class="mwater-lbl">💧 Água</span><span class="mwater-stats">' + ml + ' / ' + goal + ' ml</span></div>'
+    + '<div class="mwater-body">'
+    + '<div class="mwater-glass" aria-hidden="true"><div class="mwater-fill" data-pct="' + pct + '"><div class="mwater-wave"></div></div></div>'
+    + '<div class="mwater-side"><div class="mwater-pct">' + pct + '%</div>'
+    + (done ? '<div class="mwater-done-lbl">Meta!</div>' : '')
+    + '<button type="button" class="lnk mwater-reset" onclick="macroResetWater()" title="Zerar hoje">↺</button></div>'
+    + '</div>'
+    + '<div class="mwater-btns">'
+    + [200, 250, 500].map(function (n) {
+      return '<button type="button" class="mw-btn" onclick="macroAddWater(' + n + ')">+' + n + ' ml</button>';
+    }).join('')
+    + '</div></div>';
+}
+function animateWaterFill(root) {
+  root = root || document;
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      var fills = root.querySelectorAll ? root.querySelectorAll('.mwater-fill') : [];
+      for (var i = 0; i < fills.length; i++) {
+        fills[i].style.height = (fills[i].getAttribute('data-pct') || 0) + '%';
+      }
+    });
+  });
 }
 function macroFavs() { return (DATA.config && DATA.config.macrofavs) || []; }
 
@@ -119,7 +177,8 @@ function macroCalcFromProfile(p) {
   var cG = Math.round(cK / 4);
   var fiber = Math.max(20, Math.round(kcal / 1000 * 14));
   var sf = Math.max(8, Math.round(fiber * 0.4));
-  return { bmr: bmr, tdee: tdee, adj: adj, kcal: kcal, p: pG, c: cG, g: gG, f: fiber, sf: sf, goalLabel: MACRO_GOAL_LABEL[p.goal] || '' };
+  var water = Math.max(1500, Math.round(kg * 35 / 250) * 250);
+  return { bmr: bmr, tdee: tdee, adj: adj, kcal: kcal, p: pG, c: cG, g: gG, f: fiber, sf: sf, water: water, goalLabel: MACRO_GOAL_LABEL[p.goal] || '' };
 }
 function macroCalcPreviewHtml(r, p) {
   if (!r) return '<div class="mcalc-empty">Preencha idade, altura e peso para ver a estimativa.</div>';
@@ -133,6 +192,7 @@ function macroCalcPreviewHtml(r, p) {
     + '<div class="mcalc-row"><span>Carbs</span><strong>' + r.c + ' g</strong></div>'
     + '<div class="mcalc-row"><span>Gordura</span><strong>' + r.g + ' g</strong></div>'
     + '<div class="mcalc-row"><span>Fibra / Fibra sol.</span><strong>' + r.f + ' / ' + r.sf + ' g</strong></div>'
+    + '<div class="mcalc-row"><span>Água</span><strong>' + r.water + ' ml</strong></div>'
     + '</div>';
 }
 function macroCalcUpdatePreview() {
@@ -163,7 +223,7 @@ function macroApplyCalc() {
   p.applied = true;
   p.appliedAt = new Date().toISOString().slice(0, 10);
   macroSaveProfile(p);
-  macroSaveGoals({ p: r.p, c: r.c, g: r.g, f: r.f, sf: r.sf, kcal: r.kcal });
+  macroSaveGoals({ p: r.p, c: r.c, g: r.g, f: r.f, sf: r.sf, kcal: r.kcal, water: r.water });
   if ($('macroGoalP')) renderMacroSettingsPanel();
   macroCloseCalc();
   renderMacros();
@@ -364,6 +424,8 @@ function renderMacros() {
       return '<button class="mfav-btn" onclick="macroQuickFav(\'' + escAttr(f.key) + '\')">' + esc(f.name) + '</button>';
     }).join('') + '</div></div>' : '';
 
+  var waterHtml = (show.water && goals.water > 0) ? macroWaterCardHtml(macroWaterFor(date), goals.water) : '';
+
   el.innerHTML = macroCalcBannerHtml()
     + '<div class="mhead">'
     + '<button class="lnk" onclick="macroNav(-1)">‹</button>'
@@ -371,9 +433,11 @@ function renderMacros() {
     + '<button class="lnk" onclick="macroNav(1)">›</button>'
     + '<button class="lnk" onclick="macroCopyYesterday()" title="Copiar ontem">↻</button>'
     + '</div>'
+    + waterHtml
     + '<div class="mrings">' + (rings || '<div class="rg">Defina metas em <button class="lnk" onclick="macroOpenCalc()">Calcular metas</button> ou <button class="lnk" onclick="openMacroSettings()">Ajustes → Macros</button></div>') + '</div>'
     + favHtml + '<div class="jb-meal-list">' + mealHtml + '</div>';
   animateMacroRings(el);
+  animateWaterFill(el);
   if (!_stMacros) {
     _stMacros = true;
     var ml = el.querySelector('.jb-meal-list');
@@ -674,12 +738,14 @@ function renderMacroSettingsPanel() {
   if ($('macroGoalF')) $('macroGoalF').value = g.f;
   if ($('macroGoalSF')) $('macroGoalSF').value = g.sf;
   if ($('macroGoalK')) $('macroGoalK').value = g.kcal;
+  if ($('macroGoalWater')) $('macroGoalWater').value = g.water;
   if ($('macroShowP')) $('macroShowP').classList.toggle('on', s.p);
   if ($('macroShowC')) $('macroShowC').classList.toggle('on', s.c);
   if ($('macroShowG')) $('macroShowG').classList.toggle('on', s.g);
   if ($('macroShowF')) $('macroShowF').classList.toggle('on', s.f);
   if ($('macroShowSF')) $('macroShowSF').classList.toggle('on', s.sf);
   if ($('macroShowK')) $('macroShowK').classList.toggle('on', s.kcal);
+  if ($('macroShowWater')) $('macroShowWater').classList.toggle('on', s.water);
   renderMacroMealsEditor();
   renderMacroCustomList();
 }
@@ -690,7 +756,8 @@ function macroGoalsFromInputs() {
     g: Number($('macroGoalG').value) || 0,
     f: Number($('macroGoalF').value) || 0,
     sf: Number($('macroGoalSF').value) || 0,
-    kcal: Number($('macroGoalK').value) || 0
+    kcal: Number($('macroGoalK').value) || 0,
+    water: Number($('macroGoalWater').value) || 0
   };
 }
 function macroSaveGoalsFromInputs() {
@@ -755,7 +822,8 @@ function toggleMacroShow(el) {
     g: $('macroShowG').classList.contains('on'),
     f: $('macroShowF').classList.contains('on'),
     sf: $('macroShowSF').classList.contains('on'),
-    kcal: $('macroShowK').classList.contains('on')
+    kcal: $('macroShowK').classList.contains('on'),
+    water: $('macroShowWater').classList.contains('on')
   });
   renderMacros();
 }

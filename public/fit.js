@@ -91,6 +91,7 @@ function buildFit(t){
   config.macrogoals=(function(){ try{ var v=JSON.parse(config.macrogoals); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
   config.macroshow=(function(){ try{ var v=JSON.parse(config.macroshow); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
   config.macrofavs=(function(){ try{ var v=JSON.parse(config.macrofavs); return (v&&v.length)?v:[]; }catch(e){ return []; } })();
+  config.macrowaterlog=(function(){ try{ var v=JSON.parse(config.macrowaterlog); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
   config.macroprofile=(function(){ try{ var v=JSON.parse(config.macroprofile); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
   config.macrocalcdismissed=config.macrocalcdismissed==='1'||config.macrocalcdismissed===true;
   return {

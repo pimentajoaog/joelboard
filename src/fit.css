@@ -270,6 +270,26 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .mmealedit .rm{ flex:0 0 auto; width:32px; height:32px; border:0; border-radius:8px; background:var(--surface2); color:var(--muted); cursor:pointer; font-family:inherit; }
 #macroMealsEdit{ display:flex; flex-direction:column; gap:6px; }
 .macrogoals-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.mcalc-banner{
+  display:flex; align-items:flex-start; gap:10px;
+  background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(139,92,246,.08));
+  border:1px solid var(--border); border-radius:16px; padding:14px; margin-bottom:14px;
+}
+.mcalc-banner-t{ flex:1; min-width:0; }
+.mcalc-banner-t .mcalc-title{ font-size:14px; font-weight:800; margin-bottom:4px; }
+.mcalc-banner-t .rg{ font-size:12px; line-height:1.4; }
+.mcalc-banner-actions{ display:flex; flex-direction:column; gap:6px; flex:0 0 auto; }
+.mcalc-banner-actions .btn{ padding:8px 12px; font-size:12px; white-space:nowrap; }
+.mcalc-banner-x{ width:28px; height:28px; border:0; border-radius:8px; background:transparent; color:var(--muted); cursor:pointer; font-size:14px; font-family:inherit; align-self:flex-end; }
+.mcalc-preview{
+  background:var(--surface2); border:1px solid var(--border); border-radius:14px;
+  padding:14px; margin-bottom:14px; font-size:13px; line-height:1.5;
+}
+.mcalc-preview .mcalc-row{ display:flex; justify-content:space-between; gap:10px; padding:4px 0; }
+.mcalc-preview .mcalc-row strong{ font-variant-numeric:tabular-nums; }
+.mcalc-preview .mcalc-hd{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin-bottom:8px; }
+.mcalc-preview .mcalc-macros{ margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+.mcalc-preview .mcalc-empty{ color:var(--muted); font-size:12px; }
 .mcustom-row{ display:flex; align-items:center; gap:8px; padding:10px 4px; border-top:1px solid var(--border); cursor:pointer; }
 .mcustom-row:first-child{ border-top:0; padding-top:2px; }
 .mcustom-l{ flex:1; min-width:0; }

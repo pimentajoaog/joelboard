@@ -134,6 +134,33 @@
   </div>
 </div>
 
+<div class="overlay" id="macroCalcOverlay" onclick="if(event.target===this)macroCloseCalc()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Calcular metas</div><button class="x" onclick="macroCloseCalc()">✕</button></div>
+    <div class="rg" style="font-size:11px;margin-bottom:12px">Estimativa com Mifflin-St Jeor — ajuste depois se precisar.</div>
+    <div class="macrogoals-grid">
+      <div class="fg" style="margin:0"><label class="fl">Sexo</label><select class="field" id="macroCalcSex" onchange="macroCalcUpdatePreview()"><option value="m">Masculino</option><option value="f">Feminino</option></select></div>
+      <div class="fg" style="margin:0"><label class="fl">Idade</label><input class="field" id="macroCalcAge" type="number" inputmode="numeric" placeholder="ex.: 28" oninput="macroCalcUpdatePreview()"></div>
+      <div class="fg" style="margin:0"><label class="fl">Altura (cm)</label><input class="field" id="macroCalcHeight" type="number" inputmode="decimal" placeholder="ex.: 170" oninput="macroCalcUpdatePreview()"></div>
+      <div class="fg" style="margin:0"><label class="fl">Peso (kg)</label><input class="field" id="macroCalcWeight" type="number" inputmode="decimal" placeholder="ex.: 72" oninput="macroCalcUpdatePreview()"></div>
+    </div>
+    <div class="fg"><label class="fl">Nível de atividade</label><select class="field" id="macroCalcActivity" onchange="macroCalcUpdatePreview()">
+      <option value="sedentary">Sedentário — pouco ou nenhum exercício</option>
+      <option value="light">Leve — 1–3 treinos/semana</option>
+      <option value="moderate" selected>Moderado — 3–5 treinos/semana</option>
+      <option value="active">Intenso — 6–7 treinos/semana</option>
+      <option value="very">Muito intenso — 2×/dia ou trabalho físico</option>
+    </select></div>
+    <div class="fg"><label class="fl">Objetivo</label><select class="field" id="macroCalcGoal" onchange="macroCalcUpdatePreview()">
+      <option value="cut">Perder peso (−400 kcal)</option>
+      <option value="maintain" selected>Manter peso</option>
+      <option value="bulk">Ganhar massa (+300 kcal)</option>
+    </select></div>
+    <div id="macroCalcPreview" class="mcalc-preview"></div>
+    <button class="btn-primary" onclick="macroApplyCalc()">Aplicar metas</button>
+  </div>
+</div>
+
 <div class="overlay" id="setOverlay" onclick="if(event.target===this)closeSettings()">
   <div class="modal">
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>
@@ -159,6 +186,7 @@
       <div class="fg"><label class="fl">Metas de volume (séries/semana)</label><div id="setVol"></div></div>
     </div>
     <div class="set-pane" data-pane="macros" style="display:none">
+      <div class="fg"><button class="btn ghost" style="width:100%" onclick="macroOpenCalc()">📊 Calcular metas automaticamente</button></div>
       <div class="fg"><label class="fl">Metas diárias</label>
         <div class="macrogoals-grid">
           <div><span class="fl">Proteína (g)</span><input class="field" id="macroGoalP" type="number" onchange="macroSaveGoalsFromInputs()"></div>

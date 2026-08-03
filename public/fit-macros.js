@@ -7,6 +7,15 @@ var MACRO_MEALS_DEFAULT = [
 ];
 var MACRO_GOALS_DEFAULT = { p: 150, c: 200, g: 65, f: 25, sf: 10, kcal: 2200 };
 var MACRO_SHOW_DEFAULT = { p: true, c: true, g: true, f: true, sf: true, kcal: true };
+var MACRO_ACTIVITY = [
+  { id: 'sedentary', mult: 1.2 },
+  { id: 'light', mult: 1.375 },
+  { id: 'moderate', mult: 1.55 },
+  { id: 'active', mult: 1.725 },
+  { id: 'very', mult: 1.9 }
+];
+var MACRO_GOAL_ADJ = { cut: -400, maintain: 0, bulk: 300 };
+var MACRO_GOAL_LABEL = { cut: 'Perder peso', maintain: 'Manter peso', bulk: 'Ganhar massa' };
 var MACRO_PRESETS_GLOBAL = [
   { l: '100 g', g: 100 }, { l: '50 g', g: 50 }, { l: '30 g', g: 30 },
   { l: '1 colher sopa (~15 g)', g: 15 }, { l: '1 colher chá (~5 g)', g: 5 }
@@ -51,6 +60,122 @@ function macroSaveFavs(f) {
   DATA.config = DATA.config || {};
   DATA.config.macrofavs = f;
   saveConfig('macrofavs', JSON.stringify(f));
+}
+
+function macroProfile() {
+  return (DATA.config && DATA.config.macroprofile) || {};
+}
+function macroSaveProfile(p) {
+  DATA.config = DATA.config || {};
+  DATA.config.macroprofile = p;
+  saveConfig('macroprofile', JSON.stringify(p));
+}
+function macroLatestWeightKg() {
+  var ps = (DATA.pesos || []).slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
+  return ps.length ? ps[0].kg : 0;
+}
+function macroShowCalcBanner() {
+  if (DATA.config && DATA.config.macrocalcdismissed) return false;
+  if ((macroProfile() || {}).applied) return false;
+  return true;
+}
+function macroDismissCalcBanner() {
+  DATA.config = DATA.config || {};
+  DATA.config.macrocalcdismissed = true;
+  saveConfig('macrocalcdismissed', '1');
+  renderMacros();
+}
+function macroActivityMult(id) {
+  var hit = MACRO_ACTIVITY.filter(function (a) { return a.id === id; })[0];
+  return hit ? hit.mult : 1.55;
+}
+function macroCalcBmr(sex, kg, cm, age) {
+  kg = Number(kg); cm = Number(cm); age = Number(age);
+  if (!(kg > 0) || !(cm > 0) || !(age > 0)) return 0;
+  var base = 10 * kg + 6.25 * cm - 5 * age;
+  return Math.round(sex === 'f' ? base - 161 : base + 5);
+}
+function macroCalcProfileFromInputs() {
+  return {
+    sex: ($('macroCalcSex') && $('macroCalcSex').value) || 'm',
+    age: Number(($('macroCalcAge') && $('macroCalcAge').value) || 0),
+    height: Number(($('macroCalcHeight') && $('macroCalcHeight').value) || 0),
+    weight: Number(String(($('macroCalcWeight') && $('macroCalcWeight').value) || '').replace(',', '.')) || 0,
+    activity: ($('macroCalcActivity') && $('macroCalcActivity').value) || 'moderate',
+    goal: ($('macroCalcGoal') && $('macroCalcGoal').value) || 'maintain'
+  };
+}
+function macroCalcFromProfile(p) {
+  var bmr = macroCalcBmr(p.sex, p.weight, p.height, p.age);
+  if (!bmr) return null;
+  var tdee = Math.round(bmr * macroActivityMult(p.activity));
+  var adj = MACRO_GOAL_ADJ[p.goal] != null ? MACRO_GOAL_ADJ[p.goal] : 0;
+  var kcal = Math.max(1200, tdee + adj);
+  var kg = Number(p.weight) || macroLatestWeightKg();
+  var pG = Math.round(kg * 2);
+  var gG = Math.round(kg * 0.8);
+  var pK = pG * 4, gK = gG * 9;
+  var cK = Math.max(0, kcal - pK - gK);
+  var cG = Math.round(cK / 4);
+  var fiber = Math.max(20, Math.round(kcal / 1000 * 14));
+  var sf = Math.max(8, Math.round(fiber * 0.4));
+  return { bmr: bmr, tdee: tdee, adj: adj, kcal: kcal, p: pG, c: cG, g: gG, f: fiber, sf: sf, goalLabel: MACRO_GOAL_LABEL[p.goal] || '' };
+}
+function macroCalcPreviewHtml(r, p) {
+  if (!r) return '<div class="mcalc-empty">Preencha idade, altura e peso para ver a estimativa.</div>';
+  var adjTxt = r.adj < 0 ? ('−' + Math.abs(r.adj)) : (r.adj > 0 ? ('+' + r.adj) : '0');
+  return '<div class="mcalc-hd">Estimativa diária</div>'
+    + '<div class="mcalc-row"><span>BMR (repouso)</span><strong>' + r.bmr + ' kcal</strong></div>'
+    + '<div class="mcalc-row"><span>TDEE (manutenção)</span><strong>' + r.tdee + ' kcal</strong></div>'
+    + '<div class="mcalc-row"><span>Alvo · ' + esc(r.goalLabel) + ' (' + adjTxt + ')</span><strong>' + r.kcal + ' kcal</strong></div>'
+    + '<div class="mcalc-macros">'
+    + '<div class="mcalc-row"><span>Proteína</span><strong>' + r.p + ' g</strong></div>'
+    + '<div class="mcalc-row"><span>Carbs</span><strong>' + r.c + ' g</strong></div>'
+    + '<div class="mcalc-row"><span>Gordura</span><strong>' + r.g + ' g</strong></div>'
+    + '<div class="mcalc-row"><span>Fibra / Fibra sol.</span><strong>' + r.f + ' / ' + r.sf + ' g</strong></div>'
+    + '</div>';
+}
+function macroCalcUpdatePreview() {
+  var el = $('macroCalcPreview'); if (!el) return;
+  el.innerHTML = macroCalcPreviewHtml(macroCalcFromProfile(macroCalcProfileFromInputs()));
+}
+function macroFillCalcForm() {
+  var p = macroProfile(), w = macroLatestWeightKg();
+  if ($('macroCalcSex')) $('macroCalcSex').value = p.sex === 'f' ? 'f' : 'm';
+  if ($('macroCalcAge')) $('macroCalcAge').value = p.age > 0 ? p.age : '';
+  if ($('macroCalcHeight')) $('macroCalcHeight').value = p.height > 0 ? p.height : '';
+  if ($('macroCalcWeight')) $('macroCalcWeight').value = (p.weight > 0 ? p.weight : w) || '';
+  if ($('macroCalcActivity')) $('macroCalcActivity').value = p.activity || 'moderate';
+  if ($('macroCalcGoal')) $('macroCalcGoal').value = p.goal || 'maintain';
+  macroCalcUpdatePreview();
+}
+function macroOpenCalc() {
+  macroFillCalcForm();
+  $('macroCalcOverlay').classList.add('open');
+}
+function macroCloseCalc() {
+  $('macroCalcOverlay').classList.remove('open');
+}
+function macroApplyCalc() {
+  var p = macroCalcProfileFromInputs();
+  var r = macroCalcFromProfile(p);
+  if (!r) { toast('Preencha idade, altura e peso'); return; }
+  p.applied = true;
+  p.appliedAt = new Date().toISOString().slice(0, 10);
+  macroSaveProfile(p);
+  macroSaveGoals({ p: r.p, c: r.c, g: r.g, f: r.f, sf: r.sf, kcal: r.kcal });
+  if ($('macroGoalP')) renderMacroSettingsPanel();
+  macroCloseCalc();
+  renderMacros();
+  toast('✓ Metas aplicadas');
+}
+function macroCalcBannerHtml() {
+  if (!macroShowCalcBanner()) return '';
+  return '<div class="mcalc-banner">'
+    + '<div class="mcalc-banner-t"><div class="mcalc-title">Calcule suas metas de macros</div>'
+    + '<div class="rg">Use a fórmula Mifflin-St Jeor para estimar kcal e proteína/carbs/gordura com base no seu perfil.</div></div>'
+    + '<div class="mcalc-banner-actions"><button class="btn btn-primary" onclick="macroOpenCalc()">Calcular</button>'
+    + '<button class="mcalc-banner-x" onclick="macroDismissCalcBanner()" title="Fechar">✕</button></div></div>';
 }
 
 function macroLogRow(e) {
@@ -239,13 +364,14 @@ function renderMacros() {
       return '<button class="mfav-btn" onclick="macroQuickFav(\'' + escAttr(f.key) + '\')">' + esc(f.name) + '</button>';
     }).join('') + '</div></div>' : '';
 
-  el.innerHTML = '<div class="mhead">'
+  el.innerHTML = macroCalcBannerHtml()
+    + '<div class="mhead">'
     + '<button class="lnk" onclick="macroNav(-1)">‹</button>'
     + '<button class="field datebtn" style="flex:1;text-align:center" onclick="macroPickDate()">' + macroFmtDate(date) + '</button>'
     + '<button class="lnk" onclick="macroNav(1)">›</button>'
     + '<button class="lnk" onclick="macroCopyYesterday()" title="Copiar ontem">↻</button>'
     + '</div>'
-    + '<div class="mrings">' + (rings || '<div class="rg">Defina metas em <button class="lnk" onclick="openMacroSettings()">Ajustes → Macros</button></div>') + '</div>'
+    + '<div class="mrings">' + (rings || '<div class="rg">Defina metas em <button class="lnk" onclick="macroOpenCalc()">Calcular metas</button> ou <button class="lnk" onclick="openMacroSettings()">Ajustes → Macros</button></div>') + '</div>'
     + favHtml + '<div class="jb-meal-list">' + mealHtml + '</div>';
   animateMacroRings(el);
   if (!_stMacros) {

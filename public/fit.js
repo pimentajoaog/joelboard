@@ -91,6 +91,8 @@ function buildFit(t){
   config.macrogoals=(function(){ try{ var v=JSON.parse(config.macrogoals); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
   config.macroshow=(function(){ try{ var v=JSON.parse(config.macroshow); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
   config.macrofavs=(function(){ try{ var v=JSON.parse(config.macrofavs); return (v&&v.length)?v:[]; }catch(e){ return []; } })();
+  config.macroprofile=(function(){ try{ var v=JSON.parse(config.macroprofile); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } })();
+  config.macrocalcdismissed=config.macrocalcdismissed==='1'||config.macrocalcdismissed===true;
   return {
     exercicios: body(t.Exercicios).filter(function(r){return r[0];}).map(function(r){ return { id:r[2], name:r[0], group:r[1]||'' }; }),
     treinos: body(t.Treinos).filter(function(r){return r[0];}).map(function(r){ var it=[]; try{it=JSON.parse(r[1]||'[]');}catch(e){} return { id:r[2], name:r[0], items:normItems(it) }; }),

@@ -11,7 +11,6 @@ function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,
 function escAttr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 function toast(m){ JB.toast(m); }
 function fitWriteErr(e){ toast('Erro: '+((e&&e.message)||'falha ao salvar')); }
-
 /* ---- auth (shared core) ---- */
 function startAuth(){
   if (JB.cachedToken()){ afterAuth(); return; }
@@ -243,7 +242,7 @@ function weightCardHtml(){
     +'<div class="wsub">'+sub+'</div></div>';
 }
 function logWeight(){ var raw=(($('wInput')&&$('wInput').value)||'').replace(',','.'); var v=parseFloat(raw); if(!(v>0)){ toast('Peso inválido'); return; } v=Math.round(v*10)/10;
-  var today=new Date().toISOString().slice(0,10); DATA.pesos=DATA.pesos||[];
+  var today=JB.todayYmd(); DATA.pesos=DATA.pesos||[];
   var ex=DATA.pesos.filter(function(p){return p.date===today;})[0];
   if(ex){ ex.kg=v; renderHoje(); if(!progEx) renderProgresso(); toast('✓ Peso atualizado');
     fitFindRow('Peso',2,ex.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Peso!A'+row+':C'+row)+'?valueInputOption=RAW'), { values:[[today,v,ex.id]] }); }).catch(function(){ toast('Erro ao salvar'); });
@@ -323,7 +322,7 @@ function progHint(sg,rmax){ if(!sg||!sg.kind) return ''; var u=unit();
   if(sg.kind==='time') return '<div class="pghint hold">⏱ Segure pelo tempo alvo</div>';
   return ''; }
 function buildRunItem(ex,sets,rmin,rmax,rest){ rmin=Number(rmin)||8; rmax=Number(rmax)||12; var baseSets=Number(sets)||3; var baseRest=(rest!=null?Number(rest):null); var sg=suggestProg(ex,{rmin:rmin,rmax:rmax,sets:baseSets,rest:(baseRest!=null?baseRest:restDefault())}); var nSets=baseSets; var pw=(sg.weight!==''&&sg.weight!=null)?sg.weight:''; var arr=[]; for(var i=0;i<nSets;i++){ arr.push({reps:'',peso:pw,done:false}); } return { ex:ex, name:exName(ex), mode:sg.mode, sets:arr, rmin:rmin, rmax:rmax, rest:(sg.rest!=null?sg.rest:baseRest), sg:sg }; }
-function startSession(tid){ var date=new Date().toISOString().slice(0,10); var name='Avulso', items=[]; if(tid){ var r=(DATA.treinos||[]).find(function(x){return x.id===tid;}); if(r){ name=r.name; items=(r.items||[]).map(function(it){ return buildRunItem(it.ex,it.sets,it.rmin,it.rmax,it.rest); }); } } sess={ treinoName:name, date:date, cur:0, items:items }; runPhase='ready'; stopRest(); $('runOverlay').classList.add('open'); renderRun(); }
+function startSession(tid){ var date=JB.todayYmd(); var name='Avulso', items=[]; if(tid){ var r=(DATA.treinos||[]).find(function(x){return x.id===tid;}); if(r){ name=r.name; items=(r.items||[]).map(function(it){ return buildRunItem(it.ex,it.sets,it.rmin,it.rmax,it.rest); }); } } sess={ treinoName:name, date:date, cur:0, items:items }; runPhase='ready'; stopRest(); $('runOverlay').classList.add('open'); renderRun(); }
 var runPhase='ready';
 function restFor(it){ return (it&&it.rest!=null)?it.rest:restDefault(); }
 var rest={id:null,secs:0,tot:0};
@@ -519,8 +518,7 @@ function normItems(arr){ return (arr||[]).map(function(it){ if(typeof it==='stri
 function restDefault(){ return Number(DATA.config&&DATA.config.rest)||90; }
 function incDefault(){ return Number(DATA.config&&DATA.config.inc)||2.5; }
 /* ---- weekly volume (sets per muscle group, Sunday–Saturday) ---- */
-function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function weekBounds(){ var d=new Date(); d.setHours(12,0,0,0); var st=new Date(d); st.setDate(d.getDate()-d.getDay()); var en=new Date(st); en.setDate(st.getDate()+6); return [ymd(st),ymd(en)]; }
+function weekBounds(){ var d=new Date(); d.setHours(12,0,0,0); var st=new Date(d); st.setDate(d.getDate()-d.getDay()); var en=new Date(st); en.setDate(st.getDate()+6); return [JB.ymd(st),JB.ymd(en)]; }
 function weeklyVolume(){ var b=weekBounds(); var dateOf={}; (DATA.sessoes||[]).forEach(function(s){ dateOf[s.id]=s.date; }); var grpOf={}; (DATA.exercicios||[]).forEach(function(e){ grpOf[e.id]=e.group||'Outro'; }); var vol={}; (DATA.series||[]).forEach(function(x){ var d=dateOf[x.sessaoId]; if(!d||d<b[0]||d>b[1]) return; var g=grpOf[x.exId]||'Outro'; vol[g]=(vol[g]||0)+1; }); return vol; }
 function volGoals(){ return (DATA.config&&DATA.config.volgoals)||{}; }
 function volGoal(g){ var v=volGoals()[g]; if(v&&v.length===2&&(Number(v[0])||Number(v[1]))) return [Number(v[0])||0,Number(v[1])||0]; return [10,20]; }

@@ -22,6 +22,11 @@ var JB_REPLACE = (function () {
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
 
+  function ymd(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
   function uuid() {
     return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       var r = Math.random() * 16 | 0;
@@ -451,6 +456,7 @@ var JB_REPLACE = (function () {
     STORAGE_KEY: STORAGE_KEY,
     BUILTIN: BUILTIN,
     uuid: uuid,
+    ymd: ymd,
     defaultData: defaultData,
     load: load,
     save: save,

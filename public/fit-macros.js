@@ -22,7 +22,7 @@ var MACRO_PRESETS_GLOBAL = [
 ];
 var _bundledFoods = null, _macroDate = null, _macroPick = null, _macroEdit = null, _macroCustomEdit = null, _macroSearchT = null, _macroMealsSortable = null, _offCache = {}, _stMacros = false, _macroVpBound = false, _macroWaterOpen = false, _macroWaterPour = false, _macroWaterOutsideBound = false;
 
-function macroToday() { return new Date().toISOString().slice(0, 10); }
+function macroToday() { return JB.todayYmd(); }
 function macroDate() { return _macroDate || macroToday(); }
 function macroSetDate(d) { _macroDate = d; renderMacros(); }
 
@@ -308,7 +308,7 @@ function macroApplyCalc() {
   var r = macroCalcFromProfile(p);
   if (!r) { toast('Preencha idade, altura e peso'); return; }
   p.applied = true;
-  p.appliedAt = new Date().toISOString().slice(0, 10);
+  p.appliedAt = JB.todayYmd();
   macroSaveProfile(p);
   macroSaveGoals({ p: r.p, c: r.c, g: r.g, f: r.f, sf: r.sf, kcal: r.kcal, water: r.water });
   if ($('macroGoalP')) renderMacroSettingsPanel();

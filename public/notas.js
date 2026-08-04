@@ -955,7 +955,7 @@ function notasExportItemRows(n, includeListMeta){
 }
 function exportNotasCsv(){
   if(!DATA){ toast('Nada para exportar'); return; }
-  var stamp=new Date().toISOString().slice(0,10);
+  var stamp=JB.todayYmd();
   var out=[notasCsvLine(notasExportHeaders(true))];
   (DATA.notas||[]).slice().sort(function(a,b){
     return String(b.atualizado||b.criado||'').localeCompare(String(a.atualizado||a.criado||''));
@@ -967,7 +967,7 @@ function exportNotasCsv(){
 }
 function exportNotasJson(){
   if(!DATA){ toast('Nada para exportar'); return; }
-  var stamp=new Date().toISOString().slice(0,10);
+  var stamp=JB.todayYmd();
   var payload={ app:'notas', version:1, exportedAt:new Date().toISOString(), notas:DATA.notas||[], itens:DATA.itens||[] };
   notasDownload('joelboard-notas-'+stamp+'.json', JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
   toast('✓ Backup exportado');

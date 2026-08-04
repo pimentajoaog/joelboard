@@ -316,7 +316,7 @@ function exportCsv() {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = 'joelboard-replace-' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.download = 'joelboard-replace-' + JB_REPLACE.ymd() + '.csv';
   a.click();
   URL.revokeObjectURL(url);
   toast('✓ CSV exportado');
@@ -327,7 +327,7 @@ function exportJson() {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = 'joelboard-replace-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.download = 'joelboard-replace-' + JB_REPLACE.ymd() + '.json';
   a.click();
   URL.revokeObjectURL(url);
   toast('✓ Backup exportado');

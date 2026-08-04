@@ -1478,6 +1478,12 @@
     if (!hasValue) { var i = document.getElementById(inputId); if (i) i.focus(); }
   }
 
+  function jbYmd(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function jbTodayYmd() { return jbYmd(new Date()); }
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, bootAuthIfExpired: bootAuthIfExpired, onSessionExpired: onSessionExpired, onAuthRestored: onAuthRestored, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
@@ -1487,6 +1493,6 @@
     feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,
     toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady, wireEggFooter: wireEggFooter, refreshNumberSteppers: scanNumberSteppers,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
-    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis
+    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, ymd: jbYmd, todayYmd: jbTodayYmd, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis
   };
 })();

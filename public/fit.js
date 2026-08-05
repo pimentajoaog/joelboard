@@ -325,14 +325,24 @@ function buildRunItem(ex,sets,rmin,rmax,rest){ rmin=Number(rmin)||8; rmax=Number
 function startSession(tid){ var date=JB.todayYmd(); var name='Avulso', items=[]; if(tid){ var r=(DATA.treinos||[]).find(function(x){return x.id===tid;}); if(r){ name=r.name; items=(r.items||[]).map(function(it){ return buildRunItem(it.ex,it.sets,it.rmin,it.rmax,it.rest); }); } } sess={ treinoName:name, date:date, cur:0, items:items }; runPhase='ready'; stopRest(); $('runOverlay').classList.add('open'); renderRun(); }
 var runPhase='ready';
 function restFor(it){ return (it&&it.rest!=null)?it.rest:restDefault(); }
-var rest={id:null,secs:0,tot:0};
-function startRest(secs){ stopRest(); rest.secs=Number(secs)||0; rest.tot=rest.secs; if(rest.secs<=0) return; rest.id=setInterval(function(){ rest.secs--; if(rest.secs<=0){ rest.secs=0; clearInterval(rest.id); rest.id=null; beep(); if(runPhase==='rest'){ rNextSet(); return; } } if(runPhase==='log'){ var lt=$('logTimer'); if(lt) lt.textContent=(rest.secs>0?('Descanso · ⏱ '+fmtT(rest.secs)):'Registrar série'); } else { renderRun(); } },1000); }
-function stopRest(){ if(rest.id){ clearInterval(rest.id); rest.id=null; } rest.secs=0; rest.tot=0; }
-var work={id:null,secs:0,tot:0};
+var rest={id:null,secs:0,tot:0,endsAt:0,label:''};
+var restDoneTimer=null;
+var work={id:null,secs:0,tot:0,endsAt:0};
 var loadEdit=false;
-function startWork(secs){ stopWork(); work.tot=Number(secs)||0; work.secs=work.tot; if(work.secs<=0) return; work.id=setInterval(function(){ work.secs--; if(work.secs<=0){ work.secs=0; clearInterval(work.id); work.id=null; beep(); rConcluir(); return; } renderRun(); },1000); }
-function stopWork(){ if(work.id){ clearInterval(work.id); work.id=null; } }
-function rAdd30(){ if(rest.id){ rest.secs+=30; rest.tot+=30; renderRun(); } }
+function fitTimerRemaining(endsAt){ if(!endsAt) return 0; return Math.max(0, Math.ceil((endsAt-Date.now())/1000)); }
+function fitAskNotif(){ if(!('Notification' in window)||Notification.permission!=='default') return; Notification.requestPermission().catch(function(){}); }
+function fitClearRestNotif(){ if(restDoneTimer){ clearTimeout(restDoneTimer); restDoneTimer=null; } if('serviceWorker' in navigator){ navigator.serviceWorker.ready.then(function(reg){ return reg.getNotifications({ tag:'joelboard-fit-rest' }); }).then(function(list){ list.forEach(function(n){ n.close(); }); }).catch(function(){}); } }
+function fitScheduleRestDoneNotif(){ fitClearRestNotif(); if(!rest.endsAt) return; var ms=Math.max(0, rest.endsAt-Date.now()); restDoneTimer=setTimeout(function(){ restDoneTimer=null; fitShowRestDoneNotif(); }, ms); }
+function fitShowRestDoneNotif(){ if(!('Notification' in window)||Notification.permission!=='granted') return; var title='Descanso terminou'; var body=rest.label?('Próxima série — '+rest.label):'Hora da próxima série'; var opts={ body:body, tag:'joelboard-fit-rest', renotify:true, icon:'/icon-192.png' }; if('serviceWorker' in navigator){ navigator.serviceWorker.ready.then(function(reg){ return reg.showNotification(title, opts); }).catch(function(){ try{ new Notification(title, opts); }catch(e){} }); } else { try{ new Notification(title, opts); }catch(e){} } }
+function fitUpdateMediaSession(title, artist){ if(!('mediaSession' in navigator)) return; try{ navigator.mediaSession.metadata=new MediaMetadata({ title:title, artist:artist||'Joelboard Fit', artwork:[{ src:'/icon-192.png', sizes:'192x192', type:'image/png' }] }); navigator.mediaSession.playbackState='playing'; }catch(e){} }
+function fitClearMediaSession(){ if(!('mediaSession' in navigator)) return; try{ navigator.mediaSession.playbackState='none'; navigator.mediaSession.metadata=null; }catch(e){} }
+function tickRest(){ if(!rest.endsAt) return false; rest.secs=fitTimerRemaining(rest.endsAt); if(rest.secs<=0){ rest.secs=0; var wasRest=runPhase==='rest'; stopRest(); beep(); if(wasRest) rNextSet(); else if(runPhase==='log') renderRun(); return true; } fitUpdateMediaSession(fmtT(rest.secs)+' — Descanso', rest.label); return false; }
+function startRest(secs){ stopRest(); rest.secs=Number(secs)||0; rest.tot=rest.secs; if(rest.secs<=0) return; rest.endsAt=Date.now()+rest.secs*1000; rest.label=(sess&&sess.items[sess.cur])?sess.items[sess.cur].name:''; fitAskNotif(); fitScheduleRestDoneNotif(); fitUpdateMediaSession(fmtT(rest.secs)+' — Descanso', rest.label); rest.id=setInterval(function(){ if(tickRest()) return; if(runPhase==='log'){ var lt=$('logTimer'); if(lt) lt.textContent=(rest.secs>0?('Descanso · ⏱ '+fmtT(rest.secs)):'Registrar série'); } else { renderRun(); } },1000); }
+function stopRest(){ if(rest.id){ clearInterval(rest.id); rest.id=null; } rest.secs=0; rest.tot=0; rest.endsAt=0; rest.label=''; fitClearRestNotif(); fitClearMediaSession(); }
+function tickWork(){ if(!work.endsAt) return false; work.secs=fitTimerRemaining(work.endsAt); if(work.secs<=0){ work.secs=0; stopWork(); beep(); rConcluir(); return true; } fitUpdateMediaSession(fmtT(work.secs)+' — Segure', (sess&&sess.items[sess.cur])?sess.items[sess.cur].name:''); return false; }
+function startWork(secs){ stopWork(); work.tot=Number(secs)||0; work.secs=work.tot; if(work.secs<=0) return; work.endsAt=Date.now()+work.secs*1000; fitUpdateMediaSession(fmtT(work.secs)+' — Segure', (sess&&sess.items[sess.cur])?sess.items[sess.cur].name:''); work.id=setInterval(function(){ if(tickWork()) return; renderRun(); },1000); }
+function stopWork(){ if(work.id){ clearInterval(work.id); work.id=null; } work.secs=0; work.tot=0; work.endsAt=0; if(!rest.endsAt) fitClearMediaSession(); }
+function rAdd30(){ if(!rest.endsAt) return; rest.endsAt+=30000; rest.tot+=30; rest.secs=fitTimerRemaining(rest.endsAt); fitScheduleRestDoneNotif(); renderRun(); }
 function rSkip(){ stopRest(); rNextSet(); }
 function firstPending(it){ for(var i=0;i<it.sets.length;i++){ if(!it.sets[i].done) return i; } return -1; }
 function ringSvg(pct,color){ var C=2*Math.PI*112; return '<svg viewBox="0 0 240 240"><circle cx="120" cy="120" r="112" fill="none" style="stroke:var(--surface2)" stroke-width="8"/>'+(pct>0?('<circle cx="120" cy="120" r="112" fill="none" style="stroke:'+color+'" stroke-width="8" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+(C*(1-pct))+'"/>'):'')+'</svg>'; }
@@ -352,7 +362,7 @@ function renderRun(){
     return;
   }
   if(runPhase==='log'){
-    var st=it.sets[fp]||{}; var resting=(rest.id&&rest.secs>0);
+    var st=it.sets[fp]||{}; var resting=(rest.endsAt&&rest.secs>0);
     var loadBox=(bw||timed)?'':'<div class="sbox grow" id="loadWrap">'+loadBoxInner()+'</div>';
     var repBox='<div class="sbox"><div class="lbl">'+(timed?'Segundos':'Reps')+'</div><div class="sctl"><button onclick="rBump(\'reps\',-1)">−</button><span class="v" id="vReps">'+(st.reps||0)+'</span><button onclick="rBump(\'reps\',1)">+</button></div></div>';
     stage.innerHTML='<div class="rkick" id="logTimer">'+(resting?('Descanso · ⏱ '+fmtT(rest.secs)):'Registrar série')+'</div><div class="rname">'+esc(it.name)+'</div><div class="small" style="color:var(--muted);margin:16px 0 12px">Série '+setNo+' — quanto fez?</div><div class="rsteps">'+repBox+loadBox+'</div>';
@@ -378,7 +388,7 @@ function renderRun(){
 }
 function rIniciar(){ runPhase='active'; var it=sess.items[sess.cur]; if(it&&it.mode==='time'){ startWork(Number(it.rmax)||Number(it.rmin)||30); } renderRun(); }
 function rIsLast(it,fp){ return sess.cur>=sess.items.length-1 && fp>=it.sets.length-1; }
-function rConcluir(){ loadEdit=false; var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; var st=it.sets[fp]; if(it.mode==='time'){ var held=(work.id?Math.max(1,work.tot-work.secs):work.tot)||Number(it.rmax)||Number(it.rmin)||0; stopWork(); st.reps=held; st.peso=0; } else { if(st.reps===''||st.reps==null) st.reps=it.rmin; if(st.peso===''||st.peso==null) st.peso=(it.sg&&it.sg.weight!==''&&it.sg.weight!=null)?it.sg.weight:0; } runPhase='log'; if(rIsLast(it,fp)){ stopRest(); } else { startRest(restFor(it)); } renderRun(); }
+function rConcluir(){ loadEdit=false; var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; var st=it.sets[fp]; if(it.mode==='time'){ var held=(work.endsAt?Math.max(1,work.tot-fitTimerRemaining(work.endsAt)):work.tot)||Number(it.rmax)||Number(it.rmin)||0; stopWork(); st.reps=held; st.peso=0; } else { if(st.reps===''||st.reps==null) st.reps=it.rmin; if(st.peso===''||st.peso==null) st.peso=(it.sg&&it.sg.weight!==''&&it.sg.weight!=null)?it.sg.weight:0; } runPhase='log'; if(rIsLast(it,fp)){ stopRest(); } else { startRest(restFor(it)); } renderRun(); }
 function rBump(f,d){ var it=sess.items[sess.cur]; var fp=firstPending(it); var st=it.sets[fp]; if(!st) return; if(f==='reps'){ st.reps=Math.max(0,(Number(st.reps)||0)+d); var v=$('vReps'); if(v) v.textContent=st.reps; } else { st.peso=Math.max(0,Math.round(((Number(st.peso)||0)+d)*10)/10); var v2=$('vLoad'); if(v2) v2.textContent=st.peso; } }
 function parseNum(v){ var n=parseFloat(String(v==null?'':v).replace(',','.')); return isNaN(n)?0:Math.round(n*10)/10; }
 function curRunSet(){ if(!sess) return null; var it=sess.items[sess.cur]; if(!it) return null; return it.sets[firstPending(it)]||null; }
@@ -388,7 +398,7 @@ function renderLoadBox(){ var el=$('loadWrap'); if(el) el.innerHTML=loadBoxInner
 function rPickLoad(v){ var st=curRunSet(); if(st) st.peso=parseNum(v); if(window.JB&&JB.ddClose) JB.ddClose(); renderLoadBox(); }
 function rLoadPencil(){ loadEdit=true; renderLoadBox(); setTimeout(function(){ var i=$('vLoadInput'); if(i){ i.focus(); if(i.select) i.select(); } },30); }
 function rLoadConfirm(){ var i=$('vLoadInput'); if(i){ var st=curRunSet(); if(st) st.peso=parseNum(i.value); } loadEdit=false; renderLoadBox(); }
-function rSalvar(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; var st=it.sets[fp]; st.done=true; for(var j=fp+1;j<it.sets.length;j++){ if(!it.sets[j].done){ if(st.peso!==''&&st.peso!=null) it.sets[j].peso=st.peso; if(st.reps!==''&&st.reps!=null) it.sets[j].reps=st.reps; } } if(rest.id&&rest.secs>0){ runPhase='rest'; renderRun(); } else { rNextSet(); } }
+function rSalvar(){ var it=sess.items[sess.cur]; var fp=firstPending(it); if(fp<0) return; var st=it.sets[fp]; st.done=true; for(var j=fp+1;j<it.sets.length;j++){ if(!it.sets[j].done){ if(st.peso!==''&&st.peso!=null) it.sets[j].peso=st.peso; if(st.reps!==''&&st.reps!=null) it.sets[j].reps=st.reps; } } if(rest.endsAt&&rest.secs>0){ runPhase='rest'; renderRun(); } else { rNextSet(); } }
 function rNextSet(){ stopRest(); var it=sess.items[sess.cur]; if(firstPending(it)<0){ if(sess.cur<sess.items.length-1){ sess.cur++; runPhase='ready'; renderRun(); } else { rFinish(); } } else { runPhase='ready'; renderRun(); } }
 function rClose(){ stopRest(); stopWork(); sess=null; $('runOverlay').classList.remove('open'); renderHoje(); }
 function rCapturedCount(){ var n=0; if(sess) sess.items.forEach(function(it){ it.sets.forEach(function(st){ if(st.done&&((Number(st.reps)||0)>0||(Number(st.peso)||0)>0)) n++; }); }); return n; }
@@ -546,5 +556,16 @@ var FIT_TOUR=[
   { sel:'.acct .lnk', title:'Ajustes', body:'Tema, programa e este tutorial ficam aqui.' }
 ];
 function verTutorial(){ closeSettings(); setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 250); }
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState!=='visible') return;
+  if(rest.endsAt){
+    if(tickRest()){ if(runPhase==='log') renderRun(); return; }
+    if(runPhase==='rest'||(runPhase==='log'&&rest.secs>0)) renderRun();
+  }
+  if(work.endsAt){
+    if(tickWork()) return;
+    renderRun();
+  }
+});
 JB.applySkin('fit');
 startAuth();

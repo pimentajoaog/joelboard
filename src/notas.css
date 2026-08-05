@@ -151,6 +151,8 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .ed-items-panel{ @apply flex-1 min-h-0; }
 .ed-done-toggle{ @apply block w-full text-left py-2 my-1 text-[12px] font-bold text-muted bg-transparent border-0 cursor-pointer; font-family:inherit; }
 .ed-done-toggle:hover{ color:var(--primary); }
+.ed-done-bucket{ @apply block w-full text-left py-2 my-0.5 text-[12px] font-bold text-muted bg-transparent border-0 cursor-pointer; font-family:inherit; border-bottom:1px solid color-mix(in srgb, var(--border) 55%, transparent); }
+.ed-done-bucket:hover{ color:var(--primary); }
 .ed-add-card{ @apply sticky bottom-0 mt-4 p-3 rounded-[var(--radius)] border border-border bg-surface2 shadow-[0_-8px_24px_rgba(0,0,0,.22)]; }
 .ed-add-card .iadd{ @apply mt-0 py-1; }
 .ed-add-card .uwrap{ @apply mt-2; }

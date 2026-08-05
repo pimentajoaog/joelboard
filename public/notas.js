@@ -3,8 +3,10 @@
 var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={}, _renameNoteId=null, _edMenuOpen=false;
 var HIDE_DONE_KEY='jb_notas_hide_done';
 function hideDonePref(){ try{ return localStorage.getItem(HIDE_DONE_KEY)==='1'; }catch(_){ return false; } }
-function setHideDonePref(on){ try{ localStorage.setItem(HIDE_DONE_KEY, on?'1':'0'); }catch(_){} _doneCollapsed=!!on; }
+function setHideDonePref(on){ try{ localStorage.setItem(HIDE_DONE_KEY, on?'1':'0'); }catch(_){} _doneCollapsed=!!on; if(!on) _doneBucketExpanded={}; }
 var _doneCollapsed=hideDonePref();
+var DONE_SCOPE_ROOT='__root__';
+var _doneBucketExpanded={};
 var _rowCache={};
 function ssCacheId(){ return (typeof ncSsId==='function')?ncSsId():JB.getSheetId('notas'); }
 function rowCacheKey(tab){ return ssCacheId()+'|'+tab; }
@@ -529,30 +531,53 @@ function renderEditor(){
   $('main').innerHTML=html; renderItems(); if(!_selMode) renderUsuals(); updateSelBar();
   if(_edMenuOpen){ var m=$('edMenu'); if(m) m.classList.add('open'); }
 }
+function shouldBucketDoneItem(m){ return _doneCollapsed && !m.isGroup && !m.hidden && m.item.marcavel && m.item.feito && m.item.id!==_editId; }
+function doneBucketScope(simOpen, depth){ return depth<=0?DONE_SCOPE_ROOT:((simOpen[depth-1]&&simOpen[depth-1].id)||DONE_SCOPE_ROOT); }
+function doneBucketExpanded(scopeId, entries){ if(!_doneCollapsed) return true; if(_doneBucketExpanded[scopeId]) return true; if(_editId && entries.some(function(m){ return m.item.id===_editId; })) return true; return false; }
+function toggleDoneBucket(scopeId){ _doneBucketExpanded[scopeId]=!_doneBucketExpanded[scopeId]; renderItems(); }
+function renderDoneBucket(scopeId, entries, depth){
+  if(!entries.length) return '';
+  var n=entries.length, expanded=doneBucketExpanded(scopeId, entries), chev=expanded?'▾':'▸';
+  var html='<button type="button" class="ed-done-bucket"'+depthAttr(depth)+' onclick="toggleDoneBucket(\''+scopeId+'\')">'+chev+' ✓ '+n+' concluído'+(n>1?'s':'')+'</button>';
+  if(expanded) entries.forEach(function(m){ html+=itemRow(m.item, false, m.depth); });
+  return html;
+}
+function collectDoneBuckets(layout){
+  var sim=[], buckets={};
+  layout.forEach(function(m){
+    if(m.isGroup){ while(sim.length>m.depth) sim.pop(); sim[m.depth]={id:m.item.id,depth:m.depth}; sim.length=m.depth+1; }
+    else if(shouldBucketDoneItem(m)){ var sc=doneBucketScope(sim,m.depth); (buckets[sc]=buckets[sc]||[]).push(m); }
+  });
+  return buckets;
+}
 function renderItems(){
   scrubItemDupes(openNoteId);
   var el=$('edItems'); if(!el) return; var n=note(openNoteId); var its=itemsOf(openNoteId);
   if(!its.length){ el.innerHTML='<div class="rg" style="padding:8px 0">Lista vazia. Adicione itens abaixo'+(kindDef(n.tipo).defCheck?'':' — toque em ☑ para tornar uma linha marcável')+'.</div>'; return; }
-  var layout=listCollapseStack(its), html='', togglePlaced=false;
-  var doneN=layout.filter(function(m){ return !m.isGroup && !m.hidden && m.item.marcavel && m.item.feito; }).length;
-  layout.forEach(function(m){
-    if(m.isGroup){ html+=groupRow(m.item,m.depth,m.hidden); return; }
-    var isDone=m.item.marcavel && m.item.feito;
-    var hideDone=isDone && _doneCollapsed && m.item.id!==_editId;
-    if(_doneCollapsed && !togglePlaced && isDone && !m.hidden && doneN>0){
-      html+=doneToggleRow(doneN);
-      togglePlaced=true;
-    }
-    html+=itemRow(m.item, m.hidden||hideDone, m.depth);
-  });
-  if(_doneCollapsed && !togglePlaced && doneN>0) html+=doneToggleRow(doneN);
+  var layout=listCollapseStack(its), html='';
+  if(_selMode || !_doneCollapsed){
+    layout.forEach(function(m){
+      if(m.isGroup) html+=groupRow(m.item,m.depth,m.hidden);
+      else html+=itemRow(m.item, m.hidden, m.depth);
+    });
+  } else {
+    var buckets=collectDoneBuckets(layout), openGroups=[];
+    layout.forEach(function(m){
+      var d=m.depth;
+      while(openGroups.length>d){ var og=openGroups.pop(); html+=renderDoneBucket(og.id, buckets[og.id]||[], og.depth+1); }
+      if(m.isGroup){
+        html+=groupRow(m.item,m.depth,m.hidden);
+        openGroups[d]={id:m.item.id,depth:d};
+        openGroups.length=d+1;
+      } else if(!shouldBucketDoneItem(m)) html+=itemRow(m.item, m.hidden, m.depth);
+    });
+    while(openGroups.length){ var og=openGroups.pop(); html+=renderDoneBucket(og.id, buckets[og.id]||[], og.depth+1); }
+    if(buckets[DONE_SCOPE_ROOT]&&buckets[DONE_SCOPE_ROOT].length) html+=renderDoneBucket(DONE_SCOPE_ROOT, buckets[DONE_SCOPE_ROOT], 0);
+  }
   el.className='ed-items-tree';
   el.innerHTML=html;
   var ed=el.querySelector('#editTA'); if(ed){ ed.focus(); try{ var L=ed.value.length; ed.setSelectionRange(L,L); }catch(e){} if(ed.tagName==='TEXTAREA') autoGrow(ed); }
   updateDelChecked(); updateSelBar();
-}
-function doneToggleRow(n){
-  return '<button type="button" class="ed-done-toggle" onclick="toggleDoneCollapsed()">✓ '+n+' concluído'+(n>1?'s':'')+' — mostrar</button>';
 }
 function updateDelChecked(){ var b=$('edMenuDelChecked'); if(!b) return; var dn=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}).length; b.style.display=dn?'':'none'; b.textContent='🗑 Excluir marcados ('+dn+')'; }
 function autoGrow(t){ if(!t) return; t.style.height='auto'; t.style.height=(t.scrollHeight)+'px'; }
@@ -1150,7 +1175,7 @@ function selEscKey(){
   selExitMode();
 }
 var _mq=null, _marqueeDidDrag=false, _MQ_MIN=6;
-function selMarqueeIgnore(el){ if(!el||!el.closest) return true; if(el.closest('.ihandle,button,input,textarea,.ichk,.itype,.idel,.gchev,.gadd,.gsub,.gctrl,.gctrls,.fmtbar,.selbar,.lnk,.iadd,.ed-add-card,.uwrap,.uhead,.fillrow,.ed-head,.ed-top,.ed-meta,.ed-menu,.ed-menu-wrap,.fillbtn,.door,.fab,.overlay,.header,.foot,.toast,.confirm-card,.nc-edit,.nc-ico,.nc-rename-inp,.ed-done-toggle')) return true; if(el.closest('.ihdr')) return true; return false; }
+function selMarqueeIgnore(el){ if(!el||!el.closest) return true; if(el.closest('.ihandle,button,input,textarea,.ichk,.itype,.idel,.gchev,.gadd,.gsub,.gctrl,.gctrls,.fmtbar,.selbar,.lnk,.iadd,.ed-add-card,.uwrap,.uhead,.fillrow,.ed-head,.ed-top,.ed-meta,.ed-menu,.ed-menu-wrap,.fillbtn,.door,.fab,.overlay,.header,.foot,.toast,.confirm-card,.nc-edit,.nc-ico,.nc-rename-inp,.ed-done-toggle,.ed-done-bucket')) return true; if(el.closest('.ihdr')) return true; return false; }
 function selMarqueeZone(){ if(!openNoteId||!$('edItems')) return null; return { top:0, bottom:window.innerHeight, left:0, right:document.documentElement.clientWidth }; }
 function selMarqueeInZone(ev){ var z=selMarqueeZone(); if(!z) return false; return ev.clientX>=z.left && ev.clientX<=z.right && ev.clientY>=z.top && ev.clientY<=z.bottom; }
 function selMarqueeRect(){ var l=Math.min(_mq.sx,_mq.ox), t=Math.min(_mq.sy,_mq.oy), r=Math.max(_mq.sx,_mq.ox), b=Math.max(_mq.sy,_mq.oy); return {left:l,top:t,right:r,bottom:b,width:r-l,height:b-t}; }

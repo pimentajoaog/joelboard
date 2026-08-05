@@ -281,9 +281,8 @@ function renderMatDoneBucket(mats){
 }
 function renderMatSecbar(doneN){
   var el=$('matSecbar'); if(!el) return;
-  el.innerHTML='<div class="sect">Suas matérias</div><div class="secbar-actions">'
-    +(doneN?('<button type="button" class="btn ghost" onclick="toggleMatDoneCollapsed()">'+(_matDoneCollapsed?'👁 Mostrar concluídas ('+doneN+')':'📦 Ocultar concluídas ('+doneN+')')+'</button>'):'')
-    +'<button class="btn" onclick="openMat(null)">+ Adicionar</button></div>';
+  var doneBtn=doneN?('<button type="button" class="lnk mat-done-toggle" onclick="toggleMatDoneCollapsed()">'+(_matDoneCollapsed?'Mostrar concluídas ('+doneN+')':'Ocultar concluídas ('+doneN+')')+'</button>'):'';
+  el.innerHTML='<div class="sect">Suas matérias</div><div class="secbar-actions">'+doneBtn+'<button type="button" class="btn" onclick="openMat(null)">+ Adicionar</button></div>';
 }
 function renderMaterias(){
   var el=$('matList'); if(!el) return;

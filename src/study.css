@@ -116,7 +116,9 @@ textarea.field{ resize:vertical; min-height:64px; }
 .matc-done{ opacity:.82; }
 .matc-done .matname{ text-decoration:line-through; color:var(--muted); }
 .mat-done-badge{ flex:0 0 auto; font-size:11px; font-weight:800; color:var(--success); background:color-mix(in srgb, var(--success) 14%, var(--surface)); border-radius:99px; padding:2px 8px; }
-.secbar-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.secbar-actions{ display:flex; align-items:center; justify-content:flex-end; gap:10px; flex:1 1 auto; min-width:0; flex-wrap:nowrap; }
+#matSecbar .mat-done-toggle{ flex:0 1 auto; min-width:0; max-width:52vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:6px 0; }
+#matSecbar .secbar-actions .btn{ flex:0 0 auto; width:auto !important; white-space:nowrap; }
 .del{ @apply w-full bg-transparent border-0 text-muted text-[13px] underline cursor-pointer mt-3; font-family:inherit; }
 
 /* attachments */

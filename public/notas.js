@@ -654,7 +654,12 @@ function renderItems(){
     layout.forEach(function(m){
       if(m.isGroup){
         html=closeDoneGroupScopes(html, stack, buckets, rendered, m.depth);
-        if(m.depth===0) html=flushDoneBucket(html, buckets, rendered, DONE_SCOPE_ROOT, 0);
+        if(m.depth===0){
+          html=flushDoneBucket(html, buckets, rendered, DONE_SCOPE_ROOT, 0);
+        } else if(stack.length){
+          var parent=stack[stack.length-1];
+          html=flushDoneBucket(html, buckets, rendered, parent.id, parent.depth+1);
+        }
         html+=groupRow(m.item,m.depth,m.hidden);
         stack.push({id:m.item.id,depth:m.depth});
       } else if(!shouldBucketDoneItem(m)) html+=itemRow(m.item, m.hidden, m.depth);

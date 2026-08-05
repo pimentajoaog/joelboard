@@ -110,11 +110,16 @@ function ncHandlePollResult(res) {
   render();
 }
 
+function ncIsCollabSpreadsheetGrid(grid) {
+  return !!(grid && grid['Meta'] != null && grid['Membros'] != null);
+}
+
 function ncCollabUrl(sid, p) {
   return 'https://sheets.googleapis.com/v4/spreadsheets/' + sid + p;
 }
 
 function ncSsId() {
+  /* Legacy read helper — writes must use notasSheetIdForNote(), not openNoteId. */
   if (!openNoteId) return JB.getSheetId('notas');
   var n = note(openNoteId);
   if (n && n.collabSheetId) return n.collabSheetId;
@@ -559,7 +564,13 @@ function ncJoinCollab(sheetId) {
   sheetId = String(sheetId || '').trim();
   if (!sheetId) return Promise.reject(new Error('link_invalido'));
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Entrando na lista…</div></div>');
-  return ncFetchCollabPack(sheetId).then(function (pack) {
+  var bootPersonal = (typeof ensurePersonalNotasSheet === 'function') ? ensurePersonalNotasSheet() : Promise.resolve();
+  return bootPersonal.then(function () {
+    if (JB.getSheetId('notas') === sheetId) {
+      throw new Error('planilha_compartilhada_como_pessoal');
+    }
+    return ncFetchCollabPack(sheetId);
+  }).then(function (pack) {
     if (!pack) throw new Error('planilha_invalida');
     var metaRow = body(pack.meta)[0];
     if (!metaRow || !metaRow[6]) throw new Error('lista_nao_encontrada');
@@ -621,7 +632,13 @@ function ncCheckJoinParam() {
   ncEnsureProfile(function () {
     ncJoinCollab(sid).catch(function (e) {
       show();
-      toast('Erro: ' + ((e && e.message) || 'não foi possível entrar'));
+      var m = String((e && e.message) || '');
+      if (m === 'planilha_compartilhada_como_pessoal') {
+        toast('Sua planilha pessoal estava apontando para a lista compartilhada — crie uma planilha pessoal separada.');
+        if (typeof notasPersonalGate === 'function') notasPersonalGate('Suas listas privadas precisam de uma planilha só sua, separada das compartilhadas.');
+        return;
+      }
+      toast('Erro: ' + (m || 'não foi possível entrar'));
     });
   });
 }

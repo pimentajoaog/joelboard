@@ -8,28 +8,39 @@ var _doneCollapsed=hideDonePref();
 var DONE_SCOPE_ROOT='__root__';
 var _doneBucketExpanded={};
 var _rowCache={};
-function ssCacheId(){ return (typeof ncSsId==='function')?ncSsId():JB.getSheetId('notas'); }
-function rowCacheKey(tab){ return ssCacheId()+'|'+tab; }
+function rowCacheKeySid(sid, tab){ return sid+'|'+tab; }
 function seedRowCacheForSid(sid, tab, rows, idCol){
   var map={};
   for(var i=1;i<(rows||[]).length;i++){ var id=String((rows[i]||[])[idCol]); if(id) map[id]=i+1; }
-  _rowCache[sid+'|'+tab]=map;
+  _rowCache[rowCacheKeySid(sid, tab)]=map;
 }
-function seedRowCache(tab, rows, idCol){ seedRowCacheForSid(ssCacheId(), tab, rows, idCol); }
-function invalidateRowCache(tab){ delete _rowCache[rowCacheKey(tab)]; }
-function invalidateRowCacheForSid(sid, tab){ delete _rowCache[sid+'|'+tab]; }
-function itemRowMap(tab, idCol){
+function invalidateRowCacheForSid(sid, tab){ delete _rowCache[rowCacheKeySid(sid, tab)]; }
+function notasSheetIdForNote(n){ if(n&&n.collabSheetId) return n.collabSheetId; return JB.getSheetId('notas'); }
+function notasSheetUrl(sid, p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+sid+p; }
+function notasSheetUrlForNote(n, p){ return notasSheetUrl(notasSheetIdForNote(n), p); }
+function notasNoteTab(n){ return (n&&n.collabSheetId)?'Meta':'Notas'; }
+function noteDataTab(n){ return notasNoteTab(n); }
+function notasGridForNote(n){ if(n&&n.collabSheetId) return (typeof collabGrids!=='undefined'&&collabGrids[n.collabSheetId])||{}; return notasGrid; }
+function itemRowMapForSid(sid, tab, idCol){
   idCol=(idCol==null)?5:idCol;
-  var key=rowCacheKey(tab), cached=_rowCache[key];
+  var key=rowCacheKeySid(sid, tab), cached=_rowCache[key];
   if(cached) return Promise.resolve(cached);
-  return JB.api('GET', ssUrl('/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
-    seedRowCache(tab, res.values||[], idCol);
+  return JB.api('GET', notasSheetUrl(sid, '/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+    seedRowCacheForSid(sid, tab, res.values||[], idCol);
     return _rowCache[key]||{};
+  });
+}
+function findRowInSid(sid, tab, idCol, id){
+  var key=rowCacheKeySid(sid, tab), cached=_rowCache[key];
+  if(cached && cached[String(id)]!=null) return Promise.resolve(cached[String(id)]);
+  return JB.api('GET', notasSheetUrl(sid, '/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+    seedRowCacheForSid(sid, tab, res.values||[], idCol);
+    var row=_rowCache[key]?_rowCache[key][String(id)]:null;
+    return row!=null?row:-1;
   });
 }
 function _ncSsId(){ return (typeof ncSsId==='function')?ncSsId():JB.getSheetId('notas'); }
 function _ncGrid(){ return (typeof ncGrid==='function')?ncGrid():notasGrid; }
-function noteDataTab(n){ return (n&&n.collabSheetId)?'Meta':'Notas'; }
 var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']],['Compartilhadas',['Titulo','SheetID','Papel','Owner','ListaID','Atualizado']]];
 var KINDS=[
   {k:'compras', label:'Compras', icon:'🛒', color:'#34d399', defCheck:true},
@@ -97,52 +108,106 @@ function notasSignOut(){ JB.signOut(); location.reload(); }
 function afterAuth(){ loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>'); JB.fetchEmail().then(bootSheet); }
 
 /* ---- sheet bootstrap ---- */
-function ssUrl(p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+_ncSsId()+p; }
-function personalSsUrl(p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+JB.getSheetId('notas')+p; }
+function ssUrl(p){ return notasSheetUrl(_ncSsId(), p); }
+function personalSsUrl(p){ return notasSheetUrl(JB.getSheetId('notas'), p); }
+function notasPersonalGate(msg){
+  loadingHtml('<div class="gate"><div class="gt">📝 Suas notas pessoais</div><div class="gs">'+(msg||'Suas listas privadas ficam numa planilha só sua — separada das listas compartilhadas.')+'</div>'
+    + '<button class="btn-primary" onclick="createSheet()">✨ Criar minha planilha pessoal</button>'
+    + '<div style="color:var(--muted);font-size:12px;margin:16px 0 10px">— ou já tem uma? —</div>'
+    + '<input class="field" id="notasUrl" placeholder="Cole o link da planilha pessoal"><button class="btn ghost" style="width:100%;margin-top:10px" onclick="linkSheet()">Conectar planilha</button>'
+    + '<div id="notasErr" style="color:var(--primary);font-size:12px;margin-top:10px"></div></div>');
+}
+function notasRejectCollabAsPersonal(grid){
+  return typeof ncIsCollabSpreadsheetGrid==='function' && ncIsCollabSpreadsheetGrid(grid);
+}
+function createPersonalNotasSpreadsheet(){
+  var title='📝 Joelboard Notas — '+(JB.email()?JB.email().split('@')[0]:'Pessoal');
+  return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets',{ properties:{title:title}, sheets:NOTAS_TABS.map(function(t){return {properties:{title:t[0]}};}) })
+    .then(function(ss){
+      JB.setSheetId('notas',ss.spreadsheetId);
+      var data=NOTAS_TABS.map(function(t){return {range:t[0]+'!A1',values:[t[1]]};});
+      return JB.api('POST',notasSheetUrl(ss.spreadsheetId,'/values:batchUpdate'),{valueInputOption:'RAW',data:data});
+    });
+}
+function ensurePersonalNotasSheet(){
+  var id=JB.getSheetId('notas');
+  if(!id) return createPersonalNotasSpreadsheet();
+  return JB.sheetTabs(id).then(function(grid){
+    if(notasRejectCollabAsPersonal(grid)){
+      JB.clearSheetId('notas');
+      return createPersonalNotasSpreadsheet();
+    }
+    notasGrid=grid;
+    return grid;
+  });
+}
 function bootSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando suas listas…</div></div>');
-  JB.resolveSheet({ app:'notas', namePart:'Joelboard', requiredTabs: ['Notas','Itens'] })  /* distinctive tabs only — Config is shared */
-    .then(function(ctx){ notasGrid=ctx.grid; return ensureTabs().then(ensureVenceHeader).then(ensureTipoHeader).then(loadData); })
+  JB.resolveSheet({ app:'notas', namePart:'Joelboard', requiredTabs: ['Notas','Itens'] })
+    .then(function(ctx){
+      if(notasRejectCollabAsPersonal(ctx.grid)){
+        JB.clearSheetId('notas');
+        notasPersonalGate('A planilha conectada é de lista compartilhada. Crie ou conecte uma planilha pessoal — listas privadas não devem ficar na planilha do grupo.');
+        return;
+      }
+      notasGrid=ctx.grid;
+      return ensureTabs().then(ensureVenceHeader).then(ensureTipoHeader).then(loadData);
+    })
     .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(m)+'</div></div>'); });
 }
 function ensureTabs(){
   var missing=NOTAS_TABS.filter(function(t){ return notasGrid[t[0]]==null; });
   if(!missing.length) return Promise.resolve();
-  return JB.api('POST', ssUrl(':batchUpdate'), { requests: missing.map(function(t){ return { addSheet:{ properties:{ title:t[0] } } }; }) })
+  var pid=JB.getSheetId('notas');
+  return JB.api('POST', personalSsUrl(':batchUpdate'), { requests: missing.map(function(t){ return { addSheet:{ properties:{ title:t[0] } } }; }) })
     .then(function(res){ (res.replies||[]).forEach(function(rep){ if(rep&&rep.addSheet){ notasGrid[rep.addSheet.properties.title]=rep.addSheet.properties.sheetId; } });
-      return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data: missing.map(function(t){ return { range:t[0]+'!A1', values:[t[1]] }; }) }); });
+      return JB.api('POST', personalSsUrl('/values:batchUpdate'), { valueInputOption:'RAW', data: missing.map(function(t){ return { range:t[0]+'!A1', values:[t[1]] }; }) }); });
 }
-function ensureGrid(tab, minCols){ var sid=notasGrid[tab]; if(sid==null) return Promise.resolve(); return JB.api('GET','https://sheets.googleapis.com/v4/spreadsheets/'+JB.getSheetId('notas')+'?fields=sheets(properties(sheetId,gridProperties(columnCount)))').then(function(meta){ var cc=0; (meta.sheets||[]).forEach(function(sh){ if(sh.properties.sheetId===sid) cc=((sh.properties.gridProperties)||{}).columnCount||0; }); if(cc>=minCols) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ updateSheetProperties:{ properties:{ sheetId:sid, gridProperties:{ columnCount:minCols } }, fields:'gridProperties.columnCount' } }] }); }).catch(function(){}); }
-function ensureTipoHeader(){ if(notasGrid['Itens']==null) return Promise.resolve(); return ensureGrid('Itens',7).then(function(){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent('Itens!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[6]==='Tipo') return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Itens!G1')+'?valueInputOption=RAW'), { values:[['Tipo']] }); }).catch(function(){}); }
-function ensureVenceHeader(){ if(notasGrid['Notas']==null) return Promise.resolve(); return ensureGrid('Notas',8).then(function(){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent('Notas!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[7]==='Vence') return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Notas!H1')+'?valueInputOption=RAW'), { values:[['Vence']] }); }).catch(function(){}); }
-function gate(){
-  loadingHtml('<div class="gate"><div class="gt">📝 Comece suas listas</div><div class="gs">Crie sua planilha de notas — ela fica no seu Google Drive.</div>'
-    + '<button class="btn-primary" onclick="createSheet()">✨ Criar minhas notas</button>'
-    + '<div style="color:var(--muted);font-size:12px;margin:16px 0 10px">— ou já tem uma? —</div>'
-    + '<input class="field" id="notasUrl" placeholder="Cole o link da planilha"><button class="btn ghost" style="width:100%;margin-top:10px" onclick="linkSheet()">Conectar planilha</button>'
-    + '<div id="notasErr" style="color:var(--primary);font-size:12px;margin-top:10px"></div></div>');
-}
+function ensureGrid(tab, minCols){ var sid=notasGrid[tab]; if(sid==null) return Promise.resolve(); return JB.api('GET',personalSsUrl('?fields=sheets(properties(sheetId,gridProperties(columnCount)))')).then(function(meta){ var cc=0; (meta.sheets||[]).forEach(function(sh){ if(sh.properties.sheetId===sid) cc=((sh.properties.gridProperties)||{}).columnCount||0; }); if(cc>=minCols) return; return JB.api('POST', personalSsUrl(':batchUpdate'), { requests:[{ updateSheetProperties:{ properties:{ sheetId:sid, gridProperties:{ columnCount:minCols } }, fields:'gridProperties.columnCount' } }] }); }).catch(function(){}); }
+function ensureTipoHeader(){ if(notasGrid['Itens']==null) return Promise.resolve(); return ensureGrid('Itens',7).then(function(){ return JB.api('GET', personalSsUrl('/values/'+encodeURIComponent('Itens!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[6]==='Tipo') return; return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Itens!G1')+'?valueInputOption=RAW'), { values:[['Tipo']] }); }).catch(function(){}); }
+function ensureVenceHeader(){ if(notasGrid['Notas']==null) return Promise.resolve(); return ensureGrid('Notas',8).then(function(){ return JB.api('GET', personalSsUrl('/values/'+encodeURIComponent('Notas!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[7]==='Vence') return; return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Notas!H1')+'?valueInputOption=RAW'), { values:[['Vence']] }); }).catch(function(){}); }
+function gate(){ notasPersonalGate('Crie sua planilha de notas — ela fica no seu Google Drive, separada das listas compartilhadas.'); }
 function offerLink(f){ loadingHtml('<div class="gate"><div class="gt">Encontramos suas notas 🎉</div><div class="gs">'+esc(f.name)+'</div><button class="btn-primary" onclick="pick(\''+f.id+'\')">Vincular e abrir</button><button class="del" onclick="gate()">usar outro / criar novo</button></div>'); }
 function pick(id){ JB.setSheetId('notas',id); bootSheet(); }
-function linkSheet(){ var u=($('notasUrl').value||'').trim(); var m=u.match(/[a-zA-Z0-9_-]{30,}/); if(!m){ $('notasErr').textContent='Link inválido.'; return; } JB.setSheetId('notas',m[0]); bootSheet(); }
+function linkSheet(){
+  var u=($('notasUrl').value||'').trim(); var m=u.match(/[a-zA-Z0-9_-]{30,}/);
+  if(!m){ var err=$('notasErr'); if(err) err.textContent='Link inválido.'; return; }
+  var id=m[0];
+  JB.sheetTabs(id).then(function(grid){
+    if(notasRejectCollabAsPersonal(grid)){
+      var err2=$('notasErr'); if(err2) err2.textContent='Esta é uma planilha de lista compartilhada. Crie ou conecte sua planilha pessoal.';
+      return;
+    }
+    if(!grid['Notas']||!grid['Itens']){
+      var err3=$('notasErr'); if(err3) err3.textContent='Planilha precisa ter abas Notas e Itens (planilha pessoal do Joelboard).';
+      return;
+    }
+    JB.setSheetId('notas',id); bootSheet();
+  }).catch(function(){ var err4=$('notasErr'); if(err4) err4.textContent='Não foi possível abrir a planilha.'; });
+}
 function createSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Criando suas notas…</div></div>');
-  var title='📝 Joelboard Notas — '+(JB.email()?JB.email().split('@')[0]:'Pessoal');
-  JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets',{ properties:{title:title}, sheets:NOTAS_TABS.map(function(t){return {properties:{title:t[0]}};}) })
-    .then(function(ss){ JB.setSheetId('notas',ss.spreadsheetId);
-      var data=NOTAS_TABS.map(function(t){return {range:t[0]+'!A1',values:[t[1]]};});
-      return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+ss.spreadsheetId+'/values:batchUpdate',{valueInputOption:'RAW',data:data});
-    }).then(bootSheet).catch(function(e){ loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro ao criar: '+esc(e.message)+'</div></div>'); });
+  createPersonalNotasSpreadsheet().then(bootSheet).catch(function(e){ loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro ao criar: '+esc(e.message)+'</div></div>'); });
 }
 
 /* ---- load ---- */
 function body(rows){ return (rows||[]).slice(1); }
+function notasRegistryUsesPersonalSid(regs){
+  var pid=JB.getSheetId('notas');
+  if(!pid) return false;
+  return body(regs||[]).some(function(r){ return String(r[1]||'')===pid; });
+}
 function loadData(){
   loadingHtml(JB.skeletonHtml('notas'));
   var want=NOTAS_TABS.map(function(t){return t[0];}).filter(function(t){return notasGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
-  JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+  JB.api('GET', personalSsUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
+    if(notasRegistryUsesPersonalSid(by.Compartilhadas)){
+      JB.clearSheetId('notas');
+      notasPersonalGate('Sua planilha pessoal estava apontando para uma lista compartilhada. Crie ou conecte uma planilha pessoal separada — listas privadas não devem ficar na planilha do grupo.');
+      return;
+    }
     DATA=buildNotas(by);
     var collabLoad=(typeof ncLoadCollabLists==='function')?ncLoadCollabLists():Promise.resolve();
     collabLoad.then(function(){ show(); }).catch(function(){ show(); });
@@ -649,15 +714,18 @@ function toggleGroupAll(gid){
 }
 function persistItems(arr){
   if(!arr||!arr.length) return;
+  var n=note(arr[0].notaId);
+  if(!n) return;
+  var sid=notasSheetIdForNote(n), notaId=n.id;
   if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
-  notasPersist({
+  notasPersistForNote(n, {
     run: function(){
-      return itemRowMap('Itens',5).then(function(rowOf){
-        var data=arr.filter(function(x){return rowOf[x.id];}).map(function(x){
+      return itemRowMapForSid(sid, 'Itens', 5).then(function(rowOf){
+        var data=arr.filter(function(x){return x.notaId===notaId && rowOf[x.id];}).map(function(x){
           return { range:'Itens!A'+rowOf[x.id]+':G'+rowOf[x.id], values:[itemRowVals(x)] };
         });
         if(!data.length) return;
-        return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data:data });
+        return JB.api('POST', notasSheetUrl(sid, '/values:batchUpdate'), { valueInputOption:'RAW', data:data });
       });
     },
     onError: notasWriteErr
@@ -727,18 +795,22 @@ function toggleItem(ev,id){ var it=(DATA.itens||[]).find(function(x){return x.id
 function convertItem(id,mk){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; it.marcavel=!!mk; if(!mk) it.feito=false; renderItems(); saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
 function commitText(id,val){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; var v=val.replace(/\s+$/,''); if(isGroup(it)){ if(v===it.texto) return; it.texto=v; saveItemRow(it); var ng=note(openNoteId); if(ng) touchNote(ng); return; } if(!v.trim()){ deleteItem(id); return; } if(v===it.texto) return; it.texto=v; saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
 function deleteItem(id){
-  var n=note(openNoteId);
-  notasPersist({
+  var it=(DATA.itens||[]).find(function(x){return x.id===id;});
+  var n=it?note(it.notaId):note(openNoteId);
+  if(!it||!n) return;
+  var sid=notasSheetIdForNote(n), grid=notasGridForNote(n);
+  notasPersistForNote(n, {
     run: function(){
-      return findRow('Itens',5,id).then(function(row){
+      return findRowInSid(sid, 'Itens', 5, id).then(function(row){
         if(row<0) throw notasRowErr('Itens');
-        return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:_ncGrid()['Itens'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
+        return JB.api('POST', notasSheetUrl(sid, ':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:grid['Itens'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
       });
     },
     onSuccess: function(){
       DATA.itens=(DATA.itens||[]).filter(function(x){return x.id!==id;});
+      invalidateRowCacheForSid(sid, 'Itens');
       renderItems(); renderUsuals();
-      if(n) touchNote(n);
+      touchNote(n);
     },
     onError: notasWriteErr
   });
@@ -746,22 +818,24 @@ function deleteItem(id){
 function commitTitle(val){ var n=note(openNoteId); if(!n) return; var v=(val||'').trim()||'(sem título)'; if(v===n.titulo) return; n.titulo=v; touchNote(n); }
 function deleteNote(){ var id=openNoteId; var n=note(id); if(!n) return; if(n.collabSheetId && typeof ncLeaveOrDelete==='function'){ ncLeaveOrDelete(); return; }
   JB.confirm('Excluir lista?','"'+(n.titulo||'')+'" e seus itens serão removidos.', function(){
-  notasPersist({
+  var sid=notasSheetIdForNote(n), grid=notasGridForNote(n), tab=notasNoteTab(n);
+  notasPersistForNote(n, {
     run: function(){
-      return findRow('Notas',6,id).then(function(noteRow){
-        if(noteRow<0) throw notasRowErr('Notas');
-        return JB.api('GET', ssUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+      return findRowInSid(sid, tab, 6, id).then(function(noteRow){
+        if(noteRow<0) throw notasRowErr(tab);
+        return JB.api('GET', notasSheetUrl(sid, '/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
           var v=res.values||[]; var rows=[]; var reqs=[];
           for(var i=1;i<v.length;i++){ if(String((v[i]||[])[0])===String(id)) rows.push(i+1); }
           rows.sort(function(a,b){return b-a;});
-          rows.forEach(function(r){ reqs.push({ deleteDimension:{ range:{ sheetId:_ncGrid()['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }); });
-          if(noteRow>0) reqs.push({ deleteDimension:{ range:{ sheetId:_ncGrid()['Notas'], dimension:'ROWS', startIndex:noteRow-1, endIndex:noteRow } } });
+          rows.forEach(function(r){ reqs.push({ deleteDimension:{ range:{ sheetId:grid['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }); });
+          if(noteRow>0) reqs.push({ deleteDimension:{ range:{ sheetId:grid[tab], dimension:'ROWS', startIndex:noteRow-1, endIndex:noteRow } } });
           if(!reqs.length) return;
-          return JB.api('POST', ssUrl(':batchUpdate'), { requests:reqs });
+          return JB.api('POST', notasSheetUrl(sid, ':batchUpdate'), { requests:reqs });
         });
       });
     },
     onSuccess: function(){
+      invalidateRowCacheForSid(sid, 'Itens');
       DATA.notas=(DATA.notas||[]).filter(function(x){return x.id!==id;});
       DATA.itens=(DATA.itens||[]).filter(function(x){return x.notaId!==id;});
       openNoteId=null; render(); toast('✓ Excluído');
@@ -821,16 +895,17 @@ function checkRecurrence(){
 function createNoteFromKind(kind,titulo,fill){ var now=new Date().toISOString(); var n={ id:uuid(), titulo:titulo, tipo:kind, cor:'', fixado:false, criado:now, atualizado:now, vence:'' }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); openNoteId=n.id; if(fill){ var src=lastNoteOfKind(kind,n.id); if(src){ var ord=1, add=[]; (DATA.itens||[]).filter(function(x){return x.notaId===src.id && !isGroup(x) && (x.texto||'').trim();}).sort(function(a,b){return a.ordem-b.ordem;}).forEach(function(s){ var it={id:uuid(),notaId:n.id,ordem:ord++,texto:s.texto,marcavel:s.marcavel,feito:false,tipo:''}; DATA.itens.push(it); add.push(it); }); appendItems(add); } } render(); window.scrollTo(0,0); }
 
 /* ---- persistence ---- */
-function notasCollabOpen(){ var n=openNoteId&&note(openNoteId); return !!(n&&n.collabSheetId); }
-function notasPersist(opts){
+function notasCollabOpenFor(n){ return !!(n&&n.collabSheetId); }
+function notasPersistForNote(n, opts){
   opts=opts||{};
-  var track=notasCollabOpen();
+  var track=notasCollabOpenFor(n);
   if(track && typeof ncWriteBegin==='function') ncWriteBegin();
   var os=opts.onSuccess, oe=opts.onError;
   opts.onSuccess=function(r){ if(track && typeof ncWriteEnd==='function') ncWriteEnd(); if(os) os(r); };
   opts.onError=function(e){ if(track && typeof ncWriteEnd==='function') ncWriteEnd(); if(oe) oe(e); };
   return JB.persist(opts);
 }
+function notasPersist(opts){ return notasPersistForNote(note(openNoteId), opts); }
 function noteRowVals(n){ return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.criado,n.atualizado,n.id,n.vence||'']; }
 function mdToHtml(t){ var s=esc(t); s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>'); s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>'); s=s.replace(/__([^_\n]+)__/g,'<u>$1</u>'); s=s.replace(/~~([^~\n]+)~~/g,'<s>$1</s>'); return s; }
 function startEdit(id){ if(_marqueeDidDrag) return; _editId=id; renderItems(); var bar=$('fmtBar'); if(bar) bar.classList.add('show'); positionFmtBar(); updateSelBar(); }
@@ -852,20 +927,21 @@ function positionFmtBar(){ var bar=$('fmtBar'); if(!bar||!bar.classList.contains
 if(window.visualViewport){ window.visualViewport.addEventListener('resize', positionFmtBar); window.visualViewport.addEventListener('scroll', positionFmtBar); }
 function itemRowVals(it){ return [it.notaId,it.ordem,it.texto,it.marcavel?'1':'',it.feito?'1':'',it.id,it.tipo||'']; }
 function appendNote(n){
-  notasPersist({
+  var sid=notasSheetIdForNote(n), tab=notasNoteTab(n);
+  notasPersistForNote(n, {
     run: function(){
-      return JB.api('POST', ssUrl('/values/Notas:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[noteRowVals(n)] });
+      return JB.api('POST', notasSheetUrl(sid, '/values/'+encodeURIComponent(tab)+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[noteRowVals(n)] });
     },
     onError: notasWriteErr
   });
 }
 function saveNoteRow(n){
-  var tab=noteDataTab(n);
-  notasPersist({
+  var sid=notasSheetIdForNote(n), tab=notasNoteTab(n);
+  notasPersistForNote(n, {
     run: function(){
-      return findRow(tab,6,n.id).then(function(row){
+      return findRowInSid(sid, tab, 6, n.id).then(function(row){
         if(row<0) throw notasRowErr(tab);
-        return JB.api('PUT', ssUrl('/values/'+encodeURIComponent(tab+'!A'+row+':H'+row)+'?valueInputOption=RAW'), { values:[noteRowVals(n)] });
+        return JB.api('PUT', notasSheetUrl(sid, '/values/'+encodeURIComponent(tab+'!A'+row+':H'+row)+'?valueInputOption=RAW'), { values:[noteRowVals(n)] });
       });
     },
     onError: notasWriteErr
@@ -875,34 +951,31 @@ function touchNote(n){ n.atualizado=new Date().toISOString(); if(typeof ncBumpCo
 function appendItem(it){ appendItems([it]); }
 function appendItems(arr){
   if(!arr||!arr.length) return;
+  var n=note(arr[0].notaId);
+  if(!n) return;
+  var sid=notasSheetIdForNote(n);
   if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
-  notasPersist({
+  notasPersistForNote(n, {
     run: function(){
-      return JB.api('POST', ssUrl('/values/Itens:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: arr.map(itemRowVals) });
+      return JB.api('POST', notasSheetUrl(sid, '/values/Itens:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: arr.map(itemRowVals) });
     },
-    onSuccess: function(){ invalidateRowCache('Itens'); },
+    onSuccess: function(){ invalidateRowCacheForSid(sid, 'Itens'); },
     onError: notasWriteErr
   });
 }
 function saveItemRow(it){
+  var n=note(it.notaId);
+  if(!n) return;
+  var sid=notasSheetIdForNote(n);
   if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
-  notasPersist({
+  notasPersistForNote(n, {
     run: function(){
-      return findRow('Itens',5,it.id).then(function(row){
+      return findRowInSid(sid, 'Itens', 5, it.id).then(function(row){
         if(row<0) throw notasRowErr('Itens');
-        return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Itens!A'+row+':G'+row)+'?valueInputOption=RAW'), { values:[itemRowVals(it)] });
+        return JB.api('PUT', notasSheetUrl(sid, '/values/'+encodeURIComponent('Itens!A'+row+':G'+row)+'?valueInputOption=RAW'), { values:[itemRowVals(it)] });
       });
     },
     onError: notasWriteErr
-  });
-}
-function findRow(tab,idCol,id){
-  var key=rowCacheKey(tab), cached=_rowCache[key];
-  if(cached && cached[String(id)]!=null) return Promise.resolve(cached[String(id)]);
-  return JB.api('GET', ssUrl('/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
-    seedRowCache(tab, res.values||[], idCol);
-    var row=_rowCache[key]?_rowCache[key][String(id)]:null;
-    return row!=null?row:-1;
   });
 }
 function saveConfig(k,v){
@@ -1025,18 +1098,22 @@ function notasVerTutorial(){ closeSettings(); setTimeout(function(){ JB.tour('no
 function addGroup(){ var n=note(openNoteId); if(!n) return; var g={ id:uuid(), notaId:openNoteId, ordem:nextOrd(), texto:'', marcavel:false, feito:false, tipo:'g' }; DATA.itens=DATA.itens||[]; DATA.itens.push(g); appendItem(g); touchNote(n); renderItems(); setTimeout(function(){ var el=$('edItems').querySelector('[data-id="'+g.id+'"] .gname'); if(el) el.focus(); },30); }
 function toggleGroup(id){ var g=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!g) return; g.feito=!g.feito; saveItemRow(g); renderItems(); }
 function deleteGroup(id){
-  var n=note(openNoteId);
-  notasPersist({
+  var it=(DATA.itens||[]).find(function(x){return x.id===id;});
+  var n=it?note(it.notaId):note(openNoteId);
+  if(!n) return;
+  var sid=notasSheetIdForNote(n), grid=notasGridForNote(n);
+  notasPersistForNote(n, {
     run: function(){
-      return findRow('Itens',5,id).then(function(row){
+      return findRowInSid(sid, 'Itens', 5, id).then(function(row){
         if(row<0) throw notasRowErr('Itens');
-        return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:_ncGrid()['Itens'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
+        return JB.api('POST', notasSheetUrl(sid, ':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:grid['Itens'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
       });
     },
     onSuccess: function(){
       DATA.itens=(DATA.itens||[]).filter(function(x){return x.id!==id;});
+      invalidateRowCacheForSid(sid, 'Itens');
       renderItems();
-      if(n) touchNote(n);
+      touchNote(n);
       toast('Grupo removido (itens mantidos)');
     },
     onError: notasWriteErr
@@ -1048,15 +1125,18 @@ function addPaste(e){ var t=((e.clipboardData||window.clipboardData)||{}).getDat
 function itemPaste(e,id){ var t=((e.clipboardData||window.clipboardData)||{}).getData?((e.clipboardData||window.clipboardData).getData('text')):''; if(!t || !/\r?\n/.test(t)) return; e.preventDefault(); var lines=splitLines(t); if(!lines.length) return; var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; it.texto=lines[0]; saveItemRow(it); var base=it.ordem, rest=lines.slice(1); var kd=kindDef(note(openNoteId).tipo); var mk=(isGroup(it)?kd.defCheck:it.marcavel); var add=rest.map(function(L,k){ var nit={ id:uuid(), notaId:openNoteId, ordem:base+0.0001*(k+1), texto:L, marcavel:mk, feito:false, tipo:'' }; DATA.itens.push(nit); return nit; }); if(add.length) appendItems(add); normalizeOrder(); touchNote(note(openNoteId)); renderEditor(); }
 function normalizeOrder(){ var its=itemsOf(openNoteId); var changed=false; its.forEach(function(x,i){ if(x.ordem!==i+1){ x.ordem=i+1; changed=true; } }); if(changed) persistOrder(); }
 function persistOrder(){
+  var n=note(openNoteId);
+  if(!n) return;
+  var sid=notasSheetIdForNote(n), notaId=n.id;
   if(typeof ncBumpCollabActivity==='function') ncBumpCollabActivity();
-  notasPersist({
+  notasPersistForNote(n, {
     run: function(){
-      return itemRowMap('Itens',5).then(function(rowOf){
-        var data=(DATA.itens||[]).filter(function(x){return x.notaId===openNoteId && rowOf[x.id];}).map(function(x){
+      return itemRowMapForSid(sid, 'Itens', 5).then(function(rowOf){
+        var data=(DATA.itens||[]).filter(function(x){return x.notaId===notaId && rowOf[x.id];}).map(function(x){
           return { range:'Itens!B'+rowOf[x.id], values:[[x.ordem]] };
         });
         if(!data.length) return;
-        return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data:data });
+        return JB.api('POST', notasSheetUrl(sid, '/values:batchUpdate'), { valueInputOption:'RAW', data:data });
       });
     },
     onError: notasWriteErr
@@ -1108,9 +1188,10 @@ function dragBegin(ev,id){ ev.preventDefault(); var cont=$('edItems'); if(!cont)
 function dragMove(ev){ if(!_drag) return; ev.preventDefault(); _drag.moved=true; var cont=_drag.cont, y=ev.clientY, block=_drag.block; var rows; if(_drag.isGroup) rows=dragZoneTargets(cont,_drag); else rows=[].slice.call(cont.children).filter(function(r){ return block.indexOf(r)<0 && !r.classList.contains('ihide'); }); var target=null; for(var i=0;i<rows.length;i++){ var rect=rows[i].getBoundingClientRect(); if(y < rect.top+rect.height/2){ target=rows[i]; break; } } if(target) dragInsertBlockBefore(cont, block, target); else if(_drag.isGroup && _drag.groupDepth>0 && rows.length) dragInsertBlockAfter(cont, block, rows[rows.length-1]); else if(_drag.isGroup && _drag.groupDepth===0) block.forEach(function(b){ cont.appendChild(b); }); else if(!_drag.isGroup) block.forEach(function(b){ cont.appendChild(b); }); }
 function dragEnd(){ if(!_drag) return; document.removeEventListener('pointermove', dragMove); _drag.block.forEach(function(b){ b.classList.remove('dragging'); }); var cont=_drag.cont, moved=_drag.moved; _drag=null; if(moved){ _dragDidMove=true; setTimeout(function(){ _dragDidMove=false; }, 320); } if(!moved) return; var ids=[].slice.call(cont.children).filter(function(r){return r.getAttribute && r.getAttribute('data-id');}).map(function(r){return r.getAttribute('data-id');}); if(!dragOrderValid(ids)){ renderItems(); return; } applyOrder(ids); }
 
-function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}); if(!done.length) return; var ids={}; done.forEach(function(x){ids[x.id]=1;}); JB.confirm('Excluir marcados?', done.length+(done.length>1?' itens marcados serão removidos.':' item marcado será removido.'), function(){
-  notasPersist({
-    run: function(){ return delItemRows(ids); },
+function deleteChecked(){ var done=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel && x.feito;}); if(!done.length) return; var ids={}; done.forEach(function(x){ids[x.id]=1;}); var scopeId=openNoteId; JB.confirm('Excluir marcados?', done.length+(done.length>1?' itens marcados serão removidos.':' item marcado será removido.'), function(){
+  var n=note(scopeId);
+  notasPersistForNote(n, {
+    run: function(){ return delItemRows(ids, scopeId); },
     onSuccess: function(){
       DATA.itens=(DATA.itens||[]).filter(function(x){return !ids[x.id];});
       renderEditor();
@@ -1153,8 +1234,9 @@ function dedupeItems(scopeNotaId){
   var msg=sheetDups.length+(sheetDups.length>1?' itens repetidos':' item repetido')+scopeLabel+' serão removidos. Um de cada é mantido.';
   if(idDupN) msg+=' '+idDupN+' fantasma'+(idDupN>1?'s':'')+' também será'+(idDupN>1?'ão':'á')+' limpo'+(idDupN>1?'s':'')+'.';
   JB.confirm('Remover duplicatas?', msg, function(){
-    notasPersist({
-      run: function(){ return delItemRows(dupIds); },
+    var n=scopeId?note(scopeId):null;
+    notasPersistForNote(n, {
+      run: function(){ return delItemRows(dupIds, scopeId); },
       onSuccess: function(){
         DATA.itens=(DATA.itens||[]).filter(function(x){ return !dupIds[x.id]; });
         scrubItemDupes(scopeId);
@@ -1196,20 +1278,25 @@ function toggleSelMode(){ if(!_selMode){ _sel={}; selEnterMode(); return; } if(!
 function selToggle(id){ if(_marqueeDidDrag||_dragDidMove) return; if(_sel[id]) delete _sel[id]; else _sel[id]=1; renderItems(); updateSelBar(); }
 function selAll(){ var its=itemsOf(openNoteId).filter(function(x){return !isGroup(x);}); var all=its.length>0 && its.every(function(x){return _sel[x.id];}); _sel={}; if(!all) its.forEach(function(x){ _sel[x.id]=1; }); renderItems(); updateSelBar(); }
 function selMark(v){ var ids=Object.keys(_sel); if(!ids.length) return; var changed=[]; ids.forEach(function(id){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(it && it.marcavel && it.feito!==v){ it.feito=v; changed.push(it); } }); renderItems(); if(changed.length) persistItems(changed); var n=note(openNoteId); if(n) touchNote(n); }
-function delItemRows(ids){
-  return itemRowMap('Itens',5).then(function(rowOf){
+function delItemRows(ids, notaId){
+  notaId=notaId||openNoteId;
+  var n=note(notaId);
+  if(!n) return Promise.resolve();
+  var sid=notasSheetIdForNote(n), grid=notasGridForNote(n);
+  return itemRowMapForSid(sid, 'Itens', 5).then(function(rowOf){
     var rows=[];
     Object.keys(ids).forEach(function(id){ if(rowOf[id]) rows.push(rowOf[id]); });
     rows.sort(function(a,b){return b-a;});
     if(!rows.length) return;
-    return JB.api('POST', ssUrl(':batchUpdate'), { requests: rows.map(function(r){ return { deleteDimension:{ range:{ sheetId:_ncGrid()['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }; }) }).then(function(){
-      invalidateRowCache('Itens');
+    return JB.api('POST', notasSheetUrl(sid, ':batchUpdate'), { requests: rows.map(function(r){ return { deleteDimension:{ range:{ sheetId:grid['Itens'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }; }) }).then(function(){
+      invalidateRowCacheForSid(sid, 'Itens');
     });
   });
 }
-function selDelete(){ var ids=Object.keys(_sel); if(!ids.length) return; var m={}; ids.forEach(function(i){m[i]=1;}); JB.confirm('Excluir selecionados?', ids.length+(ids.length>1?' itens serão removidos.':' item será removido.'), function(){
-  notasPersist({
-    run: function(){ return delItemRows(m); },
+function selDelete(){ var ids=Object.keys(_sel); if(!ids.length) return; var m={}; ids.forEach(function(i){m[i]=1;}); var scopeId=openNoteId; JB.confirm('Excluir selecionados?', ids.length+(ids.length>1?' itens serão removidos.':' item será removido.'), function(){
+  var n=note(scopeId);
+  notasPersistForNote(n, {
+    run: function(){ return delItemRows(m, scopeId); },
     onSuccess: function(){
       DATA.itens=(DATA.itens||[]).filter(function(x){return !m[x.id];});
       _sel={}; _selMode=false; renderEditor();

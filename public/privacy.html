@@ -116,7 +116,7 @@
   </div>
 
   <h1>Política de privacidade</h1>
-  <p class="privacy-updated">Última atualização: 10 de julho de 2026 · Joel Soluções LTDA</p>
+  <p class="privacy-updated">Última atualização: 4 de agosto de 2026 · Joel Soluções LTDA</p>
 
   <div class="privacy-card">
     <h2>Resumo</h2>
@@ -137,6 +137,27 @@
       <li><strong>Login Google (obrigatório nos apps):</strong> Finance, Fit, Study, Notas e os demais apps web exigem entrar com Google para criar e ler planilhas na <em>sua</em> conta (Google Sheets e Drive). Sem login, esses apps não funcionam. O token fica no navegador; as chamadas vão direto às APIs do Google.</li>
       <li><strong>Armazenamento local:</strong> preferências de interface, sessão OAuth e IDs de planilha ficam também no <code>localStorage</code> / <code>sessionStorage</code> do seu navegador neste dispositivo.</li>
       <li><strong>Sem servidor Joelboard de dados:</strong> não enviamos o conteúdo das suas planilhas ou notas para servidores nossos.</li>
+    </ul>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Notas — listas compartilhadas</h2>
+    <p>Além das listas privadas na sua planilha pessoal, o Notas permite <strong>listas compartilhadas</strong> com outras pessoas:</p>
+    <ul>
+      <li><strong>Planilha separada no seu Drive:</strong> ao tornar uma lista compartilhada, o app cria outra planilha Google (abas Meta, Itens, Membros) no <em>seu</em> Google Drive. Listas privadas continuam na planilha pessoal — não misturamos os dois tipos.</li>
+      <li><strong>Convites e acesso:</strong> você convida por e-mail Google. Colaboradores precisam de acesso <strong>Editor</strong> à planilha no Drive (link de convite ou compartilhamento manual). Um link Joelboard (<code>/notas/?join=…</code>) ajuda a abrir a lista no app; o ID da planilha aparece nesse URL.</li>
+      <li><strong>Perfil na lista:</strong> nome de exibição e ícone que você escolhe ficam na aba Membros e são visíveis aos outros membros da mesma lista (junto com o e-mail Google).</li>
+      <li><strong>Registro local:</strong> sua planilha pessoal guarda um índice das listas compartilhadas em que você participa (título, ID da planilha, papel). Isso não copia o conteúdo privado de outras listas.</li>
+      <li><strong>Sincronização:</strong> leituras e gravações vão direto às APIs do Google Sheets a partir do seu navegador; não há backend Joelboard que armazene itens ou membros.</li>
+    </ul>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Fit — notificações opcionais</h2>
+    <ul>
+      <li><strong>Timer de descanso:</strong> durante treinos, o Fit pode pedir permissão de <strong>notificações</strong> do navegador quando você inicia um descanso.</li>
+      <li><strong>Só se você permitir:</strong> se conceder, uma notificação local avisa quando o descanso termina. Se negar, o timer continua funcionando na página; nada é enviado aos nossos servidores.</li>
+      <li><strong>Metadados de mídia:</strong> o app pode exibir tempo restante na tela de bloqueio (Media Session) enquanto o timer está ativo — apenas no seu dispositivo.</li>
     </ul>
   </div>
 

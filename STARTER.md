@@ -28,7 +28,8 @@ joelboard/
     finance-math.js       # bundled from scripts/bundle-finance-math.mjs
     finance-sheets.js     # Finance sheet I/O
     sw.js                 # PWA; cache id bumped each build
-    extensions/           # Replace + Refresh source; zips via npm run zip:extensions
+    extensions/           # Replace + Refresh + Report source; zips via npm run zip:extensions
+                          # staff/ is gitignored — local/dev only, never commit or push
   tests/*.test.mjs
   docs/                   # user documentation per app
   scripts/                # build helpers (bump-sw, zip-extensions, …)

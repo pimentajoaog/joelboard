@@ -702,10 +702,10 @@ function groupRow(g, depth, hidden){
      ? '<input class="gname" id="editTA" value="'+escAttr(g.texto)+'" placeholder="Nome do grupo" autocomplete="off" onblur="commitText(\''+g.id+'\',this.value);exitEdit();" onkeydown="groupNameKey(event,\''+g.id+'\')">'
      : '<div class="gname gname-view" onclick="startEdit(\''+g.id+'\')" tabindex="0" onkeydown="groupNameKey(event,\''+g.id+'\')">'+(g.texto?mdToHtml(g.texto):'<span class="iplace">Nome do grupo</span>')+'</div>')
   +'<span class="gcount">'+(st.total?(st.done+'/'+st.total):'')+'</span>'
-  +gctrl
+  +'<div class="ihdr-actions">'+gctrl
   +'<button class="gadd" onclick="addToGroup(\''+g.id+'\')" title="Adicionar item neste grupo">+</button>'
   +'<button class="gsub" onclick="addSubgroup(\''+g.id+'\')" title="Adicionar subgrupo">⊞</button>'
-  +'<button class="idel" title="Remover grupo" onclick="deleteGroup(\''+g.id+'\')">✕</button></div>';
+  +'<button class="idel" title="Remover grupo" onclick="deleteGroup(\''+g.id+'\')">✕</button></div></div>';
 }
 function addToGroup(gid){
   var n=note(openNoteId); if(!n) return;

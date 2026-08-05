@@ -9,16 +9,15 @@ var JB_REPORT = (function () {
   function defaultData() {
     return {
       blocks: [
-        { kind: 'text', id: 't1', text: 'Hourly report:' },
+        { kind: 'text', id: 't1', text: 'Relatório:' },
         { kind: 'blank', id: 'b1' },
-        { kind: 'field', id: 'f1', label: 'agents on queue', format: 'suffix', value: '' },
-        { kind: 'field', id: 'f2', label: 'agents in training', format: 'suffix', value: '' },
-        { kind: 'field', id: 'f3', label: 'MTO/VTO', format: 'suffix', value: '' },
-        { kind: 'field', id: 'f4', label: 'Meal / Breaks', format: 'suffix', value: '' },
+        { kind: 'field', id: 'f1', label: 'itens concluídos', format: 'suffix', value: '' },
+        { kind: 'field', id: 'f2', label: 'em andamento', format: 'suffix', value: '' },
+        { kind: 'field', id: 'f3', label: 'pendentes', format: 'suffix', value: '' },
         { kind: 'blank', id: 'b2' },
-        { kind: 'text', id: 't2', text: 'Queue:' },
-        { kind: 'field', id: 'f5', label: 'Tutor', format: 'prefix', linePrefix: 'Tutor: ', value: '' },
-        { kind: 'field', id: 'f6', label: 'PS', format: 'prefix', linePrefix: 'PS: ', value: '' }
+        { kind: 'text', id: 't2', text: 'Notas:' },
+        { kind: 'field', id: 'f4', label: 'Meta', format: 'prefix', linePrefix: 'Meta: ', value: '' },
+        { kind: 'field', id: 'f5', label: 'Responsável', format: 'prefix', linePrefix: 'Resp: ', value: '' }
       ]
     };
   }

@@ -93,7 +93,7 @@ Monta um texto fixo com **contadores numéricos** — ideal para relatórios de 
 ### Uso
 
 1. Abra o popup da extensão (**Relatório**).
-2. Preencha os números (ex.: fila, treinamento, MTO/VTO, refeição/pausa, Tutor, PS).
+2. Preencha os números (ex.: itens concluídos, em andamento, pendentes, meta, responsável).
 3. Confira a **prévia** e clique **Copiar relatório**.
 4. Cole no Slack.
 
@@ -101,10 +101,10 @@ Os valores ficam salvos para o próximo envio — só ajuste o que mudou.
 
 ### Template
 
-Aba **Template** — edite labels, adicione/remova campos, linhas fixas (`Hourly report:`, `Queue:`) e linhas em branco. Dois formatos de campo:
+Aba **Template** — edite labels, adicione/remova campos, linhas fixas (`Relatório:`, `Notas:`) e linhas em branco. Dois formatos de campo:
 
-- **Número + rótulo** — ex.: `12 agents on queue`
-- **Prefixo + número** — ex.: `Tutor: 5`
+- **Número + rótulo** — ex.: `5 itens concluídos`
+- **Prefixo + valor** — ex.: `Meta: 80%`
 
 Use ▲/▼ para reordenar blocos.
 

@@ -11,28 +11,28 @@ vm.runInContext(src, ctx);
 
 const JB = ctx.JB_REPORT;
 
-test('renderReport builds hourly template', function () {
+test('renderReport builds default template', function () {
   var data = JB.defaultData();
-  data.blocks.find(function (b) { return b.id === 'f1'; }).value = '12';
-  data.blocks.find(function (b) { return b.id === 'f5'; }).value = '3';
+  data.blocks.find(function (b) { return b.id === 'f1'; }).value = '5';
+  data.blocks.find(function (b) { return b.id === 'f5'; }).value = 'Ana';
   var out = JB.renderReport(data);
-  assert.match(out, /Hourly report:/);
-  assert.match(out, /12 agents on queue/);
-  assert.match(out, /Tutor: 3/);
+  assert.match(out, /Relatório:/);
+  assert.match(out, /5 itens concluídos/);
+  assert.match(out, /Resp: Ana/);
 });
 
 test('blank field values are omitted from report', function () {
   var data = JB.defaultData();
   var out = JB.renderReport(data);
-  assert.match(out, /Hourly report:/);
-  assert.doesNotMatch(out, /agents on queue/);
-  assert.doesNotMatch(out, /agents in training/);
+  assert.match(out, /Relatório:/);
+  assert.doesNotMatch(out, /itens concluídos/);
+  assert.doesNotMatch(out, /em andamento/);
 });
 
 test('explicit zero is included', function () {
   var data = JB.defaultData();
   data.blocks.find(function (b) { return b.id === 'f2'; }).value = '0';
-  assert.match(JB.renderReport(data), /0 agents in training/);
+  assert.match(JB.renderReport(data), /0 em andamento/);
 });
 
 test('normalizeData keeps field values', function () {

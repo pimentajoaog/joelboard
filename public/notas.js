@@ -1116,10 +1116,13 @@ function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++){ var on=ps[j].getAttribute('data-pane')===name; ps[j].style.display=on?'':'none'; ps[j].classList.toggle('active', on); } }
 function toggleNudgePref(){ var off=(DATA.config&&DATA.config.nudgePref)==='off'; var nv=off?'on':'off'; saveConfig('nudgePref', nv); $('setNudge').classList.toggle('on', nv!=='off'); }
 var NOTAS_TOUR=[
-  { title:'Bem-vindo ao Notas 📝', body:'Listas e notas que você marca: compras, tarefas, viagem ou nota livre.' },
+  { title:'Bem-vindo ao Notas 📝', body:'Listas marcáveis — compras, tarefas, viagem ou nota livre. Listas compartilhadas aparecem na seção 👥 Compartilhadas.' },
   { sel:'#fab', title:'Nova lista', body:'Toque no + e escolha o tipo. Numa nota livre, qualquer linha vira um item marcável com um toque.' },
-  { sel:'#main', title:'Suas listas', body:'Cada lista é um card com seu progresso. Toque para abrir e ir marcando.' },
-  { sel:'.acct .lnk', title:'Inteligência & tema', body:'O app aprende seus itens frequentes e lembra de listas que você costuma refazer. Ajuste tudo no ⚙.' }
+  { sel:'#main', title:'Suas listas', body:'Cada card mostra progresso. Toque para abrir e ir marcando.' },
+  { title:'Dentro da lista', body:'Use "+ Adicionar grupo" para seções com cabeçalhos colapsáveis. Itens concluídos podem ir para um grupo recolhível no fim (menu ⋯ ou Ajustes → Ocultar concluídos).' },
+  { title:'Selecionar vários', body:'Toque em ☑ Selecionar na barra inferior para marcar vários itens de uma vez — ideal no celular. Esc para sair.' },
+  { title:'Listas compartilhadas', body:'No menu ⋯, "Tornar compartilhada" convida por e-mail. Membros editam juntos; configure seu perfil em Ajustes → Perfil.' },
+  { sel:'.acct .lnk', title:'Ajustes', body:'Tema, perfil, sugestões automáticas e este tutorial. O app aprende itens frequentes e lembra listas que você costuma refazer.' }
 ];
 function notasVerTutorial(){ closeSettings(); setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 250); }
 

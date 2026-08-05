@@ -307,9 +307,10 @@ function hubNewsEditSave(){
 
 function $(id){ return document.getElementById(id); }
 var HUB_TOUR=[
-  { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só.' },
+  { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só — entre com Google para sincronizar dados no seu Drive.' },
   { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas ou Mini (extensões Chrome).' },
-  { sel:'.gear', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
+  { sel:'#hubNews', title:'Novidades', body:'Fique por dentro das últimas mudanças nos apps — atualizado aqui no Hub.' },
+  { sel:'.gear', title:'Ajustes', body:'Tema, login, tutorial, privacidade e aviso legal ficam aqui.' }
 ];
 function hubVerTutorial(){ closeHubSet(); setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 250); }
 

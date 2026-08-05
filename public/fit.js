@@ -555,12 +555,12 @@ function fitConfirm(title,msg,onYes){ JB.confirm(title, msg, onYes); }
 var _fbooted=false;
 var FIT_TOUR=[
   { title:'Bem-vindo ao Fit 💪', body:'Um tour rápido pelas funções.' },
-  { go:function(){ tab('hoje'); }, sel:'#hoje', title:'Hoje', body:'Seu treino do dia — comece o treino e registre as séries por aqui.' },
+  { go:function(){ tab('hoje'); }, sel:'#hoje', title:'Hoje', body:'Seu treino do dia — inicie, registre séries e acompanhe o timer de descanso na barra inferior enquanto loga.' },
   { go:function(){ tab('treinos'); }, sel:'#p-treinos .btn', title:'Treinos', body:'Monte seus treinos (splits) com exercícios, séries e descanso.' },
   { go:function(){ tab('exercicios'); }, sel:'#p-exercicios .btn', title:'Exercícios', body:'Sua biblioteca — carga, peso corporal ou por tempo (ex.: prancha).' },
-  { go:function(){ tab('progresso'); }, sel:'#p-progresso', title:'Progresso', body:'Evolução de carga, peso corporal e tempo por exercício.' },
-  { go:function(){ tab('macros'); }, sel:'#p-macros', title:'Macros', body:'Contador de macros por refeição — busque alimentos, ajuste gramas e acompanhe metas diárias.' },
-  { sel:'.acct .lnk', title:'Ajustes', body:'Tema, programa e este tutorial ficam aqui.' }
+  { go:function(){ tab('progresso'); }, sel:'#p-progresso', title:'Progresso', body:'Evolução por exercício, volume semanal por grupo muscular e sugestões de próxima progressão.' },
+  { go:function(){ tab('macros'); }, sel:'#p-macros', title:'Macros', body:'Contador por refeição — busque alimentos, ajuste gramas e use a calculadora (Mifflin-St Jeor) em Ajustes para estimar metas.' },
+  { sel:'.acct .lnk', title:'Ajustes', body:'Tema, programa semanal, metas de volume e este tutorial. Sugestões automáticas têm aviso legal em Sobre.' }
 ];
 function verTutorial(){ closeSettings(); setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 250); }
 document.addEventListener('visibilitychange', function(){

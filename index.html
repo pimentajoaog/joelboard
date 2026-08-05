@@ -86,7 +86,7 @@
   <aside class="novidades" id="hubNews" aria-label="Novidades"></aside>
   </div>
 
-  <div class="foot">© 2026 Joel Soluções LTDA · <a class="hub-legal-link" href="/privacy.html">Privacidade</a></div>
+  <div class="foot">© 2026 Joel Soluções LTDA · <a class="hub-legal-link" href="/privacy.html">Privacidade</a> · <a class="hub-legal-link" href="/aviso.html">Aviso legal</a></div>
 </div>
 
 <div class="overlay" id="hubNewsEditor" onclick="if(event.target===this)closeHubNewsEditor()">
@@ -107,6 +107,7 @@
     <button class="mbtn" onclick="hubVerTutorial()">🧭 Ver tutorial</button>
     <button class="mbtn" onclick="JB.feedback('Joelboard Hub')">💬 Enviar feedback</button>
     <a class="mbtn hub-legal-btn" href="/privacy.html">🔒 Privacidade</a>
+    <a class="mbtn hub-legal-btn" href="/aviso.html">⚖️ Aviso legal</a>
     <button class="mbtn" id="hubAuthBtn" onclick="hubAuth()">Entrar com Google</button>
     <div style="font-size:12px;color:var(--muted);margin:14px 0 8px">Tema</div>
     <div id="hubSkins"></div>
@@ -161,15 +162,24 @@
         <div class="desc">Relatório recorrente — contadores, template editável, copiar para Slack.</div>
         <div class="open" style="color:#f59e0b">Baixar →</div>
       </a>
+      <a class="miniv-card live" href="/extensions/joelboard-staff.zip" download="joelboard-staff.zip">
+        <div class="miniv-ico" style="background:color-mix(in srgb, #38bdf8 12%, var(--surface2))">
+          <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><circle cx="24" cy="24" r="5" fill="none" stroke="#38bdf8" stroke-width="3"/><circle cx="40" cy="24" r="5" fill="none" stroke="#38bdf8" stroke-width="3"/><path d="M16 40c2-5 7-9 16-9s14 4 16 9" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round"/></svg>
+        </div>
+        <div class="suite">Joelboard Mini</div>
+        <div class="name" style="color:#38bdf8">Staff</div>
+        <div class="desc">Staffing copilot — forecast vs Assembled, overstaff e slots de VTO.</div>
+        <div class="open" style="color:#38bdf8">Baixar →</div>
+      </a>
     </div>
     <div class="miniv-steps">
       <h2>Instalar uma extensão</h2>
       <ol>
-        <li>Toque no card acima para baixar o zip (<code>joelboard-replace.zip</code>, <code>joelboard-refresh.zip</code> ou <code>joelboard-report.zip</code>).</li>
-        <li>Descompacte — você terá uma pasta (<code>replace</code>, <code>refresh</code> ou <code>report</code>) com o <code>manifest.json</code>.</li>
+        <li>Toque no card acima para baixar o zip (<code>joelboard-replace.zip</code>, <code>joelboard-refresh.zip</code>, <code>joelboard-report.zip</code> ou <code>joelboard-staff.zip</code>).</li>
+        <li>Descompacte — você terá uma pasta (<code>replace</code>, <code>refresh</code>, <code>report</code> ou <code>staff</code>) com o <code>manifest.json</code>.</li>
         <li>No Chrome, abra <a href="chrome://extensions" target="_blank" rel="noopener">chrome://extensions</a> e ative o <b>Modo do desenvolvedor</b>.</li>
         <li>Clique em <b>Carregar sem compactação</b> e selecione a pasta descompactada.</li>
-        <li>Fixe a extensão na barra. Clique no ícone para abrir o popup.</li>
+        <li>Fixe a extensão na barra. Clique no ícone para abrir o popup (ou painel lateral no Staff).</li>
       </ol>
       <h3>Joelboard Replace</h3>
       <p>Em qualquer campo de texto, digite um gatilho (ex.: <code>//oi</code>) e pressione <b>Espaço</b> ou <b>Tab</b> para expandir. Planilha: colunas <code>Nome</code>, <code>Trigger</code>, <code>Text</code>. Colar Ctrl+C: <code>%clip%</code>.</p>
@@ -177,13 +187,15 @@
       <p>Abra a aba que quer monitorar, defina o intervalo e clique <b>Iniciar</b> — a página recarrega na hora e um contador aparece no canto enquanto a aba estiver ativa. Atalho personalizável no popup (clique em <b>Atalho</b> para gravar). Padrão: <code>Alt+Shift+R</code>.</p>
       <h3>Joelboard Report</h3>
       <p>Preencha os contadores no popup, confira a prévia e clique <b>Copiar relatório</b> — cole no Slack. Edite labels, linhas fixas e campos na aba <b>Template</b>. Não precisa de site permitido (só popup).</p>
+      <h3>Joelboard Staff</h3>
+      <p>Abre o <b>painel lateral</b> (side panel). Configure tiers, times e statuses em <b>Setup</b>; no <b>Dashboard</b>, escaneie a aba de forecast e a Assembled para a hora escolhida — mostra overstaff e slots de VTO. Dados ficam só no navegador.</p>
     </div>
     <div class="miniv-sites">
       <h2>Sincronizar Replace</h2>
       <p class="miniv-sub">Macros, variáveis, ajustes e sites permitidos ficam numa planilha <b>Joelboard Mini</b> no seu Drive — mesma conta Google do Hub. Funciona entre dispositivos depois de sincronizar.</p>
       <button type="button" class="miniv-sync-btn" id="miniReplaceSync">↻ Sincronizar Replace agora</button>
       <p class="miniv-sites-note" id="miniReplaceSyncNote">Requer a extensão Replace instalada neste navegador. Também pode entrar com Google no popup da extensão (Ajustes → Nuvem).</p>
-      <p class="miniv-sites-note">Extensões sujeitas à <a href="/privacy.html">política de privacidade</a> do Joelboard.</p>
+      <p class="miniv-sites-note">Extensões sujeitas à <a href="/privacy.html">política de privacidade</a> e ao <a href="/aviso.html">aviso legal</a> do Joelboard.</p>
     </div>
     <div class="miniv-sites">
       <h2>Sites permitidos</h2>

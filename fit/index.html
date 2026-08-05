@@ -45,7 +45,7 @@
   <div class="page" id="p-progresso"><div id="prog"></div></div>
   <div class="page" id="p-macros"></div>
 
-  <div class="foot">© 2026 Joel Soluções LTDA</div>
+  <div class="foot">© 2026 Joel Soluções LTDA · <a href="/privacy.html">Privacidade</a> · <a href="/aviso.html">Aviso legal</a></div>
 </div>
 
 <button class="door" onclick="location.href='/'" title="Voltar ao Joelboard" aria-label="Voltar ao Joelboard">
@@ -137,7 +137,7 @@
 <div class="overlay" id="macroCalcOverlay" onclick="if(event.target===this)macroCloseCalc()">
   <div class="modal">
     <div class="mh"><div class="mt">Calcular metas</div><button class="x" onclick="macroCloseCalc()">✕</button></div>
-    <div class="rg" style="font-size:11px;margin-bottom:12px">Estimativa com Mifflin-St Jeor — ajuste depois se precisar.</div>
+    <div class="rg" style="font-size:11px;margin-bottom:12px">Estimativa com Mifflin-St Jeor — não substitui nutricionista ou médico. <a href="/aviso.html#fit-macros" target="_blank" rel="noopener">Saiba mais</a></div>
     <div class="macrogoals-grid">
       <div class="fg" style="margin:0"><label class="fl">Sexo</label><select class="field" id="macroCalcSex" onchange="macroCalcUpdatePreview()"><option value="m">Masculino</option><option value="f">Feminino</option></select></div>
       <div class="fg" style="margin:0"><label class="fl">Idade</label><input class="field" id="macroCalcAge" type="number" inputmode="numeric" placeholder="ex.: 28" oninput="macroCalcUpdatePreview()"></div>
@@ -218,6 +218,7 @@
     <div class="set-pane" data-pane="sobre" style="display:none">
       <div class="fg"><button class="btn ghost" style="width:100%" onclick="verTutorial()">🧭 Ver tutorial</button></div>
       <div class="fg"><button class="btn ghost" style="width:100%" onclick="JB.feedback('Joelboard Fit')">💬 Enviar feedback</button></div>
+      <p class="legal-note" style="margin:0 0 12px">Metas de macros, sugestões de progressão e volume usam fórmulas e regras padrão — não substituem profissionais de saúde ou educação física. <a href="/aviso.html#fit" target="_blank" rel="noopener">Aviso legal</a></p>
       <div class="fg"><button class="del" style="width:100%" onclick="fitSignOut()">Sair</button></div>
       <div class="rg" style="text-align:center;font-size:11px;margin-top:4px">Joelboard Fit</div>
     </div>

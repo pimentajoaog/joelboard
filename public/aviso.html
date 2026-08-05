@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<!-- Joelboard — legal disclaimer. © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aviso legal — Joelboard</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="stylesheet" href="/joelboard.css">
+<link rel="stylesheet" href="/themes.css">
+<meta name="theme-color" content="#0d0f18">
+<style>
+  :root {
+    --bg: #0d0f18;
+    --surface: #1b1f32;
+    --surface2: #141824;
+    --border: #2b3147;
+    --text: #e7eaf3;
+    --muted: #9aa3b5;
+    --primary: #818cf8;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px; }
+  .privacy-wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+  .privacy-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+  .privacy-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--text); text-decoration: none; }
+  .privacy-brand img { width: 36px; height: 36px; border-radius: 8px; }
+  .privacy-back { color: var(--primary); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .privacy-back:hover { text-decoration: underline; }
+  h1 { font-size: clamp(1.6rem, 4vw, 2rem); font-weight: 800; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .privacy-updated { color: var(--muted); font-size: 13px; margin: 0 0 32px; }
+  .privacy-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; margin-bottom: 16px; }
+  h2 { font-size: 17px; font-weight: 800; margin: 0 0 12px; }
+  h3 { font-size: 14px; font-weight: 800; margin: 16px 0 8px; color: var(--text); }
+  p, li { margin: 0 0 10px; color: var(--text); }
+  p:last-child, li:last-child { margin-bottom: 0; }
+  ul { margin: 0 0 10px; padding-left: 1.25rem; }
+  li { margin-bottom: 6px; }
+  a { color: var(--primary); }
+  code { font-size: 0.92em; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
+  .privacy-footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="privacy-wrap">
+  <div class="privacy-top">
+    <a class="privacy-brand" href="/">
+      <img src="/icon-192.png" alt="">
+      <span>Joelboard</span>
+    </a>
+    <a class="privacy-back" href="/">← Voltar ao Hub</a>
+  </div>
+
+  <h1>Aviso legal</h1>
+  <p class="privacy-updated">Última atualização: 5 de agosto de 2026 · Joel Soluções LTDA</p>
+
+  <div class="privacy-card">
+    <h2>Em resumo</h2>
+    <p>Joelboard é um conjunto de ferramentas pessoais para organizar treino, alimentação, finanças, estudos e listas. <strong>Não somos clínica, consultoria financeira, escola ou serviço de saúde.</strong></p>
+    <p>Números, metas e sugestões que o app mostra vêm de <strong>fórmulas e regras padrão</strong>, dos <strong>dados que você registra</strong> ou de <strong>fontes públicas de terceiros</strong>. São estimativas e apoio — não diagnóstico, prescrição ou recomendação individual.</p>
+    <p>Antes de mudar dieta, treino, medicamentos ou decisões financeiras com base no app, converse com um profissional qualificado (médico, nutricionista, educador físico, contador etc.).</p>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Responsabilidade</h2>
+    <p>Você decide como usar o Joelboard e assume a responsabilidade pelas suas escolhas. A Joel Soluções LTDA não se responsabiliza por danos, perdas ou consequências decorrentes do uso das informações, cálculos ou sugestões exibidos — incluindo quando baseados em dados incompletos ou incorretos.</p>
+    <p>O app é oferecido “como está”, sem garantia de precisão, adequação a um objetivo específico ou ausência de erros.</p>
+  </div>
+
+  <div class="privacy-card" id="fit">
+    <h2>Fit — treino, progresso e macros</h2>
+
+    <h3 id="fit-macros">Metas de macros e calorias</h3>
+    <ul>
+      <li><strong>BMR:</strong> equação de <strong>Mifflin–St Jeor</strong> (sexo, idade, peso, altura).</li>
+      <li><strong>TDEE:</strong> BMR multiplicado por um fator de atividade que você escolhe.</li>
+      <li><strong>Calorias alvo:</strong> TDEE com ajuste fixo por objetivo (ex.: −400 kcal para perder peso, +300 kcal para ganhar massa), com piso mínimo.</li>
+      <li><strong>Proteína, gordura, carbs, fibra e água:</strong> regras simplificadas (ex.: ~2 g proteína/kg, ~0,8 g gordura/kg; carbs completam o restante das calorias).</li>
+    </ul>
+    <p>Essas contas são <strong>estimativas educacionais</strong>. Metabolismo real varia; o app não substitui avaliação nutricional ou médica.</p>
+
+    <h3>Alimentos e nutrientes</h3>
+    <ul>
+      <li>Lista embutida no app e alimentos <strong>custom</strong> que você cadastra.</li>
+      <li>Busca online via <a href="https://world.openfoodfacts.org" rel="noopener noreferrer" target="_blank">Open Food Facts</a> — dados colaborativos, podem estar desatualizados ou imprecisos.</li>
+    </ul>
+    <p>Sempre confira rótulos e porções reais quando a decisão importar.</p>
+
+    <h3 id="fit-progressao">Progressão de carga e “próximo passo”</h3>
+    <p>Sugestões na aba <strong>Progresso</strong> (subir carga, segurar, deload, reps, etc.) seguem <strong>regras automáticas simples</strong> com base no histórico que você registrou e nos alvos do treino. Não são periodização escrita por profissional.</p>
+
+    <h3>Volume semanal</h3>
+    <p>Metas padrão de séries por grupo muscular (ex.: 10–20/semana) são <strong>referências editáveis</strong>, não prescrição de treino.</p>
+
+    <h3>1RM estimado, peso corporal e timers</h3>
+    <p>Gráficos e estimativas derivam dos seus registros. Timers e notificações de descanso são conveniência — não indicam intensidade segura para você.</p>
+  </div>
+
+  <div class="privacy-card" id="finance">
+    <h2>Finance</h2>
+    <p>Organização de orçamento, transações e metas com <strong>seus números</strong>. Não é assessoria de investimentos, contabilidade, planejamento tributário ou consultoria financeira. Para decisões com impacto legal ou patrimonial, consulte profissionais habilitados.</p>
+  </div>
+
+  <div class="privacy-card" id="study">
+    <h2>Study</h2>
+    <p>Calendário, matérias, foco e anexos são ferramentas de <strong>organização pessoal</strong>. Não substituem orientação de professores, coordenação de curso ou serviços pedagógicos institucionais.</p>
+  </div>
+
+  <div class="privacy-card" id="notas">
+    <h2>Notas e extensões Mini</h2>
+    <p>Listas, textos e automações ficam sob seu controle. O Joelboard não revisa conteúdo nem garante que informações que você armazena ou expande (Replace, etc.) estejam corretas ou adequadas a contextos profissionais.</p>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Alterações</h2>
+    <p>Podemos atualizar este aviso. A data no topo indica a versão vigente. O uso continuado do Joelboard após mudanças implica ciência do texto publicado aqui.</p>
+  </div>
+
+  <div class="privacy-card">
+    <h2>Contato</h2>
+    <p>Dúvidas: <a href="mailto:joaogabrielpabarbosa@gmail.com">joaogabrielpabarbosa@gmail.com</a>. Sobre dados pessoais, veja também a <a href="/privacy.html">política de privacidade</a>.</p>
+  </div>
+
+  <p class="privacy-footer">© 2026 Joel Soluções LTDA · <a href="/">Joelboard</a> · <a href="/privacy.html">Privacidade</a></p>
+</div>
+</body>
+</html>

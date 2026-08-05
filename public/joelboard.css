@@ -42,6 +42,8 @@ body.jb-noscroll { overflow: hidden; }
 
 /* Copyright easter egg — 5 taps on .foot / #appFooter */
 .jb-egg-foot { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+.foot a, .app-footer a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.foot a:hover, .app-footer a:hover { color: var(--primary, #818cf8); opacity: 1; }
 
 /* Header icon → Hub home */
 .hub-home { display: inline-flex; flex: none; line-height: 0; border-radius: 9px; text-decoration: none; transition: opacity 0.15s ease, transform 0.1s ease; }

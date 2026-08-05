@@ -568,7 +568,7 @@ function applyStaticI18n(){
   document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.getAttribute('data-i18n-html')); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
   document.querySelectorAll('[data-i18n-title]').forEach(el => { el.setAttribute('title', t(el.getAttribute('data-i18n-title'))); });
-  var _f=document.getElementById('appFooter'); if (_f) _f.textContent = '© ' + new Date().getFullYear() + ' Joel Soluções LTDA · ' + t('footer.rights');
+  var _f=document.getElementById('appFooter'); if (_f) _f.innerHTML = '© ' + new Date().getFullYear() + ' Joel Soluções LTDA · ' + t('footer.rights') + ' · <a href="/privacy.html">Privacidade</a> · <a href="/aviso.html">Aviso legal</a>';
   document.documentElement.lang = lang()==='en' ? 'en' : 'pt-BR';
   var _hb=document.getElementById('hubBtn'); if (_hb) _hb.style.display = (HUB_URL && HUB_URL.indexOf('PASTE_HUB_URL') < 0) ? '' : 'none';
 }

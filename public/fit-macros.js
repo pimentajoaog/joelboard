@@ -280,7 +280,8 @@ function macroCalcPreviewHtml(r, p) {
     + '<div class="mcalc-row"><span>Gordura</span><strong>' + r.g + ' g</strong></div>'
     + '<div class="mcalc-row"><span>Fibra / Fibra sol.</span><strong>' + r.f + ' / ' + r.sf + ' g</strong></div>'
     + '<div class="mcalc-row"><span>Água</span><strong>' + r.water + ' ml</strong></div>'
-    + '</div>';
+    + '</div>'
+    + '<p class="legal-note">Estimativa educacional — não substitui nutricionista ou médico. <a href="/aviso.html#fit-macros" target="_blank" rel="noopener">Detalhes</a></p>';
 }
 function macroCalcUpdatePreview() {
   var el = $('macroCalcPreview'); if (!el) return;
@@ -320,7 +321,7 @@ function macroCalcBannerHtml() {
   if (!macroShowCalcBanner()) return '';
   return '<div class="mcalc-banner">'
     + '<div class="mcalc-banner-t"><div class="mcalc-title">Calcule suas metas de macros</div>'
-    + '<div class="rg">Use a fórmula Mifflin-St Jeor para estimar kcal e proteína/carbs/gordura com base no seu perfil.</div></div>'
+    + '<div class="rg">Estimativa com Mifflin-St Jeor — não substitui orientação profissional. <a href="/aviso.html#fit-macros" target="_blank" rel="noopener">Saiba mais</a></div></div>'
     + '<div class="mcalc-banner-actions"><button class="btn btn-primary" onclick="macroOpenCalc()">Calcular</button>'
     + '<button class="mcalc-banner-x" onclick="macroDismissCalcBanner()" title="Fechar">✕</button></div></div>';
 }

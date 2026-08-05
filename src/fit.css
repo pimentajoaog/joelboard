@@ -57,6 +57,9 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 #toast{ bottom:calc(84px + env(safe-area-inset-bottom, 0px)); }
 
 .foot{ @apply text-center text-muted text-[11px] opacity-[0.55] mt-9; }
+.legal-note{ @apply text-[11px] text-muted leading-snug mt-2 mb-0; }
+.legal-note a{ @apply underline underline-offset-2; color:inherit; }
+.legal-note a:hover{ color:var(--primary); opacity:1; }
 
 .gate{ @apply max-w-[420px] mx-auto my-10 text-center; }
 .gate .gt{ @apply text-[22px] font-extrabold tracking-[-.5px]; }

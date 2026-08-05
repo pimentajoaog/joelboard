@@ -597,23 +597,47 @@ function renderEditor(){
   if(_edMenuOpen){ var m=$('edMenu'); if(m) m.classList.add('open'); }
 }
 function shouldBucketDoneItem(m){ return _doneCollapsed && !m.isGroup && !m.hidden && m.item.marcavel && m.item.feito && m.item.id!==_editId; }
-function doneBucketScope(simOpen, depth){ return depth<=0?DONE_SCOPE_ROOT:((simOpen[depth-1]&&simOpen[depth-1].id)||DONE_SCOPE_ROOT); }
 function doneBucketExpanded(scopeId, entries){ if(!_doneCollapsed) return true; if(_doneBucketExpanded[scopeId]) return true; if(_editId && entries.some(function(m){ return m.item.id===_editId; })) return true; return false; }
 function toggleDoneBucket(scopeId){ _doneBucketExpanded[scopeId]=!_doneBucketExpanded[scopeId]; renderItems(); }
+function layoutItemScope(layout, idx){
+  var m=layout[idx];
+  if(m.isGroup) return null;
+  var depth=m.depth|0;
+  if(depth<=0) return DONE_SCOPE_ROOT;
+  for(var i=idx-1;i>=0;i--){
+    if(layout[i].isGroup && layout[i].depth===depth-1) return layout[i].item.id;
+    if(layout[i].isGroup && layout[i].depth<depth-1) break;
+  }
+  return DONE_SCOPE_ROOT;
+}
+function collectDoneBuckets(layout){
+  var buckets={};
+  layout.forEach(function(m, idx){
+    if(!shouldBucketDoneItem(m)) return;
+    var sc=layoutItemScope(layout, idx);
+    (buckets[sc]=buckets[sc]||[]).push(m);
+  });
+  return buckets;
+}
 function renderDoneBucket(scopeId, entries, depth){
   if(!entries.length) return '';
   var n=entries.length, expanded=doneBucketExpanded(scopeId, entries), chev=expanded?'▾':'▸';
-  var html='<button type="button" class="ed-done-bucket"'+depthAttr(depth)+' onclick="toggleDoneBucket(\''+scopeId+'\')">'+chev+' ✓ '+n+' concluído'+(n>1?'s':'')+'</button>';
+  var label=expanded?('Ocultar concluídos ('+n+')'):('Mostrar concluídos ('+n+')');
+  var html='<button type="button" class="ed-done-bucket"'+depthAttr(depth)+' onclick="toggleDoneBucket(\''+scopeId+'\')">'+chev+' '+label+'</button>';
   if(expanded) entries.forEach(function(m){ html+=itemRow(m.item, false, m.depth); });
   return html;
 }
-function collectDoneBuckets(layout){
-  var sim=[], buckets={};
-  layout.forEach(function(m){
-    if(m.isGroup){ while(sim.length>m.depth) sim.pop(); sim[m.depth]={id:m.item.id,depth:m.depth}; sim.length=m.depth+1; }
-    else if(shouldBucketDoneItem(m)){ var sc=doneBucketScope(sim,m.depth); (buckets[sc]=buckets[sc]||[]).push(m); }
-  });
-  return buckets;
+function flushDoneBucket(html, buckets, rendered, scopeId, depth){
+  if(rendered[scopeId]||!buckets[scopeId]||!buckets[scopeId].length) return html;
+  rendered[scopeId]=1;
+  return html+renderDoneBucket(scopeId, buckets[scopeId], depth);
+}
+function closeDoneGroupScopes(html, stack, buckets, rendered, fromDepth){
+  while(stack.length && stack[stack.length-1].depth>=fromDepth){
+    var g=stack.pop();
+    html=flushDoneBucket(html, buckets, rendered, g.id, g.depth+1);
+  }
+  return html;
 }
 function renderItems(){
   scrubItemDupes(openNoteId);
@@ -626,18 +650,17 @@ function renderItems(){
       else html+=itemRow(m.item, m.hidden, m.depth);
     });
   } else {
-    var buckets=collectDoneBuckets(layout), openGroups=[];
+    var buckets=collectDoneBuckets(layout), rendered={}, stack=[], html='';
     layout.forEach(function(m){
-      var d=m.depth;
-      while(openGroups.length>d){ var og=openGroups.pop(); html+=renderDoneBucket(og.id, buckets[og.id]||[], og.depth+1); }
       if(m.isGroup){
+        html=closeDoneGroupScopes(html, stack, buckets, rendered, m.depth);
+        if(m.depth===0) html=flushDoneBucket(html, buckets, rendered, DONE_SCOPE_ROOT, 0);
         html+=groupRow(m.item,m.depth,m.hidden);
-        openGroups[d]={id:m.item.id,depth:d};
-        openGroups.length=d+1;
+        stack.push({id:m.item.id,depth:m.depth});
       } else if(!shouldBucketDoneItem(m)) html+=itemRow(m.item, m.hidden, m.depth);
     });
-    while(openGroups.length){ var og=openGroups.pop(); html+=renderDoneBucket(og.id, buckets[og.id]||[], og.depth+1); }
-    if(buckets[DONE_SCOPE_ROOT]&&buckets[DONE_SCOPE_ROOT].length) html+=renderDoneBucket(DONE_SCOPE_ROOT, buckets[DONE_SCOPE_ROOT], 0);
+    html=closeDoneGroupScopes(html, stack, buckets, rendered, 0);
+    html=flushDoneBucket(html, buckets, rendered, DONE_SCOPE_ROOT, 0);
   }
   el.className='ed-items-tree';
   el.innerHTML=html;

@@ -696,7 +696,7 @@ function groupRow(g, depth, hidden){
     +'<button type="button" class="gctrl'+(cs.down?'':' off')+'" onclick="groupMoveDown(\''+g.id+'\')" title="Mover para baixo (Alt+↓)"'+(cs.down?'':' disabled')+'>↓</button>'
     +'</span>';
   return '<div class="ihdr gdepth-'+(depth|0)+(g.feito?' collapsed':'')+(hidden?' ihide':'')+'" data-id="'+g.id+'" data-g="1"'+depthAttr(depth)+'>'
-  +'<button class="ihandle" onpointerdown="dragBegin(event,\''+g.id+'\')" title="Arrastar para reordenar">⠿</button>'
+  +'<button class="ihandle" onpointerdown="dragBegin(event,\''+g.id+'\')" title="Segure e arraste para reordenar">⠿</button>'
   +'<button class="gchev" onclick="toggleGroup(\''+g.id+'\')" title="Expandir/recolher">'+(g.feito?'▸':'▾')+'</button>'+chk
   +((g.id===_editId)
      ? '<input class="gname" id="editTA" value="'+escAttr(g.texto)+'" placeholder="Nome do grupo" autocomplete="off" onblur="commitText(\''+g.id+'\',this.value);exitEdit();" onkeydown="groupNameKey(event,\''+g.id+'\')">'

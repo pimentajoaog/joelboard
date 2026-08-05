@@ -84,6 +84,7 @@ Zip bundles are built to `public/extensions/` and linked from the Hub Mini panel
 
 - `joelboard-replace.zip` — text expansion
 - `joelboard-refresh.zip` — tab auto-refresh
+- `joelboard-report.zip` — recurring report counters (Slack)
 
 Install: unzip → Chrome → Extensions → Developer mode → Load unpacked. Details: **[docs/mini.md](docs/mini.md)**
 

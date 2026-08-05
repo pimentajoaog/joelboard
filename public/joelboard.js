@@ -208,8 +208,10 @@
   }
 
   var CONSENT_KEY = 'jb_consent';
-  function needConsent(){ try { return localStorage.getItem(CONSENT_KEY) !== SCOPES; } catch (_) { return false; } }
-  function ackConsent(){ try { localStorage.setItem(CONSENT_KEY, SCOPES); } catch (_) {} }
+  var CONSENT_REV = '2026-08-05';
+  function consentToken(){ return SCOPES + '|' + CONSENT_REV; }
+  function needConsent(){ try { return localStorage.getItem(CONSENT_KEY) !== consentToken(); } catch (_) { return false; } }
+  function ackConsent(){ try { localStorage.setItem(CONSENT_KEY, consentToken()); } catch (_) {} }
   function showConsent(onOk, onCancel){
     var ov = document.createElement('div');
     ov.id = 'jbConsent';
@@ -218,11 +220,14 @@
       + '<div style="font-size:20px;font-weight:800;margin-bottom:6px">Antes de entrar</div>'
       + '<div style="font-size:13px;color:#8a93a8;line-height:1.55;margin-bottom:16px">O Google vai mostrar um aviso de <b style="color:#e7eaf3">\u201capp n\u00e3o verificado\u201d</b>. \u00c9 esperado \u2014 este \u00e9 um app pessoal, ainda n\u00e3o verificado pelo Google. \u00c9 seguro: toque em <b style="color:#e7eaf3">Avan\u00e7ado \u2192 Acessar</b> para continuar.</div>'
       + '<div style="background:#252a40;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.55;margin-bottom:18px">'
-      + '<div style="font-weight:700;color:#34d399;margin-bottom:4px">\u2713 O que o app usa</div>'
-      + '<div style="color:#cdd3e3">Uma planilha criada por ele no <b>seu</b> Google Drive (seus dados ficam a\u00ed) e seu e-mail/nome s\u00f3 para te identificar.</div>'
+      + '<div style="font-weight:700;color:#34d399;margin-bottom:4px">\u2713 O que o Joelboard usa</div>'
+      + '<div style="color:#cdd3e3">Planilhas no <b>seu</b> Google Drive (Finance, Fit, Study, Notas) e e-mail/nome s\u00f3 para te identificar. Sem login, os apps n\u00e3o funcionam.</div>'
+      + '<div style="color:#cdd3e3;margin-top:8px"><b>Notas:</b> listas compartilhadas criam outra planilha no seu Drive; convites por e-mail Google.</div>'
+      + '<div style="color:#cdd3e3;margin-top:8px"><b>Fit:</b> pode pedir <b>notifica\u00e7\u00f5es</b> do navegador para o timer de descanso \u2014 s\u00f3 se voc\u00ea permitir.</div>'
       + '<div style="font-weight:700;color:#fb7185;margin:12px 0 4px">\u2715 O que ele N\u00c3O acessa</div>'
-      + '<div style="color:#cdd3e3">Seus outros arquivos, e-mails ou contatos. Nada \u00e9 enviado a terceiros \u2014 tudo fica na sua conta Google.</div>'
+      + '<div style="color:#cdd3e3">Seus outros arquivos, e-mails ou contatos. Nada \u00e9 enviado a servidores Joelboard \u2014 tudo fica na sua conta Google (ou no navegador).</div>'
       + '</div>'
+      + '<div style="font-size:12px;color:#8a93a8;line-height:1.5;margin-bottom:16px">Detalhes: <a href="/privacy.html" style="color:#818cf8">pol\u00edtica de privacidade</a> \u00b7 <a href="/aviso.html" style="color:#818cf8">aviso legal</a> (estimativas Fit, macros, etc.).</div>'
       + '<button id="jbcGo" style="background:#fff;color:#1f2430;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;width:100%;cursor:pointer;font-family:inherit">Continuar com Google</button>'
       + '<button id="jbcNo" style="background:none;border:none;color:#8a93a8;font-size:13px;text-decoration:underline;cursor:pointer;width:100%;margin-top:12px;font-family:inherit">Agora n\u00e3o</button>'
       + '</div>';

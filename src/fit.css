@@ -110,7 +110,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .runnav .btn{ @apply flex-1; }
 .runnav .btn:disabled{ @apply opacity-40; }
 
-.restbar{ @apply fixed left-1/2 bottom-[78px] flex items-center gap-3 bg-primary px-[18px] py-[11px] rounded-full z-[60] font-extrabold text-[color:var(--on-brand)]; transform:translateX(-50%); box-shadow:0 6px 22px color-mix(in srgb, var(--primary) 42%, transparent); }
+.restbar{ @apply fixed left-1/2 bottom-[78px] hidden items-center gap-3 bg-primary px-[18px] py-[11px] rounded-full z-[60] font-extrabold text-[color:var(--on-brand)]; transform:translateX(-50%); box-shadow:0 6px 22px color-mix(in srgb, var(--primary) 42%, transparent); }
 .restbar .rt{ @apply text-base; }
 .rbtn{ @apply border-0 rounded-full px-[11px] py-[5px] font-extrabold cursor-pointer text-xs text-[color:var(--on-brand)]; background:rgba(0,0,0,0.18); font-family:inherit; }
 
@@ -441,6 +441,14 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
   min-height:0;
 }
 @media (max-width:540px){
+  .header .acct{ min-width:0; flex:1 1 auto; justify-content:flex-end; }
+  #acctEmail{
+    max-width:min(140px, 42vw);
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
   #macroAddOverlay .modal{
     display:flex;
     flex-direction:column;

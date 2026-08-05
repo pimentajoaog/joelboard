@@ -336,29 +336,31 @@ function fitScheduleRestDoneNotif(){ fitClearRestNotif(); if(!rest.endsAt) retur
 function fitShowRestDoneNotif(){ if(!('Notification' in window)||Notification.permission!=='granted') return; var title='Descanso terminou'; var body=rest.label?('Próxima série — '+rest.label):'Hora da próxima série'; var opts={ body:body, tag:'joelboard-fit-rest', renotify:true, icon:'/icon-192.png' }; if('serviceWorker' in navigator){ navigator.serviceWorker.ready.then(function(reg){ return reg.showNotification(title, opts); }).catch(function(){ try{ new Notification(title, opts); }catch(e){} }); } else { try{ new Notification(title, opts); }catch(e){} } }
 function fitUpdateMediaSession(title, artist){ if(!('mediaSession' in navigator)) return; try{ navigator.mediaSession.metadata=new MediaMetadata({ title:title, artist:artist||'Joelboard Fit', artwork:[{ src:'/icon-192.png', sizes:'192x192', type:'image/png' }] }); navigator.mediaSession.playbackState='playing'; }catch(e){} }
 function fitClearMediaSession(){ if(!('mediaSession' in navigator)) return; try{ navigator.mediaSession.playbackState='none'; navigator.mediaSession.metadata=null; }catch(e){} }
-function tickRest(){ if(!rest.endsAt) return false; rest.secs=fitTimerRemaining(rest.endsAt); if(rest.secs<=0){ rest.secs=0; var wasRest=runPhase==='rest'; stopRest(); beep(); if(wasRest) rNextSet(); else if(runPhase==='log') renderRun(); return true; } fitUpdateMediaSession(fmtT(rest.secs)+' — Descanso', rest.label); return false; }
-function startRest(secs){ stopRest(); rest.secs=Number(secs)||0; rest.tot=rest.secs; if(rest.secs<=0) return; rest.endsAt=Date.now()+rest.secs*1000; rest.label=(sess&&sess.items[sess.cur])?sess.items[sess.cur].name:''; fitAskNotif(); fitScheduleRestDoneNotif(); fitUpdateMediaSession(fmtT(rest.secs)+' — Descanso', rest.label); rest.id=setInterval(function(){ if(tickRest()) return; if(runPhase==='log'){ var lt=$('logTimer'); if(lt) lt.textContent=(rest.secs>0?('Descanso · ⏱ '+fmtT(rest.secs)):'Registrar série'); } else { renderRun(); } },1000); }
-function stopRest(){ if(rest.id){ clearInterval(rest.id); rest.id=null; } rest.secs=0; rest.tot=0; rest.endsAt=0; rest.label=''; fitClearRestNotif(); fitClearMediaSession(); }
+function fitUpdateRestBar(){ var bar=$('restBar'); if(!bar) return; var ov=$('runOverlay'); var show=rest.endsAt&&rest.secs>0&&ov&&ov.classList.contains('open')&&runPhase==='log'; bar.style.display=show?'flex':'none'; if(!show) return; bar.innerHTML='<span class="rt">⏱ '+fmtT(rest.secs)+'</span><button class="rbtn" onclick="rAdd30()">+30s</button><button class="rbtn" onclick="rSkip()">Pular</button>'; }
+function tickRest(){ if(!rest.endsAt) return false; rest.secs=fitTimerRemaining(rest.endsAt); if(rest.secs<=0){ rest.secs=0; var wasRest=runPhase==='rest'; stopRest(); beep(); if(wasRest) rNextSet(); else if(runPhase==='log') renderRun(); return true; } fitUpdateMediaSession(fmtT(rest.secs)+' — Descanso', rest.label); fitUpdateRestBar(); return false; }
+function startRest(secs){ stopRest(); rest.secs=Number(secs)||0; rest.tot=rest.secs; if(rest.secs<=0) return; rest.endsAt=Date.now()+rest.secs*1000; rest.label=(sess&&sess.items[sess.cur])?sess.items[sess.cur].name:''; fitAskNotif(); fitScheduleRestDoneNotif(); fitUpdateMediaSession(fmtT(rest.secs)+' — Descanso', rest.label); fitUpdateRestBar(); rest.id=setInterval(function(){ if(tickRest()) return; if(runPhase==='log'){ var lt=$('logTimer'); if(lt) lt.textContent=(rest.secs>0?('Descanso · ⏱ '+fmtT(rest.secs)):'Registrar série'); fitUpdateRestBar(); } else { renderRun(); } },1000); }
+function stopRest(){ if(rest.id){ clearInterval(rest.id); rest.id=null; } rest.secs=0; rest.tot=0; rest.endsAt=0; rest.label=''; fitClearRestNotif(); fitClearMediaSession(); fitUpdateRestBar(); }
 function tickWork(){ if(!work.endsAt) return false; work.secs=fitTimerRemaining(work.endsAt); if(work.secs<=0){ work.secs=0; stopWork(); beep(); rConcluir(); return true; } fitUpdateMediaSession(fmtT(work.secs)+' — Segure', (sess&&sess.items[sess.cur])?sess.items[sess.cur].name:''); return false; }
 function startWork(secs){ stopWork(); work.tot=Number(secs)||0; work.secs=work.tot; if(work.secs<=0) return; work.endsAt=Date.now()+work.secs*1000; fitUpdateMediaSession(fmtT(work.secs)+' — Segure', (sess&&sess.items[sess.cur])?sess.items[sess.cur].name:''); work.id=setInterval(function(){ if(tickWork()) return; renderRun(); },1000); }
 function stopWork(){ if(work.id){ clearInterval(work.id); work.id=null; } work.secs=0; work.tot=0; work.endsAt=0; if(!rest.endsAt) fitClearMediaSession(); }
-function rAdd30(){ if(!rest.endsAt) return; rest.endsAt+=30000; rest.tot+=30; rest.secs=fitTimerRemaining(rest.endsAt); fitScheduleRestDoneNotif(); renderRun(); }
+function rAdd30(){ if(!rest.endsAt) return; rest.endsAt+=30000; rest.tot+=30; rest.secs=fitTimerRemaining(rest.endsAt); fitScheduleRestDoneNotif(); renderRun(); fitUpdateRestBar(); }
 function rSkip(){ stopRest(); rNextSet(); }
 function firstPending(it){ for(var i=0;i<it.sets.length;i++){ if(!it.sets[i].done) return i; } return -1; }
 function ringSvg(pct,color){ var C=2*Math.PI*112; return '<svg viewBox="0 0 240 240"><circle cx="120" cy="120" r="112" fill="none" style="stroke:var(--surface2)" stroke-width="8"/>'+(pct>0?('<circle cx="120" cy="120" r="112" fill="none" style="stroke:'+color+'" stroke-width="8" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+(C*(1-pct))+'"/>'):'')+'</svg>'; }
 function fmtT(s){ var m=Math.floor(s/60),x=s%60; return m+':'+(x<10?'0':'')+x; }
 function renderRun(){
-  if(!sess) return;
+  if(!sess){ fitUpdateRestBar(); return; }
   var stage=$('runStage'), btm=$('runBtm'), top=$('runTop');
   var total=sess.items.length;
   top.innerHTML='<button class="rx" onclick="rDiscard()">✕</button><span class="rc">'+esc(sess.treinoName)+(total?(' · '+Math.min(sess.cur+1,total)+'/'+total):'')+'</span><button class="rfin" onclick="rFinish()">Finalizar</button>';
-  if(!total){ stage.innerHTML='<div class="rkick">Treino avulso</div><div class="rname">Monte na hora</div><div class="small" style="color:var(--muted);margin-top:14px">Adicione exercícios para começar.</div>'; btm.innerHTML='<button class="rcta start" onclick="openSessPick()">+ Adicionar exercício</button>'; return; }
+  if(!total){ stage.innerHTML='<div class="rkick">Treino avulso</div><div class="rname">Monte na hora</div><div class="small" style="color:var(--muted);margin-top:14px">Adicione exercícios para começar.</div>'; btm.innerHTML='<button class="rcta start" onclick="openSessPick()">+ Adicionar exercício</button>'; fitUpdateRestBar(); return; }
   if(sess.cur>=total){ return rFinish(); }
   var it=sess.items[sess.cur]; var bw=(it.mode==='bw'); var timed=(it.mode==='time'); var fp=firstPending(it); var setNo=(fp<0?it.sets.length:fp+1);
   if(runPhase==='rest'){
     var pct=rest.tot?rest.secs/rest.tot:0; var nextTxt=(fp<0)?(sess.cur<total-1?'novo exercício':'fim do treino'):('série '+(fp+1));
     stage.innerHTML='<div class="rkick">Descanso</div><div class="rname">'+esc(it.name)+'</div><div class="disc2">'+ringSvg(pct,'var(--primary)')+'<div class="face"><div class="big">'+fmtT(rest.secs)+'</div><div class="small">próxima: '+nextTxt+'</div></div></div>';
     btm.innerHTML='<button class="rcta ghost" onclick="rAdd30()">+30s descanso</button><button class="rsub" onclick="rSkip()">Estou pronto →</button>';
+    fitUpdateRestBar();
     return;
   }
   if(runPhase==='log'){
@@ -367,24 +369,28 @@ function renderRun(){
     var repBox='<div class="sbox"><div class="lbl">'+(timed?'Segundos':'Reps')+'</div><div class="sctl"><button onclick="rBump(\'reps\',-1)">−</button><span class="v" id="vReps">'+(st.reps||0)+'</span><button onclick="rBump(\'reps\',1)">+</button></div></div>';
     stage.innerHTML='<div class="rkick" id="logTimer">'+(resting?('Descanso · ⏱ '+fmtT(rest.secs)):'Registrar série')+'</div><div class="rname">'+esc(it.name)+'</div><div class="small" style="color:var(--muted);margin:16px 0 12px">Série '+setNo+' — quanto fez?</div><div class="rsteps">'+repBox+loadBox+'</div>';
     btm.innerHTML='<button class="rcta save" onclick="rSalvar()">Salvar ✓</button>';
+    fitUpdateRestBar();
     return;
   }
   if(runPhase==='active'){
     if(timed){
       stage.innerHTML='<div class="rkick">Série '+setNo+' / '+it.sets.length+'</div><div class="rname">'+esc(it.name)+'</div><div class="pulse2"><div class="face"><div class="rgo" style="font-size:46px;font-variant-numeric:tabular-nums">'+fmtT(work.secs)+'</div><div class="small">segure! ⏱</div></div></div>';
       btm.innerHTML='<button class="rcta finish" onclick="rConcluir()">Concluir agora ✓</button>';
+      fitUpdateRestBar();
       return;
     }
     var sw=(it.sets[fp]||{}).peso; if(sw===''||sw==null){ sw=(it.sg&&it.sg.weight!==''&&it.sg.weight!=null)?it.sg.weight:null; }
     var goSub=it.rmin+'–'+it.rmax+' reps'+((!bw&&sw!=null)?(' · '+sw+' kg'):'');
     stage.innerHTML='<div class="rkick">Série '+setNo+' / '+it.sets.length+'</div><div class="rname">'+esc(it.name)+'</div><div class="pulse2"><div class="face"><div class="rgo">GO</div><div class="small">'+goSub+'</div></div></div>';
     btm.innerHTML='<button class="rcta finish" onclick="rConcluir()">Concluir série ✓</button>';
+    fitUpdateRestBar();
     return;
   }
   var st0=it.sets[fp>=0?fp:0]||{}; var loadStr=(!bw&&!timed&&st0.peso!==''&&st0.peso!=null)?(' · '+st0.peso+' kg'):''; var hint=progHint(it.sg||{}, it.rmax);
   var dots=''; for(var i=0;i<it.sets.length;i++){ dots+='<div class="rdot'+(it.sets[i].done?' done':(i===fp?' cur':''))+'"></div>'; }
   stage.innerHTML='<div class="rkick">Série '+setNo+' / '+it.sets.length+'</div><div class="rname">'+esc(it.name)+'</div>'+(bw?'<div class="rbwt">peso corporal</div>':(timed?'<div class="rbwt">por tempo</div>':''))+'<div class="rdots">'+dots+'</div><div class="disc2">'+ringSvg(0,'var(--primary)')+'<div class="face"><div class="big" style="font-size:38px">'+(timed?fmtT(Number(it.rmax)||Number(it.rmin)||0):(it.rmin+'–'+it.rmax))+'</div><div class="small">'+(timed?'segure':('reps'+loadStr))+'</div></div></div>'+(hint?('<div class="rhint">'+hint+'</div>'):'');
   btm.innerHTML='<button class="rcta start" onclick="rIniciar()">Iniciar série ▶</button><button class="rsub" onclick="openSessPick()">＋ exercício avulso</button>';
+  fitUpdateRestBar();
 }
 function rIniciar(){ runPhase='active'; var it=sess.items[sess.cur]; if(it&&it.mode==='time'){ startWork(Number(it.rmax)||Number(it.rmin)||30); } renderRun(); }
 function rIsLast(it,fp){ return sess.cur>=sess.items.length-1 && fp>=it.sets.length-1; }

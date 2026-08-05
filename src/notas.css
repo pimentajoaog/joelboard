@@ -231,8 +231,11 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .irow:hover .itype,.irow:hover .idel,.ihdr:hover .gadd,.ihdr:hover .gsub,.ihdr:hover .gctrl,.ihdr:hover .idel,.irow:focus-within .itype,.irow:focus-within .idel,.ihdr:focus-within .gadd,.ihdr:focus-within .gsub,.ihdr:focus-within .gctrl,.ihdr:focus-within .idel{ opacity:.6; }
 .irow:hover .itype:hover,.irow:hover .idel:hover,.ihdr:hover .gadd:hover,.ihdr:hover .gsub:hover,.ihdr:hover .gctrl:not(.off):hover,.ihdr:hover .idel:hover{ opacity:1; }
 @media (hover:none){
-  .ihandle{ opacity:.35; }
-  .itype,.idel,.gadd,.gsub,.gctrl{ opacity:.45; }
+  .ihandle{ opacity:.35; min-width:32px; min-height:32px; padding:4px 2px; }
+  .ichk,.seldot{ width:32px; height:32px; }
+  .ispacer{ width:32px; }
+  .itype,.idel,.gadd,.gsub{ min-width:36px; min-height:36px; padding:6px 8px; font-size:15px; opacity:.55; }
+  .gctrl{ min-width:32px; min-height:32px; padding:6px 5px; font-size:13px; opacity:.55; }
   .gctrl.off{ opacity:.15; }
 }
 .ihandle:active{ cursor:grabbing; }
@@ -354,3 +357,16 @@ textarea.itext{ resize:none; overflow:hidden; font-family:inherit; line-height:1
 body.sel-mq-active{ user-select:none; cursor:crosshair; }
 body.sel-mq-active #edItems .irow{ cursor:crosshair; }
 body.sel-mq-active main,body.sel-mq-active #app{ cursor:crosshair; }
+
+@media (max-width:540px){
+  .header .acct{ min-width:0; flex:1 1 auto; justify-content:flex-end; }
+  .acct #acctEmail{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    max-width:min(140px, 42vw);
+    min-width:0;
+  }
+  .share-invite-row{ flex-direction:column; }
+  .share-invite-row .btn{ width:100%; }
+}

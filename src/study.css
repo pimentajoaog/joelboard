@@ -111,6 +111,12 @@ textarea.field{ resize:vertical; min-height:64px; }
 .matsub{ @apply text-xs text-muted mt-2 mb-2; }
 .pbar{ height:8px; border-radius:6px; background:var(--surface2); overflow:hidden; }
 .pbar span{ display:block; height:100%; border-radius:6px; transition:width .3s; }
+.mat-done-bucket{ display:block; width:100%; text-align:left; padding:8px 0; margin:4px 0 8px; font-size:12px; font-weight:700; color:var(--muted); background:transparent; border:0; border-bottom:1px solid color-mix(in srgb, var(--border) 55%, transparent); cursor:pointer; font-family:inherit; }
+.mat-done-bucket:hover{ color:var(--primary); }
+.matc-done{ opacity:.82; }
+.matc-done .matname{ text-decoration:line-through; color:var(--muted); }
+.mat-done-badge{ flex:0 0 auto; font-size:11px; font-weight:800; color:var(--success); background:color-mix(in srgb, var(--success) 14%, var(--surface)); border-radius:99px; padding:2px 8px; }
+.secbar-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .del{ @apply w-full bg-transparent border-0 text-muted text-[13px] underline cursor-pointer mt-3; font-family:inherit; }
 
 /* attachments */

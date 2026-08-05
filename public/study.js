@@ -1,7 +1,10 @@
 /* Joelboard Study — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
 var DATA=null, studyGrid={}, authDone=false, _stStudyCal=false, _stStudyMat=false;
-var STUDY_TABS=[['Materias',['Nome','Cor','Total','Feitas','ID']],['Eventos',['Titulo','Tipo','Data','Hora','MateriaID','Concluido','Notas','ID']],['Anexos',['MateriaID','EventoID','Nome','URL','FileID','ID']],['Foco',['Data','MateriaID','Minutos','ID']],['Modulos',['MateriaID','Nome','Feito','ID']],['Config',['Chave','Valor']]];
+var STUDY_TABS=[['Materias',['Nome','Cor','Total','Feitas','ID','Concluido']],['Eventos',['Titulo','Tipo','Data','Hora','MateriaID','Concluido','Notas','ID']],['Anexos',['MateriaID','EventoID','Nome','URL','FileID','ID']],['Foco',['Data','MateriaID','Minutos','ID']],['Modulos',['MateriaID','Nome','Feito','ID']],['Config',['Chave','Valor']]];
+var MAT_DONE_KEY='jb_study_hide_done_mat';
+var _matDoneCollapsed=(function(){ try{ return localStorage.getItem(MAT_DONE_KEY)==='1'; }catch(_){ return false; } })();
+var _matDoneBucketExpanded=false;
 var EVENT_TYPES=['Prova','Trabalho','Atividade','Outro'];
 var SUBJECT_COLORS=['#a78bfa','#60a5fa','#22d3ee','#34d399','#a3e635','#fbbf24','#fb923c','#fb7185','#f472b6','#94a3b8'];
 var WD=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'], MO=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -83,13 +86,20 @@ function loadData(){
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
-    DATA=buildStudy(by); show();
+    return ensureMateriasSchema(by).then(function(){ DATA=buildStudy(by); matSyncAllConcluido(true); show(); });
   }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('study'); bootSheet(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(e.message)+'</div></div>'); });
+}
+function ensureMateriasSchema(by){
+  var head=(by.Materias&&by.Materias[0])||[];
+  if(head[5]==='Concluido') return Promise.resolve();
+  return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data:[{ range:'Materias!F1', values:[['Concluido']] }] }).then(function(){
+    if(by.Materias&&by.Materias[0]) by.Materias[0][5]='Concluido';
+  }).catch(function(){});
 }
 function buildStudy(t){
   var config={}; body(t.Config).forEach(function(r){ if(r[0]) config[r[0]]=r[1]; });
   return {
-    materias: body(t.Materias).filter(function(r){return r[0];}).map(function(r){ return { id:r[4], nome:String(r[0]), cor:r[1]||SUBJECT_COLORS[0], total:Number(r[2])||0, feitas:Number(r[3])||0 }; }),
+    materias: body(t.Materias).filter(function(r){return r[0];}).map(function(r){ return { id:r[4], nome:String(r[0]), cor:r[1]||SUBJECT_COLORS[0], total:Number(r[2])||0, feitas:Number(r[3])||0, concluido:!!(r[5]==='1'||r[5]===1||r[5]===true) }; }),
     eventos: body(t.Eventos).filter(function(r){return r[0]||r[2];}).map(function(r){ return { id:r[7], titulo:String(r[0]||''), tipo:r[1]||'Outro', data:String(r[2]||''), hora:String(r[3]||''), materiaIds:String(r[4]||'').split(',').filter(Boolean), concluido:!!r[5], notas:String(r[6]||'') }; }),
     anexos: body(t.Anexos||[]).filter(function(r){return r[3];}).map(function(r){ return { materiaId:String(r[0]||''), eventoId:String(r[1]||''), nome:String(r[2]||''), url:String(r[3]||''), fileId:String(r[4]||''), id:r[5] }; }),
     focos: body(t.Foco||[]).filter(function(r){return r[2];}).map(function(r){ return { data:String(r[0]||''), materiaId:String(r[1]||''), min:Number(r[2])||0, id:r[3] }; }),
@@ -204,6 +214,27 @@ function deleteEvt(){ if(!editingEvt) return; var id=editingEvt; JB.confirm('Exc
 
 /* ---- matérias ---- */
 var matDetail=null;
+function matProgressComplete(matId){ var pr=modProgress(matId); return pr.total>0 && pr.done>=pr.total; }
+function isMatComplete(m){ if(!m) return false; return !!m.concluido || matProgressComplete(m.id); }
+function matSyncConcluido(m, opts){
+  if(!m) return;
+  opts=opts||{};
+  var hit=matProgressComplete(m.id);
+  if(hit && !m.concluido){
+    m.concluido=true;
+    if(!opts.skipSave) saveMatRow(m);
+    if(!opts.quiet) toast('✓ Matéria concluída');
+  } else if(!hit && m.concluido && opts.allowClear){
+    m.concluido=false;
+    if(!opts.skipSave) saveMatRow(m);
+  }
+}
+function matSyncAllConcluido(quiet){
+  (DATA.materias||[]).forEach(function(m){ matSyncConcluido(m, { quiet:!!quiet, skipSave:false }); });
+}
+function setMatDonePref(on){ try{ localStorage.setItem(MAT_DONE_KEY, on?'1':'0'); }catch(_){} _matDoneCollapsed=!!on; if(!on) _matDoneBucketExpanded=false; }
+function toggleMatDoneCollapsed(){ setMatDonePref(!_matDoneCollapsed); renderMaterias(); }
+function toggleMatDoneBucket(){ _matDoneBucketExpanded=!_matDoneBucketExpanded; renderMaterias(); }
 function modulos(matId){ return (DATA.modulos||[]).filter(function(x){return x.materiaId===matId;}); }
 function modProgress(matId){ var mods=modulos(matId); if(mods.length){ var d=mods.filter(function(x){return x.feito;}).length; return { done:d, total:mods.length, pct:Math.round(d/mods.length*100), mod:true }; } var m=mat(matId); var t=m?(m.total||0):0, f=m?(m.feitas||0):0; return { done:f, total:t, pct:t>0?Math.min(100,Math.round(f/t*100)):0, mod:false }; }
 function openMatDetail(id){ matDetail=id; renderMaterias(); window.scrollTo(0,0); }
@@ -211,14 +242,16 @@ function backMat(){ matDetail=null; renderMaterias(); }
 function modRowVals(m){ return [m.materiaId, m.nome, m.feito?'1':'', m.id]; }
 function modSave(m){ findRow('Modulos',3,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Modulos!A'+row+':D'+row)+'?valueInputOption=RAW'), { values:[modRowVals(m)] }); }).catch(studyWriteErr); }
 function addModulo(matId){ var inp=$('detModInput'); if(!inp) return; var nome=(inp.value||'').trim(); if(!nome) return; var mod={ id:uuid(), materiaId:matId, nome:nome, feito:false }; DATA.modulos=DATA.modulos||[]; DATA.modulos.push(mod); inp.value=''; renderMaterias(); JB.api('POST', ssUrl('/values/Modulos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[modRowVals(mod)] }).catch(studyWriteErr); setTimeout(function(){ var i=$('detModInput'); if(i) i.focus(); },30); }
-function toggleModulo(id){ var m=(DATA.modulos||[]).find(function(x){return x.id===id;}); if(!m) return; m.feito=!m.feito; renderMaterias(); modSave(m); }
+function toggleModulo(id){ var m=(DATA.modulos||[]).find(function(x){return x.id===id;}); if(!m) return; m.feito=!m.feito; var subj=mat(m.materiaId); if(subj) matSyncConcluido(subj, { allowClear:true }); renderMaterias(); modSave(m); }
 function removeModulo(id){ DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.id!==id;}); renderMaterias(); findRow('Modulos',3,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Modulos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(studyWriteErr); }
 function openEvtForMat(matId){ openEvt(null); evtMaterias=[matId]; renderEvtMateria(); }
 function matDetailHtml(matId){
   var m=mat(matId); if(!m) return ''; var pr=modProgress(matId), mods=modulos(matId), sm=studyMin(matId);
   var evs=(DATA.eventos||[]).filter(function(e){return (e.materiaIds||[]).indexOf(matId)>-1;}).sort(function(a,b){return (a.data+a.hora).localeCompare(b.data+b.hora);});
   return '<button class="lnk" onclick="backMat()">← Matérias</button>'
-    +'<div class="matdet-head"><span class="dotc lg" style="background:'+m.cor+'"></span><div class="matdet-name">'+esc(m.nome)+'</div><button class="lnk" onclick="openMat(\''+matId+'\')" title="Editar">✎</button></div>'
+    +'<div class="matdet-head"><span class="dotc lg" style="background:'+m.cor+'"></span><div class="matdet-name">'+esc(m.nome)+'</div>'
+    +(isMatComplete(m)?'<span class="mat-done-badge">✓ Concluída</span>':'')
+    +'<button class="lnk" onclick="openMat(\''+matId+'\')" title="Editar">✎</button></div>'
     +'<div class="matsub" style="margin-top:0">'+pr.done+' / '+(pr.total||'—')+(pr.mod?' módulos':' aulas')+(sm?(' · ⏱ '+fmtStudy(sm)):'')+'</div>'
     +'<div class="pbar"><span style="width:'+pr.pct+'%;background:'+m.cor+'"></span></div>'
     +'<div class="secbar" style="margin-top:24px"><div class="sect">Módulos / Aulas</div></div>'
@@ -229,22 +262,46 @@ function matDetailHtml(matId){
     +'<div class="secbar" style="margin-top:26px"><div class="sect">Materiais</div></div>'
     +matAnexosHtml(matId);
 }
+function matCardHtml(m, doneStyle){
+  var pr=modProgress(m.id), complete=isMatComplete(m);
+  var cnt=(DATA.eventos||[]).filter(function(e){return (e.materiaIds||[]).indexOf(m.id)>-1 && !e.concluido && daysUntil(e.data)>=0;}).length; var anx=subjAnexos(m.id).length;
+  return '<div class="matc'+(doneStyle?' matc-done':'')+'" onclick="openMatDetail(\''+m.id+'\')"><div class="matrow"><span class="dotc lg" style="background:'+m.cor+'"></span><div class="matname">'+esc(m.nome)+'</div>'
+    +(complete?'<span class="mat-done-badge">✓</span>':'')
+    +(doneStyle||pr.mod||complete?'<span class="rg" style="flex:0 0 auto">›</span>':'<button class="aulabtn" onclick="event.stopPropagation();addAula(\''+m.id+'\')">+1 aula</button>')+'</div>'
+    +'<div class="matsub">'+pr.done+' / '+(pr.total||'—')+(pr.mod?' módulos':' aulas')+(cnt?(' · '+cnt+' próximo'+(cnt>1?'s':'')):'')+(anx?(' · 📎 '+anx):'')+studyTimeStr(m.id)+'</div>'
+    +'<div class="pbar"><span style="width:'+pr.pct+'%;background:'+m.cor+'"></span></div></div>';
+}
+function renderMatDoneBucket(mats){
+  if(!mats.length) return '';
+  var n=mats.length, expanded=_matDoneBucketExpanded, chev=expanded?'▾':'▸';
+  var label=expanded?('Ocultar concluídas ('+n+')'):('Mostrar concluídas ('+n+')');
+  var html='<button type="button" class="mat-done-bucket" onclick="toggleMatDoneBucket()">'+chev+' '+label+'</button>';
+  if(expanded) html+=mats.map(function(m){ return matCardHtml(m, true); }).join('');
+  return html;
+}
+function renderMatSecbar(doneN){
+  var el=$('matSecbar'); if(!el) return;
+  el.innerHTML='<div class="sect">Suas matérias</div><div class="secbar-actions">'
+    +(doneN?('<button type="button" class="btn ghost" onclick="toggleMatDoneCollapsed()">'+(_matDoneCollapsed?'👁 Mostrar concluídas ('+doneN+')':'📦 Ocultar concluídas ('+doneN+')')+'</button>'):'')
+    +'<button class="btn" onclick="openMat(null)">+ Adicionar</button></div>';
+}
 function renderMaterias(){
   var el=$('matList'); if(!el) return;
   if(matDetail){ if(mat(matDetail)){ el.innerHTML=matDetailHtml(matDetail); return; } matDetail=null; }
   var ms=(DATA.materias||[]);
-  if(!ms.length){ el.innerHTML=JB.emptyState({ icon:'📖', title:'Nenhuma matéria ainda', hint:'Organize cursos, módulos e provas por disciplina.', action:'+ Adicionar', onclick:'openMat()' }); return; }
-  el.innerHTML=ms.map(function(m){
-    var pr=modProgress(m.id);
-    var cnt=(DATA.eventos||[]).filter(function(e){return (e.materiaIds||[]).indexOf(m.id)>-1 && !e.concluido && daysUntil(e.data)>=0;}).length; var anx=subjAnexos(m.id).length;
-    return '<div class="matc" onclick="openMatDetail(\''+m.id+'\')"><div class="matrow"><span class="dotc lg" style="background:'+m.cor+'"></span><div class="matname">'+esc(m.nome)+'</div>'
-      +(pr.mod?'<span class="rg" style="flex:0 0 auto">›</span>':'<button class="aulabtn" onclick="event.stopPropagation();addAula(\''+m.id+'\')">+1 aula</button>')+'</div>'
-      +'<div class="matsub">'+pr.done+' / '+(pr.total||'—')+(pr.mod?' módulos':' aulas')+(cnt?(' · '+cnt+' próximo'+(cnt>1?'s':'')):'')+(anx?(' · 📎 '+anx):'')+studyTimeStr(m.id)+'</div>'
-      +'<div class="pbar"><span style="width:'+pr.pct+'%;background:'+m.cor+'"></span></div></div>';
-  }).join('');
+  if(!ms.length){ renderMatSecbar(0); el.innerHTML=JB.emptyState({ icon:'📖', title:'Nenhuma matéria ainda', hint:'Organize cursos, módulos e provas por disciplina.', action:'+ Adicionar', onclick:'openMat()' }); return; }
+  var active=[], done=[];
+  ms.forEach(function(m){ if(isMatComplete(m)) done.push(m); else active.push(m); });
+  renderMatSecbar(done.length);
+  var html=active.map(function(m){ return matCardHtml(m, false); }).join('');
+  if(done.length){
+    if(_matDoneCollapsed) html+=renderMatDoneBucket(done);
+    else html+=done.map(function(m){ return matCardHtml(m, true); }).join('');
+  }
+  el.innerHTML=html;
   if (!_stStudyMat) { _stStudyMat = true; JB.staggerChildren(el, 'study-mat'); }
 }
-function addAula(id){ var m=mat(id); if(!m) return; if(m.total&&m.feitas>=m.total){ toast('Todas as aulas concluídas ✓'); return; } m.feitas=(m.feitas||0)+1; renderMaterias(); saveMatRow(m); }
+function addAula(id){ var m=mat(id); if(!m) return; if(m.total&&m.feitas>=m.total){ toast('Todas as aulas concluídas ✓'); matSyncConcluido(m, { allowClear:true }); renderMaterias(); return; } m.feitas=(m.feitas||0)+1; matSyncConcluido(m, { allowClear:true }); renderMaterias(); saveMatRow(m); }
 var editingMat=null, matCor=SUBJECT_COLORS[0];
 function openMat(id){
   var m=id?mat(id):null; editingMat=id||null;
@@ -254,11 +311,13 @@ function openMat(id){
   $('matFeitas').value = m?(m.feitas||0):0;
   matCor = m?m.cor:SUBJECT_COLORS[0];
   $('matDel').style.display = m?'block':'none';
+  $('matConcluido').classList.toggle('on', m?isMatComplete(m):false);
   renderMatColors();
   $('matAnexosWrap').style.display='none';
   $('matOverlay').classList.add('open');
 }
 function closeMat(){ $('matOverlay').classList.remove('open'); }
+function toggleMatConcluido(){ $('matConcluido').classList.toggle('on'); }
 function renderMatColors(){ var el=$('matColors'); if(!el) return; el.innerHTML=SUBJECT_COLORS.map(function(c){ return '<button type="button" class="cswatch'+(c===matCor?' on':'')+'" style="background:'+c+'" onclick="pickMatColor(\''+c+'\')"></button>'; }).join(''); }
 function pickMatColor(c){ matCor=c; renderMatColors(); }
 function saveMat(){
@@ -267,13 +326,14 @@ function saveMat(){
   var m;
   if(editingMat){ m=mat(editingMat); if(!m) return; } else { m={id:uuid()}; DATA.materias.push(m); }
   m.nome=nome; m.cor=matCor; m.total=total; m.feitas=feitas;
+  m.concluido=$('matConcluido').classList.contains('on') || matProgressComplete(m.id);
   closeMat(); render(); toast('✓ Salvo');
   if(editingMat){ var sf=studyFolders(); if(sf.subs&&sf.subs[m.id]){ JB.api('PATCH','https://www.googleapis.com/drive/v3/files/'+sf.subs[m.id],{ name:m.nome }).catch(studyWriteErr); } saveMatRow(m); } else {
     JB.api('POST', ssUrl('/values/Materias:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[matRowVals(m)] }).catch(function(){ toast('Erro ao salvar'); });
   }
 }
-function matRowVals(m){ return [m.nome,m.cor,m.total,m.feitas,m.id]; }
-function saveMatRow(m){ findRow('Materias',4,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Materias!A'+row+':E'+row)+'?valueInputOption=RAW'), { values:[matRowVals(m)] }); }).catch(function(){ toast('Erro ao salvar'); }); }
+function matRowVals(m){ return [m.nome,m.cor,m.total,m.feitas,m.id,m.concluido?'1':'']; }
+function saveMatRow(m){ findRow('Materias',4,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Materias!A'+row+':F'+row)+'?valueInputOption=RAW'), { values:[matRowVals(m)] }); }).catch(studyWriteErr); }
 function deleteMat(){ if(!editingMat) return; var id=editingMat; JB.confirm('Excluir matéria?','A matéria será removida (os itens ligados a ela ficam sem matéria).', function(){
   DATA.materias=(DATA.materias||[]).filter(function(x){return x.id!==id;});
   (DATA.eventos||[]).forEach(function(e){ var i=(e.materiaIds||[]).indexOf(id); if(i>-1){ e.materiaIds.splice(i,1); saveEvtRow(e); } });

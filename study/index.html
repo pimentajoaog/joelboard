@@ -35,7 +35,7 @@
 
   <div class="page on" id="p-calendario"><div id="cal"></div></div>
   <div class="page" id="p-materias">
-    <div class="secbar"><div class="sect">Suas matérias</div><button class="btn" onclick="openMat(null)">+ Adicionar</button></div>
+    <div class="secbar" id="matSecbar"><div class="sect">Suas matérias</div><button class="btn" onclick="openMat(null)">+ Adicionar</button></div>
     <div id="matList"></div>
   </div>
 
@@ -74,6 +74,7 @@
       <div class="fg" style="flex:1"><label class="fl">Total de aulas</label><input class="field" id="matTotal" type="number" inputmode="numeric" placeholder="ex.: 40"></div>
       <div class="fg" style="flex:1"><label class="fl">Aulas feitas</label><input class="field" id="matFeitas" type="number" inputmode="numeric" value="0"></div>
     </div>
+    <div class="fg"><button class="tg" id="matConcluido" type="button" onclick="toggleMatConcluido()">Matéria concluída</button></div>
     <div class="fg" id="matAnexosWrap" style="display:none"><label class="fl">Materiais</label><div id="matAnexos"></div></div>
     <button class="btn-primary" onclick="saveMat()">Salvar</button>
     <button class="del" id="matDel" onclick="deleteMat()" style="display:none;">Excluir matéria</button>

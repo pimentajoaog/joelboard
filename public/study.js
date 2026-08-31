@@ -243,7 +243,7 @@ function modRowVals(m){ return [m.materiaId, m.nome, m.feito?'1':'', m.id]; }
 function modSave(m){ findRow('Modulos',3,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Modulos!A'+row+':D'+row)+'?valueInputOption=RAW'), { values:[modRowVals(m)] }); }).catch(studyWriteErr); }
 function addModulo(matId){ var inp=$('detModInput'); if(!inp) return; var nome=(inp.value||'').trim(); if(!nome) return; var mod={ id:uuid(), materiaId:matId, nome:nome, feito:false }; DATA.modulos=DATA.modulos||[]; DATA.modulos.push(mod); inp.value=''; renderMaterias(); JB.api('POST', ssUrl('/values/Modulos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[modRowVals(mod)] }).catch(studyWriteErr); setTimeout(function(){ var i=$('detModInput'); if(i) i.focus(); },30); }
 function toggleModulo(id){ var m=(DATA.modulos||[]).find(function(x){return x.id===id;}); if(!m) return; m.feito=!m.feito; var subj=mat(m.materiaId); if(subj) matSyncConcluido(subj, { allowClear:true }); renderMaterias(); modSave(m); }
-function removeModulo(id){ DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.id!==id;}); renderMaterias(); findRow('Modulos',3,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Modulos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(studyWriteErr); }
+function removeModulo(id){ DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.id!==id;}); renderMaterias(); deleteSheetRow('Modulos',3,id); }
 function openEvtForMat(matId){ openEvt(null); evtMaterias=[matId]; renderEvtMateria(); }
 function matDetailHtml(matId){
   var m=mat(matId); if(!m) return ''; var pr=modProgress(matId), mods=modulos(matId), sm=studyMin(matId);
@@ -260,7 +260,8 @@ function matDetailHtml(matId){
     +'<div class="secbar" style="margin-top:26px"><div class="sect">Provas & trabalhos</div><button class="btn" onclick="openEvtForMat(\''+matId+'\')">+ Adicionar</button></div>'
     +(evs.length?evs.map(function(e){return evtRow(e,true);}).join(''):JB.emptyState({ icon:'📚', title:'Nada agendado', hint:'Vincule provas e trabalhos a esta matéria.' }))
     +'<div class="secbar" style="margin-top:26px"><div class="sect">Materiais</div></div>'
-    +matAnexosHtml(matId);
+    +matAnexosHtml(matId)
+    +'<button type="button" class="del mat-del-det" onclick="deleteMat(\''+matId+'\')">Excluir matéria</button>';
 }
 function matCardHtml(m, doneStyle){
   var pr=modProgress(m.id), complete=isMatComplete(m);
@@ -333,14 +334,31 @@ function saveMat(){
 }
 function matRowVals(m){ return [m.nome,m.cor,m.total,m.feitas,m.id,m.concluido?'1':'']; }
 function saveMatRow(m){ findRow('Materias',4,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Materias!A'+row+':F'+row)+'?valueInputOption=RAW'), { values:[matRowVals(m)] }); }).catch(studyWriteErr); }
-function deleteMat(){ if(!editingMat) return; var id=editingMat; JB.confirm('Excluir matéria?','A matéria será removida (os itens ligados a ela ficam sem matéria).', function(){
-  DATA.materias=(DATA.materias||[]).filter(function(x){return x.id!==id;});
-  (DATA.eventos||[]).forEach(function(e){ var i=(e.materiaIds||[]).indexOf(id); if(i>-1){ e.materiaIds.splice(i,1); saveEvtRow(e); } });
-  (DATA.modulos||[]).filter(function(x){return x.materiaId===id;}).forEach(function(x){ findRow('Modulos',3,x.id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Modulos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(studyWriteErr); });
-  DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.materiaId!==id;});
-  closeMat(); render(); toast('✓ Excluído');
-  findRow('Materias',4,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Materias'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }).catch(function(){ toast('Erro ao excluir'); });
-}, { yes:'Excluir', no:'Cancelar', danger:true }); }
+function deleteSheetRow(tab, idCol, id){
+  return findRow(tab, idCol, id).then(function(row){
+    if(row<0) return;
+    return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid[tab], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
+  }).catch(studyWriteErr);
+}
+function deleteMat(id){
+  id = id || editingMat;
+  if(!id) return;
+  JB.confirm('Excluir matéria?','A matéria será removida. Provas ficam sem vínculo; módulos, anexos e tempo de foco somem da planilha.', function(){
+    (DATA.anexos||[]).filter(function(a){ return a.materiaId===id; }).forEach(function(a){ deleteSheetRow('Anexos',5,a.id); });
+    (DATA.focos||[]).filter(function(f){ return f.materiaId===id; }).forEach(function(f){ deleteSheetRow('Foco',3,f.id); });
+    (DATA.modulos||[]).filter(function(x){ return x.materiaId===id; }).forEach(function(x){ deleteSheetRow('Modulos',3,x.id); });
+    DATA.materias=(DATA.materias||[]).filter(function(x){ return x.id!==id; });
+    DATA.modulos=(DATA.modulos||[]).filter(function(x){ return x.materiaId!==id; });
+    DATA.anexos=(DATA.anexos||[]).filter(function(a){ return a.materiaId!==id; });
+    DATA.focos=(DATA.focos||[]).filter(function(f){ return f.materiaId!==id; });
+    (DATA.eventos||[]).forEach(function(e){ var i=(e.materiaIds||[]).indexOf(id); if(i>-1){ e.materiaIds.splice(i,1); saveEvtRow(e); } });
+    var sf=studyFolders(); if(sf.subs&&sf.subs[id]){ delete sf.subs[id]; saveFolders(sf); }
+    if(matDetail===id) matDetail=null;
+    if(focState&&focState.matId===id) focState.matId='';
+    closeMat(); render(); toast('✓ Excluído');
+    deleteSheetRow('Materias',4,id).catch(function(){ toast('Erro ao excluir'); });
+  }, { yes:'Excluir', no:'Cancelar', danger:true });
+}
 
 /* ---- helpers / settings ---- */
 function findRow(tab,idCol,id){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; for(var i=1;i<v.length;i++){ if(String((v[i]||[])[idCol])===String(id)) return i+1; } return -1; }); }
@@ -437,7 +455,7 @@ var STUDY_TOUR=[
   { title:'Bem-vindo ao Study 📚', body:'Organize provas, trabalhos e matérias.' },
   { go:function(){ tab('calendario'); }, sel:'#calCells', title:'Calendário', body:'Toque num dia para agendar provas e trabalhos; os pontos mostram os itens.' },
   { go:function(){ tab('calendario'); }, sel:'.focuslaunch', title:'Modo foco', body:'Inicie um Pomodoro e registre seu tempo de estudo por matéria.' },
-  { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias, acompanhe aulas ou módulos e anexe materiais. Ao atingir 100%, vai para "concluídas" — use o botão para mostrar ou ocultar.' },
+  { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias, acompanhe aulas ou módulos e anexe materiais. Toque numa matéria para editar ou excluir. Ao atingir 100%, vai para "concluídas".' },
   { go:function(){ tab('calendario'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para agendar um item.' },
   { sel:'.acct .lnk', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
 ];

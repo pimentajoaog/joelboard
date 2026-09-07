@@ -820,6 +820,23 @@
   }
   function whenReady(fn){ if (document.body) fn(); else document.addEventListener('DOMContentLoaded', fn); }
 
+  var editorLoad = null;
+  function ensureEditor(done){
+    function ready(ed){ if (window.JB) window.JB.editor = ed; if (typeof done === 'function') done(ed); return ed; }
+    if (window.JB_EDITOR) return Promise.resolve(ready(window.JB_EDITOR));
+    if (editorLoad) { if (typeof done === 'function') editorLoad.then(done); return editorLoad; }
+    editorLoad = new Promise(function (res, rej) {
+      var s = document.createElement('script');
+      s.src = '/jb-editor.js';
+      s.onload = function () { res(ready(window.JB_EDITOR)); };
+      s.onerror = function () { editorLoad = null; rej(new Error('editor_load')); };
+      (document.head || document.documentElement).appendChild(s);
+    });
+    if (typeof done === 'function') editorLoad.then(done);
+    return editorLoad;
+  }
+  whenReady(function () { ensureEditor(); });
+
   // --- copyright easter egg (5 taps → Maria Júlia ♥) — shared across apps ---
   var eggClicks = 0, eggTimer = null, eggWired = false;
   function eggEnsureOverlay() {
@@ -1601,7 +1618,7 @@
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,
-    toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady, wireEggFooter: wireEggFooter, refreshNumberSteppers: scanNumberSteppers,
+    toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady, ensureEditor: ensureEditor, editor: null, wireEggFooter: wireEggFooter, refreshNumberSteppers: scanNumberSteppers,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, ymd: jbYmd, todayYmd: jbTodayYmd, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis
   };

@@ -15,7 +15,7 @@ Dados na planilha **Joelboard Study** no seu Drive.
 
 - Toque em um dia para ver/editar eventos.
 - **+ Adicionar** cria prova, trabalho, atividade ou outro.
-- Campos: título, data, hora, tipo, matérias vinculadas, notas, anexos, concluído.
+- Campos: título, data, hora, tipo, matérias vinculadas, notas (mesmo editor das aulas — formate e cole prints), anexos, concluído.
 - Pontos coloridos no calendário = eventos (cor da matéria).
 
 ## Matérias

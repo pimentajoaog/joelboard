@@ -207,7 +207,27 @@ function evtRow(e,showDate){
 function toggleDone(id){ var e=(DATA.eventos||[]).find(function(x){return x.id===id;}); if(!e) return; e.concluido=!e.concluido; render(); saveEvtRow(e); }
 
 /* ---- event modal ---- */
-var editingEvt=null, evtTipo='Prova', evtMaterias=[];
+var editingEvt=null, evtTipo='Prova', evtMaterias=[], _evtEd=null;
+function studyEditor(cb){
+  if(window.JB&&JB.ensureEditor) return JB.ensureEditor(cb);
+  var ed=(window.JB&&JB.editor)||window.JB_EDITOR;
+  if(typeof cb==='function') cb(ed);
+  return Promise.resolve(ed);
+}
+function studyNoteImages(matId){
+  return { upload:function(file){ return studyUploadNoteImage(file, matId||(evtMaterias&&evtMaterias[0])||''); }, load:studyLoadNoteImage };
+}
+function destroyEvtEd(){ if(_evtEd){ _evtEd.destroy(); _evtEd=null; } }
+function mountEvtEd(value){
+  var host=$('evtNotasEd');
+  if(!host) return;
+  destroyEvtEd();
+  studyEditor(function(ed){
+    if(!ed||!ed.mount||!$('evtOverlay')||!$('evtOverlay').classList.contains('open')) return;
+    _evtEd=ed.mount(host, { compact:true, value:value||'', placeholder:'Conteúdo, capítulos, link…', autosaveMs:0, images:studyNoteImages() });
+  });
+}
+function evtNotesValue(){ return _evtEd?_evtEd.getValue():''; }
 function openEvt(id){
   var e=id?(DATA.eventos||[]).find(function(x){return x.id===id;}):null;
   editingEvt=id||null;
@@ -215,15 +235,15 @@ function openEvt(id){
   $('evtTitulo').value = e?e.titulo:'';
   JB.dpSet('evtData', e?e.data:selDate);
   $('evtHora').value = e?e.hora:'';
-  $('evtNotas').value = e?e.notas:'';
   evtTipo = e?e.tipo:'Prova'; evtMaterias = e?((e.materiaIds||[]).slice()):[];
   $('evtConcluido').classList.toggle('on', !!(e&&e.concluido));
   $('evtDel').style.display = e?'block':'none';
   renderEvtTipo(); renderEvtMateria();
   $('evtAnexosWrap').style.display = id?'block':'none'; if(id) renderEvtAnexos(id);
   $('evtOverlay').classList.add('open');
+  mountEvtEd(e?e.notas:'');
 }
-function closeEvt(){ $('evtOverlay').classList.remove('open'); }
+function closeEvt(){ destroyEvtEd(); $('evtOverlay').classList.remove('open'); }
 function toggleEvtDone(){ $('evtConcluido').classList.toggle('on'); }
 function renderEvtTipo(){ var el=$('evtTipoWrap'); if(!el) return; el.innerHTML='<div class="jb-dd"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>'+esc(evtTipo)+'</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">'+EVENT_TYPES.map(function(t){return '<div class="jb-dd-opt'+(t===evtTipo?' is-sel':'')+'" onclick="pickEvtTipo(\''+t+'\')">'+t+'</div>';}).join('')+'</div></div>'; }
 function pickEvtTipo(t){ evtTipo=t; if(window.JB&&JB.ddClose)JB.ddClose(); renderEvtTipo(); }
@@ -237,7 +257,7 @@ function saveEvt(){
   var e;
   if(editingEvt){ e=(DATA.eventos||[]).find(function(x){return x.id===editingEvt;}); if(!e) return; }
   else { e={id:uuid()}; DATA.eventos.push(e); }
-  e.titulo=titulo; e.tipo=evtTipo; e.data=data; e.hora=($('evtHora').value||''); e.materiaIds=evtMaterias.slice(); e.concluido=concl; e.notas=($('evtNotas').value||'').trim();
+  e.titulo=titulo; e.tipo=evtTipo; e.data=data; e.hora=($('evtHora').value||''); e.materiaIds=evtMaterias.slice(); e.concluido=concl; e.notas=evtNotesValue();
   closeEvt(); render(); toast('✓ Salvo');
   if(editingEvt){ saveEvtRow(e); } else {
     JB.api('POST', ssUrl('/values/Eventos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[evtRowVals(e)] }).catch(function(){ toast('Erro ao salvar'); });
@@ -321,9 +341,10 @@ function modNoteHtml(modId){
 function mountModEd(){
   var host=$('modNoteEd'); var x=modulo(matNote);
   if(!host||!x) return;
-  var ed=(window.JB&&JB.editor)||window.JB_EDITOR;
-  if(!ed||!ed.mount) return;
-  _modEd=ed.mount(host, { value:x.notas||'', placeholder:'Escreva suas anotações…', autosaveMs:20000, onSave:function(v, meta){ saveModNotes(x, v); if(meta&&meta.manual) toast('✓ Notas salvas'); }, images:{ upload:function(file){ return studyUploadNoteImage(file, x.materiaId); }, load:studyLoadNoteImage } });
+  studyEditor(function(ed){
+    if(!ed||!ed.mount||$('modNoteEd')!==host) return;
+    _modEd=ed.mount(host, { value:x.notas||'', placeholder:'Escreva suas anotações…', autosaveMs:20000, onSave:function(v, meta){ saveModNotes(x, v); if(meta&&meta.manual) toast('✓ Notas salvas'); }, images:studyNoteImages(x.materiaId) });
+  });
 }
 function matCardHtml(m, doneStyle){
   var pr=modProgress(m.id), complete=isMatComplete(m);
@@ -606,7 +627,7 @@ var STUDY_TOUR=[
   { go:function(){ tab('calendario'); }, sel:'#calCells', title:'Calendário', body:'Toque num dia para agendar provas e trabalhos; os pontos mostram os itens.' },
   { go:function(){ tab('calendario'); }, sel:'.focpanel', title:'Modo foco', body:'Inicie um Pomodoro. O painel ao lado mostra foco e pausa do dia, os últimos 7 dias e suas metas opcionais.' },
   { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias e adicione módulos ou aulas. Toque num módulo para escrever anotações — formate o texto no lugar ou cole um print (Ctrl+V). Ao concluir todos, a matéria vai para "concluídas".' },
-  { go:function(){ tab('calendario'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para agendar um item.' },
+  { go:function(){ tab('calendario'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para agendar um item. Nas notas do evento você formata o texto e pode colar um print.' },
   { sel:'.acct .lnk', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
 ];
 function studyVerTutorial(){ closeSettings(); setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 250); }

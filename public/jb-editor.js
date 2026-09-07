@@ -313,7 +313,8 @@
     if (!host) return { getValue: function () { return ''; }, setValue: function () {}, save: function () {}, destroy: function () {} };
     opts = opts || {};
     var onSave = typeof opts.onSave === 'function' ? opts.onSave : (typeof opts.onChange === 'function' ? opts.onChange : null);
-    var interval = opts.autosaveMs != null ? opts.autosaveMs : AUTOSAVE_MS;
+    var compact = !!opts.compact;
+    var interval = opts.autosaveMs != null ? opts.autosaveMs : (compact ? 0 : AUTOSAVE_MS);
     var placeholder = opts.placeholder || 'Escreva suas anotações…';
     var imgOpts = opts.images || null;
     var uploadImage = imgOpts && typeof imgOpts.upload === 'function' ? imgOpts.upload : null;
@@ -322,12 +323,14 @@
     var destroyed = false;
     var lastSaved = valueToHtml(opts.value);
     var autoTimer = null;
-    var remain = Math.max(1, Math.round(interval / 1000));
+    var remain = interval > 0 ? Math.max(1, Math.round(interval / 1000)) : 0;
     var cycle = remain;
+    var status = null;
+    var timerEl = null;
 
     host.innerHTML = '';
     var root = document.createElement('div');
-    root.className = 'jb-ed jb-ed-live';
+    root.className = 'jb-ed jb-ed-live' + (compact ? ' jb-ed-compact' : '');
 
     var bar = document.createElement('div');
     bar.className = 'jb-ed-bar';
@@ -353,12 +356,13 @@
       surface.classList.toggle('is-empty', isEmptyHtml(surface.innerHTML));
     }
     function setStatus(kind, text) {
+      if (!status) return;
       status.className = 'jb-ed-status ' + (kind || '');
       status.textContent = text;
     }
     function paintTimer() {
       if (timerEl) timerEl.textContent = remain + 's';
-      if (dirty) setStatus('dirty', 'Salva em ' + remain + 's');
+      if (dirty) setStatus('dirty', interval > 0 ? ('Salva em ' + remain + 's') : 'Não salvo');
     }
     function resetTimer() {
       remain = cycle;
@@ -564,24 +568,25 @@
     linkBtn.addEventListener('click', addLink);
     bar.appendChild(linkBtn);
 
-    var foot = document.createElement('div');
-    foot.className = 'jb-ed-foot';
-    var status = document.createElement('span');
-    status.className = 'jb-ed-status';
-    status.textContent = lastSaved ? 'Salvo' : '';
-    var timerEl = document.createElement('span');
-    timerEl.className = 'jb-ed-timer';
-    timerEl.title = 'Próximo auto-save';
-    timerEl.textContent = remain + 's';
-    var saveBtn = btn('Salvar', 'Salvar agora', 'jb-ed-save');
-    saveBtn.addEventListener('click', function () { persist(true); });
-    foot.appendChild(status);
-    foot.appendChild(timerEl);
-    foot.appendChild(saveBtn);
-
     root.appendChild(bar);
     root.appendChild(surface);
-    root.appendChild(foot);
+    if (!compact) {
+      var foot = document.createElement('div');
+      foot.className = 'jb-ed-foot';
+      status = document.createElement('span');
+      status.className = 'jb-ed-status';
+      status.textContent = lastSaved ? 'Salvo' : '';
+      timerEl = document.createElement('span');
+      timerEl.className = 'jb-ed-timer';
+      timerEl.title = 'Próximo auto-save';
+      timerEl.textContent = remain + 's';
+      var saveBtn = btn('Salvar', 'Salvar agora', 'jb-ed-save');
+      saveBtn.addEventListener('click', function () { persist(true); });
+      foot.appendChild(status);
+      foot.appendChild(timerEl);
+      foot.appendChild(saveBtn);
+      root.appendChild(foot);
+    }
     host.appendChild(root);
     setEmptyClass();
     hydrateImages();

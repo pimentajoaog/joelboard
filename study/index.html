@@ -57,7 +57,7 @@
       <div class="fg" style="flex:1"><label class="fl">Data</label><button type="button" class="field datebtn empty" id="evtData" data-iso="" data-ph="dd/mm/aaaa" onclick="JB.dpOpen('evtData')">dd/mm/aaaa</button></div>
       <div class="fg" style="flex:0 0 38%"><label class="fl">Hora (opcional)</label><input class="field" id="evtHora" type="time"></div>
     </div>
-    <div class="fg"><label class="fl">Notas</label><textarea class="field" id="evtNotas" placeholder="Conteúdo, capítulos, link…"></textarea></div>
+    <div class="fg"><label class="fl">Notas</label><div id="evtNotasEd"></div></div>
     <div class="fg"><button class="tg" id="evtConcluido" onclick="toggleEvtDone()">Concluído / entregue</button></div>
     <div class="fg" id="evtAnexosWrap" style="display:none"><label class="fl">Anexos</label><div id="evtAnexos"></div></div>
     <button class="btn-primary" onclick="saveEvt()">Salvar</button>
@@ -125,7 +125,6 @@
 
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="/joelboard.js"></script>
-<script src="/jb-editor.js"></script>
 <script src="/study.js"></script>
 </body>
 </html>

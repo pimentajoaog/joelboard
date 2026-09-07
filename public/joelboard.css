@@ -511,8 +511,9 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-surface code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
 .jb-ed-surface a { color: var(--primary, #818cf8); }
 .jb-ed-surface hr { border: 0; border-top: 1px solid var(--border, #2d3346); margin: 14px 0; }
-.jb-ed-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.jb-ed-status { font-size: 12px; color: var(--muted, #7b85a0); }
+.jb-ed-foot { display: flex; align-items: center; gap: 10px; }
+.jb-ed-status { font-size: 12px; color: var(--muted, #7b85a0); flex: 1; min-width: 0; }
 .jb-ed-status.dirty { color: #fbbf24; }
 .jb-ed-status.ok { color: var(--success, #34d399); }
-.jb-ed-save { margin-left: auto; }
+.jb-ed-timer { font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted, #7b85a0); min-width: 2.4em; text-align: right; }
+.jb-ed-save { margin-left: 0; }

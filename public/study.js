@@ -274,7 +274,7 @@ function backModNote(){ destroyModEd(); matNote=null; renderMaterias(); window.s
 function modRowVals(m){ return [m.materiaId, m.nome, m.feito?'1':'', m.id, m.notas||'']; }
 function modSave(m){ findRow('Modulos',3,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Modulos!A'+row+':E'+row)+'?valueInputOption=RAW'), { values:[modRowVals(m)] }); }).catch(studyWriteErr); }
 function addModulo(matId){ var inp=$('detModInput'); if(!inp) return; var nome=(inp.value||'').trim(); if(!nome) return; var mod={ id:uuid(), materiaId:matId, nome:nome, feito:false, notas:'' }; DATA.modulos=DATA.modulos||[]; DATA.modulos.push(mod); inp.value=''; renderMaterias(); JB.api('POST', ssUrl('/values/Modulos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[modRowVals(mod)] }).catch(studyWriteErr); setTimeout(function(){ var i=$('detModInput'); if(i) i.focus(); },30); }
-function toggleModulo(id){ var m=modulo(id); if(!m) return; m.feito=!m.feito; var subj=mat(m.materiaId); if(subj) matSyncConcluido(subj, { allowClear:true }); modSave(m); if(matNote===id){ var btn=document.querySelector('.modnote-chk'); if(btn){ btn.classList.toggle('on', m.feito); btn.textContent=m.feito?'✓':''; } return; } renderMaterias(); }
+function toggleModulo(id){ var m=modulo(id); if(!m) return; m.feito=!m.feito; var subj=mat(m.materiaId); if(subj) matSyncConcluido(subj, { allowClear:true }); modSave(m); if(matNote===id){ var btn=document.querySelector('.modnote-chk'); var head=document.querySelector('.modnote-head'); if(btn){ btn.classList.toggle('on', m.feito); btn.textContent=m.feito?'✓':''; } if(head) head.classList.toggle('done', m.feito); return; } renderMaterias(); }
 function renameModulo(id){ var m=modulo(id); if(!m) return; var inp=$('modNoteName'); var nome=inp?String(inp.value||'').trim():''; if(!nome){ if(inp) inp.value=m.nome; return; } if(nome===m.nome) return; m.nome=nome; modSave(m); }
 function saveModNotes(m, v){ v=String(v==null?'':v); if(v.length>NOTE_CHAR_LIMIT){ v=v.slice(0,NOTE_CHAR_LIMIT); toast('Nota limitada a 50 mil caracteres'); } m.notas=v; modSave(m); }
 function removeModulo(id){ if(matNote===id){ destroyModEd(); matNote=null; } DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.id!==id;}); renderMaterias(); deleteSheetRow('Modulos',3,id); }
@@ -301,7 +301,7 @@ function modNoteHtml(modId){
   var x=modulo(modId); if(!x) return '';
   var m=mat(x.materiaId);
   return '<button class="lnk" onclick="backModNote()">← '+(m?esc(m.nome):'Matéria')+'</button>'
-    +'<div class="modnote-head">'
+    +'<div class="modnote-head'+(x.feito?' done':'')+'">'
     +'<button type="button" class="echk modnote-chk'+(x.feito?' on':'')+'" onclick="toggleModulo(\''+x.id+'\')" title="Concluir">'+(x.feito?'✓':'')+'</button>'
     +'<input class="field modnote-name" id="modNoteName" value="'+esc(x.nome)+'" onblur="renameModulo(\''+x.id+'\')" onkeydown="if(event.key===\'Enter\'){this.blur();}">'
     +'</div>'

@@ -271,6 +271,8 @@
     var destroyed = false;
     var lastSaved = valueToHtml(opts.value);
     var autoTimer = null;
+    var remain = Math.max(1, Math.round(interval / 1000));
+    var cycle = remain;
 
     host.innerHTML = '';
     var root = document.createElement('div');
@@ -303,19 +305,33 @@
       status.className = 'jb-ed-status ' + (kind || '');
       status.textContent = text;
     }
+    function paintTimer() {
+      if (timerEl) timerEl.textContent = remain + 's';
+      if (dirty) setStatus('dirty', 'Salva em ' + remain + 's');
+    }
+    function resetTimer() {
+      remain = cycle;
+      paintTimer();
+    }
     function markDirty() {
       dirty = true;
-      setStatus('dirty', 'Alterações não salvas');
       setEmptyClass();
       syncBar();
+      paintTimer();
     }
     function persist(manual) {
       if (destroyed || !onSave) { dirty = false; return; }
       var html = currentHtml();
-      if (html === lastSaved && !manual) { dirty = false; setStatus('ok', 'Salvo'); return; }
+      if (html === lastSaved && !manual) {
+        dirty = false;
+        setStatus('ok', 'Salvo');
+        resetTimer();
+        return;
+      }
       lastSaved = html;
       dirty = false;
       setStatus('ok', manual ? 'Salvo' : 'Salvo automaticamente');
+      resetTimer();
       onSave(html, { manual: !!manual });
     }
     function cmd(name, val) {
@@ -422,9 +438,14 @@
     var status = document.createElement('span');
     status.className = 'jb-ed-status';
     status.textContent = lastSaved ? 'Salvo' : '';
+    var timerEl = document.createElement('span');
+    timerEl.className = 'jb-ed-timer';
+    timerEl.title = 'Próximo auto-save';
+    timerEl.textContent = remain + 's';
     var saveBtn = btn('Salvar', 'Salvar agora', 'jb-ed-save');
     saveBtn.addEventListener('click', function () { persist(true); });
     foot.appendChild(status);
+    foot.appendChild(timerEl);
     foot.appendChild(saveBtn);
 
     root.appendChild(bar);
@@ -454,7 +475,16 @@
     });
 
     if (interval > 0) {
-      autoTimer = setInterval(function () { if (dirty) persist(false); }, interval);
+      autoTimer = setInterval(function () {
+        remain -= 1;
+        if (remain <= 0) {
+          remain = cycle;
+          if (dirty) persist(false);
+          else paintTimer();
+        } else {
+          paintTimer();
+        }
+      }, 1000);
     }
 
     return {
@@ -465,6 +495,7 @@
         dirty = false;
         setEmptyClass();
         setStatus('', lastSaved ? 'Salvo' : '');
+        resetTimer();
       },
       save: function () { persist(true); },
       destroy: function () {

@@ -163,6 +163,7 @@ textarea.field{ resize:vertical; min-height:64px; }
 .modnote-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--primary); margin-left:6px; vertical-align:middle; }
 .modnote-head{ display:flex; align-items:center; gap:10px; margin:14px 0 8px; }
 .modnote-name{ font-size:18px; font-weight:800; }
+.modnote-head.done .modnote-name{ text-decoration:line-through; color:var(--muted); }
 .modnote-hint{ margin:0 0 12px; }
 .modadd{ display:flex; gap:8px; margin-top:8px; }
 .modadd .field{ flex:1; }

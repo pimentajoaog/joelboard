@@ -70,10 +70,6 @@
     <div class="mh"><div class="mt" id="matTitle">Nova matéria</div><button class="x" onclick="closeMat()">✕</button></div>
     <div class="fg"><label class="fl">Nome</label><input class="field" id="matNome" placeholder="ex.: Cálculo II"></div>
     <div class="fg"><label class="fl">Cor</label><div id="matColors" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
-    <div style="display:flex;gap:10px">
-      <div class="fg" style="flex:1"><label class="fl">Total de aulas</label><input class="field" id="matTotal" type="number" inputmode="numeric" placeholder="ex.: 40"></div>
-      <div class="fg" style="flex:1"><label class="fl">Aulas feitas</label><input class="field" id="matFeitas" type="number" inputmode="numeric" value="0"></div>
-    </div>
     <div class="fg"><button class="tg" id="matConcluido" type="button" onclick="toggleMatConcluido()">Matéria concluída</button></div>
     <div class="fg" id="matAnexosWrap" style="display:none"><label class="fl">Materiais</label><div id="matAnexos"></div></div>
     <button class="btn-primary" onclick="saveMat()">Salvar</button>
@@ -124,6 +120,7 @@
 
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="/joelboard.js"></script>
+<script src="/jb-editor.js"></script>
 <script src="/study.js"></script>
 </body>
 </html>

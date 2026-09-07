@@ -1,6 +1,6 @@
 # Study
 
-Organização acadêmica — calendário, matérias, provas/trabalhos, módulos, anexos e modo foco.
+Organização acadêmica — calendário, matérias, provas/trabalhos, módulos com anotações, anexos e modo foco.
 
 Dados na planilha **Joelboard Study** no seu Drive.
 
@@ -9,7 +9,7 @@ Dados na planilha **Joelboard Study** no seu Drive.
 | Aba | Função |
 |-----|--------|
 | **Calendário** | Mês com eventos; painel do dia; lista “Próximos”; botão **Modo foco** |
-| **Matérias** | Disciplinas com cor, progresso (aulas ou módulos), detalhe por matéria |
+| **Matérias** | Disciplinas com cor, progresso por módulos/aulas, anotações e detalhe |
 
 ## Calendário
 
@@ -20,9 +20,10 @@ Dados na planilha **Joelboard Study** no seu Drive.
 
 ## Matérias
 
-- Crie matérias com cor e total de aulas (ou use **módulos**).
-- **+1 aula** incrementa progresso rápido.
-- Detalhe da matéria: módulos checkáveis, eventos ligados, materiais/anexos.
+- Crie matérias com nome e cor. Progresso vem dos **módulos / aulas** (não de um número solto).
+- Detalhe da matéria: liste módulos, marque os concluídos, veja eventos e materiais.
+- Toque no nome de um módulo para abrir as **anotações** (markdown com prévia).
+- Se uma matéria antiga só tinha “12/40 aulas”, o Study cria **Aula 1…N** na primeira abertura — matérias que já tinham módulos não são alteradas.
 
 ## Modo foco (🍅)
 
@@ -39,6 +40,8 @@ Tema, tutorial, feedback.
 ## Planilha (abas)
 
 `Materias`, `Eventos`, `Anexos`, `Foco`, `Modulos`, `Config`.
+
+A aba `Modulos` guarda `MateriaID`, `Nome`, `Feito`, `ID` e `Notas` (markdown da aula).
 
 **Nota:** na resolução da planilha, o Study valida apenas abas distintivas (`Materias`, `Eventos`, …) — não use só `Config` como identificador, para não confundir com outro app Joelboard.
 

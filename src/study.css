@@ -14,6 +14,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 
 #loading{ @apply max-w-[480px] mx-auto; }
 #app{ @apply hidden max-w-[760px] mx-auto; }
+#app.study-ed-wide{ max-width:980px; }
 
 .header{ @apply flex items-center justify-between gap-3 mb-5; }
 .hl{ @apply flex items-center gap-2.5; }
@@ -106,8 +107,6 @@ textarea.field{ resize:vertical; min-height:64px; }
 .matc:hover{ border-color:var(--primary); }
 .matrow{ @apply flex items-center gap-2.5; }
 .matname{ @apply flex-1 text-[15px] font-bold; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.aulabtn{ @apply bg-surface2 border border-border text-ink text-xs font-bold rounded-full px-3 py-1.5 cursor-pointer flex-[0_0_auto]; font-family:inherit; }
-.aulabtn:active{ background:color-mix(in srgb, var(--primary) 18%, var(--surface)); }
 .matsub{ @apply text-xs text-muted mt-2 mb-2; }
 .pbar{ height:8px; border-radius:6px; background:var(--surface2); overflow:hidden; }
 .pbar span{ display:block; height:100%; border-radius:6px; transition:width .3s; }
@@ -159,7 +158,12 @@ textarea.field{ resize:vertical; min-height:64px; }
 .matdet-name{ flex:1; font-size:20px; font-weight:800; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .modrow{ display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:7px; }
 .modrow.done .modname{ text-decoration:line-through; color:var(--muted); }
-.modname{ flex:1; min-width:0; font-size:14px; font-weight:600; }
+.modname{ flex:1; min-width:0; font-size:14px; font-weight:600; text-align:left; background:transparent; border:0; color:inherit; cursor:pointer; font-family:inherit; padding:0; }
+.modname:hover{ color:var(--primary); }
+.modnote-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--primary); margin-left:6px; vertical-align:middle; }
+.modnote-head{ display:flex; align-items:center; gap:10px; margin:14px 0 8px; }
+.modnote-name{ font-size:18px; font-weight:800; }
+.modnote-hint{ margin:0 0 12px; }
 .modadd{ display:flex; gap:8px; margin-top:8px; }
 .modadd .field{ flex:1; }
 .modadd .btn{ flex:0 0 auto; align-self:stretch; }

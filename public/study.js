@@ -1,7 +1,9 @@
 /* Joelboard Study — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
 var DATA=null, studyGrid={}, authDone=false, _stStudyCal=false, _stStudyMat=false;
-var STUDY_TABS=[['Materias',['Nome','Cor','Total','Feitas','ID','Concluido']],['Eventos',['Titulo','Tipo','Data','Hora','MateriaID','Concluido','Notas','ID']],['Anexos',['MateriaID','EventoID','Nome','URL','FileID','ID']],['Foco',['Data','MateriaID','Minutos','ID']],['Modulos',['MateriaID','Nome','Feito','ID']],['Config',['Chave','Valor']]];
+var STUDY_TABS=[['Materias',['Nome','Cor','Total','Feitas','ID','Concluido']],['Eventos',['Titulo','Tipo','Data','Hora','MateriaID','Concluido','Notas','ID']],['Anexos',['MateriaID','EventoID','Nome','URL','FileID','ID']],['Foco',['Data','MateriaID','Minutos','ID']],['Modulos',['MateriaID','Nome','Feito','ID','Notas']],['Config',['Chave','Valor']]];
+var AULA_MIGRATE_CAP=80;
+var NOTE_CHAR_LIMIT=50000;
 var MAT_DONE_KEY='jb_study_hide_done_mat';
 var _matDoneCollapsed=(function(){ try{ return localStorage.getItem(MAT_DONE_KEY)==='1'; }catch(_){ return false; } })();
 var _matDoneBucketExpanded=false;
@@ -86,7 +88,7 @@ function loadData(){
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
-    return ensureMateriasSchema(by).then(function(){ DATA=buildStudy(by); matSyncAllConcluido(true); show(); });
+    return ensureMateriasSchema(by).then(function(){ return ensureModulosSchema(by); }).then(function(){ DATA=buildStudy(by); return migrateAulaCounts(); }).then(function(){ matSyncAllConcluido(true); show(); });
   }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('study'); bootSheet(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(e.message)+'</div></div>'); });
 }
 function ensureMateriasSchema(by){
@@ -96,6 +98,32 @@ function ensureMateriasSchema(by){
     if(by.Materias&&by.Materias[0]) by.Materias[0][5]='Concluido';
   }).catch(function(){});
 }
+function ensureModulosSchema(by){
+  var head=(by.Modulos&&by.Modulos[0])||[];
+  if(head[4]==='Notas') return Promise.resolve();
+  return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data:[{ range:'Modulos!E1', values:[['Notas']] }] }).then(function(){
+    if(by.Modulos&&by.Modulos[0]) by.Modulos[0][4]='Notas';
+  }).catch(function(){});
+}
+function migrateAulaCounts(){
+  var added=[];
+  (DATA.materias||[]).forEach(function(m){
+    if(modulos(m.id).length) return;
+    var total=Number(m.total)||0, feitas=Number(m.feitas)||0;
+    var n=total>0?total:(feitas>0?feitas:0);
+    if(!n) return;
+    if(n>AULA_MIGRATE_CAP) n=AULA_MIGRATE_CAP;
+    var doneN=total>0?Math.min(Math.max(0,feitas),n):n;
+    for(var i=1;i<=n;i++){
+      var mod={ id:uuid(), materiaId:m.id, nome:'Aula '+i, feito:i<=doneN, notas:'' };
+      DATA.modulos=DATA.modulos||[];
+      DATA.modulos.push(mod);
+      added.push(mod);
+    }
+  });
+  if(!added.length) return Promise.resolve();
+  return JB.api('POST', ssUrl('/values/Modulos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:added.map(modRowVals) }).catch(studyWriteErr);
+}
 function buildStudy(t){
   var config={}; body(t.Config).forEach(function(r){ if(r[0]) config[r[0]]=r[1]; });
   return {
@@ -103,7 +131,7 @@ function buildStudy(t){
     eventos: body(t.Eventos).filter(function(r){return r[0]||r[2];}).map(function(r){ return { id:r[7], titulo:String(r[0]||''), tipo:r[1]||'Outro', data:String(r[2]||''), hora:String(r[3]||''), materiaIds:String(r[4]||'').split(',').filter(Boolean), concluido:!!r[5], notas:String(r[6]||'') }; }),
     anexos: body(t.Anexos||[]).filter(function(r){return r[3];}).map(function(r){ return { materiaId:String(r[0]||''), eventoId:String(r[1]||''), nome:String(r[2]||''), url:String(r[3]||''), fileId:String(r[4]||''), id:r[5] }; }),
     focos: body(t.Foco||[]).filter(function(r){return r[2];}).map(function(r){ return { data:String(r[0]||''), materiaId:String(r[1]||''), min:Number(r[2])||0, id:r[3] }; }),
-    modulos: body(t.Modulos||[]).filter(function(r){return r[1];}).map(function(r){ return { materiaId:String(r[0]||''), nome:String(r[1]||''), feito:!!r[2], id:r[3] }; }),
+    modulos: body(t.Modulos||[]).filter(function(r){return r[1];}).map(function(r){ return { materiaId:String(r[0]||''), nome:String(r[1]||''), feito:!!r[2], id:r[3], notas:String(r[4]||'') }; }),
     config: config
   };
 }
@@ -118,7 +146,7 @@ function refreshData(){
   })).catch(function(){});
 }
 function render(){ renderCal(); renderMaterias(); }
-function tab(name){ matDetail=null; ['calendario','materias'].forEach(function(t){ var p=$('p-'+t); if(p) p.classList.toggle('on',t===name); }); var bs=document.querySelectorAll('.tabb'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on',bs[i].getAttribute('data-tab')===name); $('fab').style.display = (name==='calendario')?'flex':'none'; }
+function tab(name){ destroyModEd(); matDetail=null; matNote=null; ['calendario','materias'].forEach(function(t){ var p=$('p-'+t); if(p) p.classList.toggle('on',t===name); }); var bs=document.querySelectorAll('.tabb'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on',bs[i].getAttribute('data-tab')===name); $('fab').style.display = (name==='calendario')?'flex':'none'; }
 function mat(id){ return (DATA.materias||[]).find(function(m){return m.id===id;}); }
 function matColor(id){ var m=mat(id); return m?m.cor:'var(--muted)'; }
 
@@ -213,7 +241,8 @@ function deleteEvt(){ if(!editingEvt) return; var id=editingEvt; JB.confirm('Exc
 }, { yes:'Excluir', no:'Cancelar', danger:true }); }
 
 /* ---- matérias ---- */
-var matDetail=null;
+var matDetail=null, matNote=null, _modEd=null;
+function destroyModEd(){ if(_modEd){ _modEd.destroy(); _modEd=null; } }
 function matProgressComplete(matId){ var pr=modProgress(matId); return pr.total>0 && pr.done>=pr.total; }
 function isMatComplete(m){ if(!m) return false; return !!m.concluido || matProgressComplete(m.id); }
 function matSyncConcluido(m, opts){
@@ -235,15 +264,20 @@ function matSyncAllConcluido(quiet){
 function setMatDonePref(on){ try{ localStorage.setItem(MAT_DONE_KEY, on?'1':'0'); }catch(_){} _matDoneCollapsed=!!on; if(!on) _matDoneBucketExpanded=false; }
 function toggleMatDoneCollapsed(){ setMatDonePref(!_matDoneCollapsed); renderMaterias(); }
 function toggleMatDoneBucket(){ _matDoneBucketExpanded=!_matDoneBucketExpanded; renderMaterias(); }
+function modulo(id){ return (DATA.modulos||[]).find(function(x){return x.id===id;}); }
 function modulos(matId){ return (DATA.modulos||[]).filter(function(x){return x.materiaId===matId;}); }
-function modProgress(matId){ var mods=modulos(matId); if(mods.length){ var d=mods.filter(function(x){return x.feito;}).length; return { done:d, total:mods.length, pct:Math.round(d/mods.length*100), mod:true }; } var m=mat(matId); var t=m?(m.total||0):0, f=m?(m.feitas||0):0; return { done:f, total:t, pct:t>0?Math.min(100,Math.round(f/t*100)):0, mod:false }; }
-function openMatDetail(id){ matDetail=id; renderMaterias(); window.scrollTo(0,0); }
-function backMat(){ matDetail=null; renderMaterias(); }
-function modRowVals(m){ return [m.materiaId, m.nome, m.feito?'1':'', m.id]; }
-function modSave(m){ findRow('Modulos',3,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Modulos!A'+row+':D'+row)+'?valueInputOption=RAW'), { values:[modRowVals(m)] }); }).catch(studyWriteErr); }
-function addModulo(matId){ var inp=$('detModInput'); if(!inp) return; var nome=(inp.value||'').trim(); if(!nome) return; var mod={ id:uuid(), materiaId:matId, nome:nome, feito:false }; DATA.modulos=DATA.modulos||[]; DATA.modulos.push(mod); inp.value=''; renderMaterias(); JB.api('POST', ssUrl('/values/Modulos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[modRowVals(mod)] }).catch(studyWriteErr); setTimeout(function(){ var i=$('detModInput'); if(i) i.focus(); },30); }
-function toggleModulo(id){ var m=(DATA.modulos||[]).find(function(x){return x.id===id;}); if(!m) return; m.feito=!m.feito; var subj=mat(m.materiaId); if(subj) matSyncConcluido(subj, { allowClear:true }); renderMaterias(); modSave(m); }
-function removeModulo(id){ DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.id!==id;}); renderMaterias(); deleteSheetRow('Modulos',3,id); }
+function modProgress(matId){ var mods=modulos(matId); var d=mods.filter(function(x){return x.feito;}).length; return { done:d, total:mods.length, pct:mods.length?Math.round(d/mods.length*100):0, mod:true }; }
+function openMatDetail(id){ destroyModEd(); matNote=null; matDetail=id; renderMaterias(); window.scrollTo(0,0); }
+function backMat(){ destroyModEd(); matNote=null; matDetail=null; renderMaterias(); }
+function openModNote(id){ matNote=id; var x=modulo(id); if(x) matDetail=x.materiaId; renderMaterias(); window.scrollTo(0,0); }
+function backModNote(){ destroyModEd(); matNote=null; renderMaterias(); window.scrollTo(0,0); }
+function modRowVals(m){ return [m.materiaId, m.nome, m.feito?'1':'', m.id, m.notas||'']; }
+function modSave(m){ findRow('Modulos',3,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Modulos!A'+row+':E'+row)+'?valueInputOption=RAW'), { values:[modRowVals(m)] }); }).catch(studyWriteErr); }
+function addModulo(matId){ var inp=$('detModInput'); if(!inp) return; var nome=(inp.value||'').trim(); if(!nome) return; var mod={ id:uuid(), materiaId:matId, nome:nome, feito:false, notas:'' }; DATA.modulos=DATA.modulos||[]; DATA.modulos.push(mod); inp.value=''; renderMaterias(); JB.api('POST', ssUrl('/values/Modulos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[modRowVals(mod)] }).catch(studyWriteErr); setTimeout(function(){ var i=$('detModInput'); if(i) i.focus(); },30); }
+function toggleModulo(id){ var m=modulo(id); if(!m) return; m.feito=!m.feito; var subj=mat(m.materiaId); if(subj) matSyncConcluido(subj, { allowClear:true }); modSave(m); if(matNote===id){ var btn=document.querySelector('.modnote-chk'); if(btn){ btn.classList.toggle('on', m.feito); btn.textContent=m.feito?'✓':''; } return; } renderMaterias(); }
+function renameModulo(id){ var m=modulo(id); if(!m) return; var inp=$('modNoteName'); var nome=inp?String(inp.value||'').trim():''; if(!nome){ if(inp) inp.value=m.nome; return; } if(nome===m.nome) return; m.nome=nome; modSave(m); }
+function saveModNotes(m, v){ v=String(v==null?'':v); if(v.length>NOTE_CHAR_LIMIT){ v=v.slice(0,NOTE_CHAR_LIMIT); toast('Nota limitada a 50 mil caracteres'); } m.notas=v; modSave(m); }
+function removeModulo(id){ if(matNote===id){ destroyModEd(); matNote=null; } DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.id!==id;}); renderMaterias(); deleteSheetRow('Modulos',3,id); }
 function openEvtForMat(matId){ openEvt(null); evtMaterias=[matId]; renderEvtMateria(); }
 function matDetailHtml(matId){
   var m=mat(matId); if(!m) return ''; var pr=modProgress(matId), mods=modulos(matId), sm=studyMin(matId);
@@ -252,10 +286,10 @@ function matDetailHtml(matId){
     +'<div class="matdet-head"><span class="dotc lg" style="background:'+m.cor+'"></span><div class="matdet-name">'+esc(m.nome)+'</div>'
     +(isMatComplete(m)?'<span class="mat-done-badge">✓ Concluída</span>':'')
     +'<button class="lnk" onclick="openMat(\''+matId+'\')" title="Editar">✎</button></div>'
-    +'<div class="matsub" style="margin-top:0">'+pr.done+' / '+(pr.total||'—')+(pr.mod?' módulos':' aulas')+(sm?(' · ⏱ '+fmtStudy(sm)):'')+'</div>'
+    +'<div class="matsub" style="margin-top:0">'+pr.done+' / '+(pr.total||'—')+' módulos'+(sm?(' · ⏱ '+fmtStudy(sm)):'')+'</div>'
     +'<div class="pbar"><span style="width:'+pr.pct+'%;background:'+m.cor+'"></span></div>'
     +'<div class="secbar" style="margin-top:24px"><div class="sect">Módulos / Aulas</div></div>'
-    +(mods.length?mods.map(function(x){ return '<div class="modrow'+(x.feito?' done':'')+'"><button class="echk'+(x.feito?' on':'')+'" onclick="toggleModulo(\''+x.id+'\')">'+(x.feito?'✓':'')+'</button><span class="modname">'+esc(x.nome)+'</span><button class="anexx" onclick="removeModulo(\''+x.id+'\')">✕</button></div>'; }).join(''):'<div class="rg">Liste os módulos/aulas do curso e marque conforme avança.</div>')
+    +(mods.length?mods.map(function(x){ return '<div class="modrow'+(x.feito?' done':'')+'"><button class="echk'+(x.feito?' on':'')+'" onclick="event.stopPropagation();toggleModulo(\''+x.id+'\')">'+(x.feito?'✓':'')+'</button><button type="button" class="modname" onclick="openModNote(\''+x.id+'\')">'+esc(x.nome)+(x.notas?' <span class="modnote-dot" title="Tem anotações"></span>':'')+'</button><button class="anexx" onclick="event.stopPropagation();removeModulo(\''+x.id+'\')">✕</button></div>'; }).join(''):'<div class="rg">Adicione módulos ou aulas — toque num item para anotar.</div>')
     +'<div class="modadd"><input class="field" id="detModInput" placeholder="ex.: Módulo 1 — Limites" onkeydown="if(event.key===\'Enter\')addModulo(\''+matId+'\')"><button class="btn" onclick="addModulo(\''+matId+'\')">+</button></div>'
     +'<div class="secbar" style="margin-top:26px"><div class="sect">Provas & trabalhos</div><button class="btn" onclick="openEvtForMat(\''+matId+'\')">+ Adicionar</button></div>'
     +(evs.length?evs.map(function(e){return evtRow(e,true);}).join(''):JB.emptyState({ icon:'📚', title:'Nada agendado', hint:'Vincule provas e trabalhos a esta matéria.' }))
@@ -263,13 +297,31 @@ function matDetailHtml(matId){
     +matAnexosHtml(matId)
     +'<button type="button" class="del mat-del-det" onclick="deleteMat(\''+matId+'\')">Excluir matéria</button>';
 }
+function modNoteHtml(modId){
+  var x=modulo(modId); if(!x) return '';
+  var m=mat(x.materiaId);
+  return '<button class="lnk" onclick="backModNote()">← '+(m?esc(m.nome):'Matéria')+'</button>'
+    +'<div class="modnote-head">'
+    +'<button type="button" class="echk modnote-chk'+(x.feito?' on':'')+'" onclick="toggleModulo(\''+x.id+'\')" title="Concluir">'+(x.feito?'✓':'')+'</button>'
+    +'<input class="field modnote-name" id="modNoteName" value="'+esc(x.nome)+'" onblur="renameModulo(\''+x.id+'\')" onkeydown="if(event.key===\'Enter\'){this.blur();}">'
+    +'</div>'
+    +'<p class="rg modnote-hint">Anotações desta aula — markdown, prévia ao lado.</p>'
+    +'<div id="modNoteEd"></div>';
+}
+function mountModEd(){
+  var host=$('modNoteEd'); var x=modulo(matNote);
+  if(!host||!x) return;
+  var ed=(window.JB&&JB.editor)||window.JB_EDITOR;
+  if(!ed||!ed.mount) return;
+  _modEd=ed.mount(host, { value:x.notas||'', placeholder:'Escreva em markdown…', onChange:function(v){ saveModNotes(x, v); } });
+}
 function matCardHtml(m, doneStyle){
   var pr=modProgress(m.id), complete=isMatComplete(m);
   var cnt=(DATA.eventos||[]).filter(function(e){return (e.materiaIds||[]).indexOf(m.id)>-1 && !e.concluido && daysUntil(e.data)>=0;}).length; var anx=subjAnexos(m.id).length;
   return '<div class="matc'+(doneStyle?' matc-done':'')+'" onclick="openMatDetail(\''+m.id+'\')"><div class="matrow"><span class="dotc lg" style="background:'+m.cor+'"></span><div class="matname">'+esc(m.nome)+'</div>'
     +(complete?'<span class="mat-done-badge">✓</span>':'')
-    +(doneStyle||pr.mod||complete?'<span class="rg" style="flex:0 0 auto">›</span>':'<button class="aulabtn" onclick="event.stopPropagation();addAula(\''+m.id+'\')">+1 aula</button>')+'</div>'
-    +'<div class="matsub">'+pr.done+' / '+(pr.total||'—')+(pr.mod?' módulos':' aulas')+(cnt?(' · '+cnt+' próximo'+(cnt>1?'s':'')):'')+(anx?(' · 📎 '+anx):'')+studyTimeStr(m.id)+'</div>'
+    +'<span class="rg" style="flex:0 0 auto">›</span></div>'
+    +'<div class="matsub">'+pr.done+' / '+(pr.total||'—')+' módulos'+(cnt?(' · '+cnt+' próximo'+(cnt>1?'s':'')):'')+(anx?(' · 📎 '+anx):'')+studyTimeStr(m.id)+'</div>'
     +'<div class="pbar"><span style="width:'+pr.pct+'%;background:'+m.cor+'"></span></div></div>';
 }
 function renderMatDoneBucket(mats){
@@ -287,6 +339,9 @@ function renderMatSecbar(doneN){
 }
 function renderMaterias(){
   var el=$('matList'); if(!el) return;
+  if($('app')) $('app').classList.toggle('study-ed-wide', !!matNote);
+  destroyModEd();
+  if(matNote){ if(modulo(matNote)){ el.innerHTML=modNoteHtml(matNote); mountModEd(); return; } matNote=null; }
   if(matDetail){ if(mat(matDetail)){ el.innerHTML=matDetailHtml(matDetail); return; } matDetail=null; }
   var ms=(DATA.materias||[]);
   if(!ms.length){ renderMatSecbar(0); el.innerHTML=JB.emptyState({ icon:'📖', title:'Nenhuma matéria ainda', hint:'Organize cursos, módulos e provas por disciplina.', action:'+ Adicionar', onclick:'openMat()' }); return; }
@@ -301,14 +356,11 @@ function renderMaterias(){
   el.innerHTML=html;
   if (!_stStudyMat) { _stStudyMat = true; JB.staggerChildren(el, 'study-mat'); }
 }
-function addAula(id){ var m=mat(id); if(!m) return; if(m.total&&m.feitas>=m.total){ toast('Todas as aulas concluídas ✓'); matSyncConcluido(m, { allowClear:true }); renderMaterias(); return; } m.feitas=(m.feitas||0)+1; matSyncConcluido(m, { allowClear:true }); renderMaterias(); saveMatRow(m); }
 var editingMat=null, matCor=SUBJECT_COLORS[0];
 function openMat(id){
   var m=id?mat(id):null; editingMat=id||null;
   $('matTitle').textContent = m?'Editar matéria':'Nova matéria';
   $('matNome').value = m?m.nome:'';
-  $('matTotal').value = m?(m.total||''):'';
-  $('matFeitas').value = m?(m.feitas||0):0;
   matCor = m?m.cor:SUBJECT_COLORS[0];
   $('matDel').style.display = m?'block':'none';
   $('matConcluido').classList.toggle('on', m?isMatComplete(m):false);
@@ -322,10 +374,11 @@ function renderMatColors(){ var el=$('matColors'); if(!el) return; el.innerHTML=
 function pickMatColor(c){ matCor=c; renderMatColors(); }
 function saveMat(){
   var nome=($('matNome').value||'').trim(); if(!nome){ $('matNome').focus(); return; }
-  var total=Number($('matTotal').value)||0, feitas=Math.max(0,Number($('matFeitas').value)||0);
   var m;
-  if(editingMat){ m=mat(editingMat); if(!m) return; } else { m={id:uuid()}; DATA.materias.push(m); }
-  m.nome=nome; m.cor=matCor; m.total=total; m.feitas=feitas;
+  if(editingMat){ m=mat(editingMat); if(!m) return; } else { m={id:uuid(), total:0, feitas:0}; DATA.materias.push(m); }
+  m.nome=nome; m.cor=matCor;
+  if(m.total==null) m.total=0;
+  if(m.feitas==null) m.feitas=0;
   m.concluido=$('matConcluido').classList.contains('on') || matProgressComplete(m.id);
   closeMat(); render(); toast('✓ Salvo');
   if(editingMat){ var sf=studyFolders(); if(sf.subs&&sf.subs[m.id]){ JB.api('PATCH','https://www.googleapis.com/drive/v3/files/'+sf.subs[m.id],{ name:m.nome }).catch(studyWriteErr); } saveMatRow(m); } else {
@@ -354,6 +407,8 @@ function deleteMat(id){
     (DATA.eventos||[]).forEach(function(e){ var i=(e.materiaIds||[]).indexOf(id); if(i>-1){ e.materiaIds.splice(i,1); saveEvtRow(e); } });
     var sf=studyFolders(); if(sf.subs&&sf.subs[id]){ delete sf.subs[id]; saveFolders(sf); }
     if(matDetail===id) matDetail=null;
+    if(matNote){ var note=modulo(matNote); if(!note||note.materiaId===id) matNote=null; }
+    destroyModEd();
     if(focState&&focState.matId===id) focState.matId='';
     closeMat(); render(); toast('✓ Excluído');
     deleteSheetRow('Materias',4,id).catch(function(){ toast('Erro ao excluir'); });
@@ -455,7 +510,7 @@ var STUDY_TOUR=[
   { title:'Bem-vindo ao Study 📚', body:'Organize provas, trabalhos e matérias.' },
   { go:function(){ tab('calendario'); }, sel:'#calCells', title:'Calendário', body:'Toque num dia para agendar provas e trabalhos; os pontos mostram os itens.' },
   { go:function(){ tab('calendario'); }, sel:'.focuslaunch', title:'Modo foco', body:'Inicie um Pomodoro e registre seu tempo de estudo por matéria.' },
-  { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias, acompanhe aulas ou módulos e anexe materiais. Toque numa matéria para editar ou excluir. Ao atingir 100%, vai para "concluídas".' },
+  { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias e adicione módulos ou aulas. Toque num módulo para escrever anotações em markdown. Ao concluir todos, a matéria vai para "concluídas".' },
   { go:function(){ tab('calendario'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para agendar um item.' },
   { sel:'.acct .lnk', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
 ];

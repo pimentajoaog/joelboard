@@ -8,9 +8,13 @@
   var pendingInteractive = false, silentCooldownUntil = 0;
   var SILENT_TIMEOUT_MS = 15000;
   var SILENT_FAIL_COOLDOWN_MS = 90000;
+  var SILENT_FAIL_COOLDOWN_KNOWN_MS = 8000;
+  var REFRESH_LEAD_MS = 13 * 60 * 1000;
+  var VISIBLE_REFRESH_MS = 15 * 60 * 1000;
   var GIS_SETTLE_MS = 300;
   var TAB_ID = 't' + Math.random().toString(36).slice(2, 10);
   var memTok = '', memExp = 0;
+  var silentFailStreak = 0;
   var AUTH_BC = null;
   try { AUTH_BC = new BroadcastChannel('jb-auth'); } catch (_) {}
 
@@ -21,8 +25,8 @@
   function ss(k, v){ try { sessionStorage.setItem(k, v); } catch (_) {} }
   function sr(k){ try { sessionStorage.removeItem(k); } catch (_) {} }
 
-  function readToken(){ return memTok || sg(TOK) || lg(TOK) || ''; }
-  function readExp(){ return memExp || Number(sg(EXP) || lg(EXP) || 0); }
+  function readToken(){ pullSharedToken(); return memTok || sg(TOK) || lg(TOK) || ''; }
+  function readExp(){ pullSharedToken(); return memExp || Number(sg(EXP) || lg(EXP) || 0); }
   function tokenExpiresAt(){ return readExp(); }
   function isTokenValid(){ var t = readToken(), e = readExp(); return !!(t && e && Date.now() < e); }
   function cachedToken(){ return isTokenValid() ? readToken() : ''; }
@@ -33,64 +37,135 @@
     try { localStorage.removeItem(TOK); localStorage.removeItem(EXP); } catch (_) {}
     clearRefreshTimer();
   }
-  function clearStaleToken(){ if (readToken() && !isTokenValid()) clearTokenStorage(); }
+  function memLooksValid(){ return !!(memTok && memExp && Date.now() < memExp); }
+  function clearStaleToken(){
+    pullSharedToken();
+    if ((memTok || sg(TOK) || lg(TOK)) && !memLooksValid() && !isTokenValid()) clearTokenStorage();
+  }
   function persistTokenStore(tok, exp){
+    var locTok = lg(TOK) || '';
+    var locExp = Number(lg(EXP) || 0);
+    if (locTok && locExp > Date.now() && locExp > (Number(exp) || 0)) {
+      memTok = locTok;
+      memExp = locExp;
+      ss(TOK, locTok);
+      ss(EXP, String(locExp));
+      return false;
+    }
     memTok = tok;
     memExp = exp;
     ss(TOK, tok);
     ss(EXP, String(exp));
     try { localStorage.setItem(TOK, tok); localStorage.setItem(EXP, String(exp)); } catch (_) {}
+    return true;
+  }
+  function broadcastTok(tok, exp){
+    if (AUTH_BC) try { AUTH_BC.postMessage({ t: 'tok', tok: tok, exp: exp, from: TAB_ID }); } catch (_) {}
+  }
+  function applySharedToken(tok, exp){
+    if (!tok || !exp || exp <= Date.now()) return false;
+    if (memTok === tok && memExp === exp) return false;
+    if (memLooksValid() && exp < memExp) return false;
+    var hadValid = memLooksValid();
+    persistTokenStore(tok, exp);
+    lr('jb_signedout');
+    silentFailStreak = 0;
+    hideReLoginBar();
+    scheduleTokenRefresh();
+    if (!hadValid) notifyAuthRestored('tab');
+    return true;
+  }
+  function pullSharedToken(){
+    if (lg('jb_signedout')) {
+      if (memTok || memExp) {
+        memTok = '';
+        memExp = 0;
+        sr(TOK); sr(EXP);
+      }
+      return '';
+    }
+    var locTok = lg(TOK) || '';
+    var locExp = Number(lg(EXP) || 0);
+    if (locTok && locExp > Date.now() && locExp >= (memExp || 0) && (locTok !== memTok || locExp !== memExp)) {
+      memTok = locTok;
+      memExp = locExp;
+      ss(TOK, locTok);
+      ss(EXP, String(locExp));
+      hideReLoginBar();
+      scheduleTokenRefresh();
+    } else if (!locTok && memTok && memExp && memExp <= Date.now()) {
+      memTok = '';
+      memExp = 0;
+      sr(TOK); sr(EXP);
+    }
+    return memTok || locTok || '';
   }
   function scheduleTokenRefresh(){
     clearRefreshTimer();
-    var exp = readExp();
-    if (!exp || !readToken()) return;
-    var ms = exp - Date.now() - 300000;
+    var exp = memExp || Number(sg(EXP) || lg(EXP) || 0);
+    var tok = memTok || sg(TOK) || lg(TOK) || '';
+    if (!exp || !tok) return;
+    var ms = exp - Date.now() - REFRESH_LEAD_MS;
     if (ms < 30000) ms = 30000;
     refreshTimer = setTimeout(function () {
+      pullSharedToken();
       if (!email() && !readToken()) return;
       requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {
-        if (needsReLogin()) promptReLogin('refresh_timer');
+        afterSilentRefreshFail('refresh_timer');
       });
     }, Math.min(ms, 2147483647));
   }
   function saveToken(tok, expiresIn){
     var exp = Date.now() + (Number(expiresIn) || 3600) * 1000 - 120000;
-    persistTokenStore(tok, exp);
+    var wrote = persistTokenStore(tok, exp);
     lr('jb_signedout');
+    silentFailStreak = 0;
     hideReLoginBar();
     scheduleTokenRefresh();
-    if (AUTH_BC) try { AUTH_BC.postMessage({ t: 'tok', tok: tok, exp: exp, from: TAB_ID }); } catch (_) {}
+    if (wrote) broadcastTok(memTok, memExp);
   }
   function email(){ return lg(EML) || ''; }
 
   function migrateTokenStorage(){
     try {
-      var oldTok = localStorage.getItem(TOK), oldExp = localStorage.getItem(EXP);
-      var sessTok = sg(TOK), sessExp = sg(EXP);
-      if (sessTok && sessExp) {
-        if (!oldTok || Number(sessExp) >= Number(oldExp || 0)) persistTokenStore(sessTok, Number(sessExp) || 0);
-      } else if (oldTok && oldExp) {
-        persistTokenStore(oldTok, Number(oldExp) || 0);
-      }
+      var locTok = localStorage.getItem(TOK), locExp = Number(localStorage.getItem(EXP) || 0);
+      var sessTok = sg(TOK), sessExp = Number(sg(EXP) || 0);
+      var bestTok = '', bestExp = 0;
+      if (locTok && locExp > bestExp) { bestTok = locTok; bestExp = locExp; }
+      if (sessTok && sessExp > bestExp) { bestTok = sessTok; bestExp = sessExp; }
+      if (bestTok) persistTokenStore(bestTok, bestExp);
     } catch (_) {}
   }
+  function onAuthStorageEvent(ev){
+    if (!ev) return;
+    if (ev.key === 'jb_signedout' && ev.newValue) {
+      clearTokenStorage();
+      hideReLoginBar();
+      return;
+    }
+    if (ev.key === TOK || ev.key === EXP || ev.key === null) pullSharedToken();
+  }
   function initAuthBroadcast(){
-    if (!AUTH_BC) return;
-    AUTH_BC.onmessage = function (ev) {
-      var d = ev.data;
-      if (!d || d.from === TAB_ID) return;
-      if (d.t === 'tok' && d.tok && d.exp && d.exp > Date.now()) {
-        persistTokenStore(d.tok, d.exp);
-        lr('jb_signedout');
-        hideReLoginBar();
-        scheduleTokenRefresh();
-      } else if (d.t === 'out') {
-        clearTokenStorage();
-        ls('jb_signedout', '1');
-        hideReLoginBar();
-      }
-    };
+    if (AUTH_BC) {
+      AUTH_BC.onmessage = function (ev) {
+        var d = ev.data;
+        if (!d || d.from === TAB_ID) return;
+        if (d.t === 'ask') {
+          if (memLooksValid() || isTokenValid()) {
+            broadcastTok(readToken(), readExp());
+          }
+          return;
+        }
+        if (d.t === 'tok' && d.tok && d.exp) applySharedToken(d.tok, d.exp);
+        else if (d.t === 'out') {
+          clearTokenStorage();
+          ls('jb_signedout', '1');
+          hideReLoginBar();
+        }
+      };
+      try { AUTH_BC.postMessage({ t: 'ask', from: TAB_ID }); } catch (_) {}
+    }
+    window.addEventListener('storage', onAuthStorageEvent);
   }
 
   function isSignedIn(){ return isTokenValid() && !!email(); }
@@ -143,22 +218,35 @@
     document.documentElement.classList.remove('jb-relogin-bar');
     if (document.body) document.body.classList.remove('jb-relogin-bar');
   }
-  function promptReLogin(reason){
+  function promptReLogin(reason, opts){
+    opts = opts || {};
     if (lg('jb_signedout') || !email()) return;
     var now = Date.now();
     if (now - reloginPromptAt < 8000) { showReLoginBar(); return; }
     reloginPromptAt = now;
     showReLoginBar();
-    jbToast('Sessão expirada — entre de novo com Google.');
-    notifySessionExpired(reason || 'session');
+    if (opts.tearDown) notifySessionExpired(reason || 'session');
   }
-  // Expired local token but user was signed in — show re-login UI now; try silent GIS in background.
+  function afterSilentRefreshFail(reason){
+    pullSharedToken();
+    if (isTokenValid()) { scheduleTokenRefresh(); return; }
+    if (silentFailStreak < 2 && (reason === 'refresh_timer' || reason === 'visible')) return;
+    if (needsReLogin()) promptReLogin(reason);
+  }
+  // Expired local token — stay on loading and try silent GIS first. Gate only if that fails.
   function bootAuthIfExpired(onExpired, onSilentOk){
     if (!needsReLogin()) return false;
-    if (typeof onExpired === 'function') onExpired();
-    requestToken(false).then(function () {
+    requestToken(false, { force: true }).then(function () {
       if (isTokenValid() && typeof onSilentOk === 'function') onSilentOk();
-    }).catch(function () {});
+    }).catch(function () {
+      pullSharedToken();
+      if (isTokenValid()) {
+        if (typeof onSilentOk === 'function') onSilentOk();
+        return;
+      }
+      promptReLogin('boot');
+      if (typeof onExpired === 'function') onExpired();
+    });
     return true;
   }
 
@@ -177,10 +265,15 @@
     pendingInteractive = false;
     if (err) {
       clearStaleToken();
-      if (!wasInteractive) silentCooldownUntil = Date.now() + SILENT_FAIL_COOLDOWN_MS;
+      if (!wasInteractive) {
+        silentFailStreak++;
+        silentCooldownUntil = Date.now() + (email() ? SILENT_FAIL_COOLDOWN_KNOWN_MS : SILENT_FAIL_COOLDOWN_MS);
+      }
       if (rej) rej(err);
+    } else {
+      silentFailStreak = 0;
+      if (res) res(tok);
     }
-    else if (res) res(tok);
   }
   function cancelSilentAuth(reason){
     authGen++;
@@ -236,8 +329,9 @@
     ov.querySelector('#jbcGo').onclick = function(){ close(); if (onOk) onOk(); };
     ov.querySelector('#jbcNo').onclick = function(){ close(); if (onCancel) onCancel(); };
   }
-  // interactive=false => silent; true => shows the pre-consent explainer (first login / when scopes change), then Google
-  function requestTokenCore(interactive){
+  // interactive=false => silent; true => consent (first login / scope change), then Google
+  function requestTokenCore(interactive, opts){
+    opts = opts || {};
     clearStaleToken();
     if (!interactive && lg('jb_signedout')) return Promise.reject(new Error('signed_out'));
     if (interactive) lr('jb_signedout');
@@ -252,7 +346,9 @@
               if (pendingRej === rej) finishPending(new Error('silent_timeout'));
             }, SILENT_TIMEOUT_MS);
           }
-          try { tokenClient.requestAccessToken(interactive ? { prompt: 'select_account' } : { prompt: 'none' }); }
+          var pmt = 'none';
+          if (interactive) pmt = opts.prompt != null ? opts.prompt : (email() ? '' : 'select_account');
+          try { tokenClient.requestAccessToken({ prompt: pmt }); }
           catch (e) { finishPending(e); }
         });
       }
@@ -262,17 +358,21 @@
   }
   function requestToken(interactive, opts){
     opts = opts || {};
-    if (!interactive && isTokenValid()) return Promise.resolve(readToken());
-    if (!interactive && !opts.force && Date.now() < silentCooldownUntil) return Promise.reject(new Error('silent_cooldown'));
+    pullSharedToken();
+    if (!interactive && isTokenValid() && !opts.force) return Promise.resolve(readToken());
+    if (!interactive && Date.now() < silentCooldownUntil) {
+      if (isTokenValid()) return Promise.resolve(readToken());
+      return Promise.reject(new Error('silent_cooldown'));
+    }
     if (!interactive && inflightToken) return inflightToken;
     if (interactive) {
       cancelSilentAuth('superseded');
       var p = authChain = authChain.catch(function () {}).then(function () {
         return new Promise(function (r) { setTimeout(r, GIS_SETTLE_MS); });
-      }).then(function () { return requestTokenCore(true); });
+      }).then(function () { return requestTokenCore(true, opts); });
       return p;
     }
-    var p = requestTokenCore(false);
+    var p = requestTokenCore(false, opts);
     inflightToken = p.finally(function () { inflightToken = null; });
     authChain = authChain.catch(function () {}).then(function () { return p; });
     return inflightToken;
@@ -387,15 +487,14 @@
     }
     function handle(r, allowRefresh){
       if (r.status === 401 && allowRefresh) {
-        return requestToken(false, { force: true }).catch(function (err) {
-          if (isSessionErr(err)) {
-            return requestToken(true).then(function (t) { hideReLoginBar(); return t; }).catch(function (e2) {
-              promptReLogin('api_refresh');
-              throw e2;
-            });
-          }
+        return requestToken(false, { force: true }).then(function (nt) {
+          return doFetch(nt).then(function (r2) { return handle(r2, false); });
+        }).catch(function (err) {
+          pullSharedToken();
+          if (isTokenValid()) return doFetch(readToken()).then(function (r2) { return handle(r2, false); });
+          promptReLogin('api_refresh');
           throw err;
-        }).then(function (nt) { return doFetch(nt).then(function (r2) { return handle(r2, false); }); });
+        });
       }
       if (r.status === 401) {
         promptReLogin('api401');
@@ -628,14 +727,12 @@
     return m || 'falha ao salvar';
   }
   function tokenForApi(){
+    pullSharedToken();
     if (isTokenValid()) return Promise.resolve(readToken());
     return requestToken(false, { force: true }).catch(function (err) {
-      if (isSessionErr(err)) {
-        return requestToken(true).then(function (t) { hideReLoginBar(); return t; }).catch(function (e2) {
-          promptReLogin('token');
-          throw e2;
-        });
-      }
+      pullSharedToken();
+      if (isTokenValid()) return readToken();
+      promptReLogin('token');
       throw err;
     });
   }
@@ -669,6 +766,15 @@
     if (AUTH_BC) try { AUTH_BC.postMessage({ t: 'out', from: TAB_ID }); } catch (_) {}
   }
 
+  function onTabFocusAuth(){
+    if (document.visibilityState === 'hidden' || lg('jb_signedout')) return;
+    pullSharedToken();
+    if (!email() && !readToken()) return;
+    if (isTokenValid() && readExp() - Date.now() > VISIBLE_REFRESH_MS) return;
+    requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {
+      afterSilentRefreshFail('visible');
+    });
+  }
   function initAuthPersistence(){
     migrateTokenStorage();
     initAuthBroadcast();
@@ -677,18 +783,16 @@
       if (isTokenValid()) scheduleTokenRefresh();
       else {
         clearStaleToken();
-        if (needsReLogin()) promptReLogin('boot');
-        requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {});
+        requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {
+          afterSilentRefreshFail('boot');
+        });
       }
     }
     document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState !== 'visible' || lg('jb_signedout')) return;
-      if (!email() && !readToken()) return;
-      if (isTokenValid() && readExp() - Date.now() > 240000) return;
-      requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {
-        if (needsReLogin()) promptReLogin('visible');
-      });
+      if (document.visibilityState === 'visible') onTabFocusAuth();
     });
+    window.addEventListener('focus', onTabFocusAuth);
+    window.addEventListener('pageshow', onTabFocusAuth);
   }
 
   var tabSyncFn = null, tabSyncLast = 0, tabSyncMs = 90000;
@@ -1060,8 +1164,9 @@
             return new Promise(function (r) { setTimeout(r, 900); }).then(function () { return attempt(true, authRetry); });
           }
           if (!authRetry && isSessionErr(err)) {
-            jbToast('Sessão expirou — reconectando…');
-            return requestToken(true).then(function () { hideReLoginBar(); return attempt(retry, true); }).catch(function (e2) {
+            return requestToken(false, { force: true }).then(function () { hideReLoginBar(); return attempt(retry, true); }).catch(function (e2) {
+              pullSharedToken();
+              if (isTokenValid()) { hideReLoginBar(); return attempt(retry, true); }
               promptReLogin('persist');
               restore();
               if (opts.onError) opts.onError(e2);

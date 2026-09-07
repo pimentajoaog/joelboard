@@ -2111,7 +2111,10 @@ function startPrateleira() {
   }, function () {
     authDone = true;
     boot();
-  })) return;
+  })) {
+    loadingHtml(gateHtml('Julioelboard Prateleira', 'Carregando…', ''));
+    return;
+  }
   loadingHtml(gateHtml('Julioelboard Prateleira', 'Entrando…', ''));
   JB.requestToken(false).then(function () {
     authDone = true;

@@ -485,43 +485,34 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
   #setOverlay .modal { height: min(640px, 92vh); }
 }
 
-/* Shared markdown editor (JB.editor) */
+/* Shared live editor (JB.editor) */
 .jb-ed { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .jb-ed-bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .jb-ed-btn { background: var(--surface2, #232838); color: var(--text, #e7eaf3); border: 1px solid var(--border, #2d3346); border-radius: 8px; min-width: 32px; height: 32px; padding: 0 8px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit; }
 .jb-ed-btn:hover { border-color: var(--primary, #818cf8); color: var(--primary, #818cf8); }
 .jb-ed-btn.on { border-color: var(--primary, #818cf8); color: var(--primary, #818cf8); background: color-mix(in srgb, var(--primary, #818cf8) 14%, var(--surface, #191d2c)); }
-.jb-ed-tog { margin-left: auto; }
-.jb-ed-panes { display: flex; flex-direction: column; gap: 10px; min-height: 260px; }
-.jb-ed-pane { min-width: 0; min-height: 200px; }
-.jb-ed-ta { width: 100%; min-height: 220px; resize: vertical; background: var(--surface2, #232838); color: var(--text, #e7eaf3); border: 1px solid var(--border, #2d3346); border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.55; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.jb-ed-ta:focus { outline: none; border-color: var(--primary, #818cf8); }
-.jb-ed-preview { display: none; background: var(--surface, #191d2c); border: 1px solid var(--border, #2d3346); border-radius: 12px; padding: 14px 16px; overflow: auto; line-height: 1.6; font-size: 14px; color: var(--text, #e7eaf3); }
-.jb-ed.show-preview .jb-ed-write { display: none; }
-.jb-ed.show-preview .jb-ed-preview { display: block; }
-.jb-ed-preview h1, .jb-ed-preview h2, .jb-ed-preview h3 { font-weight: 800; margin: 0 0 10px; line-height: 1.25; }
-.jb-ed-preview h1 { font-size: 22px; }
-.jb-ed-preview h2 { font-size: 18px; }
-.jb-ed-preview h3 { font-size: 15px; }
-.jb-ed-preview p { margin: 0 0 10px; }
-.jb-ed-preview ul, .jb-ed-preview ol { margin: 0 0 10px; padding-left: 22px; }
-.jb-ed-preview .jb-ed-tasks { list-style: none; padding-left: 0; }
-.jb-ed-preview .jb-ed-tasks li { padding-left: 22px; position: relative; margin-bottom: 4px; }
-.jb-ed-preview .jb-ed-tasks li::before { content: ''; position: absolute; left: 0; top: 3px; width: 14px; height: 14px; border: 1px solid var(--border, #2d3346); border-radius: 4px; }
-.jb-ed-preview .jb-ed-tasks li.on { color: var(--muted, #7b85a0); text-decoration: line-through; }
-.jb-ed-preview .jb-ed-tasks li.on::before { background: var(--success, #34d399); border-color: var(--success, #34d399); }
-.jb-ed-preview blockquote { margin: 0 0 10px; padding: 6px 12px; border-left: 3px solid var(--primary, #818cf8); color: var(--muted, #7b85a0); }
-.jb-ed-preview pre { margin: 0 0 10px; padding: 10px 12px; background: var(--surface2, #232838); border-radius: 10px; overflow-x: auto; }
-.jb-ed-preview code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
-.jb-ed-preview p code { background: var(--surface2, #232838); padding: 1px 5px; border-radius: 5px; }
-.jb-ed-preview a { color: var(--primary, #818cf8); }
-.jb-ed-preview hr { border: 0; border-top: 1px solid var(--border, #2d3346); margin: 14px 0; }
-.jb-ed-empty { color: var(--muted, #7b85a0); font-size: 13px; }
-@media (min-width: 720px) {
-  .jb-ed-tog { display: none; }
-  .jb-ed-panes { flex-direction: row; align-items: stretch; }
-  .jb-ed-pane { flex: 1; }
-  .jb-ed-preview { display: block; }
-  .jb-ed-ta, .jb-ed-preview { min-height: 320px; }
-  .jb-ed.show-preview .jb-ed-write { display: block; }
-}
+.jb-ed-size { height: 32px; border-radius: 8px; border: 1px solid var(--border, #2d3346); background: var(--surface2, #232838); color: var(--text, #e7eaf3); font-size: 12px; font-weight: 800; padding: 0 8px; font-family: inherit; }
+.jb-ed-surface { min-height: 320px; background: var(--surface, #191d2c); border: 1px solid var(--border, #2d3346); border-radius: 12px; padding: 16px 18px; overflow: auto; line-height: 1.65; font-size: 16px; color: var(--text, #e7eaf3); outline: none; }
+.jb-ed-surface:focus { border-color: var(--primary, #818cf8); }
+.jb-ed-surface.is-empty:before { content: attr(data-placeholder); color: var(--muted, #7b85a0); pointer-events: none; }
+.jb-ed-surface h1, .jb-ed-surface h2, .jb-ed-surface h3 { font-weight: 800; margin: 0 0 10px; line-height: 1.25; }
+.jb-ed-surface h1 { font-size: 28px; }
+.jb-ed-surface h2 { font-size: 22px; }
+.jb-ed-surface h3 { font-size: 18px; }
+.jb-ed-surface p { margin: 0 0 10px; }
+.jb-ed-surface ul, .jb-ed-surface ol { margin: 0 0 10px; padding-left: 22px; }
+.jb-ed-surface .jb-ed-tasks { list-style: none; padding-left: 0; }
+.jb-ed-surface .jb-ed-tasks li { padding-left: 22px; position: relative; margin-bottom: 4px; cursor: pointer; }
+.jb-ed-surface .jb-ed-tasks li::before { content: ''; position: absolute; left: 0; top: 4px; width: 14px; height: 14px; border: 1px solid var(--border, #2d3346); border-radius: 4px; }
+.jb-ed-surface .jb-ed-tasks li.on { color: var(--muted, #7b85a0); text-decoration: line-through; }
+.jb-ed-surface .jb-ed-tasks li.on::before { background: var(--success, #34d399); border-color: var(--success, #34d399); }
+.jb-ed-surface blockquote { margin: 0 0 10px; padding: 6px 12px; border-left: 3px solid var(--primary, #818cf8); color: var(--muted, #7b85a0); }
+.jb-ed-surface pre { margin: 0 0 10px; padding: 10px 12px; background: var(--surface2, #232838); border-radius: 10px; overflow-x: auto; }
+.jb-ed-surface code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+.jb-ed-surface a { color: var(--primary, #818cf8); }
+.jb-ed-surface hr { border: 0; border-top: 1px solid var(--border, #2d3346); margin: 14px 0; }
+.jb-ed-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.jb-ed-status { font-size: 12px; color: var(--muted, #7b85a0); }
+.jb-ed-status.dirty { color: #fbbf24; }
+.jb-ed-status.ok { color: var(--success, #34d399); }
+.jb-ed-save { margin-left: auto; }

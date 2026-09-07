@@ -22,7 +22,7 @@ Dados na planilha **Joelboard Study** no seu Drive.
 
 - Crie matérias com nome e cor. Progresso vem dos **módulos / aulas** (não de um número solto).
 - Detalhe da matéria: liste módulos, marque os concluídos, veja eventos e materiais.
-- Toque no nome de um módulo para abrir as **anotações** (markdown com prévia).
+- Toque no nome de um módulo para abrir as **anotações** e formatar o texto no lugar (negrito, títulos, tamanho, listas). Salva sozinho a cada 20s ou pelo botão **Salvar**.
 - Se uma matéria antiga só tinha “12/40 aulas”, o Study cria **Aula 1…N** na primeira abertura — matérias que já tinham módulos não são alteradas.
 
 ## Modo foco (🍅)
@@ -41,7 +41,7 @@ Tema, tutorial, feedback.
 
 `Materias`, `Eventos`, `Anexos`, `Foco`, `Modulos`, `Config`.
 
-A aba `Modulos` guarda `MateriaID`, `Nome`, `Feito`, `ID` e `Notas` (markdown da aula).
+A aba `Modulos` guarda `MateriaID`, `Nome`, `Feito`, `ID` e `Notas` (texto formatado da aula).
 
 **Nota:** na resolução da planilha, o Study valida apenas abas distintivas (`Materias`, `Eventos`, …) — não use só `Config` como identificador, para não confundir com outro app Joelboard.
 

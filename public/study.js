@@ -305,7 +305,7 @@ function modNoteHtml(modId){
     +'<button type="button" class="echk modnote-chk'+(x.feito?' on':'')+'" onclick="toggleModulo(\''+x.id+'\')" title="Concluir">'+(x.feito?'✓':'')+'</button>'
     +'<input class="field modnote-name" id="modNoteName" value="'+esc(x.nome)+'" onblur="renameModulo(\''+x.id+'\')" onkeydown="if(event.key===\'Enter\'){this.blur();}">'
     +'</div>'
-    +'<p class="rg modnote-hint">Anotações desta aula — markdown, prévia ao lado.</p>'
+    +'<p class="rg modnote-hint">Selecione o texto para formatar. Salva sozinho a cada 20s, ou toque em Salvar.</p>'
     +'<div id="modNoteEd"></div>';
 }
 function mountModEd(){
@@ -313,7 +313,7 @@ function mountModEd(){
   if(!host||!x) return;
   var ed=(window.JB&&JB.editor)||window.JB_EDITOR;
   if(!ed||!ed.mount) return;
-  _modEd=ed.mount(host, { value:x.notas||'', placeholder:'Escreva em markdown…', onChange:function(v){ saveModNotes(x, v); } });
+  _modEd=ed.mount(host, { value:x.notas||'', placeholder:'Escreva suas anotações…', autosaveMs:20000, onSave:function(v, meta){ saveModNotes(x, v); if(meta&&meta.manual) toast('✓ Notas salvas'); } });
 }
 function matCardHtml(m, doneStyle){
   var pr=modProgress(m.id), complete=isMatComplete(m);
@@ -510,7 +510,7 @@ var STUDY_TOUR=[
   { title:'Bem-vindo ao Study 📚', body:'Organize provas, trabalhos e matérias.' },
   { go:function(){ tab('calendario'); }, sel:'#calCells', title:'Calendário', body:'Toque num dia para agendar provas e trabalhos; os pontos mostram os itens.' },
   { go:function(){ tab('calendario'); }, sel:'.focuslaunch', title:'Modo foco', body:'Inicie um Pomodoro e registre seu tempo de estudo por matéria.' },
-  { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias e adicione módulos ou aulas. Toque num módulo para escrever anotações em markdown. Ao concluir todos, a matéria vai para "concluídas".' },
+  { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias e adicione módulos ou aulas. Toque num módulo para escrever anotações — formate o texto no lugar. Ao concluir todos, a matéria vai para "concluídas".' },
   { go:function(){ tab('calendario'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para agendar um item.' },
   { sel:'.acct .lnk', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
 ];

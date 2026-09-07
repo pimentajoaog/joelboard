@@ -50,6 +50,21 @@ test('wrapSelection wraps markers around selection', function () {
   assert.equal(r.end, 7);
 });
 
+test('wrapSelection toggles markers off', function () {
+  var on = ED.wrapSelection('hello', 0, 5, { left: '**', right: '**' });
+  var off = ED.wrapSelection(on.value, on.start, on.end, { left: '**', right: '**' });
+  assert.equal(off.value, 'hello');
+});
+
+test('looksLikeHtml detects stored notes', function () {
+  assert.equal(ED.looksLikeHtml('<p>oi</p>'), true);
+  assert.equal(ED.looksLikeHtml('# Título'), false);
+});
+
+test('valueToHtml keeps markdown notes readable', function () {
+  assert.match(ED.valueToHtml('**oi**'), /<strong>oi<\/strong>/);
+});
+
 test('wrapSelection prefixes selected lines and can toggle off', function () {
   var r = ED.wrapSelection('a\nb', 0, 3, { kind: 'line', prefix: '- ' });
   assert.equal(r.value, '- a\n- b');

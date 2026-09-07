@@ -22,7 +22,7 @@ Dados na planilha **Joelboard Study** no seu Drive.
 
 - Crie matérias com nome e cor. Progresso vem dos **módulos / aulas** (não de um número solto).
 - Detalhe da matéria: liste módulos, marque os concluídos, veja eventos e materiais.
-- Toque no nome de um módulo para abrir as **anotações** e formatar o texto no lugar (negrito, títulos, tamanho, listas). Salva sozinho a cada 20s ou pelo botão **Salvar**.
+- Toque no nome de um módulo para abrir as **anotações** e formatar o texto no lugar (negrito, títulos, tamanho, listas). Cole um print com **Ctrl+V** — a imagem vai para o Drive e aparece na nota. Salva sozinho a cada 20s ou pelo botão **Salvar**.
 - Se uma matéria antiga só tinha “12/40 aulas”, o Study cria **Aula 1…N** na primeira abertura — matérias que já tinham módulos não são alteradas.
 
 ## Modo foco (🍅)

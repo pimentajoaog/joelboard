@@ -511,6 +511,9 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-surface code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
 .jb-ed-surface a { color: var(--primary, #818cf8); }
 .jb-ed-surface hr { border: 0; border-top: 1px solid var(--border, #2d3346); margin: 14px 0; }
+.jb-ed-surface img[data-jb-file] { display: block; max-width: 100%; height: auto; border-radius: 10px; margin: 10px 0; background: var(--surface2, #232838); }
+.jb-ed-surface img.jb-ed-img-loading { min-height: 88px; }
+.jb-ed-surface img.jb-ed-img-err { outline: 1px dashed var(--border, #2d3346); }
 .jb-ed-foot { display: flex; align-items: center; gap: 10px; }
 .jb-ed-status { font-size: 12px; color: var(--muted, #7b85a0); flex: 1; min-width: 0; }
 .jb-ed-status.dirty { color: #fbbf24; }

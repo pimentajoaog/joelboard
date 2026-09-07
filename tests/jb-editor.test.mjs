@@ -76,3 +76,25 @@ test('wrapSelection builds a markdown link', function () {
   var r = ED.wrapSelection('docs', 0, 4, { kind: 'link' });
   assert.equal(r.value, '[docs](https://)');
 });
+
+test('safeDriveFileId accepts Drive ids only', function () {
+  assert.equal(ED.safeDriveFileId('1aB-C_defghijklmnopqr'), '1aB-C_defghijklmnopqr');
+  assert.equal(ED.safeDriveFileId('javascript:alert(1)'), '');
+  assert.equal(ED.safeDriveFileId('short'), '');
+});
+
+test('isEmptyHtml treats a Drive image as content', function () {
+  assert.equal(ED.isEmptyHtml('<p><br></p>'), true);
+  assert.equal(ED.isEmptyHtml('<img data-jb-file="1AbCdEfGhIjKlMnOpQrSt" alt="snip">'), false);
+});
+
+test('pasteImageFiles picks clipboard images and skips svg', function () {
+  var png = { type: 'image/png', name: 'snip.png', size: 12, lastModified: 1 };
+  var svg = { type: 'image/svg+xml', name: 'x.svg', size: 12, lastModified: 2 };
+  var files = ED.pasteImageFiles({
+    files: [png, svg],
+    items: [{ kind: 'file', type: 'image/png', getAsFile: function () { return png; } }]
+  });
+  assert.equal(files.length, 1);
+  assert.equal(files[0].name, 'snip.png');
+});

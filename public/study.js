@@ -315,7 +315,7 @@ function modNoteHtml(modId){
     +'<button type="button" class="echk modnote-chk'+(x.feito?' on':'')+'" onclick="toggleModulo(\''+x.id+'\')" title="Concluir">'+(x.feito?'✓':'')+'</button>'
     +'<input class="field modnote-name" id="modNoteName" value="'+esc(x.nome)+'" onblur="renameModulo(\''+x.id+'\')" onkeydown="if(event.key===\'Enter\'){this.blur();}">'
     +'</div>'
-    +'<p class="rg modnote-hint">Selecione o texto para formatar. Salva sozinho a cada 20s, ou toque em Salvar.</p>'
+    +'<p class="rg modnote-hint">Cole um print (Ctrl+V). Selecione o texto para formatar. Salva sozinho a cada 20s, ou toque em Salvar.</p>'
     +'<div id="modNoteEd"></div>';
 }
 function mountModEd(){
@@ -323,7 +323,7 @@ function mountModEd(){
   if(!host||!x) return;
   var ed=(window.JB&&JB.editor)||window.JB_EDITOR;
   if(!ed||!ed.mount) return;
-  _modEd=ed.mount(host, { value:x.notas||'', placeholder:'Escreva suas anotações…', autosaveMs:20000, onSave:function(v, meta){ saveModNotes(x, v); if(meta&&meta.manual) toast('✓ Notas salvas'); } });
+  _modEd=ed.mount(host, { value:x.notas||'', placeholder:'Escreva suas anotações…', autosaveMs:20000, onSave:function(v, meta){ saveModNotes(x, v); if(meta&&meta.manual) toast('✓ Notas salvas'); }, images:{ upload:function(file){ return studyUploadNoteImage(file, x.materiaId); }, load:studyLoadNoteImage } });
 }
 function matCardHtml(m, doneStyle){
   var pr=modProgress(m.id), complete=isMatComplete(m);
@@ -438,6 +438,36 @@ function studyFolders(){ try{ var v=JSON.parse((DATA.config&&DATA.config.studyFo
 function saveFolders(sf){ saveConfig('studyFolders', JSON.stringify(sf)); }
 function ensureRoot(){ var sf=studyFolders(); if(sf.root) return Promise.resolve(sf.root); return JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:'Joelboard Study — Anexos', mimeType:'application/vnd.google-apps.folder' }).then(function(f){ sf.root=f.id; saveFolders(sf); return f.id; }); }
 function ensureSub(matId){ return ensureRoot().then(function(root){ if(!matId) return root; var sf=studyFolders(); sf.subs=sf.subs||{}; if(sf.subs[matId]) return sf.subs[matId]; var m=mat(matId); return JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:(m?m.nome:'Matéria'), mimeType:'application/vnd.google-apps.folder', parents:[root] }).then(function(f){ sf.subs[matId]=f.id; saveFolders(sf); return f.id; }); }); }
+var _imgUrlCache={};
+function studyUploadNoteImage(file, matId){
+  if(!file) return Promise.reject(new Error('no_file'));
+  if(file.size>10*1024*1024) return Promise.reject(new Error('too_big'));
+  if(!(file.name||'').trim()){
+    try{ file=new File([file],'print.png',{ type:file.type||'image/png' }); }catch(_){}
+  }
+  return ensureSub(matId).then(function(folderId){ return uploadFile(file, folderId); }).then(function(f){
+    if(!f||!f.id) throw new Error('upload_failed');
+    try{ _imgUrlCache[f.id]=URL.createObjectURL(file); }catch(_){}
+    return { id:f.id, name:f.name||file.name||'imagem' };
+  });
+}
+function studyLoadNoteImage(fileId){
+  if(_imgUrlCache[fileId]) return Promise.resolve(_imgUrlCache[fileId]);
+  var url='https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(fileId)+'?alt=media';
+  function attempt(tok, retry){
+    return fetch(url, { headers:{ Authorization:'Bearer '+tok } }).then(function(r){
+      if(r.status===401 && retry) return JB.requestToken(false, { force:true }).then(function(nt){ return attempt(nt, false); });
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.blob();
+    });
+  }
+  var t=JB.cachedToken();
+  return (t?Promise.resolve(t):JB.requestToken(false)).then(function(tok){ return attempt(tok, true); }).then(function(blob){
+    var u=URL.createObjectURL(blob);
+    _imgUrlCache[fileId]=u;
+    return u;
+  });
+}
 function uploadFile(file, folderId){
   var boundary='jbs'+Date.now()+Math.floor(Math.random()*1e6);
   var meta={ name:file.name }; if(folderId) meta.parents=[folderId];
@@ -575,7 +605,7 @@ var STUDY_TOUR=[
   { title:'Bem-vindo ao Study 📚', body:'Organize provas, trabalhos e matérias.' },
   { go:function(){ tab('calendario'); }, sel:'#calCells', title:'Calendário', body:'Toque num dia para agendar provas e trabalhos; os pontos mostram os itens.' },
   { go:function(){ tab('calendario'); }, sel:'.focpanel', title:'Modo foco', body:'Inicie um Pomodoro. O painel ao lado mostra foco e pausa do dia, os últimos 7 dias e suas metas opcionais.' },
-  { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias e adicione módulos ou aulas. Toque num módulo para escrever anotações — formate o texto no lugar. Ao concluir todos, a matéria vai para "concluídas".' },
+  { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias e adicione módulos ou aulas. Toque num módulo para escrever anotações — formate o texto no lugar ou cole um print (Ctrl+V). Ao concluir todos, a matéria vai para "concluídas".' },
   { go:function(){ tab('calendario'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para agendar um item.' },
   { sel:'.acct .lnk', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
 ];

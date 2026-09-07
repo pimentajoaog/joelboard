@@ -3,6 +3,8 @@
 (function () {
   var CELL_LIMIT = 50000;
   var AUTOSAVE_MS = 20000;
+  var IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+  var IMAGE_OK = { 'image/png': 1, 'image/jpeg': 1, 'image/jpg': 1, 'image/webp': 1, 'image/gif': 1 };
   var SIZES = [
     { label: '13', px: '13px' },
     { label: '16', px: '16px' },
@@ -10,7 +12,42 @@
     { label: '24', px: '24px' },
     { label: '32', px: '32px' }
   ];
-  var ALLOWED = { P:1, H1:1, H2:1, H3:1, DIV:1, BR:1, SPAN:1, STRONG:1, B:1, EM:1, I:1, U:1, S:1, STRIKE:1, A:1, UL:1, OL:1, LI:1, BLOCKQUOTE:1, PRE:1, CODE:1, HR:1, FONT:1 };
+  var ALLOWED = { P:1, H1:1, H2:1, H3:1, DIV:1, BR:1, SPAN:1, STRONG:1, B:1, EM:1, I:1, U:1, S:1, STRIKE:1, A:1, UL:1, OL:1, LI:1, BLOCKQUOTE:1, PRE:1, CODE:1, HR:1, FONT:1, IMG:1 };
+
+  function safeDriveFileId(id) {
+    var s = String(id || '').trim();
+    return /^[A-Za-z0-9_-]{10,128}$/.test(s) ? s : '';
+  }
+  function isPasteImage(file) {
+    if (!file) return false;
+    var t = String(file.type || '').toLowerCase();
+    if (IMAGE_OK[t]) return true;
+    if (t) return false;
+    return /\.(png|jpe?g|gif|webp)$/i.test(String(file.name || ''));
+  }
+  function pasteImageFiles(dt) {
+    if (!dt) return [];
+    var out = [];
+    var seen = {};
+    function add(f) {
+      if (!isPasteImage(f)) return;
+      var key = String(f.name || '') + ':' + String(f.size || 0) + ':' + String(f.lastModified || 0);
+      if (seen[key]) return;
+      seen[key] = 1;
+      out.push(f);
+    }
+    var files = dt.files || [];
+    var i;
+    for (i = 0; i < files.length; i++) add(files[i]);
+    var items = dt.items || [];
+    for (i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (!it || it.kind !== 'file') continue;
+      if (it.type && !IMAGE_OK[String(it.type || '').toLowerCase()]) continue;
+      add(it.getAsFile ? it.getAsFile() : null);
+    }
+    return out;
+  }
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -144,6 +181,15 @@
         if (child.nodeType === 8) { node.removeChild(child); return; }
         if (child.nodeType !== 1) return;
         var tag = child.tagName;
+        if (tag === 'IMG') {
+          var fid = safeDriveFileId(child.getAttribute('data-jb-file'));
+          var alt = String(child.getAttribute('alt') || '').slice(0, 200);
+          while (child.attributes.length) child.removeAttribute(child.attributes[0].name);
+          if (!fid) { node.removeChild(child); return; }
+          child.setAttribute('data-jb-file', fid);
+          if (alt) child.setAttribute('alt', alt);
+          return;
+        }
         if (!ALLOWED[tag]) {
           while (child.firstChild) node.insertBefore(child.firstChild, child);
           node.removeChild(child);
@@ -184,7 +230,9 @@
   }
 
   function isEmptyHtml(html) {
-    var t = String(html || '').replace(/&nbsp;/g, ' ').replace(/<br\s*\/?>/gi, '').replace(/<[^>]+>/g, '').trim();
+    var s = String(html || '');
+    if (/<img\b[^>]*\bdata-jb-file=/i.test(s)) return false;
+    var t = s.replace(/&nbsp;/g, ' ').replace(/<br\s*\/?>/gi, '').replace(/<[^>]+>/g, '').trim();
     return !t;
   }
 
@@ -267,6 +315,9 @@
     var onSave = typeof opts.onSave === 'function' ? opts.onSave : (typeof opts.onChange === 'function' ? opts.onChange : null);
     var interval = opts.autosaveMs != null ? opts.autosaveMs : AUTOSAVE_MS;
     var placeholder = opts.placeholder || 'Escreva suas anotações…';
+    var imgOpts = opts.images || null;
+    var uploadImage = imgOpts && typeof imgOpts.upload === 'function' ? imgOpts.upload : null;
+    var loadImage = imgOpts && typeof imgOpts.load === 'function' ? imgOpts.load : null;
     var dirty = false;
     var destroyed = false;
     var lastSaved = valueToHtml(opts.value);
@@ -367,6 +418,86 @@
       if (!url) return;
       cmd('createLink', url);
     }
+    function insertNode(node) {
+      surface.focus();
+      var sel = window.getSelection();
+      if (sel && sel.rangeCount) {
+        var range = sel.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(node);
+        range.setStartAfter(node);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        surface.appendChild(node);
+      }
+    }
+    function hydrateImages() {
+      if (!loadImage || destroyed) return;
+      var imgs = surface.querySelectorAll('img[data-jb-file]');
+      Array.prototype.forEach.call(imgs, function (img) {
+        var id = safeDriveFileId(img.getAttribute('data-jb-file'));
+        if (!id || img.getAttribute('data-jb-hydrated') === id) return;
+        img.classList.add('jb-ed-img-loading');
+        Promise.resolve(loadImage(id)).then(function (url) {
+          if (destroyed || !url) return;
+          img.src = url;
+          img.setAttribute('data-jb-hydrated', id);
+          img.classList.remove('jb-ed-img-loading');
+        }).catch(function () {
+          img.classList.remove('jb-ed-img-loading');
+          img.classList.add('jb-ed-img-err');
+        });
+      });
+    }
+    function insertUploadedImage(info) {
+      var id = safeDriveFileId(info && info.id);
+      if (!id) return;
+      var img = document.createElement('img');
+      img.setAttribute('data-jb-file', id);
+      if (info.name) img.setAttribute('alt', String(info.name).slice(0, 200));
+      insertNode(img);
+      var br = document.createElement('p');
+      br.appendChild(document.createElement('br'));
+      insertNode(br);
+      hydrateImages();
+      markDirty();
+    }
+    function pasteImages(ev) {
+      if (!uploadImage) return;
+      var files = pasteImageFiles(ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData));
+      if (!files.length) return;
+      ev.preventDefault();
+      var text = '';
+      try { text = String((ev.clipboardData && ev.clipboardData.getData('text/plain')) || ''); } catch (_) {}
+      var i = 0;
+      function next() {
+        if (destroyed) return;
+        if (i >= files.length) {
+          if (text && text.trim()) {
+            try { document.execCommand('insertText', false, text); } catch (_) {}
+            markDirty();
+          }
+          return;
+        }
+        var file = files[i++];
+        if (file.size > IMAGE_MAX_BYTES) {
+          if (window.JB && JB.toast) JB.toast('Imagem grande demais (máx. 10 MB)');
+          next();
+          return;
+        }
+        if (window.JB && JB.toast) JB.toast('Enviando imagem…');
+        Promise.resolve(uploadImage(file)).then(function (info) {
+          insertUploadedImage(info);
+          next();
+        }).catch(function () {
+          if (window.JB && JB.toast) JB.toast('Não foi possível colar a imagem');
+          next();
+        });
+      }
+      next();
+    }
     function syncBar() {
       var map = { bold: 'bold', italic: 'italic', underline: 'underline', strikeThrough: 'strike' };
       Object.keys(map).forEach(function (command) {
@@ -453,8 +584,10 @@
     root.appendChild(foot);
     host.appendChild(root);
     setEmptyClass();
+    hydrateImages();
 
     surface.addEventListener('input', markDirty);
+    if (uploadImage) surface.addEventListener('paste', pasteImages);
     surface.addEventListener('keyup', syncBar);
     surface.addEventListener('mouseup', syncBar);
     surface.addEventListener('keydown', function (ev) {
@@ -496,6 +629,7 @@
         setEmptyClass();
         setStatus('', lastSaved ? 'Salvo' : '');
         resetTimer();
+        hydrateImages();
       },
       save: function () { persist(true); },
       destroy: function () {
@@ -518,7 +652,12 @@
     looksLikeHtml: looksLikeHtml,
     valueToHtml: valueToHtml,
     wrapSelection: wrapSelection,
-    mount: mount
+    mount: mount,
+    sanitizeHtml: sanitizeHtml,
+    isEmptyHtml: isEmptyHtml,
+    safeDriveFileId: safeDriveFileId,
+    pasteImageFiles: pasteImageFiles,
+    IMAGE_MAX_BYTES: IMAGE_MAX_BYTES
   };
 
   if (typeof window !== 'undefined') {

@@ -1,7 +1,7 @@
 /* Joelboard Study — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
 var DATA=null, studyGrid={}, authDone=false, _stStudyCal=false, _stStudyMat=false;
-var STUDY_TABS=[['Materias',['Nome','Cor','Total','Feitas','ID','Concluido']],['Eventos',['Titulo','Tipo','Data','Hora','MateriaID','Concluido','Notas','ID']],['Anexos',['MateriaID','EventoID','Nome','URL','FileID','ID']],['Foco',['Data','MateriaID','Minutos','ID']],['Modulos',['MateriaID','Nome','Feito','ID','Notas']],['Config',['Chave','Valor']]];
+var STUDY_TABS=[['Materias',['Nome','Cor','Total','Feitas','ID','Concluido']],['Eventos',['Titulo','Tipo','Data','Hora','MateriaID','Concluido','Notas','ID']],['Anexos',['MateriaID','EventoID','Nome','URL','FileID','ID']],['Foco',['Data','MateriaID','Minutos','ID','Tipo']],['Modulos',['MateriaID','Nome','Feito','ID','Notas']],['Config',['Chave','Valor']]];
 var AULA_MIGRATE_CAP=80;
 var NOTE_CHAR_LIMIT=50000;
 var MAT_DONE_KEY='jb_study_hide_done_mat';
@@ -88,7 +88,7 @@ function loadData(){
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
-    return ensureMateriasSchema(by).then(function(){ return ensureModulosSchema(by); }).then(function(){ DATA=buildStudy(by); return migrateAulaCounts(); }).then(function(){ matSyncAllConcluido(true); show(); });
+    return ensureMateriasSchema(by).then(function(){ return ensureModulosSchema(by); }).then(function(){ return ensureFocoSchema(by); }).then(function(){ DATA=buildStudy(by); return migrateAulaCounts(); }).then(function(){ matSyncAllConcluido(true); show(); });
   }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('study'); bootSheet(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(e.message)+'</div></div>'); });
 }
 function ensureMateriasSchema(by){
@@ -103,6 +103,13 @@ function ensureModulosSchema(by){
   if(head[4]==='Notas') return Promise.resolve();
   return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data:[{ range:'Modulos!E1', values:[['Notas']] }] }).then(function(){
     if(by.Modulos&&by.Modulos[0]) by.Modulos[0][4]='Notas';
+  }).catch(function(){});
+}
+function ensureFocoSchema(by){
+  var head=(by.Foco&&by.Foco[0])||[];
+  if(head[4]==='Tipo') return Promise.resolve();
+  return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption:'RAW', data:[{ range:'Foco!E1', values:[['Tipo']] }] }).then(function(){
+    if(by.Foco&&by.Foco[0]) by.Foco[0][4]='Tipo';
   }).catch(function(){});
 }
 function migrateAulaCounts(){
@@ -130,7 +137,7 @@ function buildStudy(t){
     materias: body(t.Materias).filter(function(r){return r[0];}).map(function(r){ return { id:r[4], nome:String(r[0]), cor:r[1]||SUBJECT_COLORS[0], total:Number(r[2])||0, feitas:Number(r[3])||0, concluido:!!(r[5]==='1'||r[5]===1||r[5]===true) }; }),
     eventos: body(t.Eventos).filter(function(r){return r[0]||r[2];}).map(function(r){ return { id:r[7], titulo:String(r[0]||''), tipo:r[1]||'Outro', data:String(r[2]||''), hora:String(r[3]||''), materiaIds:String(r[4]||'').split(',').filter(Boolean), concluido:!!r[5], notas:String(r[6]||'') }; }),
     anexos: body(t.Anexos||[]).filter(function(r){return r[3];}).map(function(r){ return { materiaId:String(r[0]||''), eventoId:String(r[1]||''), nome:String(r[2]||''), url:String(r[3]||''), fileId:String(r[4]||''), id:r[5] }; }),
-    focos: body(t.Foco||[]).filter(function(r){return r[2];}).map(function(r){ return { data:String(r[0]||''), materiaId:String(r[1]||''), min:Number(r[2])||0, id:r[3] }; }),
+    focos: body(t.Foco||[]).filter(function(r){return r[2];}).map(function(r){ return { data:String(r[0]||''), materiaId:String(r[1]||''), min:Number(r[2])||0, id:r[3], tipo:(String(r[4]||'').toLowerCase()==='pausa'?'pausa':'foco') }; }),
     modulos: body(t.Modulos||[]).filter(function(r){return r[1];}).map(function(r){ return { materiaId:String(r[0]||''), nome:String(r[1]||''), feito:!!r[2], id:r[3], notas:String(r[4]||'') }; }),
     config: config
   };
@@ -169,7 +176,7 @@ function renderCal(){
   var head=WD.map(function(w){return '<div class="cwd">'+w[0]+'</div>';}).join('');
   el.innerHTML='<div class="calhead"><button class="navb" onclick="calNav(-1)">‹</button><button class="calmonth" onclick="calToday()">'+MOFULL[calM]+' '+calY+'</button><button class="navb" onclick="calNav(1)">›</button></div>'
     +'<div class="calgrid calwd">'+head+'</div><div class="calgrid" id="calCells">'+cells+'</div>'
-    +'<button class="focuslaunch" onclick="openFoco()">🍅 Modo foco</button>'
+    + focoTrackHtml()
     + dayPanelHtml() + proximosHtml();
   if (!_stStudyCal) {
     _stStudyCal = true;
@@ -418,7 +425,7 @@ function deleteMat(id){
 /* ---- helpers / settings ---- */
 function findRow(tab,idCol,id){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; for(var i=1;i<v.length;i++){ if(String((v[i]||[])[idCol])===String(id)) return i+1; } return -1; }); }
 function fab(){ openEvt(null); }
-function openSettings(){ switchSet('tema'); JB.renderSkinPicker('study', $('setSkins')); var c=focCfg(); $('focoMin').value=c.foco; $('pausaMin').value=c.pausa; $('longMin').value=c.long; $('cycLong').value=c.cyc; $('setOverlay').classList.add('open'); }
+function openSettings(){ switchSet('tema'); JB.renderSkinPicker('study', $('setSkins')); var c=focCfg(); $('focoMin').value=c.foco; $('pausaMin').value=c.pausa; $('longMin').value=c.long; $('cycLong').value=c.cyc; if($('focoGoalDay')) $('focoGoalDay').value=c.goalDay||''; if($('focoGoalWeek')) $('focoGoalWeek').value=c.goalWeek||''; $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++){ var on=ps[j].getAttribute('data-pane')===name; ps[j].style.display=on?'':'none'; ps[j].classList.toggle('active', on); } }
 
@@ -470,27 +477,82 @@ function closeLink(){ $('linkOverlay').classList.remove('open'); }
 function linkExisting(srcId){ var src=(DATA.anexos||[]).find(function(a){return a.id===srcId;}); if(!src||!linkEvtId) return; var a={ id:uuid(), materiaId:src.materiaId, eventoId:linkEvtId, nome:src.nome, url:src.url, fileId:src.fileId }; JB.persist({ run: function(){ return JB.api('POST', ssUrl('/values/Anexos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[anexoRowVals(a)] }); }, onSuccess: function(){ DATA.anexos.push(a); closeLink(); renderEvtAnexos(linkEvtId); renderCal(); toast('✓ Vinculado'); }, onError: studyWriteErr }); }
 function removeAnexo(id,kind,ctxId){ JB.confirm('Remover anexo?','O arquivo continua no seu Google Drive.', function(){ JB.persist({ run: function(){ return findRow('Anexos',5,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Anexos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }); }, onSuccess: function(){ DATA.anexos=(DATA.anexos||[]).filter(function(a){return a.id!==id;}); if(kind==='mat') renderMatAnexos(ctxId); else renderEvtAnexos(ctxId); renderMaterias(); renderCal(); }, onError: studyWriteErr }); }, { yes:'Remover', no:'Cancelar', danger:true }); }
 function fmtT(x){ var m=Math.floor(x/60),s=x%60; return m+':'+(s<10?'0':'')+s; }
-function studyMin(matId){ return (DATA.focos||[]).filter(function(f){return f.materiaId===matId;}).reduce(function(a,f){return a+(f.min||0);},0); }
-function fmtStudy(m){ if(!m) return ''; var h=Math.floor(m/60), mm=m%60; var s=h?(h+'h'):''; if(mm||!h) s+=(s?' ':'')+mm+'m'; return s; }
+function focoTipo(f){ return (f&&f.tipo)==='pausa'?'pausa':'foco'; }
+function studyMin(matId){ return (DATA.focos||[]).filter(function(f){return f.materiaId===matId && focoTipo(f)==='foco';}).reduce(function(a,f){return a+(f.min||0);},0); }
+function fmtStudy(m){ m=Number(m)||0; if(!m) return '0m'; var h=Math.floor(m/60), mm=m%60; var s=h?(h+'h'):''; if(mm||!h) s+=(s?' ':'')+mm+'m'; return s; }
 function studyTimeStr(matId){ var m=studyMin(matId); return m?(' · ⏱ '+fmtStudy(m)):''; }
+function focDayShift(iso, days){ var d=parseISO(iso); d.setDate(d.getDate()+days); return isoDate(d); }
+function focStats(iso){
+  var foco=0, pausa=0;
+  (DATA.focos||[]).forEach(function(f){ if(f.data!==iso) return; if(focoTipo(f)==='pausa') pausa+=f.min||0; else foco+=f.min||0; });
+  return { foco:foco, pausa:pausa, total:foco+pausa };
+}
+function focWeekStats(endIso){
+  var end=endIso||todayISO(), foco=0, pausa=0, days=[];
+  for(var i=6;i>=0;i--){
+    var iso=focDayShift(end, -i);
+    var st=focStats(iso);
+    days.push({ iso:iso, foco:st.foco, pausa:st.pausa });
+    foco+=st.foco; pausa+=st.pausa;
+  }
+  return { foco:foco, pausa:pausa, total:foco+pausa, days:days };
+}
+function focGoalBar(done, goal, cls){
+  if(!goal) return '';
+  var pct=Math.max(0, Math.min(100, Math.round(done/goal*100)));
+  return '<div class="focgoal"><div class="focgoal-lab">'+esc(cls)+' '+fmtStudy(done)+' / '+fmtStudy(goal)+'</div><div class="pbar focgoal-bar"><span style="width:'+pct+'%"></span></div></div>';
+}
+function focoTrackHtml(){
+  var today=todayISO(), day=focStats(today), week=focWeekStats(today), g=focCfg();
+  var max=1;
+  week.days.forEach(function(d){ if(d.foco>max) max=d.foco; });
+  var bars=week.days.map(function(d){
+    var h=Math.max(4, Math.round((d.foco/max)*36));
+    var lab=parseISO(d.iso).getDate();
+    var on=d.iso===today;
+    var title=fmtBR(d.iso)+' · foco '+fmtStudy(d.foco)+' · pausa '+fmtStudy(d.pausa);
+    return '<div class="focday'+(on?' on':'')+'" title="'+esc(title)+'"><span class="focday-bar" style="height:'+h+'px"></span><span class="focday-n">'+lab+'</span></div>';
+  }).join('');
+  var goals=focGoalBar(day.foco, g.goalDay, 'Hoje')+focGoalBar(week.foco, g.goalWeek, '7 dias');
+  return '<div class="focpanel">'
+    +'<button class="focuslaunch" onclick="openFoco()">🍅 Modo foco</button>'
+    +'<div class="foctrack">'
+    +'<div class="foctrack-top"><div class="foctrack-title">Tempo de estudo</div>'
+    +(g.goalDay||g.goalWeek?'<button type="button" class="lnk" onclick="openSettings();switchSet(\'foco\')">Metas</button>':'<button type="button" class="lnk" onclick="openSettings();switchSet(\'foco\')">Definir meta</button>')
+    +'</div>'
+    +'<div class="foctrack-sum"><span class="foctrack-foco">🍅 '+fmtStudy(day.foco)+' foco</span><span class="foctrack-pausa">☕ '+fmtStudy(day.pausa)+' pausa</span></div>'
+    +(goals||'<div class="rg">Sem meta ainda — opcional em Ajustes → Foco.</div>')
+    +'<div class="focweek" aria-label="Últimos 7 dias">'+bars+'</div>'
+    +'<div class="foctrack-week">7 dias: '+fmtStudy(week.foco)+' foco · '+fmtStudy(week.pausa)+' pausa</div>'
+    +'</div></div>';
+}
 function ping(){ try{ if(navigator.vibrate) navigator.vibrate([180,70,180]); }catch(e){} try{ var A=window.AudioContext||window.webkitAudioContext; if(!A) return; var a=new A(); var o=a.createOscillator(), g=a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value=760; g.gain.value=0.07; o.start(); setTimeout(function(){ try{o.stop();a.close();}catch(e){} },340); }catch(e){} }
 
 /* ---- focus mode (Pomodoro) ---- */
-function focCfg(){ var c=DATA.config||{}; return { foco:Number(c.focoMin)||25, pausa:Number(c.pausaMin)||5, long:Number(c.longMin)||15, cyc:Number(c.cycLong)||4 }; }
-function saveFocoCfg(){ saveConfig('focoMin', String(Math.max(1,Number($('focoMin').value)||25))); saveConfig('pausaMin', String(Math.max(1,Number($('pausaMin').value)||5))); saveConfig('longMin', String(Math.max(1,Number($('longMin').value)||15))); saveConfig('cycLong', String(Math.max(1,Number($('cycLong').value)||4))); }
+function focCfg(){ var c=DATA.config||{}; return { foco:Number(c.focoMin)||25, pausa:Number(c.pausaMin)||5, long:Number(c.longMin)||15, cyc:Number(c.cycLong)||4, goalDay:Math.max(0,Number(c.focoGoalDay)||0), goalWeek:Math.max(0,Number(c.focoGoalWeek)||0) }; }
+function saveFocoCfg(){
+  saveConfig('focoMin', String(Math.max(1,Number($('focoMin').value)||25)));
+  saveConfig('pausaMin', String(Math.max(1,Number($('pausaMin').value)||5)));
+  saveConfig('longMin', String(Math.max(1,Number($('longMin').value)||15)));
+  saveConfig('cycLong', String(Math.max(1,Number($('cycLong').value)||4)));
+  var gd=$('focoGoalDay'), gw=$('focoGoalWeek');
+  saveConfig('focoGoalDay', String(Math.max(0,Number(gd&&gd.value)||0)));
+  saveConfig('focoGoalWeek', String(Math.max(0,Number(gw&&gw.value)||0)));
+  if($('cal')) renderCal();
+}
 var focState={active:false,running:false,phase:'foco',secs:0,tot:0,cycle:1,longb:false,matId:''}, focMat='', focInt=null;
 function openFoco(){ if(focState.active){ $('focoOverlay').classList.add('open'); renderFoco(); return; } focMat=(DATA.materias&&DATA.materias[0])?DATA.materias[0].id:''; focState={active:false,running:false,phase:'foco',secs:0,tot:0,cycle:1,longb:false,matId:''}; renderFoco(); $('focoOverlay').classList.add('open'); }
 function closeFoco(){ $('focoOverlay').classList.remove('open'); }
 function renderFocMat(){ var el=$('focMatWrap'); if(!el) return; var cur=mat(focMat); var btn=cur?('<span class="dotc" style="background:'+cur.cor+'"></span>'+esc(cur.nome)):'— sem matéria —'; var opts='<div class="jb-dd-opt'+(focMat===''?' is-sel':'')+'" onclick="pickFocMat(\'\')">— sem matéria —</div>'+(DATA.materias||[]).map(function(m){return '<div class="jb-dd-opt'+(m.id===focMat?' is-sel':'')+'" onclick="pickFocMat(\''+m.id+'\')"><span class="dotc" style="background:'+m.cor+'"></span>'+esc(m.nome)+'</div>';}).join(''); el.innerHTML='<div class="jb-dd"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>'+btn+'</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">'+opts+'</div></div>'; }
 function pickFocMat(id){ focMat=id; if(window.JB&&JB.ddClose)JB.ddClose(); renderFocMat(); }
 function startFocoRun(){ var c=focCfg(); focState={active:true,running:true,phase:'foco',tot:c.foco*60,secs:c.foco*60,cycle:1,longb:false,matId:focMat}; clearInterval(focInt); focInt=setInterval(focTick,1000); renderFoco(); }
-function focTick(){ if(!focState.running) return; focState.secs--; if(focState.secs<=0){ ping(); if(focState.phase==='foco') logFocoBlock(); advanceFoc(); return; } var el=$('focSecs'); if(el) el.textContent=fmtT(focState.secs); }
+function focTick(){ if(!focState.running) return; focState.secs--; if(focState.secs<=0){ ping(); logFocoBlock(); advanceFoc(); return; } var el=$('focSecs'); if(el) el.textContent=fmtT(focState.secs); }
 function advanceFoc(){ var c=focCfg(); if(focState.phase==='foco'){ var long=(focState.cycle % c.cyc===0); focState.phase='pausa'; focState.longb=long; focState.tot=(long?c.long:c.pausa)*60; focState.secs=focState.tot; } else { focState.cycle++; focState.phase='foco'; focState.tot=c.foco*60; focState.secs=focState.tot; } renderFoco(); }
 function pauseFoco(){ focState.running=!focState.running; renderFoco(); }
-function skipFoco(){ if(focState.phase==='foco') logFocoBlock(); advanceFoc(); }
-function endFoco(){ if(focState.active && focState.phase==='foco') logFocoBlock(); clearInterval(focInt); focState.active=false; $('focoOverlay').classList.remove('open'); render(); }
-function logFocoBlock(){ var mins=Math.round((focState.tot-focState.secs)/60); if(mins>=1 && focState.matId) logFoco(focState.matId, mins); }
-function logFoco(matId,mins){ var f={id:uuid(),data:todayISO(),materiaId:matId,min:mins}; DATA.focos=DATA.focos||[]; DATA.focos.push(f); JB.api('POST', ssUrl('/values/Foco:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[[f.data,f.materiaId,f.min,f.id]] }).catch(studyWriteErr); }
+function skipFoco(){ logFocoBlock(); advanceFoc(); }
+function endFoco(){ if(focState.active) logFocoBlock(); clearInterval(focInt); focState.active=false; $('focoOverlay').classList.remove('open'); render(); }
+function logFocoBlock(){ var mins=Math.round((focState.tot-focState.secs)/60); if(mins<1) return; logFoco(focState.matId||'', mins, focState.phase==='pausa'?'pausa':'foco'); }
+function logFoco(matId,mins,tipo){ var f={id:uuid(),data:todayISO(),materiaId:matId||'',min:mins,tipo:tipo==='pausa'?'pausa':'foco'}; DATA.focos=DATA.focos||[]; DATA.focos.push(f); JB.api('POST', ssUrl('/values/Foco:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[[f.data,f.materiaId,f.min,f.id,f.tipo]] }).catch(studyWriteErr); }
 function renderFoco(){
   var top=$('focTop'), stage=$('focStage'), btm=$('focBtm'); if(!stage) return;
   if(!focState.active){
@@ -509,7 +571,7 @@ var _sbooted=false;
 var STUDY_TOUR=[
   { title:'Bem-vindo ao Study 📚', body:'Organize provas, trabalhos e matérias.' },
   { go:function(){ tab('calendario'); }, sel:'#calCells', title:'Calendário', body:'Toque num dia para agendar provas e trabalhos; os pontos mostram os itens.' },
-  { go:function(){ tab('calendario'); }, sel:'.focuslaunch', title:'Modo foco', body:'Inicie um Pomodoro e registre seu tempo de estudo por matéria.' },
+  { go:function(){ tab('calendario'); }, sel:'.focpanel', title:'Modo foco', body:'Inicie um Pomodoro. O painel ao lado mostra foco e pausa do dia, os últimos 7 dias e suas metas opcionais.' },
   { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias e adicione módulos ou aulas. Toque num módulo para escrever anotações — formate o texto no lugar. Ao concluir todos, a matéria vai para "concluídas".' },
   { go:function(){ tab('calendario'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para agendar um item.' },
   { sel:'.acct .lnk', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }

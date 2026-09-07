@@ -146,8 +146,25 @@ textarea.field{ resize:vertical; min-height:64px; }
 .focsub{ width:100%; background:transparent; border:0; color:var(--muted); font-size:13px; font-weight:700; margin-top:12px; cursor:pointer; font-family:inherit; }
 
 /* focus launcher + multi-subject chips + link picker */
-.focuslaunch{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; margin:18px 0 6px; padding:15px; border-radius:14px; border:1px solid var(--primary); background:color-mix(in srgb, var(--primary) 14%, var(--surface)); color:var(--primary); font-weight:800; font-size:15px; cursor:pointer; font-family:inherit; }
+.focpanel{ display:grid; gap:10px; margin:18px 0 6px; }
+@media (min-width:640px){ .focpanel{ grid-template-columns:1fr 1fr; align-items:stretch; } }
+.focuslaunch{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; margin:0; padding:15px; border-radius:14px; border:1px solid var(--primary); background:color-mix(in srgb, var(--primary) 14%, var(--surface)); color:var(--primary); font-weight:800; font-size:15px; cursor:pointer; font-family:inherit; }
 .focuslaunch:active{ transform:scale(.99); }
+.foctrack{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px; }
+.foctrack-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.foctrack-title{ font-size:11px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); }
+.foctrack-sum{ display:flex; flex-wrap:wrap; gap:10px; font-size:13px; font-weight:700; margin-bottom:8px; }
+.foctrack-foco{ color:var(--primary); }
+.foctrack-pausa{ color:var(--success); }
+.focgoal{ margin:6px 0; }
+.focgoal-lab{ font-size:11px; font-weight:700; color:var(--muted); margin-bottom:4px; }
+.focgoal-bar span{ background:var(--primary); }
+.focweek{ display:flex; align-items:flex-end; justify-content:space-between; gap:6px; height:52px; margin-top:10px; }
+.focday{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; min-width:0; }
+.focday-bar{ display:block; width:100%; max-width:18px; border-radius:5px 5px 2px 2px; background:color-mix(in srgb, var(--primary) 55%, var(--surface2)); }
+.focday.on .focday-bar{ background:var(--primary); }
+.focday-n{ font-size:10px; font-weight:700; color:var(--muted); }
+.foctrack-week{ font-size:11px; color:var(--muted); margin-top:8px; }
 .matchips{ display:flex; flex-wrap:wrap; }
 .matchip{ display:inline-flex; align-items:center; background:var(--surface2); border:1px solid var(--border); border-radius:99px; padding:7px 12px; font-size:13px; font-weight:700; cursor:pointer; margin:0 6px 6px 0; color:var(--text); font-family:inherit; }
 .matchip.on{ font-weight:800; }

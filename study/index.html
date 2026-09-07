@@ -99,6 +99,11 @@
         <div class="fg" style="flex:1"><label class="fl">Pausa longa (min)</label><input class="field" id="longMin" type="number" inputmode="numeric" onchange="saveFocoCfg()"></div>
         <div class="fg" style="flex:1"><label class="fl">Ciclos p/ longa</label><input class="field" id="cycLong" type="number" inputmode="numeric" onchange="saveFocoCfg()"></div>
       </div>
+      <div class="rg" style="margin:4px 0 10px">Metas opcionais — deixe vazio para não usar.</div>
+      <div style="display:flex;gap:10px">
+        <div class="fg" style="flex:1"><label class="fl">Meta diária (min foco)</label><input class="field" id="focoGoalDay" type="number" inputmode="numeric" min="0" placeholder="ex.: 120" onchange="saveFocoCfg()"></div>
+        <div class="fg" style="flex:1"><label class="fl">Meta 7 dias (min foco)</label><input class="field" id="focoGoalWeek" type="number" inputmode="numeric" min="0" placeholder="ex.: 600" onchange="saveFocoCfg()"></div>
+      </div>
     </div>
     <div class="set-pane" data-pane="sobre" style="display:none">
       <div class="fg"><button class="btn ghost" style="width:100%" onclick="studyVerTutorial()">🧭 Ver tutorial</button></div>

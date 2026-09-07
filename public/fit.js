@@ -341,7 +341,7 @@ function fitUpdateMediaSession(title, artist){ if(!('mediaSession' in navigator)
 function fitClearMediaSession(){ if(!('mediaSession' in navigator)) return; try{ navigator.mediaSession.playbackState='none'; navigator.mediaSession.metadata=null; }catch(e){} }
 function fitUpdateRestBar(){ var bar=$('restBar'); if(!bar) return; var ov=$('runOverlay'); var show=rest.endsAt&&rest.secs>0&&ov&&ov.classList.contains('open')&&runPhase==='log'; bar.style.display=show?'flex':'none'; if(!show) return; bar.innerHTML='<span class="rt">⏱ '+fmtT(rest.secs)+'</span><button class="rbtn" onclick="rAdd30()">+30s</button><button class="rbtn" onclick="rSkip()">Pular</button>'; }
 function tickRest(){ if(!rest.endsAt) return false; rest.secs=fitTimerRemaining(rest.endsAt); if(rest.secs<=0){ rest.secs=0; var wasRest=runPhase==='rest'; stopRest(); beep(); if(wasRest) rNextSet(); else if(runPhase==='log') renderRun(); return true; } fitUpdateMediaSession(fmtT(rest.secs)+' — Descanso', rest.label); fitUpdateRestBar(); return false; }
-function startRest(secs){ stopRest(); rest.secs=Number(secs)||0; rest.tot=rest.secs; if(rest.secs<=0) return; rest.endsAt=Date.now()+rest.secs*1000; rest.label=(sess&&sess.items[sess.cur])?sess.items[sess.cur].name:''; fitAskNotif(); fitScheduleRestDoneNotif(); fitUpdateMediaSession(fmtT(rest.secs)+' — Descanso', rest.label); fitUpdateRestBar(); rest.id=setInterval(function(){ if(tickRest()) return; if(runPhase==='log'){ var lt=$('logTimer'); if(lt) lt.textContent=(rest.secs>0?('Descanso · ⏱ '+fmtT(rest.secs)):'Registrar série'); fitUpdateRestBar(); } else { renderRun(); } },1000); }
+function startRest(secs){ stopRest(); rest.secs=Number(secs)||0; rest.tot=rest.secs; if(rest.secs<=0) return; rest.endsAt=Date.now()+rest.secs*1000; rest.label=upcomingRestName(); fitAskNotif(); fitScheduleRestDoneNotif(); fitUpdateMediaSession(fmtT(rest.secs)+' — Descanso', rest.label); fitUpdateRestBar(); rest.id=setInterval(function(){ if(tickRest()) return; if(runPhase==='log'){ var lt=$('logTimer'); if(lt) lt.textContent=(rest.secs>0?('Descanso · ⏱ '+fmtT(rest.secs)):'Registrar série'); fitUpdateRestBar(); } else { renderRun(); } },1000); }
 function stopRest(){ if(rest.id){ clearInterval(rest.id); rest.id=null; } rest.secs=0; rest.tot=0; rest.endsAt=0; rest.label=''; fitClearRestNotif(); fitClearMediaSession(); fitUpdateRestBar(); }
 function tickWork(){ if(!work.endsAt) return false; work.secs=fitTimerRemaining(work.endsAt); if(work.secs<=0){ work.secs=0; stopWork(); beep(); rConcluir(); return true; } fitUpdateMediaSession(fmtT(work.secs)+' — Segure', (sess&&sess.items[sess.cur])?sess.items[sess.cur].name:''); return false; }
 function startWork(secs){ stopWork(); work.tot=Number(secs)||0; work.secs=work.tot; if(work.secs<=0) return; work.endsAt=Date.now()+work.secs*1000; fitUpdateMediaSession(fmtT(work.secs)+' — Segure', (sess&&sess.items[sess.cur])?sess.items[sess.cur].name:''); work.id=setInterval(function(){ if(tickWork()) return; renderRun(); },1000); }
@@ -349,6 +349,28 @@ function stopWork(){ if(work.id){ clearInterval(work.id); work.id=null; } work.s
 function rAdd30(){ if(!rest.endsAt) return; rest.endsAt+=30000; rest.tot+=30; rest.secs=fitTimerRemaining(rest.endsAt); fitScheduleRestDoneNotif(); renderRun(); fitUpdateRestBar(); }
 function rSkip(){ stopRest(); rNextSet(); }
 function firstPending(it){ for(var i=0;i<it.sets.length;i++){ if(!it.sets[i].done) return i; } return -1; }
+function nextUpLabel(it){
+  if(!sess||!it) return 'fim do treino';
+  var fp=firstPending(it);
+  if(fp>=0) return 'série '+(fp+1);
+  if(sess.cur<sess.items.length-1){
+    var nxt=sess.items[sess.cur+1];
+    return (nxt&&nxt.name)||'próximo exercício';
+  }
+  return 'fim do treino';
+}
+function upcomingRestName(){
+  if(!sess||!sess.items||!sess.items.length) return '';
+  var it=sess.items[sess.cur];
+  if(!it) return '';
+  var fp=firstPending(it);
+  if(fp>=0&&fp<it.sets.length-1) return it.name||'';
+  if(sess.cur<sess.items.length-1){
+    var nxt=sess.items[sess.cur+1];
+    return (nxt&&nxt.name)||'';
+  }
+  return it.name||'';
+}
 function ringSvg(pct,color){ var C=2*Math.PI*112; return '<svg viewBox="0 0 240 240"><circle cx="120" cy="120" r="112" fill="none" style="stroke:var(--surface2)" stroke-width="8"/>'+(pct>0?('<circle cx="120" cy="120" r="112" fill="none" style="stroke:'+color+'" stroke-width="8" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+(C*(1-pct))+'"/>'):'')+'</svg>'; }
 function fmtT(s){ var m=Math.floor(s/60),x=s%60; return m+':'+(x<10?'0':'')+x; }
 function renderRun(){
@@ -360,8 +382,8 @@ function renderRun(){
   if(sess.cur>=total){ return rFinish(); }
   var it=sess.items[sess.cur]; var bw=(it.mode==='bw'); var timed=(it.mode==='time'); var fp=firstPending(it); var setNo=(fp<0?it.sets.length:fp+1);
   if(runPhase==='rest'){
-    var pct=rest.tot?rest.secs/rest.tot:0; var nextTxt=(fp<0)?(sess.cur<total-1?'novo exercício':'fim do treino'):('série '+(fp+1));
-    stage.innerHTML='<div class="rkick">Descanso</div><div class="rname">'+esc(it.name)+'</div><div class="disc2">'+ringSvg(pct,'var(--primary)')+'<div class="face"><div class="big">'+fmtT(rest.secs)+'</div><div class="small">próxima: '+nextTxt+'</div></div></div>';
+    var pct=rest.tot?rest.secs/rest.tot:0;
+    stage.innerHTML='<div class="rkick">Descanso</div><div class="rname">'+esc(it.name)+'</div><div class="disc2">'+ringSvg(pct,'var(--primary)')+'<div class="face"><div class="big">'+fmtT(rest.secs)+'</div><div class="small">próxima: '+esc(nextUpLabel(it))+'</div></div></div>';
     btm.innerHTML='<button class="rcta ghost" onclick="rAdd30()">+30s descanso</button><button class="rsub" onclick="rSkip()">Estou pronto →</button>';
     fitUpdateRestBar();
     return;

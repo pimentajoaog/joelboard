@@ -215,7 +215,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .disc2 svg{ @apply absolute inset-0; transform:rotate(-90deg); }
 .disc2 .face{ @apply flex flex-col items-center; }
 .disc2 .big{ @apply text-[56px] font-black tracking-[-2px]; line-height:1; font-variant-numeric:tabular-nums; }
-.disc2 .small{ @apply text-[13px] text-muted mt-1.5 font-semibold; }
+.disc2 .small{ @apply text-[13px] text-muted mt-1.5 font-semibold text-center leading-tight px-5 max-w-[170px]; }
 .pulse2{ @apply w-[240px] h-[240px] rounded-full border-[3px] border-primary flex items-center justify-center flex-col my-[22px]; animation:pulse2 1.6s ease-in-out infinite; }
 @keyframes pulse2{ 0%,100%{ box-shadow:0 0 0 0 transparent; } 50%{ box-shadow:0 0 0 16px color-mix(in srgb, var(--primary) 10%, transparent); } }
 .rgo{ @apply text-[30px] font-black; }

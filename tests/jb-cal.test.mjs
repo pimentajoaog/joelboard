@@ -75,6 +75,32 @@ test('capByApp hides the 6th item per app until expanded', function () {
   assert.equal(Object.keys(open.extra).length, 0);
 });
 
+test('capByApp scope keeps a 5-item limit per day per app', function () {
+  var day1 = [];
+  var day2 = [];
+  for (var i = 1; i <= 6; i++) {
+    day1.push({ app: 'finance', id: 'a' + i, date: '2026-03-01' });
+    day2.push({ app: 'finance', id: 'b' + i, date: '2026-03-02' });
+  }
+  var a = cal.capByApp(day1, 5, {}, '2026-03-01');
+  var b = cal.capByApp(day2, 5, {}, '2026-03-02');
+  assert.equal(a.events.length, 5);
+  assert.equal(a.extra.finance, 1);
+  assert.equal(b.events.length, 5);
+  var open = cal.capByApp(day1, 5, { 'finance|2026-03-01': true }, '2026-03-01');
+  assert.equal(open.events.length, 6);
+});
+
+test('appsInDay lists every app that has an event that day', function () {
+  var groups = cal.appsInDay([
+    { app: 'finance', title: 'Luz' },
+    { app: 'study', title: 'Prova' },
+    { app: 'finance', title: 'Net' }
+  ]);
+  assert.equal(groups.map(function (g) { return g.app; }).join(','), 'finance,study');
+  assert.equal(groups[0].events.length, 2);
+});
+
 test('rangeForView covers day, 3-day, week and month', function () {
   var day = cal.rangeForView('day', '2026-03-04');
   assert.equal(day.start, '2026-03-04');

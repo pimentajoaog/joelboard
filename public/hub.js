@@ -308,7 +308,7 @@ function hubNewsEditSave(){
 function $(id){ return document.getElementById(id); }
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só — entre com Google para sincronizar dados no seu Drive.' },
-  { sel:'#hubAgenda', title:'Agenda', body:'Calendário compacto à esquerda dos apps. Toque numa linha para abrir. Ampla mostra o calendário grande; ↻ tenta ler de novo se alguma planilha falhar.' },
+  { sel:'#hubAgenda', title:'Agenda', body:'Calendário compacto à esquerda. O grupo de ícones filtra os apps; toque de novo num dia do mês para ver o mês inteiro.' },
   { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas, Planner ou Mini (extensões Chrome).' },
   { sel:'#hubNews', title:'Novidades', body:'Fique por dentro das últimas mudanças nos apps — atualizado aqui no Hub.' },
   { sel:'.gear', title:'Ajustes', body:'Tema, login, tutorial, privacidade e aviso legal ficam aqui.' }
@@ -475,6 +475,7 @@ function hubAgendaMountOpts(events){
     date:_agendaDate,
     compact:!wide,
     showFilters:wide,
+    picked: _agendaView==='month' ? null : undefined,
     appLimit:5,
     views: wide?['day','3day','week','month']:['day','week','month'],
     emptyHint:'Abra um app e agende algo — a agenda junta tudo aqui.',

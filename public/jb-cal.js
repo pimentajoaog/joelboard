@@ -4,13 +4,21 @@
   var WD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   var MO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   var MOFULL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  var APP_ORDER = ['finance', 'fit', 'study', 'notas', 'planner'];
   var APP_META = {
-    finance: { label: 'Finance', color: 'var(--income, #34d399)', kind: 'conta' },
-    fit: { label: 'Fit', color: 'var(--fit, #fb7185)', kind: 'treino' },
-    study: { label: 'Study', color: 'var(--study, #a78bfa)', kind: 'prova' },
-    notas: { label: 'Notas', color: 'var(--notas, #f59e0b)', kind: 'prazo' },
-    planner: { label: 'Planner', color: 'var(--planner, #2dd4bf)', kind: 'plano' }
+    finance: { label: 'Finance', color: 'var(--income, #34d399)', kind: 'conta', ink: '#34d399', bg: '#2a2f52' },
+    fit: { label: 'Fit', color: 'var(--fit, #fb7185)', kind: 'treino', ink: '#fb7185', bg: '#3a2530' },
+    study: { label: 'Study', color: 'var(--study, #a78bfa)', kind: 'prova', ink: '#a78bfa', bg: '#241f3a' },
+    notas: { label: 'Notas', color: 'var(--notas, #f59e0b)', kind: 'prazo', ink: '#f59e0b', bg: '#33280f' },
+    planner: { label: 'Planner', color: 'var(--planner, #2dd4bf)', kind: 'plano', ink: '#2dd4bf', bg: '#0f2a28' }
   };
+  function appGlyph(app) {
+    if (app === 'finance') return '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="9.4" width="2.8" height="4" rx=".7" fill="currentColor" opacity=".5"/><rect x="6.2" y="6.6" width="2.8" height="6.8" rx=".7" fill="currentColor" opacity=".78"/><rect x="10.4" y="3.6" width="2.8" height="9.8" rx=".7" fill="currentColor"/></svg>';
+    if (app === 'fit') return '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.4" y="5.4" width="1.8" height="5.2" rx=".5" fill="currentColor"/><rect x="12.8" y="5.4" width="1.8" height="5.2" rx=".5" fill="currentColor"/><rect x="3" y="6.4" width="1.6" height="3.2" rx=".4" fill="currentColor"/><rect x="11.4" y="6.4" width="1.6" height="3.2" rx=".4" fill="currentColor"/><rect x="4.4" y="7.2" width="7.2" height="1.6" rx=".7" fill="currentColor"/></svg>';
+    if (app === 'study') return '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6 14.4 6 8 9.4 1.6 6Z" fill="currentColor"/><path d="M4 8.1v2.5c0 .8 1.8 1.7 4 1.7s4-.9 4-1.7V8.1" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/><path d="M14.4 6v4.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
+    if (app === 'notas') return '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="2.2" width="9" height="11.6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.8 5.6h3.4M5.8 8h4.6M5.8 10.4h2.6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M9.2 10.8l1.15 1.15 2.15-2.3" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    return '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.8" y="3.2" width="10.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.8 6.3h10.4M5.6 2.3v2.8M10.4 2.3v2.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="6.1" cy="9.3" r=".85" fill="currentColor"/><circle cx="8.4" cy="9.3" r=".85" fill="currentColor"/><circle cx="10.7" cy="9.3" r=".85" fill="currentColor"/></svg>';
+  }
   var BILL_PAID = ['bill', 'recurring', 'installment'];
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
@@ -482,7 +490,7 @@
       var dots = evs.slice(0, 4).map(function (e) {
         return '<span class="jb-cal-dot" style="background:' + esc(e.color) + (e.done ? ';opacity:.4' : '') + '"></span>';
       }).join('');
-      cells += '<div class="jb-cal-cd' + (iso === today ? ' today' : '') + (iso === sel ? ' sel' : '') + (evs.length ? ' has' : '') + '" data-date="' + iso + '">'
+      cells += '<div class="jb-cal-cd' + (iso === today ? ' today' : '') + (sel && iso === sel ? ' sel' : '') + (evs.length ? ' has' : '') + '" data-date="' + iso + '">'
         + '<span class="jb-cal-cdn">' + day + '</span><span class="jb-cal-dots">' + dots + '</span></div>';
     }
     var head = WD.map(function (w) { return '<div class="jb-cal-wd">' + w[0] + '</div>'; }).join('');
@@ -494,31 +502,38 @@
       + '<div class="jb-cal-grid" id="calCells">' + cells + '</div>';
   }
 
-  function listHtml(events, range, emptyHint, compact) {
-    if (!events.length) {
-      return (window.JB && JB.emptyState)
-        ? JB.emptyState({ icon: '📅', title: 'Nada neste período', hint: emptyHint || 'Abra um app e agende algo — a agenda junta tudo aqui.' })
-        : '<div class="rg">Nada neste período.</div>';
-    }
-    var groups = {};
-    events.forEach(function (e) {
-      if (!groups[e.date]) groups[e.date] = [];
-      groups[e.date].push(e);
-    });
-    var days = Object.keys(groups).sort();
-    return days.map(function (d) {
-      return '<div class="jb-cal-sec"><div class="jb-cal-sect">' + esc(fmtBR(d)) + '</div>'
-        + groups[d].map(function (e) { return eventRowHtml(e, { showDate: false, compact: !!compact }); }).join('') + '</div>';
-    }).join('');
-  }
-
   function filterBarHtml(filters, counts) {
-    var apps = ['finance', 'fit', 'study', 'notas', 'planner'];
-    return '<div class="jb-cal-filters">' + apps.map(function (a) {
+    return '<div class="jb-cal-filters">' + APP_ORDER.map(function (a) {
       var on = !filters || !filters.length || filters.indexOf(a) > -1;
       var n = counts[a] || 0;
       return '<button type="button" class="jb-cal-chip' + (on ? ' on' : '') + '" data-app="' + a + '" style="--chip:' + APP_META[a].color + '">' + APP_META[a].label + (n ? ' ' + n : '') + '</button>';
     }).join('') + '</div>';
+  }
+  function appOn(filters, app) {
+    return !filters || !filters.length || filters.indexOf(app) > -1;
+  }
+  function clusterHtml(filters, counts, open) {
+    var orbs = APP_ORDER.map(function (a) {
+      var on = appOn(filters, a);
+      return '<span class="jb-cal-orb' + (on ? ' on' : '') + '" style="--ink:' + APP_META[a].ink + ';--bg:' + APP_META[a].bg + '" title="' + esc(APP_META[a].label) + '">' + appGlyph(a) + '</span>';
+    }).join('');
+    var picks = APP_ORDER.map(function (a) {
+      var on = appOn(filters, a);
+      var n = counts[a] || 0;
+      return '<button type="button" class="jb-cal-orb-btn' + (on ? ' on' : '') + '" data-app="' + a + '" style="--ink:' + APP_META[a].ink + ';--bg:' + APP_META[a].bg + '" title="' + esc(APP_META[a].label) + (n ? ' · ' + n : '') + '">' + appGlyph(a) + '</button>';
+    }).join('');
+    return '<div class="jb-cal-cluster-wrap' + (open ? ' open' : '') + '">'
+      + '<button type="button" class="jb-cal-cluster" data-cluster="toggle" aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="Filtrar apps">' + orbs + '</button>'
+      + '<div class="jb-cal-cluster-pop"' + (open ? '' : ' hidden') + '>' + picks + '</div>'
+      + '</div>';
+  }
+  function dayHeadHtml(iso, extra) {
+    var d = parseYmd(iso);
+    var wd = d ? WD[d.getDay()] : '';
+    var num = d ? String(d.getDate()) : '';
+    var mo = d ? MO[d.getMonth()] : '';
+    return '<div class="jb-cal-sect"><span class="jb-cal-wdchip">' + esc(wd) + '</span>'
+      + '<span class="jb-cal-sectd">' + esc(num + (mo ? ' ' + mo : '')) + '</span>' + (extra || '') + '</div>';
   }
 
   function viewBarHtml(view, views) {
@@ -538,35 +553,81 @@
   }
 
   function applyFilters(events, filters) {
-    if (!filters || !filters.length) return events;
+    if (!filters) return events;
+    if (!filters.length) return [];
     var set = {};
     filters.forEach(function (a) { set[a] = 1; });
     return events.filter(function (e) { return set[e.app]; });
   }
-  function capByApp(events, limit, expanded) {
+  function capByApp(events, limit, expanded, scope) {
     expanded = expanded || {};
     if (!limit || limit < 1) return { events: events || [], extra: {} };
     var seen = {}, extra = {}, out = [];
     (events || []).forEach(function (e) {
       var a = e.app || '';
+      var key = scope ? a + '|' + scope : a;
       seen[a] = (seen[a] || 0) + 1;
-      if (expanded[a] || seen[a] <= limit) out.push(e);
+      if (expanded[key] || expanded[a] || seen[a] <= limit) out.push(e);
       else extra[a] = (extra[a] || 0) + 1;
     });
     return { events: out, extra: extra };
   }
-  function moreBarHtml(extra) {
-    var apps = Object.keys(extra || {});
+  function moreBarHtml(extra, scope) {
+    var apps = APP_ORDER.filter(function (a) { return extra && extra[a]; });
     if (!apps.length) return '';
     return '<div class="jb-cal-morebar">' + apps.map(function (a) {
-      var n = extra[a];
-      var label = (APP_META[a] && APP_META[a].label) || a;
-      return '<button type="button" class="jb-cal-more" data-more="' + esc(a) + '">Ver mais ' + esc(label) + ' · ' + n + '</button>';
+      var key = scope ? a + '|' + scope : a;
+      return '<button type="button" class="jb-cal-more" data-more="' + esc(key) + '">Ver mais · ' + extra[a] + '</button>';
     }).join('') + '</div>';
+  }
+  function appsInDay(events) {
+    var by = {};
+    (events || []).forEach(function (e) {
+      if (!by[e.app]) by[e.app] = [];
+      by[e.app].push(e);
+    });
+    return APP_ORDER.filter(function (a) { return by[a] && by[a].length; }).map(function (a) {
+      return { app: a, events: by[a] };
+    });
+  }
+  function appBlockHtml(app, events, opts) {
+    opts = opts || {};
+    var meta = APP_META[app] || APP_META.study;
+    var cap = capByApp(events, opts.limit || 0, opts.expanded, opts.scope);
+    var rows = cap.events.map(function (e) {
+      return eventRowHtml(e, { showDate: !!opts.showDate, compact: !!opts.compact, toggle: !!opts.toggle });
+    }).join('');
+    return '<div class="jb-cal-app" style="--ink:' + meta.ink + ';--bg:' + meta.bg + '">'
+      + '<div class="jb-cal-appt"><span class="jb-cal-appt-ico">' + appGlyph(app) + '</span>' + esc(meta.label)
+      + '<span class="jb-cal-appt-n">' + events.length + '</span></div>'
+      + rows + moreBarHtml(cap.extra, opts.scope) + '</div>';
+  }
+  function groupedListHtml(events, emptyHint, opts) {
+    opts = opts || {};
+    if (!events.length) {
+      return (window.JB && JB.emptyState)
+        ? JB.emptyState({ icon: '📅', title: 'Nada neste período', hint: emptyHint || 'Abra um app e agende algo — a agenda junta tudo aqui.' })
+        : '<div class="rg">Nada neste período.</div>';
+    }
+    var groups = {};
+    events.forEach(function (e) {
+      if (!groups[e.date]) groups[e.date] = [];
+      groups[e.date].push(e);
+    });
+    return Object.keys(groups).sort().map(function (d) {
+      var blocks = appsInDay(groups[d]).map(function (g) {
+        return appBlockHtml(g.app, g.events, { limit: opts.limit, expanded: opts.expanded, compact: opts.compact, toggle: opts.toggle, scope: d });
+      }).join('');
+      return '<div class="jb-cal-sec">' + dayHeadHtml(d) + blocks + '</div>';
+    }).join('');
   }
 
   function mount(el, opts) {
     if (!el) return null;
+    if (el._jbCalDocClose) {
+      document.removeEventListener('mousedown', el._jbCalDocClose);
+      el._jbCalDocClose = null;
+    }
     opts = opts || {};
     var state = {
       events: opts.events || [],
@@ -585,9 +646,21 @@
       onChange: opts.onChange,
       compact: !!opts.compact,
       appLimit: opts.appLimit == null ? 0 : Number(opts.appLimit) || 0,
-      expandedApps: opts.expandedApps ? Object.assign({}, opts.expandedApps) : {}
+      expandedApps: opts.expandedApps ? Object.assign({}, opts.expandedApps) : {},
+      picked: opts.picked === undefined ? (opts.view === 'month' && opts.compact ? null : (opts.date || null)) : opts.picked,
+      clusterOpen: false
     };
 
+    function toggleAppFilter(app) {
+      var all = APP_ORDER.slice();
+      var cur = state.filters == null ? all.slice() : state.filters.slice();
+      var i = cur.indexOf(app);
+      if (i > -1) cur.splice(i, 1); else cur.push(app);
+      if (!cur.length) state.filters = [];
+      else if (cur.length === all.length) state.filters = null;
+      else state.filters = cur;
+      paint();
+    }
     function filtered() { return applyFilters(state.events, state.filters); }
     function counts() {
       var c = {};
@@ -597,23 +670,31 @@
     function paint() {
       var range = rangeForView(state.view, state.date);
       var vis = eventsInRange(filtered(), range.start, range.end);
-      var html = '<div class="jb-cal' + (state.compact ? ' compact' : '') + '">';
-      if (state.views && state.views.length > 1) html += '<div class="jb-cal-toolbar">' + viewBarHtml(state.view, state.views) + '</div>';
-      if (state.showFilters) html += filterBarHtml(state.filters, counts());
+      var html = '<div class="jb-cal' + (state.compact ? ' compact' : '') + (state.clusterOpen ? ' cluster-open' : '') + '">';
+      if (state.views && state.views.length > 1) {
+        html += '<div class="jb-cal-toolbar">' + viewBarHtml(state.view, state.views)
+          + (state.compact ? clusterHtml(state.filters, counts(), state.clusterOpen) : '') + '</div>';
+      }
+      if (!state.compact && state.showFilters) html += filterBarHtml(state.filters, counts());
+      var listOpts = { limit: state.appLimit, expanded: state.expandedApps, compact: state.compact, toggle: !!state.onToggle };
       if (state.view === 'month') {
-        html += monthCellsHtml(filtered(), state.date, state.date);
-        var dayCap = capByApp(eventsInRange(filtered(), state.date, state.date), state.appLimit, state.expandedApps);
-        html += '<div class="jb-cal-sec"><div class="jb-cal-sect">' + esc(fmtBR(state.date)) + (state.dayActionsHtml || '') + '</div>'
-          + (dayCap.events.map(function (e) { return eventRowHtml(e, { toggle: !!state.onToggle, compact: state.compact }); }).join('')
-            || '<div class="rg">Nada nesse dia.</div>') + moreBarHtml(dayCap.extra) + '</div>';
+        html += monthCellsHtml(filtered(), state.date, state.picked);
+        if (state.picked) {
+          var dayEvs = eventsInRange(filtered(), state.picked, state.picked);
+          html += '<div class="jb-cal-sec">' + dayHeadHtml(state.picked, state.dayActionsHtml)
+            + (dayEvs.length
+              ? appsInDay(dayEvs).map(function (g) { return appBlockHtml(g.app, g.events, Object.assign({}, listOpts, { scope: state.picked })); }).join('')
+              : '<div class="rg">Nada nesse dia.</div>') + '</div>';
+        } else {
+          html += '<div class="jb-cal-monthhint">Mês inteiro · toque num dia para filtrar</div>';
+          html += groupedListHtml(vis, state.emptyHint, listOpts);
+        }
         if (state.showUpcoming) html += upcomingHtml(filtered(), state.onToggle);
       } else {
         html += '<div class="jb-cal-rangebar"><button type="button" class="jb-cal-nav" data-shift="-1">‹</button>'
           + '<div class="jb-cal-rangelbl">' + esc(fmtBR(range.start) + (range.start !== range.end ? ' – ' + fmtBR(range.end) : '')) + '</div>'
           + '<button type="button" class="jb-cal-nav" data-shift="1">›</button></div>';
-        var capped = capByApp(vis, state.appLimit, state.expandedApps);
-        html += listHtml(capped.events, range, state.emptyHint, state.compact);
-        html += moreBarHtml(capped.extra);
+        html += groupedListHtml(vis, state.emptyHint, listOpts);
       }
       if (state.footerHtml) html += '<div class="jb-cal-foot">' + state.footerHtml + '</div>';
       html += '</div>';
@@ -624,6 +705,7 @@
       el.querySelectorAll('[data-view]').forEach(function (b) {
         b.onclick = function () {
           state.view = b.getAttribute('data-view');
+          if (state.view === 'month' && state.compact) state.picked = null;
           paint();
           if (state.onChange) state.onChange(state);
         };
@@ -635,6 +717,7 @@
           if (n === 'today') d = new Date();
           else d.setMonth(d.getMonth() + Number(n));
           state.date = ymd(d);
+          if (state.view === 'month') state.picked = n === 'today' ? state.date : null;
           paint();
           if (state.onSelect) state.onSelect(state.date);
           if (state.onChange) state.onChange(state);
@@ -652,22 +735,39 @@
       });
       el.querySelectorAll('.jb-cal-cd[data-date]').forEach(function (c) {
         c.onclick = function () {
-          state.date = c.getAttribute('data-date');
+          var iso = c.getAttribute('data-date');
+          state.picked = state.picked === iso ? null : iso;
+          if (state.picked) state.date = iso;
           paint();
-          if (state.onSelect) state.onSelect(state.date);
+          if (state.onSelect) state.onSelect(state.picked || state.date);
+        };
+      });
+      function syncClusterDom() {
+        var wrap = el.querySelector('.jb-cal-cluster-wrap');
+        var btn = el.querySelector('[data-cluster="toggle"]');
+        var pop = el.querySelector('.jb-cal-cluster-pop');
+        var root = el.querySelector('.jb-cal');
+        if (wrap) wrap.classList.toggle('open', state.clusterOpen);
+        if (btn) btn.setAttribute('aria-expanded', state.clusterOpen ? 'true' : 'false');
+        if (pop) pop.hidden = !state.clusterOpen;
+        if (root) root.classList.toggle('cluster-open', state.clusterOpen);
+      }
+      var clusterBtn = el.querySelector('[data-cluster="toggle"]');
+      if (clusterBtn) {
+        clusterBtn.onclick = function (ev) {
+          ev.stopPropagation();
+          state.clusterOpen = !state.clusterOpen;
+          syncClusterDom();
+        };
+      }
+      el.querySelectorAll('.jb-cal-orb-btn').forEach(function (b) {
+        b.onclick = function (ev) {
+          ev.stopPropagation();
+          toggleAppFilter(b.getAttribute('data-app'));
         };
       });
       el.querySelectorAll('.jb-cal-chip').forEach(function (b) {
-        b.onclick = function () {
-          var app = b.getAttribute('data-app');
-          var all = Object.keys(APP_META);
-          var cur = state.filters && state.filters.length ? state.filters.slice() : all.slice();
-          var i = cur.indexOf(app);
-          if (i > -1) cur.splice(i, 1); else cur.push(app);
-          if (!cur.length || cur.length === all.length) state.filters = null;
-          else state.filters = cur;
-          paint();
-        };
+        b.onclick = function () { toggleAppFilter(b.getAttribute('data-app')); };
       });
       el.querySelectorAll('.jb-cal-chk').forEach(function (b) {
         b.onclick = function (ev) {
@@ -691,6 +791,15 @@
           paint();
         };
       });
+      if (!el._jbCalDocClose) {
+        el._jbCalDocClose = function (ev) {
+          if (!state.clusterOpen) return;
+          if (ev.target && ev.target.closest && ev.target.closest('.jb-cal-cluster-wrap')) return;
+          state.clusterOpen = false;
+          syncClusterDom();
+        };
+        document.addEventListener('mousedown', el._jbCalDocClose);
+      }
     }
 
     var api = {
@@ -713,7 +822,7 @@
     eventsFromNotas: eventsFromNotas, eventsFromPlanner: eventsFromPlanner,
     isCollabPlannerGrid: isCollabPlannerGrid, isCollabNotasGrid: isCollabNotasGrid,
     eventRowHtml: eventRowHtml, relLabel: relLabel, nearClass: nearClass, daysUntil: daysUntil, fmtBR: fmtBR,
-    loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp, clearHubCache: clearHubCache
+    loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp, clearHubCache: clearHubCache, appsInDay: appsInDay
   };
   window.JB_CAL = api;
   if (window.JB) window.JB.cal = api;

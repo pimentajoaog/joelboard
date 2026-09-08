@@ -7,4 +7,6 @@ public/extensions/*.zip
 public/extensions/staff/
 .env
 .env.local
-.cursor/
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**

@@ -1,0 +1,14 @@
+---
+description: Always commit and push finished work — this repo does not use a staging wait
+alwaysApply: true
+---
+
+# Always commit and push
+
+Joelboard does not use a “wait to push” workflow. After finishing the user’s requested change, **commit and push** to the current branch without asking.
+
+- Commit with a sentence-case message that explains **why** (same style as existing history).
+- Then `git push` to the tracked remote (usually `origin` on `main`).
+- If `public/` JS, CSS, or HTML that the service worker caches changed, run `node scripts/bump-sw.mjs` and commit that bump too, then push both.
+- Do not wait for a second “please push” unless the user explicitly said not to ship yet.
+- Still never force-push, skip hooks, amend published commits, or commit Staff / secrets / `.env`.

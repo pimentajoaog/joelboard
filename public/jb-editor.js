@@ -665,6 +665,8 @@
     var imgFrame = null;
     var imgDrag = null;
     var imgResize = null;
+    var imgGhost = null;
+    var imgSlot = null;
 
     host.innerHTML = '';
     var root = document.createElement('div');
@@ -715,6 +717,9 @@
     function stripInkFromBox(box) {
       if (!box || !box.querySelectorAll) return;
       Array.prototype.forEach.call(box.querySelectorAll('canvas, img[data-jb-ink], .jb-ed-ink-asset, .jb-ed-ink-layer'), function (el) {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      });
+      Array.prototype.forEach.call(box.querySelectorAll('.jb-ed-img-slot, .jb-ed-img-ghost'), function (el) {
         if (el.parentNode) el.parentNode.removeChild(el);
       });
       Array.prototype.forEach.call(box.querySelectorAll('[data-jb-plain], [data-jb-hl-mark]'), function (el) {
@@ -1327,6 +1332,7 @@
       return el;
     }
     function clearImgSelect() {
+      endImgDragPreview();
       if (selectedImg) selectedImg.classList.remove('jb-ed-img-on');
       selectedImg = null;
       imgDrag = null;
@@ -1342,7 +1348,7 @@
       paintImgFrame();
     }
     function paintImgFrame() {
-      if (!imgFrame || !selectedImg || !selectedImg.parentNode || inkOpen) {
+      if (!imgFrame || !selectedImg || !selectedImg.parentNode || inkOpen || (imgDrag && imgDrag.moved)) {
         if (imgFrame) imgFrame.hidden = true;
         return;
       }
@@ -1361,32 +1367,132 @@
       if (String(el.textContent || '').replace(/\u200b/g, '').trim()) return;
       el.parentNode.removeChild(el);
     }
-    function caretRangeAt(x, y) {
-      if (document.caretRangeFromPoint) return document.caretRangeFromPoint(x, y);
-      if (document.caretPositionFromPoint) {
-        var pos = document.caretPositionFromPoint(x, y);
-        if (!pos || !pos.offsetNode) return null;
-        var r = document.createRange();
-        r.setStart(pos.offsetNode, pos.offset);
-        r.collapse(true);
-        return r;
+    function dropKey(block, after) {
+      var i = 0, n = surface.firstChild;
+      while (n) {
+        if (n === block) break;
+        i++;
+        n = n.nextSibling;
       }
-      return null;
+      return i + (after ? 'a' : 'b');
     }
-    function moveImgToPoint(img, x, y) {
-      if (!noteImg(img) || inkOpen) return;
-      var hit = document.elementFromPoint(x, y);
-      if (hit === img || (imgFrame && imgFrame.contains(hit))) return;
-      var range = caretRangeAt(x, y);
-      if (!range || !surface.contains(range.commonAncestorContainer)) return;
-      var oldParent = img.parentNode;
-      try {
-        range.insertNode(img);
-      } catch (_) { return; }
-      pruneEmptyBlock(oldParent);
-      selectImg(img);
-      markDirty();
-      if (inkCanvas) scheduleInkSize();
+    function hitElAt(x, y) {
+      var hidden = [];
+      function hide(el) {
+        if (!el || el.hidden) return;
+        hidden.push(el);
+        el.hidden = true;
+      }
+      hide(imgGhost);
+      hide(imgFrame);
+      var el = document.elementFromPoint(x, y);
+      var i;
+      for (i = 0; i < hidden.length; i++) hidden[i].hidden = false;
+      return el;
+    }
+    function dropRangeAt(x, y, img) {
+      if (!img || inkOpen) return null;
+      if (imgSlot && imgSlot.parentNode) {
+        var sr = imgSlot.getBoundingClientRect();
+        if (x >= sr.left && x <= sr.right && y >= sr.top && y <= sr.bottom) return null;
+      }
+      var el = hitElAt(x, y);
+      if (!el) return null;
+      if (imgSlot && (el === imgSlot || imgSlot.contains(el))) return null;
+      if (el === img || img.contains(el)) return null;
+      if (!surface.contains(el) && el !== surface) return null;
+      var block = el;
+      if (block.nodeType === 3) block = block.parentElement;
+      while (block && block.parentElement && block.parentElement !== surface) {
+        if (block === imgSlot || block === img) return null;
+        block = block.parentElement;
+      }
+      var r = document.createRange();
+      if (!block || block === surface) {
+        var kids = surface.childNodes;
+        var i, chose = null, cr, after = true;
+        for (i = 0; i < kids.length; i++) {
+          var kid = kids[i];
+          if (kid === img || kid === imgSlot || kid.nodeType !== 1) continue;
+          cr = kid.getBoundingClientRect();
+          if (y < cr.top + cr.height / 2) {
+            chose = kid;
+            after = false;
+            break;
+          }
+          chose = kid;
+          after = y >= cr.top + cr.height / 2;
+          if (y <= cr.bottom) break;
+        }
+        if (!chose) {
+          r.selectNodeContents(surface);
+          r.collapse(false);
+          return { range: r, key: 'end' };
+        }
+        if (after) r.setStartAfter(chose);
+        else r.setStartBefore(chose);
+        r.collapse(true);
+        return { range: r, key: dropKey(chose, after) };
+      }
+      if (block === img || block === imgSlot) return null;
+      var br = block.getBoundingClientRect();
+      var afterBlk = y > br.top + br.height / 2;
+      if (afterBlk) r.setStartAfter(block);
+      else r.setStartBefore(block);
+      r.collapse(true);
+      return { range: r, key: dropKey(block, afterBlk) };
+    }
+    function ensureImgGhost() {
+      if (imgGhost) return;
+      imgGhost = document.createElement('div');
+      imgGhost.className = 'jb-ed-img-ghost';
+      imgGhost.hidden = true;
+      imgGhost.setAttribute('aria-hidden', 'true');
+      root.appendChild(imgGhost);
+    }
+    function startImgDragPreview(img) {
+      if (!img) return;
+      ensureImgGhost();
+      imgGhost.innerHTML = '';
+      var g = document.createElement('img');
+      g.src = img.currentSrc || img.src || '';
+      g.alt = '';
+      imgGhost.appendChild(g);
+      imgGhost.hidden = false;
+      img.classList.add('jb-ed-img-dragging');
+      if (imgFrame) imgFrame.hidden = true;
+      if (!imgSlot) {
+        imgSlot = document.createElement('div');
+        imgSlot.className = 'jb-ed-img-slot';
+        imgSlot.setAttribute('aria-hidden', 'true');
+      }
+      imgSlot.style.width = Math.round(img.getBoundingClientRect().width || img.offsetWidth || 160) + 'px';
+      imgSlot.style.height = Math.round(img.getBoundingClientRect().height || 90) + 'px';
+      imgSlot.innerHTML = '';
+      var preview = document.createElement('img');
+      preview.src = img.currentSrc || img.src || '';
+      preview.alt = '';
+      imgSlot.appendChild(preview);
+    }
+    function paintImgGhost(ev) {
+      if (!imgGhost || imgGhost.hidden) return;
+      imgGhost.style.left = (ev.clientX + 16) + 'px';
+      imgGhost.style.top = (ev.clientY + 16) + 'px';
+    }
+    function placeImgSlot(drop) {
+      if (!drop || !drop.range || !imgSlot) return;
+      try { drop.range.insertNode(imgSlot); } catch (_) {}
+    }
+    function endImgDragPreview() {
+      if (selectedImg) {
+        selectedImg.classList.remove('jb-ed-img-dragging');
+        selectedImg.style.opacity = '';
+      }
+      if (imgGhost) {
+        imgGhost.hidden = true;
+        imgGhost.innerHTML = '';
+      }
+      if (imgSlot && imgSlot.parentNode) imgSlot.parentNode.removeChild(imgSlot);
     }
     function applyImgWidth(img, w) {
       if (!noteImg(img)) return;
@@ -1418,7 +1524,7 @@
       ev.preventDefault();
       ev.stopPropagation();
       try { imgFrame.setPointerCapture(ev.pointerId); } catch (_) {}
-      imgDrag = { img: selectedImg, x: ev.clientX, y: ev.clientY, moved: false };
+      imgDrag = { img: selectedImg, x: ev.clientX, y: ev.clientY, moved: false, dropKey: '' };
       imgResize = null;
     }
     function onImgFrameMove(ev) {
@@ -1433,7 +1539,15 @@
       ev.preventDefault();
       if (!imgDrag.moved && (Math.abs(ev.clientX - imgDrag.x) > 4 || Math.abs(ev.clientY - imgDrag.y) > 4)) {
         imgDrag.moved = true;
-        if (selectedImg) selectedImg.style.opacity = '0.55';
+        startImgDragPreview(imgDrag.img);
+      }
+      if (!imgDrag.moved) return;
+      paintImgGhost(ev);
+      var drop = dropRangeAt(ev.clientX, ev.clientY, imgDrag.img);
+      if (drop && drop.key && drop.key !== imgDrag.dropKey) {
+        imgDrag.dropKey = drop.key;
+        placeImgSlot(drop);
+        if (inkCanvas) scheduleInkSize();
       }
     }
     function onImgFrameUp(ev) {
@@ -1444,9 +1558,32 @@
       if (!imgDrag) return;
       var drag = imgDrag;
       imgDrag = null;
+      var slotParent = imgSlot && imgSlot.parentNode;
+      if (drag.moved && drag.img && slotParent) {
+        var oldParent = drag.img.parentNode;
+        slotParent.insertBefore(drag.img, imgSlot);
+        endImgDragPreview();
+        pruneEmptyBlock(oldParent);
+        selectImg(drag.img);
+        markDirty();
+        if (inkCanvas) scheduleInkSize();
+        return;
+      }
+      endImgDragPreview();
       if (drag.img) drag.img.style.opacity = '';
-      if (drag.moved) moveImgToPoint(drag.img, ev.clientX, ev.clientY);
-      else selectImg(drag.img);
+      if (drag.moved) {
+        var drop = dropRangeAt(ev.clientX, ev.clientY, drag.img);
+        if (drop && drop.range) {
+          var prev = drag.img.parentNode;
+          try { drop.range.insertNode(drag.img); } catch (_) {}
+          pruneEmptyBlock(prev);
+          selectImg(drag.img);
+          markDirty();
+          if (inkCanvas) scheduleInkSize();
+        }
+      } else {
+        selectImg(drag.img);
+      }
     }
     function inkPos(ev) {
       if (!inkCanvas) return { x: 0, y: 0 };

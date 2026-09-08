@@ -5,6 +5,13 @@
   var AUTOSAVE_MS = 20000;
   var IMAGE_MAX_BYTES = 10 * 1024 * 1024;
   var IMAGE_OK = { 'image/png': 1, 'image/jpeg': 1, 'image/jpg': 1, 'image/webp': 1, 'image/gif': 1 };
+  var INK_COLORS = [
+    { label: 'Preto', color: '#111827' },
+    { label: 'Vermelho', color: '#ef4444' },
+    { label: 'Amarelo', color: '#facc15' }
+  ];
+  var INK_WIDTH_FINE = 3;
+  var INK_WIDTH_BOLD = 8;
   var FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72];
   var FONT_SIZE_MIN = 8;
   var FONT_SIZE_MAX = 72;
@@ -147,6 +154,15 @@
       add(it.getAsFile ? it.getAsFile() : null);
     }
     return out;
+  }
+
+  function blobToUploadFile(blob, name) {
+    name = String(name || 'sharpie.png');
+    var type = (blob && blob.type) || 'image/png';
+    if (typeof File === 'function') {
+      try { return new File([blob], name, { type: type }); } catch (_) {}
+    }
+    return blob;
   }
 
   function esc(s) {
@@ -447,6 +463,17 @@
     var hlSwatch = null;
     var lastHighlight = HIGHLIGHTS[0].color;
     var linkMouse = null;
+    var inkPanel = null;
+    var inkBtn = null;
+    var inkCanvas = null;
+    var inkCtx = null;
+    var inkStrokes = [];
+    var inkCurrent = null;
+    var inkColor = INK_COLORS[0].color;
+    var inkWidth = INK_WIDTH_FINE;
+    var inkBusy = false;
+    var inkOpen = false;
+    var inkToken = 0;
 
     host.innerHTML = '';
     var root = document.createElement('div');
@@ -776,6 +803,144 @@
       hydrateImages();
       markDirty();
     }
+    function inkPos(ev) {
+      if (!inkCanvas) return { x: 0, y: 0 };
+      var r = inkCanvas.getBoundingClientRect();
+      var w = r.width || 1;
+      var h = r.height || 1;
+      return {
+        x: Math.max(0, Math.min(w, ev.clientX - r.left)),
+        y: Math.max(0, Math.min(h, ev.clientY - r.top))
+      };
+    }
+    function paintInkStroke(stroke) {
+      if (!inkCtx || !stroke || !stroke.pts || !stroke.pts.length) return;
+      inkCtx.strokeStyle = stroke.color;
+      inkCtx.lineWidth = stroke.width;
+      inkCtx.lineCap = 'round';
+      inkCtx.lineJoin = 'round';
+      inkCtx.beginPath();
+      inkCtx.moveTo(stroke.pts[0].x, stroke.pts[0].y);
+      var i;
+      for (i = 1; i < stroke.pts.length; i++) inkCtx.lineTo(stroke.pts[i].x, stroke.pts[i].y);
+      if (stroke.pts.length === 1) inkCtx.lineTo(stroke.pts[0].x + 0.01, stroke.pts[0].y);
+      inkCtx.stroke();
+    }
+    function redrawInk() {
+      if (!inkCanvas || !inkCtx) return;
+      var r = inkCanvas.getBoundingClientRect();
+      var cssW = r.width || 1;
+      var cssH = r.height || 1;
+      var dpr = inkCanvas.width / cssW;
+      inkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      inkCtx.clearRect(0, 0, cssW, cssH);
+      var i;
+      for (i = 0; i < inkStrokes.length; i++) paintInkStroke(inkStrokes[i]);
+    }
+    function sizeInkCanvas() {
+      if (!inkCanvas) return;
+      var wrap = inkCanvas.parentNode;
+      var cssW = (wrap && wrap.clientWidth) || inkCanvas.clientWidth || 320;
+      var cssH = compact ? 140 : 240;
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
+      inkCanvas.style.height = cssH + 'px';
+      inkCanvas.width = Math.max(1, Math.round(cssW * dpr));
+      inkCanvas.height = Math.max(1, Math.round(cssH * dpr));
+      inkCtx = inkCanvas.getContext('2d');
+      redrawInk();
+    }
+    function paintInkTools() {
+      if (!inkPanel) return;
+      Array.prototype.forEach.call(inkPanel.querySelectorAll('[data-ink-color]'), function (el) {
+        el.classList.toggle('on', el.getAttribute('data-ink-color') === inkColor);
+      });
+      Array.prototype.forEach.call(inkPanel.querySelectorAll('[data-ink-width]'), function (el) {
+        el.classList.toggle('on', Number(el.getAttribute('data-ink-width')) === inkWidth);
+      });
+    }
+    function resetInk() {
+      inkStrokes = [];
+      inkCurrent = null;
+      redrawInk();
+    }
+    function closeInk() {
+      inkToken += 1;
+      inkOpen = false;
+      inkBusy = false;
+      inkCurrent = null;
+      if (inkPanel) inkPanel.hidden = true;
+      if (inkBtn) inkBtn.classList.remove('on');
+      window.removeEventListener('resize', sizeInkCanvas);
+      resetInk();
+    }
+    function openInk() {
+      if (!uploadImage || !inkPanel) return;
+      setHlMenuOpen(false);
+      setFsMenuOpen(false);
+      inkOpen = true;
+      inkPanel.hidden = false;
+      if (inkBtn) inkBtn.classList.add('on');
+      window.addEventListener('resize', sizeInkCanvas);
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(sizeInkCanvas);
+      else sizeInkCanvas();
+    }
+    function toggleInk() {
+      if (inkOpen) closeInk();
+      else openInk();
+    }
+    function onInkPointerDown(ev) {
+      if (!inkOpen || inkBusy || ev.button) return;
+      ev.preventDefault();
+      try { inkCanvas.setPointerCapture(ev.pointerId); } catch (_) {}
+      inkCurrent = { color: inkColor, width: inkWidth, pts: [inkPos(ev)] };
+      inkStrokes.push(inkCurrent);
+      paintInkStroke(inkCurrent);
+    }
+    function onInkPointerMove(ev) {
+      if (!inkCurrent) return;
+      ev.preventDefault();
+      inkCurrent.pts.push(inkPos(ev));
+      redrawInk();
+    }
+    function onInkPointerUp() {
+      inkCurrent = null;
+    }
+    function finishInk() {
+      if (!uploadImage || inkBusy || destroyed) return;
+      if (!inkStrokes.length) {
+        if (window.JB && JB.toast) JB.toast('Desenhe algo primeiro');
+        return;
+      }
+      inkBusy = true;
+      var token = inkToken;
+      if (!inkCanvas.toBlob) {
+        inkBusy = false;
+        if (window.JB && JB.toast) JB.toast('Não foi possível salvar o desenho');
+        return;
+      }
+      inkCanvas.toBlob(function (blob) {
+        if (destroyed || token !== inkToken) return;
+        if (!blob) {
+          inkBusy = false;
+          if (window.JB && JB.toast) JB.toast('Não foi possível salvar o desenho');
+          return;
+        }
+        if (blob.size > IMAGE_MAX_BYTES) {
+          inkBusy = false;
+          if (window.JB && JB.toast) JB.toast('Imagem grande demais (máx. 10 MB)');
+          return;
+        }
+        var file = blobToUploadFile(blob, 'sharpie.png');
+        if (window.JB && JB.toast) JB.toast('Enviando imagem…');
+        Promise.resolve(uploadImage(file)).then(function (info) {
+          if (destroyed || token !== inkToken) return;
+          insertUploadedImage(info);
+          closeInk();
+        }).catch(function () {
+          if (token === inkToken && window.JB && JB.toast) JB.toast('Não foi possível salvar o desenho');
+        }).then(function () { if (token === inkToken) inkBusy = false; });
+      }, 'image/png');
+    }
     function pasteImages(ev) {
       if (!uploadImage) return;
       var files = pasteImageFiles(ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData));
@@ -923,6 +1088,77 @@
     bar.appendChild(hlWrap);
     paintHlBtn();
 
+    if (uploadImage) {
+      inkBtn = btn('✎', 'Sharpie');
+      inkBtn.setAttribute('aria-label', 'Sharpie');
+      inkBtn.addEventListener('click', toggleInk);
+      bar.appendChild(inkBtn);
+
+      inkPanel = document.createElement('div');
+      inkPanel.className = 'jb-ed-ink';
+      inkPanel.hidden = true;
+      var inkTools = document.createElement('div');
+      inkTools.className = 'jb-ed-ink-tools';
+      INK_COLORS.forEach(function (c) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'jb-ed-ink-chip';
+        chip.title = c.label;
+        chip.setAttribute('aria-label', c.label);
+        chip.setAttribute('data-ink-color', c.color);
+        chip.style.background = c.color;
+        chip.addEventListener('click', function () {
+          inkColor = c.color;
+          paintInkTools();
+        });
+        inkTools.appendChild(chip);
+      });
+      var fineBtn = btn('Fino', 'Traço fino');
+      fineBtn.setAttribute('data-ink-width', String(INK_WIDTH_FINE));
+      fineBtn.addEventListener('click', function () { inkWidth = INK_WIDTH_FINE; paintInkTools(); });
+      var boldBtn = btn('Grosso', 'Traço grosso');
+      boldBtn.setAttribute('data-ink-width', String(INK_WIDTH_BOLD));
+      boldBtn.addEventListener('click', function () { inkWidth = INK_WIDTH_BOLD; paintInkTools(); });
+      var undoBtn = btn('Desfazer', 'Desfazer traço');
+      undoBtn.addEventListener('click', function () {
+        if (inkBusy || !inkStrokes.length) return;
+        inkStrokes.pop();
+        inkCurrent = null;
+        redrawInk();
+      });
+      var clearBtn = btn('Limpar', 'Limpar desenho');
+      clearBtn.addEventListener('click', function () {
+        if (inkBusy) return;
+        resetInk();
+      });
+      var cancelBtn = btn('Cancelar', 'Descartar desenho');
+      cancelBtn.addEventListener('click', closeInk);
+      var doneBtn = btn('Pronto', 'Inserir desenho', 'jb-ed-ink-done');
+      doneBtn.addEventListener('click', finishInk);
+      inkTools.appendChild(fineBtn);
+      inkTools.appendChild(boldBtn);
+      inkTools.appendChild(undoBtn);
+      inkTools.appendChild(clearBtn);
+      var inkSpacer = document.createElement('span');
+      inkSpacer.className = 'jb-ed-ink-spacer';
+      inkTools.appendChild(inkSpacer);
+      inkTools.appendChild(cancelBtn);
+      inkTools.appendChild(doneBtn);
+      var inkWrap = document.createElement('div');
+      inkWrap.className = 'jb-ed-ink-canvas-wrap';
+      inkCanvas = document.createElement('canvas');
+      inkCanvas.className = 'jb-ed-ink-canvas';
+      inkCanvas.setAttribute('aria-label', 'Área do Sharpie');
+      inkCanvas.addEventListener('pointerdown', onInkPointerDown);
+      inkCanvas.addEventListener('pointermove', onInkPointerMove);
+      inkCanvas.addEventListener('pointerup', onInkPointerUp);
+      inkCanvas.addEventListener('pointercancel', onInkPointerUp);
+      inkWrap.appendChild(inkCanvas);
+      inkPanel.appendChild(inkTools);
+      inkPanel.appendChild(inkWrap);
+      paintInkTools();
+    }
+
     [
       { label: 'H1', title: 'Título', tag: 'h1' },
       { label: 'H2', title: 'Subtítulo', tag: 'h2' },
@@ -1019,6 +1255,7 @@
     bar.appendChild(linkBtn);
 
     root.appendChild(bar);
+    if (inkPanel) root.appendChild(inkPanel);
     root.appendChild(surface);
     if (!compact) {
       var foot = document.createElement('div');
@@ -1112,6 +1349,8 @@
         destroyed = true;
         document.removeEventListener('mousedown', onDocFsDown);
         document.removeEventListener('selectionchange', onSelChange);
+        window.removeEventListener('resize', sizeInkCanvas);
+        inkOpen = false;
         if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
         if (dirty) persist(false);
         if (root.parentNode) root.parentNode.removeChild(root);
@@ -1141,7 +1380,8 @@
     cssFontSizeFromStyle: cssFontSizeFromStyle,
     cssHighlightFromStyle: cssHighlightFromStyle,
     cssTextMarksFromStyle: cssTextMarksFromStyle,
-    HIGHLIGHTS: HIGHLIGHTS
+    HIGHLIGHTS: HIGHLIGHTS,
+    blobToUploadFile: blobToUploadFile
   };
 
   if (typeof window !== 'undefined') {

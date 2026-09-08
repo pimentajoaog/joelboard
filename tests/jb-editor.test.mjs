@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 
 const src = readFileSync(new URL('../public/jb-editor.js', import.meta.url), 'utf8');
-const ctx = { console };
+const ctx = { console, File, Blob, Uint8Array };
 vm.createContext(ctx);
 vm.runInContext(src, ctx);
 
@@ -142,4 +142,11 @@ test('cssTextMarksFromStyle keeps italic bold underline strike', function () {
   assert.equal(empty.fontStyle, '');
   assert.equal(empty.fontWeight, '');
   assert.equal(empty.textDecoration, '');
+});
+
+test('blobToUploadFile names a PNG for Drive upload', function () {
+  var blob = new Blob(['png'], { type: 'image/png' });
+  var file = ED.blobToUploadFile(blob, 'sharpie.png');
+  assert.equal(file.type, 'image/png');
+  assert.equal(file.name, 'sharpie.png');
 });

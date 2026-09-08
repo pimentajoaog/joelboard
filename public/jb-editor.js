@@ -712,6 +712,7 @@
     host.innerHTML = '';
     var root = document.createElement('div');
     root.className = 'jb-ed jb-ed-live' + (compact ? ' jb-ed-compact' : '');
+    if (!compact) document.documentElement.classList.add('jb-ed-sheet');
 
     var bar = document.createElement('div');
     bar.className = 'jb-ed-bar';
@@ -2039,6 +2040,7 @@
         inkErasing = false;
         if (root) root.classList.remove('ink-erase');
         document.documentElement.classList.remove('jb-ink-full');
+        scheduleInkSize();
       }
       paintInkTools();
     }
@@ -2173,7 +2175,7 @@
         el = hits[i];
         if (!el || el === inkCanvas) continue;
         if (el.nodeType !== 1 || !el.closest) continue;
-        chrome = el.closest('.jb-ed-bar, .jb-ed-ink-tools, .jb-ed-foot, .header, .tabbar, .lnk, .modnote-head');
+        chrome = el.closest('.jb-ed-bar, .jb-ed-ink-tools, .jb-ed-chrome, .jb-ed-foot, .header, .tabbar, .lnk, .modnote-head');
         if (chrome) return el.closest('button, a, input, select, textarea, label, [role="button"]') || chrome;
         if (el === document.body || el === document.documentElement) continue;
         return null;
@@ -2562,8 +2564,11 @@
     linkBtn.addEventListener('click', addLink);
     bar.appendChild(linkBtn);
 
-    root.appendChild(bar);
-    if (inkTools) root.appendChild(inkTools);
+    var chrome = document.createElement('div');
+    chrome.className = 'jb-ed-chrome';
+    chrome.appendChild(bar);
+    if (inkTools) chrome.appendChild(inkTools);
+    root.appendChild(chrome);
     root.appendChild(stage);
     if (!compact) {
       var foot = document.createElement('div');
@@ -2829,6 +2834,7 @@
         window.removeEventListener('scroll', onInkViewChange, true);
         scroll.removeEventListener('scroll', onInkViewChange);
         document.documentElement.classList.remove('jb-ink-full');
+        document.documentElement.classList.remove('jb-ed-sheet');
         clearImgSelect();
         if (inkSizeRaf) { cancelAnimationFrame(inkSizeRaf); inkSizeRaf = 0; }
         if (inkViewRaf) { cancelAnimationFrame(inkViewRaf); inkViewRaf = 0; }

@@ -487,6 +487,7 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 
 /* Shared live editor (JB.editor) */
 .jb-ed { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.jb-ed-chrome { position: relative; z-index: 20; }
 .jb-ed-bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; position: relative; z-index: 20; }
 .jb-ed-btn { background: var(--surface2, #232838); color: var(--text, #e7eaf3); border: 1px solid var(--border, #2d3346); border-radius: 8px; min-width: 32px; height: 32px; padding: 0 8px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit; }
 .jb-ed-btn:hover { border-color: var(--primary, #818cf8); color: var(--primary, #818cf8); }
@@ -620,6 +621,10 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-compact .jb-ed-fs-input { width: 36px; }
 .jb-ed-compact .jb-ed-hl-caret { min-width: 18px; width: 18px; }
 .jb-ed-ink-tools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; position: relative; z-index: 20; }
+.jb-ed:not(.jb-ed-compact) .jb-ed-ink-tools {
+  position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 4px;
+  z-index: 31; background: var(--bg);
+}
 .jb-ed-ink-tools[hidden] { display: none !important; }
 .jb-ed-ink-chip {
   width: 22px; height: 22px; border-radius: 99px; border: 2px solid rgba(255,255,255,.2);
@@ -638,6 +643,8 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed.ink-erase .jb-ed-ink-layer,
 .jb-ed-ink-layer.jb-ed-ink-full.ink-erase { cursor: cell; }
 /* .page.on's enter animation would trap toolbar z-index under the full-page canvas. */
+html.jb-ed-sheet .page.on,
+html.jb-ed-sheet .tab-page.active,
 html.jb-ink-full .page.on,
 html.jb-ink-full .tab-page.active {
   animation: none;
@@ -649,8 +656,8 @@ html.jb-ink-full .header,
 html.jb-ink-full .tabbar,
 html.jb-ink-full .lnk,
 html.jb-ink-full .modnote-head,
+html.jb-ink-full .jb-ed-chrome,
 html.jb-ink-full .jb-ed-bar,
-html.jb-ink-full .jb-ed-ink-tools,
 html.jb-ink-full .jb-ed-foot {
   position: relative;
   z-index: 30;

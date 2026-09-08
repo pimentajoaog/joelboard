@@ -295,9 +295,11 @@
     return -1;
   }
 
-  var SHEET_VIEWPORT = 'width=device-width, initial-scale=1, minimum-scale=0.25, maximum-scale=5, user-scalable=yes';
+  var SHEET_VIEWPORT = 'width=device-width, initial-scale=1, minimum-scale=0.25, maximum-scale=5, user-scalable=yes, viewport-fit=cover';
   var BOARD_EDGE_BUMP = 96;
   var BOARD_MAX_PAD = 8000;
+  var INK_TOUCH_SLOP = 8;
+  var IMG_TOUCH_SLOP = 14;
 
   function inkStrokeBounds(strokes) {
     var minX = 0, minY = 0, maxX = 0, maxY = 0, any = false;
@@ -392,7 +394,7 @@
   function setSheetViewport(on) {
     if (typeof document === 'undefined') return;
     var meta = document.querySelector('meta[name="viewport"]');
-    if (!meta) return;
+    if (!meta || !meta.parentNode) return;
     if (on) {
       if (!meta.getAttribute('data-jb-vp')) meta.setAttribute('data-jb-vp', meta.getAttribute('content') || '');
       meta.setAttribute('content', SHEET_VIEWPORT);
@@ -403,6 +405,14 @@
         meta.removeAttribute('data-jb-vp');
       }
     }
+    try {
+      var next = meta.cloneNode(true);
+      meta.parentNode.replaceChild(next, meta);
+    } catch (_) {}
+  }
+
+  function isMobileEditorUi() {
+    return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 540px)').matches;
   }
 
   function blobToUploadFile(blob, name) {
@@ -808,6 +818,10 @@
     var inkBoardRaf = 0;
     var inkBoard = { left: 0, right: 0, top: 0, bottom: 0 };
     var inkNudge = { left: 0, right: 0, top: 0, bottom: 0 };
+    var inkPending = null;
+    var inkPtrIds = {};
+    var inkPinch = false;
+    var footEl = null;
     var lastInkOrigin = null;
     var selectedImg = null;
     var imgFrame = null;
@@ -1654,12 +1668,15 @@
     }
     function beginImgPointerDrag(ev, img) {
       if (inkOpen || ev.button || !img) return false;
-      ev.preventDefault();
+      var touch = ev.pointerType === 'touch';
+      if (!touch) {
+        ev.preventDefault();
+        try { imgFrame.setPointerCapture(ev.pointerId); } catch (_) {}
+      }
       if (ev.stopPropagation) ev.stopPropagation();
       selectImg(img);
       if (!selectedImg) return false;
-      try { imgFrame.setPointerCapture(ev.pointerId); } catch (_) {}
-      imgDrag = { img: selectedImg, x: ev.clientX, y: ev.clientY, moved: false, dropKey: '' };
+      imgDrag = { img: selectedImg, x: ev.clientX, y: ev.clientY, moved: false, dropKey: '', touch: touch };
       imgResize = null;
       return true;
     }
@@ -1954,12 +1971,21 @@
         return;
       }
       if (!imgDrag) return;
-      ev.preventDefault();
-      if (!imgDrag.moved && (Math.abs(ev.clientX - imgDrag.x) > 4 || Math.abs(ev.clientY - imgDrag.y) > 4)) {
+      var slop = imgDrag.touch ? IMG_TOUCH_SLOP : 4;
+      var dx = ev.clientX - imgDrag.x;
+      var dy = ev.clientY - imgDrag.y;
+      if (!imgDrag.moved && (Math.abs(dx) > slop || Math.abs(dy) > slop)) {
+        if (imgDrag.touch && Math.abs(dy) > Math.abs(dx) * 1.15) {
+          imgDrag = null;
+          return;
+        }
         imgDrag.moved = true;
+        try { ev.preventDefault(); } catch (_) {}
+        try { imgFrame.setPointerCapture(ev.pointerId); } catch (_) {}
         startImgDragPreview(imgDrag.img, ev);
       }
       if (!imgDrag.moved) return;
+      ev.preventDefault();
       paintImgGhost(ev);
       var drop = dropRangeAt(ev.clientX, ev.clientY, imgDrag.img);
       if ((!drop || !drop.range) && imgSlot && !imgSlot.parentNode && imgDrag.img.parentNode) {
@@ -2480,11 +2506,12 @@
     function inkAllowsPan() {
       return inkViewScale() > 1.05;
     }
-    function inkEdgeScroll(clientX, clientY) {
+    function inkEdgeScroll(clientX, clientY, ev) {
       if (compact || !inkFullSheet()) return;
       var vis = inkViewRect();
-      var margin = 40;
-      var step = 28;
+      var touch = ev && ev.pointerType === 'touch';
+      var margin = touch ? 18 : 40;
+      var step = touch ? 18 : 28;
       var dx = 0;
       var dy = 0;
       if (clientX < vis.left + margin) {
@@ -2509,6 +2536,68 @@
       if (!inkCanvas) return;
       inkCanvas.classList.toggle('jb-ed-ink-pan', !!(inkOpen && inkFullSheet() && inkAllowsPan()));
     }
+    function inkPointerCount() {
+      var n = 0;
+      var k;
+      for (k in inkPtrIds) {
+        if (Object.prototype.hasOwnProperty.call(inkPtrIds, k)) n += 1;
+      }
+      return n;
+    }
+    function inkForgetPointer(id) {
+      if (id != null) delete inkPtrIds[id];
+      if (!inkPointerCount()) inkPinch = false;
+    }
+    function inkReleaseCaptured() {
+      var k;
+      if (!inkCanvas) return;
+      for (k in inkPtrIds) {
+        if (!Object.prototype.hasOwnProperty.call(inkPtrIds, k)) continue;
+        try { inkCanvas.releasePointerCapture(Number(k)); } catch (_) {}
+      }
+    }
+    function inkBeginPinch() {
+      inkPinch = true;
+      var keep = !!(inkCurrent && inkCurrent.pts && inkCurrent.pts.length >= 4);
+      inkCancelFreshStroke();
+      inkCurrent = null;
+      inkReleaseCaptured();
+      if (keep) scheduleInkSave();
+    }
+    function inkCancelFreshStroke() {
+      inkPending = null;
+      if (inkErasing && !inkErased) inkErasing = false;
+      if (inkCurrent && inkCurrent.pts && inkCurrent.pts.length < 4) {
+        if (inkStrokes.length && inkStrokes[inkStrokes.length - 1] === inkCurrent) inkStrokes.pop();
+        inkCurrent = null;
+        redrawInk();
+        scheduleInkBoard();
+      }
+    }
+    function startInkStroke(ev, origin, tap) {
+      if (!tap) {
+        try { ev.preventDefault(); } catch (_) {}
+        try { inkCanvas.setPointerCapture(ev.pointerId); } catch (_) {}
+      }
+      if (inkErase) {
+        inkErasing = true;
+        histBeforeChange();
+        inkErased = eraseInkAt(ev);
+        return;
+      }
+      histBeforeChange();
+      var pts = [];
+      if (origin) {
+        var r = inkOriginRect();
+        pts.push({ x: origin.x - r.left, y: origin.y - r.top });
+      }
+      var now = inkPos(ev);
+      if (!pts.length || pts[0].x !== now.x || pts[0].y !== now.y) pts.push(now);
+      inkCurrent = { color: inkColor, width: inkWidth, pts: pts };
+      inkStrokes.push(inkCurrent);
+      redrawInk();
+      scheduleInkBoard();
+    }
     function onInkPointerDown(ev) {
       if (!inkOpen || ev.button) return;
       var chrome = inkChromeTarget(ev);
@@ -2519,37 +2608,56 @@
         }
         return;
       }
-      if (ev.pointerType !== 'mouse' && (inkAllowsPan() || ev.isPrimary === false)) return;
-      ev.preventDefault();
-      try { inkCanvas.setPointerCapture(ev.pointerId); } catch (_) {}
-      if (inkErase) {
-        inkErasing = true;
-        histBeforeChange();
-        inkErased = eraseInkAt(ev);
+      inkPtrIds[ev.pointerId] = true;
+      if (ev.pointerType !== 'mouse' && inkAllowsPan()) return;
+      if (ev.pointerType === 'touch') {
+        if (inkPinch || inkPointerCount() > 1 || ev.isPrimary === false) {
+          inkBeginPinch();
+          return;
+        }
+        inkPending = { id: ev.pointerId, x: ev.clientX, y: ev.clientY };
         return;
       }
-      histBeforeChange();
-      inkCurrent = { color: inkColor, width: inkWidth, pts: [inkPos(ev)] };
-      inkStrokes.push(inkCurrent);
-      redrawInk();
-      scheduleInkBoard();
+      startInkStroke(ev);
     }
     function onInkPointerMove(ev) {
+      if (inkPinch || inkPointerCount() > 1) {
+        inkBeginPinch();
+        return;
+      }
+      if (inkPending && ev.pointerId === inkPending.id) {
+        var pdx = ev.clientX - inkPending.x;
+        var pdy = ev.clientY - inkPending.y;
+        if (pdx * pdx + pdy * pdy < INK_TOUCH_SLOP * INK_TOUCH_SLOP) return;
+        var origin = inkPending;
+        inkPending = null;
+        startInkStroke(ev, origin);
+        return;
+      }
       if (inkErasing) {
         ev.preventDefault();
         if (eraseInkAt(ev)) inkErased = true;
-        inkEdgeScroll(ev.clientX, ev.clientY);
+        inkEdgeScroll(ev.clientX, ev.clientY, ev);
         return;
       }
       if (!inkCurrent) return;
       ev.preventDefault();
       inkCurrent.pts.push(inkPos(ev));
       redrawInk();
-      inkEdgeScroll(ev.clientX, ev.clientY);
+      inkEdgeScroll(ev.clientX, ev.clientY, ev);
       scheduleInkBoard();
     }
-    function onInkPointerUp() {
+    function onInkPointerUp(ev) {
+      if (ev && ev.pointerId != null) inkForgetPointer(ev.pointerId);
       inkNudge = { left: 0, right: 0, top: 0, bottom: 0 };
+      if (inkPending && (!ev || ev.pointerId === inkPending.id)) {
+        var tap = inkPending;
+        inkPending = null;
+        if (!inkPinch && (!ev || ev.type !== 'pointercancel')) {
+          startInkStroke({ clientX: tap.x, clientY: tap.y, pointerId: tap.id, pointerType: 'touch' }, null, true);
+        }
+      }
+      if (ev && ev.type === 'pointercancel') inkCancelFreshStroke();
       if (inkErasing) {
         inkErasing = false;
         if (inkErased) {
@@ -2806,8 +2914,8 @@
       inkTools.appendChild(undoBtn);
       inkTools.appendChild(clearBtn);
       paintInkTools();
-      inkCanvas.addEventListener('pointerdown', onInkPointerDown);
-      inkCanvas.addEventListener('pointermove', onInkPointerMove);
+      inkCanvas.addEventListener('pointerdown', onInkPointerDown, { passive: false });
+      inkCanvas.addEventListener('pointermove', onInkPointerMove, { passive: false });
       inkCanvas.addEventListener('pointerup', onInkPointerUp);
       inkCanvas.addEventListener('pointercancel', onInkPointerUp);
     }
@@ -2929,15 +3037,38 @@
       foot.appendChild(timerEl);
       foot.appendChild(saveBtn);
       root.appendChild(foot);
+      footEl = foot;
     }
     host.appendChild(root);
     setEmptyClass();
     hydrateImages();
     hydrateInk();
     resetEditorHistory();
+    function syncMobileFoot() {
+      if (!footEl || compact || destroyed) return;
+      if (!isMobileEditorUi()) {
+        footEl.classList.remove('jb-ed-foot-float');
+        footEl.style.left = '';
+        footEl.style.width = '';
+        footEl.style.bottom = '';
+        root.style.paddingBottom = '';
+        return;
+      }
+      var vv = window.visualViewport;
+      var gap = 0;
+      if (vv) gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+      var r = root.getBoundingClientRect();
+      footEl.classList.add('jb-ed-foot-float');
+      footEl.style.left = Math.round(r.left) + 'px';
+      footEl.style.width = Math.round(r.width) + 'px';
+      footEl.style.bottom = gap + 'px';
+      var h = footEl.offsetHeight || 48;
+      root.style.paddingBottom = (h + 8) + 'px';
+    }
     function onWinResize() {
       scheduleInkSize();
       paintImgFrame();
+      syncMobileFoot();
     }
     function onInkViewChange() {
       if (inkFullSheet()) {
@@ -2947,6 +3078,7 @@
       }
       syncInkTouchAction();
       paintImgFrame();
+      syncMobileFoot();
     }
     function onEditorKey(ev) {
       if (destroyed) return;
@@ -2994,11 +3126,11 @@
       window.visualViewport.addEventListener('scroll', onInkViewChange);
     }
     scroll.addEventListener('scroll', onInkViewChange);
-    imgFrame.addEventListener('pointerdown', onImgFrameDown);
-    imgFrame.addEventListener('pointermove', onImgFrameMove);
+    imgFrame.addEventListener('pointerdown', onImgFrameDown, { passive: false });
+    imgFrame.addEventListener('pointermove', onImgFrameMove, { passive: false });
     imgFrame.addEventListener('pointerup', onImgFrameUp);
     imgFrame.addEventListener('pointercancel', onImgFrameUp);
-    surface.addEventListener('pointermove', onImgFrameMove);
+    surface.addEventListener('pointermove', onImgFrameMove, { passive: false });
     surface.addEventListener('pointerup', onImgFrameUp);
     surface.addEventListener('pointercancel', onImgFrameUp);
     if (inkCanvas) {
@@ -3008,6 +3140,7 @@
         try { inkRo.observe(page); } catch (_) {}
       }
     }
+    syncMobileFoot();
 
     surface.addEventListener('beforeinput', function (ev) {
       if (ev.inputType === 'historyUndo') {
@@ -3086,7 +3219,7 @@
       if (!img) return;
       beginImgPointerDrag(ev, img);
       linkMouse = null;
-    });
+    }, { passive: false });
     surface.addEventListener('mousedown', function (ev) {
       if (ev.button !== 0) { linkMouse = null; return; }
       if (noteImg(ev.target)) {
@@ -3189,6 +3322,13 @@
           window.visualViewport.removeEventListener('scroll', onInkViewChange);
         }
         scroll.removeEventListener('scroll', onInkViewChange);
+        if (footEl) {
+          footEl.classList.remove('jb-ed-foot-float');
+          footEl.style.left = '';
+          footEl.style.width = '';
+          footEl.style.bottom = '';
+        }
+        root.style.paddingBottom = '';
         document.documentElement.classList.remove('jb-ink-full');
         document.documentElement.classList.remove('jb-ed-sheet');
         setSheetViewport(false);

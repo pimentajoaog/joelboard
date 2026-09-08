@@ -219,7 +219,7 @@ test('ink overlay size follows the page box, not scrollHeight', function () {
   assert.match(css, /prefers-reduced-motion/);
   assert.match(css, /html\.jb-ed-sheet \{[\s\S]*overflow-x: hidden/);
   assert.match(css, /html\.jb-ed-sheet\.jb-ed-board-x \{[\s\S]*overflow-x: auto/);
-  assert.match(css, /html\.jb-ed-sheet \.jb-ed-scroll \{[\s\S]*touch-action: pan-y pinch-zoom/);
+  assert.match(css, /html\.jb-ed-sheet \.jb-ed-scroll \{[\s\S]*touch-action: pan-x pan-y pinch-zoom/);
   assert.match(css, /touch-action: pinch-zoom/);
   assert.match(css, /\.jb-ed-ink-pan \{[\s\S]*pan-x pan-y pinch-zoom/);
   assert.match(css, /\.jb-ed-board-rail/);
@@ -235,6 +235,30 @@ test('ink overlay size follows the page box, not scrollHeight', function () {
   assert.match(src, /jb-ed-board-x/);
   assert.match(css, /margin-top: var\(--jb-ed-pad-top/);
   assert.match(src, /jb-ed-ink-pan/);
+});
+
+test('mobile editor delays ink capture so pinch can run', function () {
+  assert.match(src, /var INK_TOUCH_SLOP = 8/);
+  assert.match(src, /var IMG_TOUCH_SLOP = 14/);
+  assert.match(src, /function inkCancelFreshStroke/);
+  assert.match(src, /function inkBeginPinch/);
+  assert.match(src, /inkPending/);
+  assert.match(src, /pointerType === 'touch'/);
+  assert.match(src, /passive: false/);
+  assert.match(src, /function isMobileEditorUi/);
+  assert.match(src, /max-width: 540px/);
+  assert.match(src, /function syncMobileFoot/);
+  assert.match(src, /jb-ed-foot-float/);
+  assert.match(src, /viewport-fit=cover/);
+  assert.match(src, /cloneNode\(true\)/);
+  assert.match(src, /imgDrag\.touch \? IMG_TOUCH_SLOP : 4/);
+  assert.match(css, /@media \(hover: hover\) and \(pointer: fine\)/);
+  assert.match(css, /@media \(max-width: 540px\)/);
+  assert.match(css, /\.jb-ed:not\(\.jb-ed-compact\) \.jb-ed-bar \{[\s\S]*overflow-x: auto/);
+  assert.match(css, /min-width: 44px/);
+  assert.match(css, /\.jb-ed-foot-float/);
+  assert.match(css, /@media \(pointer: coarse\) \{[\s\S]*\.jb-ed-img-handle \{ width: 22px/);
+  assert.match(css, /\.jb-ed-compact \.jb-ed-surface \{ font-size: 16px; \}/);
 });
 
 test('dumpInkStrokes round-trips and hitInkStroke finds the top scribble', function () {
@@ -349,7 +373,9 @@ test('editor undo history covers images and ink', function () {
   assert.match(src, /key === 'y'/);
   assert.match(src, /historyUndo/);
   assert.match(src, /undoBtn\.addEventListener\('click', function \(\) \{ undoEditor\(\); \}\)/);
-  assert.match(src, /histBeforeChange\(\);\s*\n\s*inkCurrent/);
+  assert.match(src, /function startInkStroke/);
+  assert.match(src, /histBeforeChange\(\);/);
+  assert.match(src, /inkCurrent = \{ color: inkColor/);
 });
 
 test('cssImgWidthPx keeps a sane pixel width', function () {

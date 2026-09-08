@@ -694,6 +694,8 @@
     var inkSaveTimer = null;
     var inkRo = null;
     var inkSizeRaf = 0;
+    var inkViewRaf = 0;
+    var lastInkOrigin = null;
     var selectedImg = null;
     var imgFrame = null;
     var imgDrag = null;
@@ -749,8 +751,9 @@
 
     function inkMarkerHtml(id) {
       id = safeDriveFileId(id != null ? id : inkFileId);
+      var dump = inkStrokes.length ? dumpInkStrokes(inkStrokes) : '';
+      if (!id && !dump) return '';
       if (!id) return '';
-      var dump = (!inkBase && inkStrokes.length) ? dumpInkStrokes(inkStrokes) : '';
       return '<img data-jb-ink="1" data-jb-file="' + id + '"' + (dump ? ' data-jb-ink-d="' + dump + '"' : '') + ' alt="__jb-ink__">';
     }
     function stripInkFromBox(box) {
@@ -1877,14 +1880,27 @@
         selectImg(drag.img);
       }
     }
+    function inkFullSheet() {
+      return !compact && !!inkCanvas;
+    }
+    function inkOriginRect() {
+      return page.getBoundingClientRect();
+    }
+    function placeInkCanvas() {
+      if (!inkCanvas) return;
+      if (inkFullSheet()) {
+        inkCanvas.classList.add('jb-ed-ink-full');
+        if (inkCanvas.parentNode !== document.body) document.body.appendChild(inkCanvas);
+      } else {
+        inkCanvas.classList.remove('jb-ed-ink-full');
+        if (page && inkCanvas.parentNode !== page) page.appendChild(inkCanvas);
+      }
+    }
     function inkPos(ev) {
-      if (!inkCanvas) return { x: 0, y: 0 };
-      var r = inkCanvas.getBoundingClientRect();
-      var w = r.width || 1;
-      var h = r.height || 1;
+      var r = inkOriginRect();
       return {
-        x: Math.max(0, Math.min(w, ev.clientX - r.left)),
-        y: Math.max(0, Math.min(h, ev.clientY - r.top))
+        x: ev.clientX - r.left,
+        y: ev.clientY - r.top
       };
     }
     function paintInkStroke(stroke) {
@@ -1909,16 +1925,50 @@
       if (!isFinite(dpr) || dpr <= 0) dpr = 1;
       inkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       inkCtx.clearRect(0, 0, cssW, cssH);
+      if (inkFullSheet()) {
+        var origin = inkOriginRect();
+        lastInkOrigin = { left: Math.round(origin.left), top: Math.round(origin.top), width: Math.round(origin.width), height: Math.round(origin.height) };
+        inkCtx.translate(origin.left, origin.top);
+      }
       if (inkBase && inkBase.naturalWidth) {
         inkCtx.drawImage(inkBase, 0, 0, inkBase.naturalWidth / dpr, inkBase.naturalHeight / dpr);
       }
       var i;
       for (i = 0; i < inkStrokes.length; i++) paintInkStroke(inkStrokes[i]);
     }
+    function tickInkView() {
+      inkViewRaf = 0;
+      if (destroyed || !inkFullSheet()) return;
+      var o = inkOriginRect();
+      var left = Math.round(o.left);
+      var top = Math.round(o.top);
+      var w = Math.round(o.width);
+      var h = Math.round(o.height);
+      if (!lastInkOrigin || lastInkOrigin.left !== left || lastInkOrigin.top !== top || lastInkOrigin.width !== w || lastInkOrigin.height !== h) {
+        redrawInk();
+      }
+      inkViewRaf = requestAnimationFrame(tickInkView);
+    }
+    function ensureInkViewTick() {
+      if (!inkFullSheet()) {
+        lastInkOrigin = null;
+        if (inkViewRaf) { cancelAnimationFrame(inkViewRaf); inkViewRaf = 0; }
+        return;
+      }
+      if (!inkViewRaf) inkViewRaf = requestAnimationFrame(tickInkView);
+    }
     function sizeInkCanvas() {
       if (!inkCanvas) return;
-      var cssW = Math.max(1, Math.round(page.clientWidth || 1));
-      var cssH = Math.max(1, Math.round(page.clientHeight || 1));
+      placeInkCanvas();
+      var cssW;
+      var cssH;
+      if (inkFullSheet()) {
+        cssW = Math.max(1, Math.round(window.innerWidth || 1));
+        cssH = Math.max(1, Math.round(window.innerHeight || 1));
+      } else {
+        cssW = Math.max(1, Math.round(page.clientWidth || 1));
+        cssH = Math.max(1, Math.round(page.clientHeight || 1));
+      }
       var dpr = Math.min(2, window.devicePixelRatio || 1);
       var pxW = Math.max(1, Math.round(cssW * dpr));
       var pxH = Math.max(1, Math.round(cssH * dpr));
@@ -1927,6 +1977,7 @@
         inkCanvas.height = pxH;
       }
       inkCtx = inkCanvas.getContext('2d');
+      ensureInkViewTick();
       redrawInk();
     }
     function scheduleInkSize() {
@@ -1948,11 +1999,25 @@
       var eraseBtn = inkTools.querySelector('[data-ink-erase]');
       if (eraseBtn) eraseBtn.classList.toggle('on', inkErase);
       if (root) root.classList.toggle('ink-erase', inkOpen && inkErase);
+      if (inkCanvas) {
+        inkCanvas.classList.toggle('ink-on', inkOpen);
+        inkCanvas.classList.toggle('ink-erase', inkOpen && inkErase);
+      }
     }
     function canvasToUploadFile() {
-      if (!inkCanvas) return null;
       try {
-        var blob = dataUrlToBlob(inkCanvas.toDataURL('image/png'));
+        var c = document.createElement('canvas');
+        var ctx;
+        if (inkBase && inkBase.naturalWidth) {
+          c.width = inkBase.naturalWidth;
+          c.height = inkBase.naturalHeight;
+          ctx = c.getContext('2d');
+          ctx.drawImage(inkBase, 0, 0);
+        } else {
+          c.width = 8;
+          c.height = 8;
+        }
+        var blob = dataUrlToBlob(c.toDataURL('image/png'));
         if (!blob || !blob.size) return null;
         return blobToUploadFile(blob, 'sharpie-overlay.png');
       } catch (_) { return null; }
@@ -1961,6 +2026,7 @@
       if (!uploadImage || !inkCanvas) return;
       inkOpen = !!on;
       root.classList.toggle('ink-on', inkOpen);
+      document.documentElement.classList.toggle('jb-ink-full', inkOpen && inkFullSheet());
       if (inkTools) inkTools.hidden = !inkOpen;
       if (inkBtn) inkBtn.classList.toggle('on', inkOpen);
       if (inkOpen) {
@@ -1972,6 +2038,7 @@
         inkErase = false;
         inkErasing = false;
         if (root) root.classList.remove('ink-erase');
+        document.documentElement.classList.remove('jb-ink-full');
       }
       paintInkTools();
     }
@@ -2045,16 +2112,13 @@
     function hydrateInk() {
       if (!inkCanvas) return;
       sizeInkCanvas();
-      if (inkStrokes.length) {
-        scheduleInkSize();
-        return;
-      }
       if (!inkFileId || !loadImage) return;
       Promise.resolve(loadImage(inkFileId)).then(function (url) {
-        if (destroyed || !url || inkStrokes.length) return;
+        if (destroyed || !url) return;
         var img = new Image();
         img.onload = function () {
-          if (destroyed || inkStrokes.length) return;
+          if (destroyed) return;
+          if (img.naturalWidth < 16 && img.naturalHeight < 16 && inkStrokes.length) return;
           inkBase = img;
           sizeInkCanvas();
         };
@@ -2080,9 +2144,13 @@
       }
       if (!inkBase || !inkCanvas || !inkCtx) return false;
       try {
-        var r = inkCanvas.getBoundingClientRect();
-        var x = Math.max(0, Math.min(inkCanvas.width - 1, Math.round(pos.x * inkCanvas.width / (r.width || 1))));
-        var y = Math.max(0, Math.min(inkCanvas.height - 1, Math.round(pos.y * inkCanvas.height / (r.height || 1))));
+        var cr = inkCanvas.getBoundingClientRect();
+        var origin = inkFullSheet() ? inkOriginRect() : cr;
+        var cssX = (origin.left - cr.left) + pos.x;
+        var cssY = (origin.top - cr.top) + pos.y;
+        var x = Math.round(cssX * inkCanvas.width / (cr.width || 1));
+        var y = Math.round(cssY * inkCanvas.height / (cr.height || 1));
+        if (x < 0 || y < 0 || x >= inkCanvas.width || y >= inkCanvas.height) return false;
         if (inkCtx.getImageData(x, y, 1, 1).data[3] < 20) return false;
       } catch (_) { return false; }
       inkBase = null;
@@ -2102,7 +2170,7 @@
       histBeforeChange();
       inkCurrent = { color: inkColor, width: inkWidth, pts: [inkPos(ev)] };
       inkStrokes.push(inkCurrent);
-      paintInkStroke(inkCurrent);
+      redrawInk();
     }
     function onInkPointerMove(ev) {
       if (inkErasing) {
@@ -2492,6 +2560,10 @@
       scheduleInkSize();
       paintImgFrame();
     }
+    function onInkViewChange() {
+      if (inkFullSheet()) redrawInk();
+      paintImgFrame();
+    }
     function onEditorKey(ev) {
       if (destroyed) return;
       if (clipboardField(ev)) return;
@@ -2532,7 +2604,8 @@
     document.addEventListener('cut', onEditorCut, true);
     document.addEventListener('paste', onEditorPaste, true);
     window.addEventListener('resize', onWinResize);
-    scroll.addEventListener('scroll', paintImgFrame);
+    window.addEventListener('scroll', onInkViewChange, true);
+    scroll.addEventListener('scroll', onInkViewChange);
     imgFrame.addEventListener('pointerdown', onImgFrameDown);
     imgFrame.addEventListener('pointermove', onImgFrameMove);
     imgFrame.addEventListener('pointerup', onImgFrameUp);
@@ -2722,11 +2795,16 @@
         document.removeEventListener('cut', onEditorCut, true);
         document.removeEventListener('paste', onEditorPaste, true);
         window.removeEventListener('resize', onWinResize);
-        scroll.removeEventListener('scroll', paintImgFrame);
+        window.removeEventListener('scroll', onInkViewChange, true);
+        scroll.removeEventListener('scroll', onInkViewChange);
+        document.documentElement.classList.remove('jb-ink-full');
         clearImgSelect();
         if (inkSizeRaf) { cancelAnimationFrame(inkSizeRaf); inkSizeRaf = 0; }
+        if (inkViewRaf) { cancelAnimationFrame(inkViewRaf); inkViewRaf = 0; }
         if (imgGhost && imgGhost.parentNode) imgGhost.parentNode.removeChild(imgGhost);
         imgGhost = null;
+        if (inkCanvas && inkCanvas.parentNode) inkCanvas.parentNode.removeChild(inkCanvas);
+        inkCanvas = null;
         if (inkRo) { try { inkRo.disconnect(); } catch (_) {} inkRo = null; }
         if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
         if (inkSaveTimer) { clearTimeout(inkSaveTimer); inkSaveTimer = null; }

@@ -196,9 +196,16 @@ test('ink overlay size follows the page box, not scrollHeight', function () {
   assert.match(src, /inkRo\.observe\(page\)/);
   assert.doesNotMatch(src, /inkRo\.observe\(surface\)/);
   assert.doesNotMatch(src, /inkRo\.observe\(scroll\)/);
+  assert.match(src, /function tickInkView/);
+  assert.match(src, /function ensureInkViewTick/);
+  assert.match(src, /document\.body\.appendChild\(inkCanvas\)/);
+  assert.match(src, /inkCanvas\.classList\.add\('jb-ed-ink-full'\)/);
+  assert.match(src, /c\.width = 8/);
   assert.match(css, /\.jb-ed-scroll \{[\s\S]*scrollbar-gutter: stable/);
   assert.match(css, /\.jb-ed-page \{[\s\S]*overflow: hidden/);
   assert.match(css, /\.jb-ed-ink-layer \{[\s\S]*inset: 0/);
+  assert.match(css, /\.jb-ed-ink-layer\.jb-ed-ink-full/);
+  assert.match(css, /html\.jb-ink-full/);
 });
 
 test('dumpInkStrokes round-trips and hitInkStroke finds the top scribble', function () {
@@ -214,6 +221,10 @@ test('dumpInkStrokes round-trips and hitInkStroke finds the top scribble', funct
   assert.equal(ED.hitInkStroke(back, { x: 10, y: 30 }), 1);
   assert.equal(ED.hitInkStroke(back, { x: 30, y: 0 }), 0);
   assert.equal(ED.hitInkStroke(back, { x: 200, y: 200 }), -1);
+  var margin = ED.dumpInkStrokes([{ color: '#111827', width: 3, pts: [{ x: -40, y: 12 }, { x: -8, y: 12 }] }]);
+  var marginBack = ED.parseInkStrokes(margin);
+  assert.equal(marginBack.length, 1);
+  assert.equal(marginBack[0].pts[0].x, -40);
   var id = '1AbCdEfGhIjKlMnOpQrSt';
   assert.deepEqual(ED.pullInkStrokes('<img data-jb-ink="1" data-jb-file="' + id + '" data-jb-ink-d="' + dump + '" alt="__jb-ink__">'), back);
   var legacy = ED.parseInkStrokes('#ef4444,8,10 10 10 50');

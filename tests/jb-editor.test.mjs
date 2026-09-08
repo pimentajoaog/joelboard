@@ -257,6 +257,17 @@ test('note image clipboard round-trips Drive id and width', function () {
   assert.equal(ED.noteImgToClipboardHtml(null), '');
 });
 
+test('editor undo history covers images and ink', function () {
+  assert.match(src, /function undoEditor/);
+  assert.match(src, /function redoEditor/);
+  assert.match(src, /function histBeforeChange/);
+  assert.match(src, /key === 'z'/);
+  assert.match(src, /key === 'y'/);
+  assert.match(src, /historyUndo/);
+  assert.match(src, /undoBtn\.addEventListener\('click', function \(\) \{ undoEditor\(\); \}\)/);
+  assert.match(src, /histBeforeChange\(\);\s*\n\s*inkCurrent/);
+});
+
 test('cssImgWidthPx keeps a sane pixel width', function () {
   assert.equal(ED.cssImgWidthPx('width: 320px', ''), 320);
   assert.equal(ED.cssImgWidthPx('', '240'), 240);

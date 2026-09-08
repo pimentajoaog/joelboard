@@ -700,6 +700,12 @@
     var imgResize = null;
     var imgGhost = null;
     var imgSlot = null;
+    var hist = [];
+    var histAt = -1;
+    var histLocked = false;
+    var typingGroup = false;
+    var typingHistTimer = 0;
+    var HIST_MAX = 80;
 
     host.innerHTML = '';
     var root = document.createElement('div');
@@ -803,6 +809,125 @@
       syncBar();
       paintTimer();
     }
+    function cloneInkStrokes(list) {
+      var out = [];
+      var i, j, s, pts;
+      for (i = 0; i < (list || []).length; i++) {
+        s = list[i];
+        if (!s || !s.pts) continue;
+        pts = [];
+        for (j = 0; j < s.pts.length; j++) pts.push({ x: s.pts[j].x, y: s.pts[j].y });
+        out.push({ color: s.color, width: s.width, pts: pts });
+      }
+      return out;
+    }
+    function captureEditorState() {
+      var clone = surface.cloneNode(true);
+      stripInkFromBox(clone);
+      Array.prototype.forEach.call(clone.querySelectorAll('img'), function (el) {
+        el.classList.remove('jb-ed-img-on', 'jb-ed-img-dragging');
+      });
+      return {
+        html: clone.innerHTML,
+        strokes: cloneInkStrokes(inkStrokes),
+        base: inkBase,
+        fileId: inkFileId || ''
+      };
+    }
+    function editorStatesEqual(a, b) {
+      if (!a || !b) return false;
+      return a.html === b.html && a.fileId === b.fileId && a.base === b.base
+        && dumpInkStrokes(a.strokes) === dumpInkStrokes(b.strokes);
+    }
+    function histCapture() {
+      if (histLocked || destroyed) return;
+      var cur = captureEditorState();
+      if (histAt >= 0 && editorStatesEqual(hist[histAt], cur)) {
+        if (histAt < hist.length - 1) hist = hist.slice(0, histAt + 1);
+        return;
+      }
+      if (histAt < hist.length - 1) hist = hist.slice(0, histAt + 1);
+      hist.push(cur);
+      if (hist.length > HIST_MAX) hist.shift();
+      histAt = hist.length - 1;
+    }
+    function histBeforeChange() {
+      typingGroup = false;
+      if (typingHistTimer) {
+        clearTimeout(typingHistTimer);
+        typingHistTimer = 0;
+      }
+      histCapture();
+    }
+    function resetEditorHistory() {
+      typingGroup = false;
+      if (typingHistTimer) {
+        clearTimeout(typingHistTimer);
+        typingHistTimer = 0;
+      }
+      hist = [captureEditorState()];
+      histAt = 0;
+    }
+    function applyEditorState(st) {
+      if (!st) return;
+      histLocked = true;
+      typingGroup = false;
+      try {
+        imgDrag = null;
+        imgResize = null;
+        clearImgSelect();
+        surface.innerHTML = st.html || '';
+        inkStrokes = cloneInkStrokes(st.strokes);
+        inkCurrent = null;
+        inkBase = st.base || null;
+        inkFileId = st.fileId || '';
+        inkDirty = true;
+        hydrateImages();
+        if (inkCanvas) sizeInkCanvas();
+        markDirty();
+        try { surface.focus(); } catch (_) {}
+      } finally {
+        histLocked = false;
+      }
+    }
+    function undoEditor() {
+      if (histLocked || destroyed) return;
+      if (imgDrag || imgResize) {
+        imgDrag = null;
+        imgResize = null;
+        endImgDragPreview();
+      }
+      typingGroup = false;
+      var cur = captureEditorState();
+      if (histAt < 0) return;
+      if (!editorStatesEqual(cur, hist[histAt])) {
+        if (histAt < hist.length - 1) hist = hist.slice(0, histAt + 1);
+        hist.push(cur);
+        histAt = hist.length - 1;
+      }
+      if (histAt <= 0) return;
+      histAt -= 1;
+      applyEditorState(hist[histAt]);
+    }
+    function redoEditor() {
+      if (histLocked || destroyed) return;
+      if (imgDrag || imgResize) {
+        imgDrag = null;
+        imgResize = null;
+        endImgDragPreview();
+      }
+      typingGroup = false;
+      if (histAt >= hist.length - 1) return;
+      histAt += 1;
+      applyEditorState(hist[histAt]);
+    }
+    function isHistTypingKey(ev) {
+      if (!ev || ev.ctrlKey || ev.metaKey || ev.altKey) return false;
+      var k = ev.key || '';
+      if (k === 'Backspace' || k === 'Delete' || k === 'Enter' || k === 'Tab') return true;
+      if (k === 'Process' || k === 'Unidentified') return true;
+      return k.length === 1;
+    }
     function persist(manual) {
       if (destroyed || !onSave) { dirty = false; return; }
       function write() {
@@ -827,6 +952,7 @@
       write();
     }
     function cmd(name, val) {
+      histBeforeChange();
       surface.focus();
       if (name === 'bold' || name === 'italic' || name === 'underline' || name === 'strikeThrough') {
         try { document.execCommand('styleWithCSS', false, false); } catch (_) {}
@@ -935,6 +1061,7 @@
     function applySize(px) {
       var size = parseFontSizeInput(px);
       if (!size) return;
+      histBeforeChange();
       var css = size + 'px';
       var sel = window.getSelection();
       var inEditor = sel && sel.rangeCount && rangeInSurface(sel.getRangeAt(0));
@@ -1255,6 +1382,7 @@
       if (hlSwatch) hlSwatch.style.background = lastHighlight || 'transparent';
     }
     function applyHighlight(color) {
+      histBeforeChange();
       var bg = color ? cssHighlightFromStyle('background-color:' + color) : '';
       var sel = window.getSelection();
       if (sel && sel.rangeCount && rangeInSurface(sel.getRangeAt(0))) saveSelection();
@@ -1303,6 +1431,7 @@
       if (raw == null) return;
       var url = safeHref(raw);
       if (!url) return;
+      histBeforeChange();
       cmd('createLink', url);
     }
     function insertNode(node) {
@@ -1345,6 +1474,7 @@
     function insertUploadedImage(info) {
       var id = safeDriveFileId(info && info.id);
       if (!id) return;
+      histBeforeChange();
       var img = document.createElement('img');
       img.setAttribute('data-jb-file', id);
       img.draggable = false;
@@ -1359,6 +1489,7 @@
     }
     function insertClonedNoteImg(meta) {
       if (!meta || !meta.id) return;
+      histBeforeChange();
       var img = document.createElement('img');
       img.setAttribute('data-jb-file', meta.id);
       img.draggable = false;
@@ -1440,6 +1571,7 @@
     function removeNoteImg(img) {
       img = noteImg(img);
       if (!img) return;
+      histBeforeChange();
       var parent = img.parentNode;
       if (selectedImg === img) clearImgSelect();
       if (img.parentNode) img.parentNode.removeChild(img);
@@ -1676,6 +1808,7 @@
         var ir = selectedImg.getBoundingClientRect();
         imgResize = { handle: handle, startX: ev.clientX, startW: ir.width, startL: ir.left };
         imgDrag = null;
+        histBeforeChange();
         return;
       }
       if (!selectedImg) return;
@@ -1717,6 +1850,7 @@
       imgDrag = null;
       var slotParent = imgSlot && imgSlot.parentNode;
       if (drag.moved && drag.img && slotParent) {
+        histBeforeChange();
         var oldParent = drag.img.parentNode;
         slotParent.insertBefore(drag.img, imgSlot);
         endImgDragPreview();
@@ -1731,6 +1865,7 @@
       if (drag.moved) {
         var drop = dropRangeAt(ev.clientX, ev.clientY, drag.img);
         if (drop && drop.range) {
+          histBeforeChange();
           var prev = drag.img.parentNode;
           try { drop.range.insertNode(drag.img); } catch (_) {}
           pruneEmptyBlock(prev);
@@ -1927,6 +2062,7 @@
       }).catch(function () {});
     }
     function resetInk() {
+      histBeforeChange();
       inkStrokes = [];
       inkCurrent = null;
       inkBase = null;
@@ -1959,9 +2095,11 @@
       try { inkCanvas.setPointerCapture(ev.pointerId); } catch (_) {}
       if (inkErase) {
         inkErasing = true;
+        histBeforeChange();
         inkErased = eraseInkAt(ev);
         return;
       }
+      histBeforeChange();
       inkCurrent = { color: inkColor, width: inkWidth, pts: [inkPos(ev)] };
       inkStrokes.push(inkCurrent);
       paintInkStroke(inkCurrent);
@@ -2028,14 +2166,19 @@
       } catch (_) {}
     }
     function onEditorCut(ev) {
-      if (!clipboardInEditor(ev) || !selectedImg) return;
-      var gone = selectedImg;
-      onEditorCopy(ev);
-      if (!ev.defaultPrevented) return;
-      removeNoteImg(gone);
+      if (!clipboardInEditor(ev)) return;
+      if (selectedImg) {
+        var gone = selectedImg;
+        onEditorCopy(ev);
+        if (!ev.defaultPrevented) return;
+        removeNoteImg(gone);
+        return;
+      }
+      histBeforeChange();
     }
     function onEditorPaste(ev) {
       if (!clipboardInEditor(ev)) return;
+      histBeforeChange();
       var dt = ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData);
       var html = '';
       try { html = dt && dt.getData ? dt.getData('text/html') : ''; } catch (_) { html = ''; }
@@ -2209,14 +2352,8 @@
       var eraseBtn = btn('Borracha', 'Apagar um traço');
       eraseBtn.setAttribute('data-ink-erase', '1');
       eraseBtn.addEventListener('click', function () { inkErase = !inkErase; paintInkTools(); });
-      var undoBtn = btn('Desfazer', 'Desfazer traço');
-      undoBtn.addEventListener('click', function () {
-        if (!inkStrokes.length) return;
-        inkStrokes.pop();
-        inkCurrent = null;
-        redrawInk();
-        scheduleInkSave();
-      });
+      var undoBtn = btn('Desfazer', 'Desfazer');
+      undoBtn.addEventListener('click', function () { undoEditor(); });
       var clearBtn = btn('Limpar', 'Limpar desenho');
       clearBtn.addEventListener('click', function () { resetInk(); });
       inkTools.appendChild(fineBtn);
@@ -2350,20 +2487,47 @@
     setEmptyClass();
     hydrateImages();
     hydrateInk();
+    resetEditorHistory();
     function onWinResize() {
       scheduleInkSize();
       paintImgFrame();
     }
-    function onEditorSaveKey(ev) {
-      var key = (ev.key || '').toLowerCase();
-      if (!(ev.ctrlKey || ev.metaKey) || key !== 's') return;
+    function onEditorKey(ev) {
       if (destroyed) return;
-      ev.preventDefault();
-      if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
-      else ev.stopPropagation();
-      persist(true);
+      if (clipboardField(ev)) return;
+      var key = (ev.key || '').toLowerCase();
+      var mod = ev.ctrlKey || ev.metaKey;
+      if (mod && key === 's') {
+        ev.preventDefault();
+        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        else ev.stopPropagation();
+        persist(true);
+        return;
+      }
+      if (mod && key === 'z' && !ev.altKey) {
+        ev.preventDefault();
+        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        else ev.stopPropagation();
+        if (ev.shiftKey) redoEditor();
+        else undoEditor();
+        return;
+      }
+      if (mod && key === 'y' && !ev.shiftKey && !ev.altKey) {
+        ev.preventDefault();
+        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        else ev.stopPropagation();
+        redoEditor();
+        return;
+      }
+      if (mod || inkOpen) return;
+      if (document.activeElement !== surface && !surface.contains(document.activeElement)) return;
+      if (selectedImg && (ev.key === 'Delete' || ev.key === 'Backspace')) return;
+      if (isHistTypingKey(ev) && !typingGroup) {
+        histCapture();
+        typingGroup = true;
+      }
     }
-    document.addEventListener('keydown', onEditorSaveKey, true);
+    document.addEventListener('keydown', onEditorKey, true);
     document.addEventListener('copy', onEditorCopy, true);
     document.addEventListener('cut', onEditorCut, true);
     document.addEventListener('paste', onEditorPaste, true);
@@ -2385,6 +2549,16 @@
     }
 
     surface.addEventListener('beforeinput', function (ev) {
+      if (ev.inputType === 'historyUndo') {
+        ev.preventDefault();
+        undoEditor();
+        return;
+      }
+      if (ev.inputType === 'historyRedo') {
+        ev.preventDefault();
+        redoEditor();
+        return;
+      }
       if (uploadImage && ev.inputType === 'insertFromPaste') {
         var dt = ev.dataTransfer;
         if (dt && pasteImageFiles(dt).length) { ev.preventDefault(); return; }
@@ -2409,6 +2583,7 @@
       }
     });
     surface.addEventListener('input', function () {
+      if (histLocked) return;
       Array.prototype.forEach.call(surface.querySelectorAll('[data-jb-plain="1"]'), function (el) {
         var raw = String(el.textContent || '');
         var clean = raw.replace(/\u200b/g, '');
@@ -2426,6 +2601,18 @@
       markDirty();
       if (inkCanvas) sizeInkCanvas();
       paintImgFrame();
+      if (typingGroup) {
+        if (typingHistTimer) clearTimeout(typingHistTimer);
+        typingHistTimer = setTimeout(function () {
+          typingHistTimer = 0;
+          typingGroup = false;
+        }, 500);
+      }
+    });
+    surface.addEventListener('compositionstart', function () {
+      if (histLocked || inkOpen) return;
+      if (!typingGroup) histCapture();
+      typingGroup = true;
     });
     surface.addEventListener('dragstart', function (ev) {
       if (noteImg(ev.target)) ev.preventDefault();
@@ -2482,6 +2669,7 @@
       var rect = li.getBoundingClientRect();
       if (ev.clientX - rect.left > 22) return;
       ev.preventDefault();
+      histBeforeChange();
       li.classList.toggle('on');
       markDirty();
     });
@@ -2521,13 +2709,15 @@
         hydrateImages();
         hydrateInk();
         sizeInkCanvas();
+        resetEditorHistory();
       },
       save: function () { persist(true); },
       destroy: function () {
         if (destroyed) return;
+        if (typingHistTimer) { clearTimeout(typingHistTimer); typingHistTimer = 0; }
         document.removeEventListener('mousedown', onDocFsDown);
         document.removeEventListener('selectionchange', onSelChange);
-        document.removeEventListener('keydown', onEditorSaveKey, true);
+        document.removeEventListener('keydown', onEditorKey, true);
         document.removeEventListener('copy', onEditorCopy, true);
         document.removeEventListener('cut', onEditorCut, true);
         document.removeEventListener('paste', onEditorPaste, true);

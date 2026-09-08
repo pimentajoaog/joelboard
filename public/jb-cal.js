@@ -429,8 +429,10 @@
     var nc = nearClass(e.date, e.done);
     var flag = opts.showDate ? ('<span class="jb-cal-flag ' + nc + '">' + esc(relLabel(e.date)) + '</span>') : '';
     var time = e.time ? esc(e.time) : '';
-    var meta = (e.kind ? '<span class="jb-cal-kind">' + esc(e.kind) + '</span>' : '') + (time ? (' · ' + time) : '') + (opts.showDate ? (' · ' + esc(fmtBR(e.date))) : '');
-    if (e.subtitle) meta += (meta ? ' · ' : '') + esc(e.subtitle);
+    var meta = opts.compact
+      ? ((e.time ? esc(e.time) : '') + (opts.showDate ? ((e.time ? ' · ' : '') + esc(relLabel(e.date))) : ''))
+      : ((e.kind ? '<span class="jb-cal-kind">' + esc(e.kind) + '</span>' : '') + (time ? (' · ' + time) : '') + (opts.showDate ? (' · ' + esc(fmtBR(e.date))) : ''));
+    if (!opts.compact && e.subtitle) meta += (meta ? ' · ' : '') + esc(e.subtitle);
     var href = e.href ? ' data-href="' + esc(e.href) + '"' : '';
     var raw = e.rawId ? ' data-raw="' + esc(e.rawId) + '"' : '';
     var chk = opts.toggle
@@ -473,7 +475,7 @@
       + '<div class="jb-cal-grid" id="calCells">' + cells + '</div>';
   }
 
-  function listHtml(events, range, emptyHint) {
+  function listHtml(events, range, emptyHint, compact) {
     if (!events.length) {
       return (window.JB && JB.emptyState)
         ? JB.emptyState({ icon: '📅', title: 'Nada neste período', hint: emptyHint || 'Abra um app e agende algo — a agenda junta tudo aqui.' })
@@ -487,7 +489,7 @@
     var days = Object.keys(groups).sort();
     return days.map(function (d) {
       return '<div class="jb-cal-sec"><div class="jb-cal-sect">' + esc(fmtBR(d)) + '</div>'
-        + groups[d].map(function (e) { return eventRowHtml(e, { showDate: false }); }).join('') + '</div>';
+        + groups[d].map(function (e) { return eventRowHtml(e, { showDate: false, compact: !!compact }); }).join('') + '</div>';
     }).join('');
   }
 
@@ -522,6 +524,27 @@
     filters.forEach(function (a) { set[a] = 1; });
     return events.filter(function (e) { return set[e.app]; });
   }
+  function capByApp(events, limit, expanded) {
+    expanded = expanded || {};
+    if (!limit || limit < 1) return { events: events || [], extra: {} };
+    var seen = {}, extra = {}, out = [];
+    (events || []).forEach(function (e) {
+      var a = e.app || '';
+      seen[a] = (seen[a] || 0) + 1;
+      if (expanded[a] || seen[a] <= limit) out.push(e);
+      else extra[a] = (extra[a] || 0) + 1;
+    });
+    return { events: out, extra: extra };
+  }
+  function moreBarHtml(extra) {
+    var apps = Object.keys(extra || {});
+    if (!apps.length) return '';
+    return '<div class="jb-cal-morebar">' + apps.map(function (a) {
+      var n = extra[a];
+      var label = (APP_META[a] && APP_META[a].label) || a;
+      return '<button type="button" class="jb-cal-more" data-more="' + esc(a) + '">Ver mais ' + esc(label) + ' · ' + n + '</button>';
+    }).join('') + '</div>';
+  }
 
   function mount(el, opts) {
     if (!el) return null;
@@ -540,7 +563,10 @@
       onSelect: opts.onSelect,
       onOpen: opts.onOpen,
       onToggle: opts.onToggle,
-      onChange: opts.onChange
+      onChange: opts.onChange,
+      compact: !!opts.compact,
+      appLimit: opts.appLimit == null ? 0 : Number(opts.appLimit) || 0,
+      expandedApps: opts.expandedApps ? Object.assign({}, opts.expandedApps) : {}
     };
 
     function filtered() { return applyFilters(state.events, state.filters); }
@@ -552,20 +578,23 @@
     function paint() {
       var range = rangeForView(state.view, state.date);
       var vis = eventsInRange(filtered(), range.start, range.end);
-      var html = '<div class="jb-cal">';
+      var html = '<div class="jb-cal' + (state.compact ? ' compact' : '') + '">';
       if (state.views && state.views.length > 1) html += '<div class="jb-cal-toolbar">' + viewBarHtml(state.view, state.views) + '</div>';
       if (state.showFilters) html += filterBarHtml(state.filters, counts());
       if (state.view === 'month') {
         html += monthCellsHtml(filtered(), state.date, state.date);
+        var dayCap = capByApp(eventsInRange(filtered(), state.date, state.date), state.appLimit, state.expandedApps);
         html += '<div class="jb-cal-sec"><div class="jb-cal-sect">' + esc(fmtBR(state.date)) + (state.dayActionsHtml || '') + '</div>'
-          + (eventsInRange(filtered(), state.date, state.date).map(function (e) { return eventRowHtml(e, { toggle: !!state.onToggle }); }).join('')
-            || '<div class="rg">Nada nesse dia.</div>') + '</div>';
+          + (dayCap.events.map(function (e) { return eventRowHtml(e, { toggle: !!state.onToggle, compact: state.compact }); }).join('')
+            || '<div class="rg">Nada nesse dia.</div>') + moreBarHtml(dayCap.extra) + '</div>';
         if (state.showUpcoming) html += upcomingHtml(filtered(), state.onToggle);
       } else {
         html += '<div class="jb-cal-rangebar"><button type="button" class="jb-cal-nav" data-shift="-1">‹</button>'
           + '<div class="jb-cal-rangelbl">' + esc(fmtBR(range.start) + (range.start !== range.end ? ' – ' + fmtBR(range.end) : '')) + '</div>'
           + '<button type="button" class="jb-cal-nav" data-shift="1">›</button></div>';
-        html += listHtml(vis, range, state.emptyHint);
+        var capped = capByApp(vis, state.appLimit, state.expandedApps);
+        html += listHtml(capped.events, range, state.emptyHint, state.compact);
+        html += moreBarHtml(capped.extra);
       }
       if (state.footerHtml) html += '<div class="jb-cal-foot">' + state.footerHtml + '</div>';
       html += '</div>';
@@ -637,6 +666,12 @@
           else if (evn && evn.href) location.href = evn.href;
         };
       });
+      el.querySelectorAll('[data-more]').forEach(function (b) {
+        b.onclick = function () {
+          state.expandedApps[b.getAttribute('data-more')] = true;
+          paint();
+        };
+      });
     }
 
     var api = {
@@ -659,7 +694,7 @@
     eventsFromNotas: eventsFromNotas, eventsFromPlanner: eventsFromPlanner,
     isCollabPlannerGrid: isCollabPlannerGrid, isCollabNotasGrid: isCollabNotasGrid,
     eventRowHtml: eventRowHtml, relLabel: relLabel, nearClass: nearClass, daysUntil: daysUntil, fmtBR: fmtBR,
-    loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount
+    loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp
   };
   window.JB_CAL = api;
   if (window.JB) window.JB.cal = api;

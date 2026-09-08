@@ -935,6 +935,29 @@ html.jb-ink-full .fab {
 .jb-cal-chk.on { background: color-mix(in srgb, var(--success, #34d399) 18%, var(--surface, #191d2c)); border-color: var(--success, #34d399); }
 .jb-cal-foot { margin-top: 18px; }
 .jb-cal-miss { font-size: 12px; color: var(--muted, #7b85a0); margin-top: 8px; }
+.jb-cal-morebar { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.jb-cal-more {
+  border: 1px solid var(--border, #2d3346);
+  background: var(--surface2, #252a40);
+  color: var(--muted, #7b85a0);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.jb-cal-more:hover { border-color: var(--primary, #818cf8); color: var(--primary, #818cf8); }
+.jb-cal.compact .jb-cal-vbtn { padding: 4px 8px; font-size: 11px; }
+.jb-cal.compact .jb-cal-cd { min-height: 28px; padding: 3px 2px; border-radius: 7px; }
+.jb-cal.compact .jb-cal-cdn { font-size: 11px; }
+.jb-cal.compact .jb-cal-dots { gap: 2px; }
+.jb-cal.compact .jb-cal-dot { width: 4px; height: 4px; }
+.jb-cal.compact .jb-cal-row { padding: 8px 10px; margin-bottom: 6px; }
+.jb-cal.compact .jb-cal-title { font-size: 13px; }
+.jb-cal.compact .jb-cal-sect { font-size: 12px; }
+.jb-cal.compact .jb-cal-rangelbl { font-size: 12px; }
+.jb-cal.compact .jb-cal-nav { width: 30px; height: 30px; }
 @media (prefers-reduced-motion: reduce) {
   .jb-ed-bar, .jb-ed-btn, .jb-ed-ink-tools, .jb-ed-fs-menu, .jb-ed-hl-menu, .jb-ed-ink-chip, .jb-ed-hl-chip {
     animation: none !important; transition: none !important; transform: none !important;

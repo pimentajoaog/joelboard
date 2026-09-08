@@ -62,6 +62,19 @@ test('collab Planner sheet is not treated as the personal workbook', function ()
   assert.equal(cal.isCollabNotasGrid({ Notas: 1, Itens: 2 }), false);
 });
 
+test('capByApp hides the 6th item per app until expanded', function () {
+  var list = [];
+  for (var i = 1; i <= 7; i++) list.push({ app: 'finance', id: 'f' + i, date: '2026-03-0' + (i < 10 ? i : 1), title: 'C' + i });
+  list.push({ app: 'study', id: 's1', date: '2026-03-02', title: 'Prova' });
+  var capped = cal.capByApp(list, 5, {});
+  assert.equal(capped.events.length, 6);
+  assert.equal(capped.extra.finance, 2);
+  assert.equal(capped.extra.study, undefined);
+  var open = cal.capByApp(list, 5, { finance: true });
+  assert.equal(open.events.length, 8);
+  assert.equal(Object.keys(open.extra).length, 0);
+});
+
 test('rangeForView covers day, 3-day, week and month', function () {
   var day = cal.rangeForView('day', '2026-03-04');
   assert.equal(day.start, '2026-03-04');

@@ -308,7 +308,7 @@ function hubNewsEditSave(){
 function $(id){ return document.getElementById(id); }
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só — entre com Google para sincronizar dados no seu Drive.' },
-  { sel:'#hubAgenda', title:'Agenda', body:'Hoje, 3 dias, semana ou mês — contas, provas, prazos, treinos e planos no mesmo calendário. Toque para abrir o app.' },
+  { sel:'#hubAgenda', title:'Agenda', body:'Calendário compacto à esquerda dos apps. Toque numa linha para abrir. Ampla mostra o calendário grande; ↻ tenta ler de novo se alguma planilha falhar.' },
   { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas, Planner ou Mini (extensões Chrome).' },
   { sel:'#hubNews', title:'Novidades', body:'Fique por dentro das últimas mudanças nos apps — atualizado aqui no Hub.' },
   { sel:'.gear', title:'Ajustes', body:'Tema, login, tutorial, privacidade e aviso legal ficam aqui.' }
@@ -416,53 +416,96 @@ function bootHubTours(){
   }
   maybeJulioelHint();
 }
-var _agendaApi=null, _agendaView='week', _agendaDate='', _agendaSeq=0, _agendaTimer=0;
+var _agendaApi=null, _agendaView='month', _agendaDate='', _agendaSeq=0, _agendaTimer=0, _agendaMissed=[], _agendaWide=false;
+var HUB_AGENDA_WIDE='jb_hub_agenda_wide';
 var HUB_AGENDA_LABEL={ finance:'Finance', fit:'Fit', study:'Study', notas:'Notas', planner:'Planner' };
-function hubAgendaSignedOut(){
-  var host=$('hubAgendaCal'), hint=$('hubAgendaHint');
-  if(hint) hint.textContent='';
+function hubAgendaWide(){
+  try{ return localStorage.getItem(HUB_AGENDA_WIDE)==='1'; }catch(_){ return false; }
+}
+function applyHubAgendaWide(){
+  _agendaWide=hubAgendaWide();
+  document.body.classList.toggle('hub-agenda-wide', _agendaWide);
+  var btn=$('hubAgendaWideBtn');
+  if(btn) btn.textContent=_agendaWide?'Compacta':'Ampla';
+}
+function toggleHubAgendaWide(){
+  _agendaWide=!hubAgendaWide();
+  try{ if(_agendaWide) localStorage.setItem(HUB_AGENDA_WIDE,'1'); else localStorage.removeItem(HUB_AGENDA_WIDE); }catch(_){}
+  applyHubAgendaWide();
+  if(_agendaView==='3day' && !_agendaWide) _agendaView='week';
+  if(!_agendaWide && (_agendaView!=='day' && _agendaView!=='week' && _agendaView!=='month')) _agendaView='month';
   _agendaApi=null;
+  if(JB.isSignedIn()) refreshHubAgenda();
+}
+function paintAgendaHint(missed, loading){
+  var hint=$('hubAgendaHint');
+  if(!hint) return;
+  if(loading){ hint.innerHTML='Atualizando…'; return; }
+  missed=missed||[];
+  if(!missed.length){ hint.innerHTML=''; return; }
+  var names=missed[0]==='agenda'?'a agenda':missed.map(function(a){ return HUB_AGENDA_LABEL[a]||a; }).join(', ');
+  hint.innerHTML='não deu para ler '+esc(names)
+    +' <button type="button" class="hub-agenda-retry" onclick="forceRefreshHubAgenda()">Tentar de novo</button>';
+}
+function hubAgendaSignedOut(){
+  applyHubAgendaWide();
+  _agendaApi=null;
+  paintAgendaHint([]);
+  var host=$('hubAgendaCal');
   if(!host) return;
   host.innerHTML=(JB.emptyState?JB.emptyState({ icon:'📅', title:'Entre para ver a agenda', hint:'Contas, provas, prazos, treinos e planos num só lugar.' }):'<div class="rg">Entre para ver a agenda.</div>');
 }
 function bootHubAgenda(){
+  applyHubAgendaWide();
   if(!JB.isSignedIn()){ hubAgendaSignedOut(); return; }
   clearTimeout(_agendaTimer);
   _agendaTimer=setTimeout(refreshHubAgenda, 60);
 }
+function forceRefreshHubAgenda(){
+  if(!JB.isSignedIn()) return;
+  _agendaApi=null;
+  refreshHubAgenda();
+}
+function hubAgendaMountOpts(events){
+  var wide=hubAgendaWide();
+  return {
+    events:events||[],
+    view:_agendaView,
+    date:_agendaDate,
+    compact:!wide,
+    showFilters:wide,
+    appLimit:5,
+    views: wide?['day','3day','week','month']:['day','week','month'],
+    emptyHint:'Abra um app e agende algo — a agenda junta tudo aqui.',
+    onChange:function(st){
+      var nextView=st.view, nextDate=st.date;
+      if(nextView===_agendaView && nextDate===_agendaDate) return;
+      _agendaView=nextView; _agendaDate=nextDate;
+      refreshHubAgenda();
+    }
+  };
+}
 function refreshHubAgenda(){
-  var host=$('hubAgendaCal'), hint=$('hubAgendaHint');
+  var host=$('hubAgendaCal'), btn=$('hubAgendaRefresh');
   if(!host || !window.JB || !JB.cal || !JB.cal.loadHubEvents) return;
   var seq=++_agendaSeq;
+  if(btn) btn.disabled=true;
+  paintAgendaHint(_agendaMissed, true);
   if(!_agendaApi) host.innerHTML='<div class="rg">Carregando agenda…</div>';
   JB.cal.loadHubEvents({ view:_agendaView, date:_agendaDate||undefined }).then(function(pack){
     if(seq!==_agendaSeq) return;
     _agendaDate=pack.range && pack.range.date ? pack.range.date : _agendaDate;
-    if(!_agendaApi){
-      _agendaApi=JB.cal.mount(host, {
-        events:pack.events,
-        view:_agendaView,
-        date:_agendaDate,
-        emptyHint:'Abra um app e agende algo — a agenda junta tudo aqui.',
-        onChange:function(st){
-          var nextView=st.view, nextDate=st.date;
-          if(nextView===_agendaView && nextDate===_agendaDate) return;
-          _agendaView=nextView; _agendaDate=nextDate;
-          refreshHubAgenda();
-        }
-      });
-    } else {
-      _agendaApi.setEvents(pack.events);
-    }
-    if(hint){
-      hint.textContent=(pack.missed&&pack.missed.length)
-        ? ('não deu para ler '+pack.missed.map(function(a){ return HUB_AGENDA_LABEL[a]||a; }).join(', '))
-        : '';
-    }
+    _agendaMissed=pack.missed||[];
+    if(!_agendaApi) _agendaApi=JB.cal.mount(host, hubAgendaMountOpts(pack.events));
+    else _agendaApi.setEvents(pack.events);
+    paintAgendaHint(_agendaMissed);
+    if(btn) btn.disabled=false;
   }).catch(function(){
     if(seq!==_agendaSeq) return;
-    if(hint) hint.textContent='não deu para ler a agenda';
+    _agendaMissed=['agenda'];
+    paintAgendaHint(_agendaMissed);
     if(!_agendaApi) host.innerHTML=(JB.emptyState?JB.emptyState({ icon:'📅', title:'Nada neste período', hint:'Abra um app e agende algo — a agenda junta tudo aqui.' }):'<div class="rg">Nada neste período.</div>');
+    if(btn) btn.disabled=false;
   });
 }
 function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); applyJulioelUI(false); if(on && !_hbooted){ _hbooted=true; bootHubTours(); } hubNewsInit(); bootHubAgenda(); }

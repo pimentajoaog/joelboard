@@ -30,15 +30,18 @@
   </div>
   <div class="sub" id="hubSub">Seus apps, num lugar só.</div>
 
-  <section class="hub-agenda" id="hubAgenda" aria-label="Agenda">
+  <div class="hub-body">
+  <aside class="hub-agenda" id="hubAgenda" aria-label="Agenda">
     <div class="hub-agenda-h">
       <div class="hub-agenda-title">Agenda</div>
-      <div class="hub-agenda-hint" id="hubAgendaHint"></div>
+      <div class="hub-agenda-tools">
+        <button type="button" class="hub-agenda-icon" id="hubAgendaRefresh" onclick="forceRefreshHubAgenda()" title="Atualizar agenda" aria-label="Atualizar agenda">↻</button>
+        <button type="button" class="hub-agenda-wide-btn" id="hubAgendaWideBtn" onclick="toggleHubAgendaWide()">Ampla</button>
+      </div>
     </div>
+    <div class="hub-agenda-hint" id="hubAgendaHint"></div>
     <div id="hubAgendaCal"></div>
-  </section>
-
-  <div class="hub-body">
+  </aside>
   <div class="grid">
     <a class="tile joelboard-tile" href="/finance">
       <div class="ico" style="background:#2a2f52"><svg width="30" height="30" viewBox="0 0 64 64"><rect x="14" y="46" width="36" height="3" rx="1.5" fill="#818cf8" opacity="0.4"/><rect x="15" y="33" width="8" height="13" rx="3" fill="#818cf8" opacity="0.55"/><rect x="28" y="26" width="8" height="20" rx="3" fill="#818cf8" opacity="0.8"/><rect x="41" y="20" width="8" height="26" rx="3" fill="#818cf8"/><circle cx="45" cy="17" r="9" fill="#34d399"/><text x="45" y="20.6" text-anchor="middle" font-family="Hanken Grotesk,sans-serif" font-size="9" font-weight="800" fill="#fff">R$</text></svg></div>

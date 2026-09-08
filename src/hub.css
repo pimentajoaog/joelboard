@@ -10,9 +10,20 @@
 button,input,select,textarea{ font-family:inherit; }
 body{ @apply min-h-screen text-ink; background:var(--bg); font-family:var(--font-body); padding:44px 22px 70px; }
 
-.wrap{ @apply max-w-[980px] mx-auto; }
-.hub-body{ display:grid; grid-template-columns:minmax(0,1fr) 248px; gap:28px; align-items:start; }
-@media (max-width:900px){ .hub-body{ grid-template-columns:1fr; } .novidades{ position:static; } }
+.wrap{ @apply max-w-[1260px] mx-auto; }
+.hub-body{ display:grid; grid-template-columns:248px minmax(0,1fr) 248px; grid-template-areas:"cal apps news"; gap:28px; align-items:start; }
+.hub-agenda{ grid-area:cal; }
+.grid{ grid-area:apps; }
+.novidades{ grid-area:news; }
+@media (max-width:1100px){
+  .hub-body{ grid-template-columns:248px minmax(0,1fr); grid-template-areas:"cal apps" "news news"; }
+}
+@media (max-width:900px){
+  .hub-body{ grid-template-columns:1fr; grid-template-areas:"cal" "apps" "news"; }
+  .hub-agenda,.novidades{ position:static; }
+}
+body.hub-agenda-wide .hub-body{ grid-template-columns:minmax(0,1fr) 248px; grid-template-areas:"cal cal" "apps news"; }
+@media (max-width:900px){ body.hub-agenda-wide .hub-body{ grid-template-columns:1fr; grid-template-areas:"cal" "apps" "news"; } }
 .top{ @apply flex items-center justify-between gap-[14px] flex-wrap; }
 .brand{ @apply flex items-center gap-3; }
 .brand img{ @apply w-10 h-10 rounded-[11px] block; }
@@ -21,10 +32,20 @@ body{ @apply min-h-screen text-ink; background:var(--bg); font-family:var(--font
 .authbtn{ @apply bg-surface2 border border-border text-primary font-bold text-xs rounded-full px-[13px] py-1.5 cursor-pointer; font-family:inherit; }
 .authbtn:hover{ @apply border-primary; }
 .sub{ @apply text-sm text-muted; margin:8px 2px 18px; }
-.hub-agenda{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px 16px 12px; margin:0 0 22px; }
-.hub-agenda-h{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:10px; }
-.hub-agenda-title{ font-size:15px; font-weight:800; letter-spacing:-.2px; }
-.hub-agenda-hint{ font-size:12px; color:var(--muted); text-align:right; }
+.hub-agenda{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:14px 12px 12px; margin:0; position:sticky; top:24px; }
+.hub-agenda-h{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.hub-agenda-title{ font-size:14px; font-weight:800; letter-spacing:-.2px; }
+.hub-agenda-tools{ display:flex; align-items:center; gap:6px; }
+.hub-agenda-icon,.hub-agenda-wide-btn,.hub-agenda-retry{
+  border:1px solid var(--border); background:var(--surface2); color:var(--muted); font:inherit; font-size:11px; font-weight:700; cursor:pointer;
+}
+.hub-agenda-icon{ width:28px; height:28px; border-radius:999px; }
+.hub-agenda-wide-btn,.hub-agenda-retry{ border-radius:999px; padding:5px 10px; }
+.hub-agenda-icon:hover,.hub-agenda-wide-btn:hover,.hub-agenda-retry:hover{ border-color:var(--primary); color:var(--primary); }
+body.hub-agenda-wide .hub-agenda-wide-btn{ color:var(--text); border-color:var(--primary); background:color-mix(in srgb, var(--primary) 16%, var(--surface)); }
+body.hub-agenda-wide .hub-agenda{ position:static; padding:16px; }
+.hub-agenda-hint{ font-size:12px; color:var(--muted); margin:0 0 8px; display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.hub-agenda-hint:empty{ display:none; }
 .grid{ @apply gap-4; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); }
 .tile{ @apply flex flex-col items-start gap-[3px] bg-surface border border-border rounded-[18px] p-[22px] no-underline text-ink; transition:transform .15s ease, border-color .15s ease; }
 .tile.clickable{ cursor:pointer; }
@@ -169,7 +190,9 @@ a.miniv-card.live:hover{ border-color:var(--mini); transform:translateY(-3px); }
 body.julioel-mode .joelboard-tile{ display:none !important; }
 body.julioel-mode .tile.julioel-only{ display:flex !important; animation:julioel-reveal .4s cubic-bezier(.2,.7,.3,1) both; }
 body.julioel-mode .novidades{ display:none; }
-body.julioel-mode .hub-body{ grid-template-columns:1fr; }
+body.julioel-mode .hub-body{ grid-template-columns:248px minmax(0,1fr); grid-template-areas:"cal apps"; }
+body.julioel-mode.hub-agenda-wide .hub-body{ grid-template-columns:1fr; grid-template-areas:"cal" "apps"; }
+@media (max-width:900px){ body.julioel-mode .hub-body{ grid-template-columns:1fr; grid-template-areas:"cal" "apps"; } }
 body.julioel-switching .tile{ animation:none !important; }
 @keyframes julioel-reveal{
   from{ opacity:0; transform:translateY(10px) scale(.96); }

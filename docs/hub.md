@@ -4,7 +4,7 @@ Ponto de entrada do Joelboard — launcher dos apps, temas globais do Hub e pain
 
 ## O que você encontra
 
-- **Agenda** — bloco acima dos cards: hoje, 3 dias, semana ou mês, com contas, provas, prazos, treinos e planos lidos das planilhas já vinculadas. Toque numa linha para abrir o app.
+- **Agenda** — calendário compacto à esquerda dos cards (hoje / semana / mês). Ampla opcional no topo. Lê as planilhas já vinculadas; ↻ tenta de novo se alguma falhar. Mais de 5 itens por app viram “Ver mais…”.
 - **Cards dos apps** — Finance, Fit, Study, Notas, Planner e Mini (extensões Chrome).
 - **Novidades** — sidebar com as 5 últimas mudanças. Fallback no código; se `VITE_HUB_NEWS_SHEET_ID` estiver configurado, lê de uma planilha Google pública (aba `Novidades`: colunas App, Kind, Text).
 - **Editar novidades (admin)** — com login `joaogabrielpabarbosa@gmail.com`, aparece ✏ no painel. Salva na planilha para todos. Na primeira vez cria a planilha; depois copie o ID para `VITE_HUB_NEWS_SHEET_ID` no Vercel.

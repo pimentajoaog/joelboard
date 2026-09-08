@@ -492,6 +492,9 @@
     var hlMenu = null;
     var hlSwatch = null;
     var lastHighlight = HIGHLIGHTS[0].color;
+    var typingPlain = false;
+    var insertingPlain = false;
+    var plainTypingEl = null;
     var linkMouse = null;
     var inkTools = null;
     var inkBtn = null;
@@ -554,6 +557,14 @@
       if (!box || !box.querySelectorAll) return;
       Array.prototype.forEach.call(box.querySelectorAll('canvas, img[data-jb-ink], .jb-ed-ink-asset, .jb-ed-ink-layer'), function (el) {
         if (el.parentNode) el.parentNode.removeChild(el);
+      });
+      Array.prototype.forEach.call(box.querySelectorAll('[data-jb-plain], [data-jb-hl-mark]'), function (el) {
+        var t = String(el.textContent || '').replace(/\u200b/g, '');
+        var tn = document.createTextNode(t);
+        if (el.parentNode) {
+          el.parentNode.insertBefore(tn, el);
+          el.parentNode.removeChild(el);
+        }
       });
     }
     function surfaceBodyHtml() {
@@ -827,6 +838,107 @@
       }
       return el.contains(container);
     }
+    function highlightAncestors(node) {
+      var el = node && node.nodeType === 1 ? node : (node && node.parentElement);
+      var stack = [];
+      while (el && el !== surface) {
+        if (elHasHighlight(el) && !/^(P|DIV|LI|H1|H2|H3|BLOCKQUOTE|PRE)$/.test(el.tagName)) stack.push(el);
+        el = el.parentElement;
+      }
+      return stack;
+    }
+    function closestPlain(node) {
+      var el = node && node.nodeType === 1 ? node : (node && node.parentElement);
+      while (el && el !== surface) {
+        if (el.getAttribute && el.getAttribute('data-jb-plain') === '1') return el;
+        el = el.parentElement;
+      }
+      return null;
+    }
+    function rangeHasText(r) {
+      try { return !!String(r.toString() || '').replace(/\u200b/g, ''); } catch (_) { return !r.collapsed; }
+    }
+    function caretAtEndOf(el, container, offset) {
+      try {
+        var r = document.createRange();
+        r.setStart(container, offset);
+        r.setEnd(el, el.childNodes.length);
+        return !rangeHasText(r);
+      } catch (_) { return false; }
+    }
+    function makePlainSpan() {
+      var plain = document.createElement('span');
+      plain.setAttribute('data-jb-plain', '1');
+      plain.appendChild(document.createTextNode('\u200b'));
+      return plain;
+    }
+    function placeCaretInPlain(plain) {
+      if (!plain) return;
+      var sel = window.getSelection();
+      if (!sel) return;
+      var r = document.createRange();
+      if (plain.firstChild && plain.firstChild.nodeType === 3) {
+        r.setStart(plain.firstChild, 0);
+        r.setEnd(plain.firstChild, (plain.firstChild.nodeValue || '').length);
+      } else {
+        r.selectNodeContents(plain);
+      }
+      sel.removeAllRanges();
+      sel.addRange(r);
+      plainTypingEl = plain;
+      typingPlain = true;
+    }
+    function setTransparentTyping() {
+      try { document.execCommand('styleWithCSS', false, true); } catch (_) {}
+      try { document.execCommand('hiliteColor', false, 'transparent'); } catch (_) {}
+      try { document.execCommand('styleWithCSS', false, false); } catch (_) {}
+    }
+    function exitHighlightForTyping() {
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return false;
+      var range = sel.getRangeAt(0);
+      if (!rangeInSurface(range) || !range.collapsed) return false;
+      var sc = range.startContainer;
+      var so = range.startOffset;
+      var stack = highlightAncestors(sc);
+      if (!stack.length) {
+        typingPlain = true;
+        setTransparentTyping();
+        return false;
+      }
+      var outermost = stack[stack.length - 1];
+      var innermost = stack[0];
+      if (caretAtEndOf(innermost, sc, so)) {
+        var after = makePlainSpan();
+        if (outermost.parentNode) outermost.parentNode.insertBefore(after, outermost.nextSibling);
+        placeCaretInPlain(after);
+        setTransparentTyping();
+        return true;
+      }
+      var i;
+      for (i = 0; i < stack.length; i++) {
+        var parts = splitHighlightAtPoint(stack[i], sc, so);
+        sc = parts.right;
+        so = 0;
+      }
+      var host = sc && sc.nodeType === 1 ? sc : (sc && sc.parentElement);
+      var plain = makePlainSpan();
+      if (host && host.parentNode) {
+        host.parentNode.insertBefore(plain, host);
+        if (elHasHighlight(host) && !rangeHasText((function () {
+          var r = document.createRange();
+          try { r.selectNodeContents(host); } catch (_) {}
+          return r;
+        })())) {
+          if (host.parentNode) host.parentNode.removeChild(host);
+        }
+      } else {
+        range.insertNode(plain);
+      }
+      placeCaretInPlain(plain);
+      setTransparentTyping();
+      return true;
+    }
     function highlightOverlapsRange(hl, range) {
       try {
         if (!range.intersectsNode(hl)) return false;
@@ -909,11 +1021,7 @@
       var range = sel.getRangeAt(0);
       if (!rangeInSurface(range)) return false;
       range = range.cloneRange();
-      if (range.collapsed) {
-        var block = closestBlock(range.startContainer);
-        try { range.setEnd(block, block.childNodes.length); } catch (_) {}
-      }
-      if (range.collapsed) return false;
+      if (range.collapsed) return exitHighlightForTyping();
       var endMark = insertHlMark(range.endContainer, range.endOffset);
       var startMark = insertHlMark(range.startContainer, range.startOffset);
       function liveRange() {
@@ -957,12 +1065,19 @@
       surface.focus();
       restoreSelection();
       if (!bg) {
-        clearHighlightFromCaret();
+        sel = window.getSelection();
+        if (sel && sel.rangeCount && sel.getRangeAt(0).collapsed) exitHighlightForTyping();
+        else {
+          clearHighlightFromCaret();
+          typingPlain = true;
+        }
         paintHlBtn();
         try { document.execCommand('styleWithCSS', false, false); } catch (_) {}
         markDirty();
         return;
       }
+      typingPlain = false;
+      plainTypingEl = null;
       sel = window.getSelection();
       if (sel && sel.rangeCount) {
         var live2 = sel.getRangeAt(0);
@@ -1303,7 +1418,15 @@
       if (fsCombo && fsMenu && !fsMenu.hidden && !fsCombo.contains(ev.target)) setFsMenuOpen(false);
       if (hlWrap && hlMenu && !hlMenu.hidden && !hlWrap.contains(ev.target)) setHlMenuOpen(false);
     }
-    function onSelChange() { saveSelection(); }
+    function onSelChange() {
+      saveSelection();
+      if (!typingPlain) return;
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount || !rangeInSurface(sel.getRangeAt(0))) return;
+      var n = sel.getRangeAt(0).startContainer;
+      if (closestPlain(n)) return;
+      if (highlightAncestors(n).length) typingPlain = false;
+    }
 
     [
       { label: 'B', title: 'Negrito', cmd: 'bold', key: 'bold' },
@@ -1364,6 +1487,7 @@
       applyHighlight('');
       setHlMenuOpen(false);
       surface.focus();
+      if (plainTypingEl && plainTypingEl.parentNode) placeCaretInPlain(plainTypingEl);
     });
     hlMenu.appendChild(hlNone);
     hlWrap.appendChild(hlApply);
@@ -1550,7 +1674,41 @@
       }
     }
 
+    surface.addEventListener('beforeinput', function (ev) {
+      if (insertingPlain) return;
+      if (!typingPlain) return;
+      if (ev.inputType !== 'insertText' && ev.inputType !== 'insertCompositionText') return;
+      if (!ev.data) return;
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      var r = sel.getRangeAt(0);
+      if (!rangeInSurface(r) || !r.collapsed) return;
+      if (closestPlain(r.startContainer)) return;
+      if (!highlightAncestors(r.startContainer).length) return;
+      ev.preventDefault();
+      insertingPlain = true;
+      try {
+        exitHighlightForTyping();
+        document.execCommand('insertText', false, ev.data);
+      } finally {
+        insertingPlain = false;
+      }
+    });
     surface.addEventListener('input', function () {
+      Array.prototype.forEach.call(surface.querySelectorAll('[data-jb-plain="1"]'), function (el) {
+        var raw = String(el.textContent || '');
+        var clean = raw.replace(/\u200b/g, '');
+        if (!clean || clean === raw) return;
+        el.textContent = clean;
+        var sel = window.getSelection();
+        if (sel && plainTypingEl === el) {
+          var caret = document.createRange();
+          caret.selectNodeContents(el);
+          caret.collapse(false);
+          sel.removeAllRanges();
+          sel.addRange(caret);
+        }
+      });
       markDirty();
       if (inkCanvas) sizeInkCanvas();
     });

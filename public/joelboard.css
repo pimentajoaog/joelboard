@@ -543,10 +543,11 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
   background: transparent; color: var(--muted, #7b85a0); font-size: 13px; font-weight: 800; line-height: 20px;
 }
 .jb-ed-hl-chip:hover { outline: 2px solid var(--primary, #818cf8); outline-offset: 1px; }
-.jb-ed-surface span[style*="background-color"] {
+.jb-ed-surface span[style*="background-color"]:not([data-jb-plain]) {
   border-radius: 3px; padding: 0 2px; color: #111827;
   box-decoration-break: clone; -webkit-box-decoration-break: clone;
 }
+.jb-ed-surface span[data-jb-plain] { background: none !important; padding: 0; color: inherit; border-radius: 0; }
 .jb-ed-stage { min-width: 0; }
 .jb-ed-scroll {
   min-height: 320px; background: var(--surface, #191d2c); border: 1px solid var(--border, #2d3346);

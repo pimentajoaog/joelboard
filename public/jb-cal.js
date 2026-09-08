@@ -451,13 +451,25 @@
   }
   function clearHubCache() { _hubCache = null; _tabCache = {}; }
 
+  function shortDay(iso) {
+    var d = parseYmd(iso); if (!d) return iso || '';
+    return d.getDate() + ' ' + MO[d.getMonth()];
+  }
+  function listDateLabel(iso, past) {
+    if (past) return shortDay(iso);
+    var n = daysUntil(iso);
+    if (n != null && n < 0) return shortDay(iso);
+    return relLabel(iso);
+  }
   function eventRowHtml(e, opts) {
     opts = opts || {};
-    var nc = nearClass(e.date, e.done);
-    var flag = opts.showDate ? ('<span class="jb-cal-flag ' + nc + '">' + esc(relLabel(e.date)) + '</span>') : '';
+    var past = !!opts.past || (daysUntil(e.date) != null && daysUntil(e.date) < 0);
+    var dlabel = listDateLabel(e.date, past);
+    var nc = past ? '' : nearClass(e.date, e.done);
+    var flag = opts.showDate ? ('<span class="jb-cal-flag ' + nc + '">' + esc(dlabel) + '</span>') : '';
     var time = e.time ? esc(e.time) : '';
     var meta = opts.compact
-      ? ((e.time ? esc(e.time) : '') + (opts.showDate ? ((e.time ? ' · ' : '') + esc(relLabel(e.date))) : ''))
+      ? ((e.time ? esc(e.time) : '') + (opts.showDate ? ((e.time ? ' · ' : '') + esc(dlabel)) : ''))
       : ((e.kind ? '<span class="jb-cal-kind">' + esc(e.kind) + '</span>' : '') + (time ? (' · ' + time) : '') + (opts.showDate ? (' · ' + esc(fmtBR(e.date))) : ''));
     if (!opts.compact && e.subtitle) meta += (meta ? ' · ' : '') + esc(e.subtitle);
     var href = e.href ? ' data-href="' + esc(e.href) + '"' : '';
@@ -590,36 +602,51 @@
       return { app: a, events: by[a] };
     });
   }
+  function splitByWhen(events, today) {
+    today = today || todayYmd();
+    var upcoming = [], past = [];
+    (events || []).forEach(function (e) {
+      if (String(e.date || '') >= today) upcoming.push(e);
+      else past.push(e);
+    });
+    return { upcoming: sortEvents(upcoming), past: sortEvents(past).reverse() };
+  }
+  function appBlocksHtml(events, opts) {
+    opts = opts || {};
+    return appsInDay(events).map(function (g) {
+      return appBlockHtml(g.app, g.events, opts);
+    }).join('');
+  }
   function appBlockHtml(app, events, opts) {
     opts = opts || {};
     var meta = APP_META[app] || APP_META.study;
     var cap = capByApp(events, opts.limit || 0, opts.expanded, opts.scope);
     var rows = cap.events.map(function (e) {
-      return eventRowHtml(e, { showDate: !!opts.showDate, compact: !!opts.compact, toggle: !!opts.toggle });
+      return eventRowHtml(e, { showDate: !!opts.showDate, compact: !!opts.compact, toggle: !!opts.toggle, past: !!opts.past });
     }).join('');
-    return '<div class="jb-cal-app" style="--ink:' + meta.ink + ';--bg:' + meta.bg + '">'
+    return '<div class="jb-cal-app' + (opts.past ? ' past' : '') + '" style="--ink:' + meta.ink + ';--bg:' + meta.bg + '">'
       + '<div class="jb-cal-appt"><span class="jb-cal-appt-ico">' + appGlyph(app) + '</span>' + esc(meta.label)
       + '<span class="jb-cal-appt-n">' + events.length + '</span></div>'
       + rows + moreBarHtml(cap.extra, opts.scope) + '</div>';
   }
+  function emptyPeriodHtml(emptyHint) {
+    return (window.JB && JB.emptyState)
+      ? JB.emptyState({ icon: '📅', title: 'Nada neste período', hint: emptyHint || 'Abra um app e agende algo — a agenda junta tudo aqui.' })
+      : '<div class="rg">Nada neste período.</div>';
+  }
   function groupedListHtml(events, emptyHint, opts) {
     opts = opts || {};
-    if (!events.length) {
-      return (window.JB && JB.emptyState)
-        ? JB.emptyState({ icon: '📅', title: 'Nada neste período', hint: emptyHint || 'Abra um app e agende algo — a agenda junta tudo aqui.' })
-        : '<div class="rg">Nada neste período.</div>';
+    if (!events.length) return emptyPeriodHtml(emptyHint);
+    var split = splitByWhen(events);
+    var blockOpts = { limit: opts.limit, expanded: opts.expanded, compact: opts.compact, toggle: opts.toggle, showDate: true };
+    var html = '';
+    if (split.upcoming.length) html += appBlocksHtml(split.upcoming, Object.assign({}, blockOpts, { scope: 'up' }));
+    if (split.past.length) {
+      html += '<div class="jb-cal-sec jb-cal-past"><div class="jb-cal-sect">'
+        + '<span class="jb-cal-wdchip">Já</span><span class="jb-cal-sectd">foi</span></div>'
+        + appBlocksHtml(split.past, Object.assign({}, blockOpts, { scope: 'past', past: true })) + '</div>';
     }
-    var groups = {};
-    events.forEach(function (e) {
-      if (!groups[e.date]) groups[e.date] = [];
-      groups[e.date].push(e);
-    });
-    return Object.keys(groups).sort().map(function (d) {
-      var blocks = appsInDay(groups[d]).map(function (g) {
-        return appBlockHtml(g.app, g.events, { limit: opts.limit, expanded: opts.expanded, compact: opts.compact, toggle: opts.toggle, scope: d });
-      }).join('');
-      return '<div class="jb-cal-sec">' + dayHeadHtml(d) + blocks + '</div>';
-    }).join('');
+    return html || emptyPeriodHtml(emptyHint);
   }
 
   function mount(el, opts) {
@@ -683,10 +710,10 @@
           var dayEvs = eventsInRange(filtered(), state.picked, state.picked);
           html += '<div class="jb-cal-sec">' + dayHeadHtml(state.picked, state.dayActionsHtml)
             + (dayEvs.length
-              ? appsInDay(dayEvs).map(function (g) { return appBlockHtml(g.app, g.events, Object.assign({}, listOpts, { scope: state.picked })); }).join('')
+              ? appBlocksHtml(dayEvs, Object.assign({}, listOpts, { scope: state.picked }))
               : '<div class="rg">Nada nesse dia.</div>') + '</div>';
         } else {
-          html += '<div class="jb-cal-monthhint">Mês inteiro · toque num dia para filtrar</div>';
+          html += '<div class="jb-cal-monthhint">Por app · toque num dia para filtrar</div>';
           html += groupedListHtml(vis, state.emptyHint, listOpts);
         }
         if (state.showUpcoming) html += upcomingHtml(filtered(), state.onToggle);
@@ -822,7 +849,7 @@
     eventsFromNotas: eventsFromNotas, eventsFromPlanner: eventsFromPlanner,
     isCollabPlannerGrid: isCollabPlannerGrid, isCollabNotasGrid: isCollabNotasGrid,
     eventRowHtml: eventRowHtml, relLabel: relLabel, nearClass: nearClass, daysUntil: daysUntil, fmtBR: fmtBR,
-    loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp, clearHubCache: clearHubCache, appsInDay: appsInDay
+    loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp, clearHubCache: clearHubCache, appsInDay: appsInDay, splitByWhen: splitByWhen
   };
   window.JB_CAL = api;
   if (window.JB) window.JB.cal = api;

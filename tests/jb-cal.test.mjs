@@ -91,6 +91,19 @@ test('capByApp scope keeps a 5-item limit per day per app', function () {
   assert.equal(open.events.length, 6);
 });
 
+test('splitByWhen keeps today and later on top, older days at the bottom', function () {
+  var evs = [
+    { app: 'fit', date: '2026-09-01', title: 'Peito' },
+    { app: 'fit', date: '2026-09-08', title: 'Pernas' },
+    { app: 'study', date: '2026-09-20', title: 'Prova' },
+    { app: 'study', date: '2026-09-02', title: 'Lista' }
+  ];
+  var s = cal.splitByWhen(evs, '2026-09-08');
+  assert.equal(s.upcoming.map(function (e) { return e.title; }).join(','), 'Pernas,Prova');
+  assert.equal(s.past.map(function (e) { return e.title; }).join(','), 'Lista,Peito');
+  assert.equal(cal.appsInDay(s.upcoming).map(function (g) { return g.app; }).join(','), 'fit,study');
+});
+
 test('appsInDay lists every app that has an event that day', function () {
   var groups = cal.appsInDay([
     { app: 'finance', title: 'Luz' },

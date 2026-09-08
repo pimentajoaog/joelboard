@@ -12,6 +12,7 @@
   ];
   var INK_WIDTH_FINE = 3;
   var INK_WIDTH_BOLD = 8;
+  var INK_SAVE_MS = 700;
   var FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72];
   var FONT_SIZE_MIN = 8;
   var FONT_SIZE_MAX = 72;
@@ -165,6 +166,26 @@
     return blob;
   }
 
+  function dataUrlToBlob(dataUrl) {
+    var s = String(dataUrl || '');
+    var m = s.match(/^data:([^;]+);base64,(.*)$/i);
+    if (!m) return null;
+    try {
+      var bin = atob(m[2]);
+      var arr = new Uint8Array(bin.length);
+      var i;
+      for (i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return new Blob([arr], { type: m[1] || 'image/png' });
+    } catch (_) { return null; }
+  }
+
+  function pullInkFileId(html) {
+    var s = String(html || '');
+    var m = s.match(/data-jb-ink\s*=\s*"1"[^>]*data-jb-file\s*=\s*"([^"]+)"/i)
+      || s.match(/data-jb-file\s*=\s*"([^"]+)"[^>]*data-jb-ink\s*=\s*"1"/i);
+    return m ? safeDriveFileId(m[1]) : '';
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -300,10 +321,17 @@
         if (tag === 'IMG') {
           var fid = safeDriveFileId(child.getAttribute('data-jb-file'));
           var alt = String(child.getAttribute('alt') || '').slice(0, 200);
+          var ink = child.getAttribute('data-jb-ink') === '1' || alt === '__jb-ink__';
           while (child.attributes.length) child.removeAttribute(child.attributes[0].name);
           if (!fid) { node.removeChild(child); return; }
           child.setAttribute('data-jb-file', fid);
-          if (alt) child.setAttribute('alt', alt);
+          if (ink) {
+            child.setAttribute('data-jb-ink', '1');
+            child.setAttribute('alt', '__jb-ink__');
+            child.className = 'jb-ed-ink-asset';
+          } else if (alt) {
+            child.setAttribute('alt', alt);
+          }
           return;
         }
         if (tag === 'FONT' || tag === 'MARK') {
@@ -359,6 +387,7 @@
   function isEmptyHtml(html) {
     var s = String(html || '');
     if (/<img\b[^>]*\bdata-jb-file=/i.test(s)) return false;
+    if (/data-jb-ink\s*=\s*"1"/i.test(s)) return false;
     var t = s.replace(/&nbsp;/g, ' ').replace(/<br\s*\/?>/gi, '').replace(/<[^>]+>/g, '').trim();
     return !t;
   }
@@ -446,6 +475,7 @@
     var imgOpts = opts.images || null;
     var uploadImage = imgOpts && typeof imgOpts.upload === 'function' ? imgOpts.upload : null;
     var loadImage = imgOpts && typeof imgOpts.load === 'function' ? imgOpts.load : null;
+    var replaceImage = imgOpts && typeof imgOpts.replace === 'function' ? imgOpts.replace : null;
     var dirty = false;
     var destroyed = false;
     var lastSaved = valueToHtml(opts.value);
@@ -463,7 +493,7 @@
     var hlSwatch = null;
     var lastHighlight = HIGHLIGHTS[0].color;
     var linkMouse = null;
-    var inkPanel = null;
+    var inkTools = null;
     var inkBtn = null;
     var inkCanvas = null;
     var inkCtx = null;
@@ -474,6 +504,11 @@
     var inkBusy = false;
     var inkOpen = false;
     var inkToken = 0;
+    var inkFileId = pullInkFileId(lastSaved);
+    var inkBase = null;
+    var inkDirty = false;
+    var inkSaveTimer = null;
+    var inkRo = null;
 
     host.innerHTML = '';
     var root = document.createElement('div');
@@ -482,22 +517,61 @@
     var bar = document.createElement('div');
     bar.className = 'jb-ed-bar';
 
+    var stage = document.createElement('div');
+    stage.className = 'jb-ed-stage';
+    var scroll = document.createElement('div');
+    scroll.className = 'jb-ed-scroll';
+    var page = document.createElement('div');
+    page.className = 'jb-ed-page';
     var surface = document.createElement('div');
     surface.className = 'jb-ed-surface';
     surface.contentEditable = 'true';
     surface.setAttribute('role', 'textbox');
     surface.setAttribute('data-placeholder', placeholder);
     surface.spellcheck = true;
-    surface.innerHTML = lastSaved;
+    var box = document.createElement('div');
+    box.innerHTML = lastSaved;
+    Array.prototype.forEach.call(box.querySelectorAll('img[data-jb-ink], .jb-ed-ink-asset'), function (el) {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    });
+    surface.innerHTML = box.innerHTML;
+    page.appendChild(surface);
+    if (uploadImage) {
+      inkCanvas = document.createElement('canvas');
+      inkCanvas.className = 'jb-ed-ink-layer';
+      inkCanvas.setAttribute('aria-label', 'Sharpie');
+      page.appendChild(inkCanvas);
+    }
+    scroll.appendChild(page);
+    stage.appendChild(scroll);
 
-    function currentHtml() {
-      var html = sanitizeHtml(surface.innerHTML);
+    function inkMarkerHtml(id) {
+      id = safeDriveFileId(id != null ? id : inkFileId);
+      if (!id) return '';
+      return '<img data-jb-ink="1" data-jb-file="' + id + '" alt="__jb-ink__">';
+    }
+    function stripInkFromBox(box) {
+      if (!box || !box.querySelectorAll) return;
+      Array.prototype.forEach.call(box.querySelectorAll('canvas, img[data-jb-ink], .jb-ed-ink-asset, .jb-ed-ink-layer'), function (el) {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      });
+    }
+    function surfaceBodyHtml() {
+      var clone = surface.cloneNode(true);
+      stripInkFromBox(clone);
+      return sanitizeHtml(clone.innerHTML);
+    }
+    function composeHtml(body, id) {
+      var html = inkMarkerHtml(id) + sanitizeHtml(body || '');
       if (isEmptyHtml(html)) return '';
       if (html.length > CELL_LIMIT) {
         html = html.slice(0, CELL_LIMIT);
         if (window.JB && JB.toast) JB.toast('Nota limitada a 50 mil caracteres');
       }
       return html;
+    }
+    function currentHtml() {
+      return composeHtml(surfaceBodyHtml(), inkFileId);
     }
     function setEmptyClass() {
       surface.classList.toggle('is-empty', isEmptyHtml(surface.innerHTML));
@@ -523,18 +597,26 @@
     }
     function persist(manual) {
       if (destroyed || !onSave) { dirty = false; return; }
-      var html = currentHtml();
-      if (html === lastSaved && !manual) {
+      function write() {
+        if (destroyed || !onSave) return;
+        var html = currentHtml();
+        if (html === lastSaved && !manual) {
+          dirty = false;
+          setStatus('ok', 'Salvo');
+          resetTimer();
+          return;
+        }
+        lastSaved = html;
         dirty = false;
-        setStatus('ok', 'Salvo');
+        setStatus('ok', manual ? 'Salvo' : 'Salvo automaticamente');
         resetTimer();
+        onSave(html, { manual: !!manual });
+      }
+      if (inkDirty && uploadImage) {
+        saveInkNow().then(write, write);
         return;
       }
-      lastSaved = html;
-      dirty = false;
-      setStatus('ok', manual ? 'Salvo' : 'Salvo automaticamente');
-      resetTimer();
-      onSave(html, { manual: !!manual });
+      write();
     }
     function cmd(name, val) {
       surface.focus();
@@ -674,6 +756,11 @@
       try { document.execCommand('styleWithCSS', false, false); } catch (_) {}
       markDirty();
     }
+    function elHasHighlight(el) {
+      if (!el || el === surface || el.nodeType !== 1) return false;
+      return !!cssHighlightFromStyle(el.getAttribute('style') || '')
+        || !!cssHighlightFromStyle('background-color:' + String((el.style && el.style.backgroundColor) || ''));
+    }
     function wrapSelectionHighlight(bg) {
       var sel = window.getSelection();
       if (!sel) return;
@@ -706,16 +793,73 @@
         range.insertNode(wrap);
       }
     }
-    function clearTransparentHighlights() {
-      Array.prototype.forEach.call(surface.querySelectorAll('span, mark'), function (el) {
-        var bg = String((el.style && el.style.backgroundColor) || '');
-        if (!bg) return;
-        if (bg === 'transparent' || bg === 'inherit' || bg === 'rgba(0, 0, 0, 0)') {
-          el.style.backgroundColor = '';
-          var st = el.getAttribute('style');
-          if (st != null && !String(st).replace(/\s|;/g, '')) el.removeAttribute('style');
-        }
-      });
+    function clearElHighlight(el) {
+      if (!el || !el.style) return;
+      el.style.backgroundColor = '';
+      var st = el.getAttribute('style');
+      if (st != null && !String(st).replace(/\s|;/g, '')) el.removeAttribute('style');
+    }
+    function splitHighlightAtCaret(hl, range, sel) {
+      var left = document.createRange();
+      try {
+        left.setStart(hl, 0);
+        left.setEnd(range.startContainer, range.startOffset);
+      } catch (_) {
+        clearElHighlight(hl);
+        var fallback = document.createRange();
+        fallback.setStart(hl, 0);
+        fallback.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(fallback);
+        return fallback;
+      }
+      if (!left.collapsed) {
+        var frag = left.extractContents();
+        var keep = hl.cloneNode(false);
+        keep.appendChild(frag);
+        if (hl.parentNode) hl.parentNode.insertBefore(keep, hl);
+      }
+      clearElHighlight(hl);
+      var caret = document.createRange();
+      try {
+        caret.setStart(hl, 0);
+      } catch (_) {
+        caret.selectNodeContents(hl);
+      }
+      caret.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(caret);
+      return caret;
+    }
+    function clearHighlightFromCaret() {
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return false;
+      var range = sel.getRangeAt(0);
+      if (!rangeInSurface(range)) return false;
+      if (!range.collapsed) {
+        var hit = false;
+        Array.prototype.forEach.call(surface.querySelectorAll('span, font, mark, p, div, li, h1, h2, h3'), function (el) {
+          if (!elHasHighlight(el)) return;
+          try { if (!range.intersectsNode(el)) return; } catch (_) { return; }
+          clearElHighlight(el);
+          hit = true;
+        });
+        return hit;
+      }
+      var node = range.startContainer;
+      var el = node.nodeType === 1 ? node : node.parentElement;
+      var stack = [];
+      while (el && el !== surface) {
+        if (elHasHighlight(el)) stack.push(el);
+        el = el.parentElement;
+      }
+      if (!stack.length) return false;
+      var live = range;
+      var i;
+      for (i = 0; i < stack.length; i++) {
+        live = splitHighlightAtCaret(stack[i], live, sel);
+      }
+      return true;
     }
     function paintHlBtn() {
       if (hlSwatch) hlSwatch.style.background = lastHighlight || 'transparent';
@@ -723,27 +867,34 @@
     function applyHighlight(color) {
       var bg = color ? cssHighlightFromStyle('background-color:' + color) : '';
       var sel = window.getSelection();
-      var inEditor = sel && sel.rangeCount && rangeInSurface(sel.getRangeAt(0));
-      if (!inEditor) restoreSelection();
+      if (sel && sel.rangeCount && rangeInSurface(sel.getRangeAt(0))) saveSelection();
+      else restoreSelection();
       surface.focus();
+      restoreSelection();
+      if (!bg) {
+        clearHighlightFromCaret();
+        paintHlBtn();
+        try { document.execCommand('styleWithCSS', false, false); } catch (_) {}
+        markDirty();
+        return;
+      }
       sel = window.getSelection();
       if (sel && sel.rangeCount) {
-        var live = sel.getRangeAt(0);
-        if (rangeInSurface(live) && live.collapsed) {
-          expandRangeToWord(live);
+        var live2 = sel.getRangeAt(0);
+        if (rangeInSurface(live2) && live2.collapsed) {
+          expandRangeToWord(live2);
           sel.removeAllRanges();
-          sel.addRange(live);
+          sel.addRange(live2);
         }
       }
       try { document.execCommand('styleWithCSS', false, true); } catch (_) {}
       var ok = false;
-      try { ok = document.execCommand('hiliteColor', false, bg || 'transparent'); } catch (_) {}
+      try { ok = document.execCommand('hiliteColor', false, bg); } catch (_) {}
       if (!ok) {
-        try { ok = document.execCommand('backColor', false, bg || 'transparent'); } catch (_) {}
+        try { ok = document.execCommand('backColor', false, bg); } catch (_) {}
       }
       if (!ok) wrapSelectionHighlight(bg);
-      clearTransparentHighlights();
-      if (bg) lastHighlight = bg;
+      lastHighlight = bg;
       paintHlBtn();
       try { document.execCommand('styleWithCSS', false, false); } catch (_) {}
       markDirty();
@@ -774,7 +925,7 @@
     }
     function hydrateImages() {
       if (!loadImage || destroyed) return;
-      var imgs = surface.querySelectorAll('img[data-jb-file]');
+      var imgs = surface.querySelectorAll('img[data-jb-file]:not([data-jb-ink])');
       Array.prototype.forEach.call(imgs, function (img) {
         var id = safeDriveFileId(img.getAttribute('data-jb-file'));
         if (!id || img.getAttribute('data-jb-hydrated') === id) return;
@@ -832,64 +983,146 @@
       var cssW = r.width || 1;
       var cssH = r.height || 1;
       var dpr = inkCanvas.width / cssW;
+      if (!isFinite(dpr) || dpr <= 0) dpr = 1;
       inkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       inkCtx.clearRect(0, 0, cssW, cssH);
+      if (inkBase && inkBase.naturalWidth) {
+        inkCtx.drawImage(inkBase, 0, 0, inkBase.naturalWidth / dpr, inkBase.naturalHeight / dpr);
+      }
       var i;
       for (i = 0; i < inkStrokes.length; i++) paintInkStroke(inkStrokes[i]);
     }
     function sizeInkCanvas() {
       if (!inkCanvas) return;
-      var wrap = inkCanvas.parentNode;
-      var cssW = (wrap && wrap.clientWidth) || inkCanvas.clientWidth || 320;
-      var cssH = compact ? 140 : 240;
+      var cssW = page.clientWidth || scroll.clientWidth || 320;
+      var cssH = Math.max(surface.scrollHeight, scroll.clientHeight, compact ? 112 : 320);
       var dpr = Math.min(2, window.devicePixelRatio || 1);
+      inkCanvas.style.width = cssW + 'px';
       inkCanvas.style.height = cssH + 'px';
-      inkCanvas.width = Math.max(1, Math.round(cssW * dpr));
-      inkCanvas.height = Math.max(1, Math.round(cssH * dpr));
+      var pxW = Math.max(1, Math.round(cssW * dpr));
+      var pxH = Math.max(1, Math.round(cssH * dpr));
+      if (inkCanvas.width !== pxW || inkCanvas.height !== pxH) {
+        inkCanvas.width = pxW;
+        inkCanvas.height = pxH;
+      }
       inkCtx = inkCanvas.getContext('2d');
       redrawInk();
     }
     function paintInkTools() {
-      if (!inkPanel) return;
-      Array.prototype.forEach.call(inkPanel.querySelectorAll('[data-ink-color]'), function (el) {
+      if (!inkTools) return;
+      Array.prototype.forEach.call(inkTools.querySelectorAll('[data-ink-color]'), function (el) {
         el.classList.toggle('on', el.getAttribute('data-ink-color') === inkColor);
       });
-      Array.prototype.forEach.call(inkPanel.querySelectorAll('[data-ink-width]'), function (el) {
+      Array.prototype.forEach.call(inkTools.querySelectorAll('[data-ink-width]'), function (el) {
         el.classList.toggle('on', Number(el.getAttribute('data-ink-width')) === inkWidth);
       });
+    }
+    function canvasToUploadFile() {
+      if (!inkCanvas) return null;
+      try {
+        var blob = dataUrlToBlob(inkCanvas.toDataURL('image/png'));
+        if (!blob || !blob.size) return null;
+        return blobToUploadFile(blob, 'sharpie-overlay.png');
+      } catch (_) { return null; }
+    }
+    function setInkMode(on) {
+      if (!uploadImage || !inkCanvas) return;
+      inkOpen = !!on;
+      root.classList.toggle('ink-on', inkOpen);
+      if (inkTools) inkTools.hidden = !inkOpen;
+      if (inkBtn) inkBtn.classList.toggle('on', inkOpen);
+      if (inkOpen) {
+        setHlMenuOpen(false);
+        setFsMenuOpen(false);
+        sizeInkCanvas();
+      }
+    }
+    function toggleInk() {
+      setInkMode(!inkOpen);
+    }
+    function scheduleInkSave() {
+      inkDirty = true;
+      markDirty();
+      if (inkSaveTimer) clearTimeout(inkSaveTimer);
+      inkSaveTimer = setTimeout(function () {
+        inkSaveTimer = null;
+        saveInkNow().then(function () {
+          if (!destroyed && onSave) persist(false);
+        });
+      }, INK_SAVE_MS);
+    }
+    function saveInkNow() {
+      if (inkSaveTimer) { clearTimeout(inkSaveTimer); inkSaveTimer = null; }
+      if (!uploadImage || !inkCanvas) {
+        inkDirty = false;
+        return Promise.resolve();
+      }
+      if (!inkBase && !inkStrokes.length) {
+        inkFileId = '';
+        inkDirty = false;
+        return Promise.resolve();
+      }
+      if (inkBusy) {
+        return new Promise(function (resolve) {
+          setTimeout(function () {
+            if (destroyed) { resolve(); return; }
+            resolve(saveInkNow());
+          }, 80);
+        });
+      }
+      sizeInkCanvas();
+      var file = canvasToUploadFile();
+      if (!file || file.size > IMAGE_MAX_BYTES) {
+        inkDirty = false;
+        return Promise.resolve();
+      }
+      inkBusy = true;
+      var token = ++inkToken;
+      var op = (inkFileId && replaceImage)
+        ? Promise.resolve(replaceImage(inkFileId, file)).catch(function () { return uploadImage(file); })
+        : Promise.resolve(uploadImage(file));
+      return op.then(function (info) {
+        if (token !== inkToken) return;
+        var id = safeDriveFileId(info && info.id);
+        if (id) inkFileId = id;
+        inkDirty = false;
+        if (destroyed) return;
+        try {
+          var url = (typeof URL !== 'undefined' && URL.createObjectURL) ? URL.createObjectURL(file) : '';
+          if (url) {
+            var img = new Image();
+            img.onload = function () {
+              if (token === inkToken && !destroyed) { inkBase = img; inkStrokes = []; redrawInk(); }
+            };
+            img.src = url;
+          }
+        } catch (_) {}
+      }).catch(function () {
+        if (token === inkToken && window.JB && JB.toast) JB.toast('Não foi possível salvar o desenho');
+      }).then(function () {
+        if (token === inkToken) inkBusy = false;
+        if (!destroyed && inkDirty) return saveInkNow();
+      });
+    }
+    function hydrateInk() {
+      if (!inkFileId || !loadImage || !inkCanvas) return;
+      Promise.resolve(loadImage(inkFileId)).then(function (url) {
+        if (destroyed || !url) return;
+        var img = new Image();
+        img.onload = function () { inkBase = img; sizeInkCanvas(); };
+        img.src = url;
+      }).catch(function () {});
     }
     function resetInk() {
       inkStrokes = [];
       inkCurrent = null;
+      inkBase = null;
+      inkFileId = '';
       redrawInk();
-    }
-    function closeInk() {
-      inkToken += 1;
-      inkOpen = false;
-      inkBusy = false;
-      inkCurrent = null;
-      if (inkPanel) inkPanel.hidden = true;
-      if (inkBtn) inkBtn.classList.remove('on');
-      window.removeEventListener('resize', sizeInkCanvas);
-      resetInk();
-    }
-    function openInk() {
-      if (!uploadImage || !inkPanel) return;
-      setHlMenuOpen(false);
-      setFsMenuOpen(false);
-      inkOpen = true;
-      inkPanel.hidden = false;
-      if (inkBtn) inkBtn.classList.add('on');
-      window.addEventListener('resize', sizeInkCanvas);
-      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(sizeInkCanvas);
-      else sizeInkCanvas();
-    }
-    function toggleInk() {
-      if (inkOpen) closeInk();
-      else openInk();
+      scheduleInkSave();
     }
     function onInkPointerDown(ev) {
-      if (!inkOpen || inkBusy || ev.button) return;
+      if (!inkOpen || ev.button) return;
       ev.preventDefault();
       try { inkCanvas.setPointerCapture(ev.pointerId); } catch (_) {}
       inkCurrent = { color: inkColor, width: inkWidth, pts: [inkPos(ev)] };
@@ -903,43 +1136,9 @@
       redrawInk();
     }
     function onInkPointerUp() {
+      if (!inkCurrent) return;
       inkCurrent = null;
-    }
-    function finishInk() {
-      if (!uploadImage || inkBusy || destroyed) return;
-      if (!inkStrokes.length) {
-        if (window.JB && JB.toast) JB.toast('Desenhe algo primeiro');
-        return;
-      }
-      inkBusy = true;
-      var token = inkToken;
-      if (!inkCanvas.toBlob) {
-        inkBusy = false;
-        if (window.JB && JB.toast) JB.toast('Não foi possível salvar o desenho');
-        return;
-      }
-      inkCanvas.toBlob(function (blob) {
-        if (destroyed || token !== inkToken) return;
-        if (!blob) {
-          inkBusy = false;
-          if (window.JB && JB.toast) JB.toast('Não foi possível salvar o desenho');
-          return;
-        }
-        if (blob.size > IMAGE_MAX_BYTES) {
-          inkBusy = false;
-          if (window.JB && JB.toast) JB.toast('Imagem grande demais (máx. 10 MB)');
-          return;
-        }
-        var file = blobToUploadFile(blob, 'sharpie.png');
-        if (window.JB && JB.toast) JB.toast('Enviando imagem…');
-        Promise.resolve(uploadImage(file)).then(function (info) {
-          if (destroyed || token !== inkToken) return;
-          insertUploadedImage(info);
-          closeInk();
-        }).catch(function () {
-          if (token === inkToken && window.JB && JB.toast) JB.toast('Não foi possível salvar o desenho');
-        }).then(function () { if (token === inkToken) inkBusy = false; });
-      }, 'image/png');
+      scheduleInkSave();
     }
     function pasteImages(ev) {
       if (!uploadImage) return;
@@ -1094,11 +1293,9 @@
       inkBtn.addEventListener('click', toggleInk);
       bar.appendChild(inkBtn);
 
-      inkPanel = document.createElement('div');
-      inkPanel.className = 'jb-ed-ink';
-      inkPanel.hidden = true;
-      var inkTools = document.createElement('div');
+      inkTools = document.createElement('div');
       inkTools.className = 'jb-ed-ink-tools';
+      inkTools.hidden = true;
       INK_COLORS.forEach(function (c) {
         var chip = document.createElement('button');
         chip.type = 'button';
@@ -1121,42 +1318,23 @@
       boldBtn.addEventListener('click', function () { inkWidth = INK_WIDTH_BOLD; paintInkTools(); });
       var undoBtn = btn('Desfazer', 'Desfazer traço');
       undoBtn.addEventListener('click', function () {
-        if (inkBusy || !inkStrokes.length) return;
+        if (!inkStrokes.length) return;
         inkStrokes.pop();
         inkCurrent = null;
         redrawInk();
+        scheduleInkSave();
       });
       var clearBtn = btn('Limpar', 'Limpar desenho');
-      clearBtn.addEventListener('click', function () {
-        if (inkBusy) return;
-        resetInk();
-      });
-      var cancelBtn = btn('Cancelar', 'Descartar desenho');
-      cancelBtn.addEventListener('click', closeInk);
-      var doneBtn = btn('Pronto', 'Inserir desenho', 'jb-ed-ink-done');
-      doneBtn.addEventListener('click', finishInk);
+      clearBtn.addEventListener('click', function () { resetInk(); });
       inkTools.appendChild(fineBtn);
       inkTools.appendChild(boldBtn);
       inkTools.appendChild(undoBtn);
       inkTools.appendChild(clearBtn);
-      var inkSpacer = document.createElement('span');
-      inkSpacer.className = 'jb-ed-ink-spacer';
-      inkTools.appendChild(inkSpacer);
-      inkTools.appendChild(cancelBtn);
-      inkTools.appendChild(doneBtn);
-      var inkWrap = document.createElement('div');
-      inkWrap.className = 'jb-ed-ink-canvas-wrap';
-      inkCanvas = document.createElement('canvas');
-      inkCanvas.className = 'jb-ed-ink-canvas';
-      inkCanvas.setAttribute('aria-label', 'Área do Sharpie');
+      paintInkTools();
       inkCanvas.addEventListener('pointerdown', onInkPointerDown);
       inkCanvas.addEventListener('pointermove', onInkPointerMove);
       inkCanvas.addEventListener('pointerup', onInkPointerUp);
       inkCanvas.addEventListener('pointercancel', onInkPointerUp);
-      inkWrap.appendChild(inkCanvas);
-      inkPanel.appendChild(inkTools);
-      inkPanel.appendChild(inkWrap);
-      paintInkTools();
     }
 
     [
@@ -1255,8 +1433,8 @@
     bar.appendChild(linkBtn);
 
     root.appendChild(bar);
-    if (inkPanel) root.appendChild(inkPanel);
-    root.appendChild(surface);
+    if (inkTools) root.appendChild(inkTools);
+    root.appendChild(stage);
     if (!compact) {
       var foot = document.createElement('div');
       foot.className = 'jb-ed-foot';
@@ -1277,8 +1455,20 @@
     host.appendChild(root);
     setEmptyClass();
     hydrateImages();
+    hydrateInk();
+    if (inkCanvas) {
+      sizeInkCanvas();
+      window.addEventListener('resize', sizeInkCanvas);
+      if (typeof ResizeObserver === 'function') {
+        inkRo = new ResizeObserver(function () { sizeInkCanvas(); });
+        try { inkRo.observe(surface); inkRo.observe(scroll); } catch (_) {}
+      }
+    }
 
-    surface.addEventListener('input', markDirty);
+    surface.addEventListener('input', function () {
+      markDirty();
+      if (inkCanvas) sizeInkCanvas();
+    });
     if (uploadImage) surface.addEventListener('paste', pasteImages);
     surface.addEventListener('keyup', syncBar);
     surface.addEventListener('mouseup', syncBar);
@@ -1334,27 +1524,64 @@
 
     return {
       getValue: currentHtml,
+      flushInk: saveInkNow,
       setValue: function (v) {
         lastSaved = valueToHtml(v);
-        surface.innerHTML = lastSaved;
+        inkFileId = pullInkFileId(lastSaved);
+        inkBase = null;
+        inkStrokes = [];
+        inkCurrent = null;
+        inkDirty = false;
+        var box2 = document.createElement('div');
+        box2.innerHTML = lastSaved;
+        stripInkFromBox(box2);
+        surface.innerHTML = box2.innerHTML;
         dirty = false;
         setEmptyClass();
         setStatus('', lastSaved ? 'Salvo' : '');
         resetTimer();
         hydrateImages();
+        hydrateInk();
+        sizeInkCanvas();
       },
       save: function () { persist(true); },
       destroy: function () {
         if (destroyed) return;
-        destroyed = true;
         document.removeEventListener('mousedown', onDocFsDown);
         document.removeEventListener('selectionchange', onSelChange);
         window.removeEventListener('resize', sizeInkCanvas);
-        inkOpen = false;
+        if (inkRo) { try { inkRo.disconnect(); } catch (_) {} inkRo = null; }
         if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
-        if (dirty) persist(false);
+        if (inkSaveTimer) { clearTimeout(inkSaveTimer); inkSaveTimer = null; }
+        inkOpen = false;
+        var bodyHtml = '';
+        try { bodyHtml = surfaceBodyHtml(); } catch (_) {}
+        var file = null;
+        if (uploadImage && (inkBase || inkStrokes.length)) {
+          try { file = canvasToUploadFile(); } catch (_) {}
+        }
+        var fid = inkFileId;
+        var saveCb = onSave;
+        var wasDirty = dirty || inkDirty;
+        destroyed = true;
         if (root.parentNode) root.parentNode.removeChild(root);
         host.innerHTML = '';
+        function htmlWith(id) {
+          return composeHtml(bodyHtml, id);
+        }
+        if (file && uploadImage) {
+          var op = (fid && replaceImage)
+            ? Promise.resolve(replaceImage(fid, file)).catch(function () { return uploadImage(file); })
+            : Promise.resolve(uploadImage(file));
+          op.then(function (info) {
+            var id = safeDriveFileId(info && info.id) || fid;
+            if (saveCb) saveCb(htmlWith(id), { manual: false });
+          }).catch(function () {
+            if (saveCb && wasDirty) saveCb(htmlWith(fid), { manual: false });
+          });
+          return;
+        }
+        if (wasDirty && saveCb) saveCb(htmlWith(fid), { manual: false });
       },
       focus: function () { surface.focus(); }
     };
@@ -1381,7 +1608,8 @@
     cssHighlightFromStyle: cssHighlightFromStyle,
     cssTextMarksFromStyle: cssTextMarksFromStyle,
     HIGHLIGHTS: HIGHLIGHTS,
-    blobToUploadFile: blobToUploadFile
+    blobToUploadFile: blobToUploadFile,
+    pullInkFileId: pullInkFileId
   };
 
   if (typeof window !== 'undefined') {

@@ -150,3 +150,15 @@ test('blobToUploadFile names a PNG for Drive upload', function () {
   assert.equal(file.type, 'image/png');
   assert.equal(file.name, 'sharpie.png');
 });
+
+test('pullInkFileId reads overlay marker', function () {
+  var id = '1AbCdEfGhIjKlMnOpQrSt';
+  assert.equal(ED.pullInkFileId('<img data-jb-ink="1" data-jb-file="' + id + '" alt="__jb-ink__">'), id);
+  assert.equal(ED.pullInkFileId('<img data-jb-file="' + id + '" data-jb-ink="1">'), id);
+  assert.equal(ED.pullInkFileId('<p>oi</p>'), '');
+  assert.equal(ED.pullInkFileId('<img data-jb-file="' + id + '" alt="snip">'), '');
+});
+
+test('isEmptyHtml treats ink overlay as content', function () {
+  assert.equal(ED.isEmptyHtml('<img data-jb-ink="1" data-jb-file="1AbCdEfGhIjKlMnOpQrSt" alt="__jb-ink__">'), false);
+});

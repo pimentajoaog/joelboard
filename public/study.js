@@ -215,7 +215,11 @@ function studyEditor(cb){
   return Promise.resolve(ed);
 }
 function studyNoteImages(matId){
-  return { upload:function(file){ return studyUploadNoteImage(file, matId||(evtMaterias&&evtMaterias[0])||''); }, load:studyLoadNoteImage };
+  return {
+    upload:function(file){ return studyUploadNoteImage(file, matId||(evtMaterias&&evtMaterias[0])||''); },
+    load:studyLoadNoteImage,
+    replace:studyReplaceNoteImage
+  };
 }
 function destroyEvtEd(){ if(_evtEd){ _evtEd.destroy(); _evtEd=null; } }
 function mountEvtEd(value){
@@ -254,14 +258,19 @@ function saveEvt(){
   if(!titulo){ $('evtTitulo').focus(); return; }
   if(!data){ toast('Escolha uma data'); return; }
   var concl=$('evtConcluido').classList.contains('on');
-  var e;
-  if(editingEvt){ e=(DATA.eventos||[]).find(function(x){return x.id===editingEvt;}); if(!e) return; }
-  else { e={id:uuid()}; DATA.eventos.push(e); }
-  e.titulo=titulo; e.tipo=evtTipo; e.data=data; e.hora=($('evtHora').value||''); e.materiaIds=evtMaterias.slice(); e.concluido=concl; e.notas=evtNotesValue();
-  closeEvt(); render(); toast('✓ Salvo');
-  if(editingEvt){ saveEvtRow(e); } else {
-    JB.api('POST', ssUrl('/values/Eventos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[evtRowVals(e)] }).catch(function(){ toast('Erro ao salvar'); });
+  var ed=_evtEd;
+  function commit(notas){
+    var e;
+    if(editingEvt){ e=(DATA.eventos||[]).find(function(x){return x.id===editingEvt;}); if(!e) return; }
+    else { e={id:uuid()}; DATA.eventos.push(e); }
+    e.titulo=titulo; e.tipo=evtTipo; e.data=data; e.hora=($('evtHora').value||''); e.materiaIds=evtMaterias.slice(); e.concluido=concl; e.notas=notas;
+    closeEvt(); render(); toast('✓ Salvo');
+    if(editingEvt){ saveEvtRow(e); } else {
+      JB.api('POST', ssUrl('/values/Eventos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[evtRowVals(e)] }).catch(function(){ toast('Erro ao salvar'); });
+    }
   }
+  var p = ed && ed.flushInk ? ed.flushInk() : Promise.resolve();
+  Promise.resolve(p).then(function(){ commit(ed && ed.getValue ? ed.getValue() : ''); }).catch(function(){ commit(ed && ed.getValue ? ed.getValue() : ''); });
 }
 function evtRowVals(e){ return [e.titulo,e.tipo,e.data,e.hora,(e.materiaIds||[]).join(','),e.concluido?'1':'',e.notas,e.id]; }
 function saveEvtRow(e){ findRow('Eventos',7,e.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Eventos!A'+row+':H'+row)+'?valueInputOption=RAW'), { values:[evtRowVals(e)] }); }).catch(function(){ toast('Erro ao salvar'); }); }
@@ -470,6 +479,24 @@ function studyUploadNoteImage(file, matId){
     if(!f||!f.id) throw new Error('upload_failed');
     try{ _imgUrlCache[f.id]=URL.createObjectURL(file); }catch(_){}
     return { id:f.id, name:f.name||file.name||'imagem' };
+  });
+}
+function studyReplaceNoteImage(fileId, file){
+  fileId=String(fileId||'').trim();
+  if(!fileId || !file) return Promise.reject(new Error('no_file'));
+  if(file.size>10*1024*1024) return Promise.reject(new Error('too_big'));
+  var url='https://www.googleapis.com/upload/drive/v3/files/'+encodeURIComponent(fileId)+'?uploadType=media&fields=id,name';
+  function attempt(tok, retry){
+    return fetch(url, { method:'PATCH', headers:{ Authorization:'Bearer '+tok, 'Content-Type':(file.type||'image/png') }, body:file }).then(function(r){
+      if(r.status===401 && retry) return JB.requestToken(false, { force:true }).then(function(nt){ return attempt(nt, false); });
+      if(!r.ok) return r.text().then(function(){ throw new Error('HTTP '+r.status); });
+      return r.json();
+    });
+  }
+  var t=JB.cachedToken();
+  return (t?Promise.resolve(t):JB.requestToken(false)).then(function(tok){ return attempt(tok, true); }).then(function(f){
+    try{ _imgUrlCache[fileId]=URL.createObjectURL(file); }catch(_){}
+    return { id:(f&&f.id)||fileId, name:(f&&f.name)||file.name||'imagem' };
   });
 }
 function studyLoadNoteImage(fileId){

@@ -547,8 +547,15 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
   border-radius: 3px; padding: 0 2px; color: #111827;
   box-decoration-break: clone; -webkit-box-decoration-break: clone;
 }
-.jb-ed-surface { min-height: 320px; background: var(--surface, #191d2c); border: 1px solid var(--border, #2d3346); border-radius: 12px; padding: 16px 18px; overflow: auto; line-height: 1.65; font-size: 16px; color: var(--text, #e7eaf3); outline: none; }
-.jb-ed-surface:focus { border-color: var(--primary, #818cf8); }
+.jb-ed-stage { min-width: 0; }
+.jb-ed-scroll {
+  min-height: 320px; background: var(--surface, #191d2c); border: 1px solid var(--border, #2d3346);
+  border-radius: 12px; overflow: auto;
+}
+.jb-ed-scroll:focus-within { border-color: var(--primary, #818cf8); }
+.jb-ed-page { position: relative; min-height: 100%; }
+.jb-ed-surface { min-height: 320px; background: transparent; border: 0; border-radius: 0; padding: 16px 18px; overflow: visible; line-height: 1.65; font-size: 16px; color: var(--text, #e7eaf3); outline: none; position: relative; z-index: 1; }
+.jb-ed-surface:focus { outline: none; }
 .jb-ed-surface.is-empty:before { content: attr(data-placeholder); color: var(--muted, #7b85a0); pointer-events: none; }
 .jb-ed-surface h1, .jb-ed-surface h2, .jb-ed-surface h3 { font-weight: 800; margin: 0 0 10px; line-height: 1.25; }
 .jb-ed-surface h1 { font-size: 28px; }
@@ -569,7 +576,8 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-surface img[data-jb-file] { display: block; max-width: 100%; height: auto; border-radius: 10px; margin: 10px 0; background: var(--surface2, #232838); }
 .jb-ed-surface img.jb-ed-img-loading { min-height: 88px; }
 .jb-ed-surface img.jb-ed-img-err { outline: 1px dashed var(--border, #2d3346); }
-.jb-ed-compact .jb-ed-surface { min-height: 112px; max-height: 200px; padding: 10px 12px; font-size: 14px; }
+.jb-ed-compact .jb-ed-scroll { min-height: 112px; max-height: 200px; }
+.jb-ed-compact .jb-ed-surface { min-height: 112px; max-height: none; padding: 10px 12px; font-size: 14px; }
 .jb-ed-compact .jb-ed-surface h1 { font-size: 20px; }
 .jb-ed-compact .jb-ed-surface h2 { font-size: 17px; }
 .jb-ed-compact .jb-ed-surface h3 { font-size: 15px; }
@@ -579,22 +587,20 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-compact .jb-ed-hl-caret { height: 28px; min-width: 28px; font-size: 11px; }
 .jb-ed-compact .jb-ed-fs-input { width: 36px; }
 .jb-ed-compact .jb-ed-hl-caret { min-width: 18px; width: 18px; }
-.jb-ed-ink { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border, #2d3346); border-radius: 12px; padding: 8px; background: var(--surface2, #232838); }
-.jb-ed-ink[hidden] { display: none; }
 .jb-ed-ink-tools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.jb-ed-ink-spacer { flex: 1; min-width: 8px; }
+.jb-ed-ink-tools[hidden] { display: none !important; }
 .jb-ed-ink-chip {
   width: 22px; height: 22px; border-radius: 99px; border: 2px solid rgba(255,255,255,.2);
   padding: 0; cursor: pointer;
 }
 .jb-ed-ink-chip.on { border-color: var(--primary, #818cf8); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #818cf8) 35%, transparent); }
-.jb-ed-ink-done { border-color: var(--primary, #818cf8); color: var(--primary, #818cf8); }
-.jb-ed-ink-canvas-wrap {
-  background: #0f1320; border: 1px dashed var(--border, #2d3346); border-radius: 10px;
-  overflow: hidden; touch-action: none;
+.jb-ed-ink-layer {
+  position: absolute; left: 0; top: 0; z-index: 2; display: block;
+  pointer-events: none; touch-action: none;
 }
-.jb-ed-ink-canvas { display: block; width: 100%; height: 240px; touch-action: none; cursor: crosshair; }
-.jb-ed-compact .jb-ed-ink-canvas { height: 140px; }
+.jb-ed.ink-on .jb-ed-ink-layer { pointer-events: auto; cursor: crosshair; }
+.jb-ed-surface img.jb-ed-ink-asset,
+.jb-ed-surface img[data-jb-ink] { display: none !important; }
 .jb-ed-foot { display: flex; align-items: center; gap: 10px; }
 .jb-ed-status { font-size: 12px; color: var(--muted, #7b85a0); flex: 1; min-width: 0; }
 .jb-ed-status.dirty { color: #fbbf24; }

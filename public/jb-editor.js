@@ -296,7 +296,7 @@
   }
 
   var SHEET_VIEWPORT = 'width=device-width, initial-scale=1, minimum-scale=0.25, maximum-scale=5, user-scalable=yes';
-  var BOARD_REACH = 160;
+  var BOARD_EDGE_BUMP = 96;
   var BOARD_MAX_PAD = 8000;
 
   function inkStrokeBounds(strokes) {
@@ -360,14 +360,12 @@
   }
 
   function inkBoardGrow(prev, vis, extra, maxPad) {
-    extra = extra == null ? BOARD_REACH : extra;
+    extra = extra == null ? 0 : extra;
     maxPad = maxPad == null ? BOARD_MAX_PAD : maxPad;
     prev = prev || {};
     vis = vis || {};
     var prevL = Math.max(0, Number(prev.left) || 0);
-    var prevR = Math.max(0, Number(prev.right) || 0);
     var prevT = Math.max(0, Number(prev.top) || 0);
-    var prevB = Math.max(0, Number(prev.bottom) || 0);
     var viewW = Math.max(1, Number(vis.viewW) || Number(vis.width) || 1);
     var viewH = Math.max(1, Number(vis.viewH) || Number(vis.height) || 1);
     var visW = Math.max(1, Number(vis.width) || viewW);
@@ -378,14 +376,16 @@
     var pageTop = Number(vis.pageTop);
     if (!isFinite(pageTop)) pageTop = 0;
     pageTop = Math.round(pageTop);
-    var left = Math.min(maxPad, Math.max(prevL, Math.ceil(Math.max(0, extra - pageLeft))));
+    var zoomedOut = visW > viewW + 2 || visH > viewH + 2;
+    if (!zoomedOut && extra <= 0) {
+      return { left: 0, right: 0, top: 0, bottom: 0 };
+    }
+    var left = Math.min(maxPad, Math.max(0, Math.ceil(Math.max(0, extra - pageLeft, -pageLeft))));
     var pageLeftAfter = pageLeft + (left - prevL);
-    var rightNeed = Math.ceil(pageLeftAfter + visW + extra - left - viewW);
-    var right = Math.min(maxPad, Math.max(prevR, Math.max(0, rightNeed)));
-    var top = Math.min(maxPad, Math.max(prevT, Math.ceil(Math.max(0, extra - pageTop))));
+    var right = Math.min(maxPad, Math.max(0, Math.ceil(pageLeftAfter + visW + extra - left - viewW)));
+    var top = Math.min(maxPad, Math.max(0, Math.ceil(Math.max(0, extra - pageTop, -pageTop))));
     var pageTopAfter = pageTop + (top - prevT);
-    var bottomNeed = Math.ceil(pageTopAfter + visH + extra - top - viewH);
-    var bottom = Math.min(maxPad, Math.max(prevB, Math.max(0, bottomNeed)));
+    var bottom = Math.min(maxPad, Math.max(0, Math.ceil(pageTopAfter + visH + extra - top - viewH)));
     return { left: left, right: right, top: top, bottom: bottom };
   }
 
@@ -807,6 +807,7 @@
     var inkViewRaf = 0;
     var inkBoardRaf = 0;
     var inkBoard = { left: 0, right: 0, top: 0, bottom: 0 };
+    var inkNudge = { left: 0, right: 0, top: 0, bottom: 0 };
     var lastInkOrigin = null;
     var selectedImg = null;
     var imgFrame = null;
@@ -2155,13 +2156,19 @@
     function clearInkBoard() {
       if (typeof document === 'undefined') return;
       inkBoard = { left: 0, right: 0, top: 0, bottom: 0 };
+      inkNudge = { left: 0, right: 0, top: 0, bottom: 0 };
       var html = document.documentElement;
+      html.classList.remove('jb-ed-board-x', 'jb-ed-board-y');
       html.style.removeProperty('--jb-ed-pad-left');
       html.style.removeProperty('--jb-ed-pad-right');
       html.style.removeProperty('--jb-ed-pad-top');
       html.style.removeProperty('--jb-ed-pad-bottom');
       var rail = document.getElementById('jb-ed-board-rail');
       if (rail && rail.parentNode) rail.parentNode.removeChild(rail);
+    }
+    function setBoardPadVar(html, name, value) {
+      if (value) html.style.setProperty(name, value + 'px');
+      else html.style.removeProperty(name);
     }
     function syncInkBoard() {
       if (destroyed || compact || typeof document === 'undefined') {
@@ -2182,30 +2189,41 @@
       var home = origin.left + sl - prevLeft;
       var homeT = origin.top + st - prevTop;
       var strokePads = inkBoardPads(inkStrokes, pageW, viewW, home, 40, BOARD_MAX_PAD, pageH, viewH, homeT);
-      var grown = inkBoardGrow(inkBoard, vis, BOARD_REACH, BOARD_MAX_PAD);
+      var grown = inkBoardGrow(inkBoard, vis, 0, BOARD_MAX_PAD);
       var pads = {
-        left: Math.max(strokePads.left, grown.left),
-        right: Math.max(strokePads.right, grown.right),
-        top: Math.max(strokePads.top, grown.top),
-        bottom: Math.max(strokePads.bottom, grown.bottom)
+        left: Math.max(strokePads.left, grown.left, inkNudge.left),
+        right: Math.max(strokePads.right, grown.right, inkNudge.right),
+        top: Math.max(strokePads.top, grown.top, inkNudge.top),
+        bottom: Math.max(strokePads.bottom, grown.bottom, inkNudge.bottom)
       };
+      var needX = pads.left + pads.right > 0;
+      var needY = pads.top + pads.bottom > 0;
+      html.classList.toggle('jb-ed-board-x', needX);
+      html.classList.toggle('jb-ed-board-y', needY);
       var rail = document.getElementById('jb-ed-board-rail');
-      if (!rail) {
-        rail = document.createElement('div');
-        rail.id = 'jb-ed-board-rail';
-        rail.className = 'jb-ed-board-rail';
-        rail.setAttribute('aria-hidden', 'true');
-        document.body.appendChild(rail);
+      if (!needX && !needY) {
+        if (rail && rail.parentNode) rail.parentNode.removeChild(rail);
+      } else {
+        if (!rail) {
+          rail = document.createElement('div');
+          rail.id = 'jb-ed-board-rail';
+          rail.className = 'jb-ed-board-rail';
+          rail.setAttribute('aria-hidden', 'true');
+          document.body.appendChild(rail);
+        }
+        rail.style.width = (viewW + pads.right) + 'px';
+        rail.style.height = (viewH + pads.bottom) + 'px';
       }
       inkBoard = pads;
-      html.style.setProperty('--jb-ed-pad-left', pads.left + 'px');
-      html.style.setProperty('--jb-ed-pad-right', pads.right + 'px');
-      html.style.setProperty('--jb-ed-pad-top', pads.top + 'px');
-      html.style.setProperty('--jb-ed-pad-bottom', pads.bottom + 'px');
-      rail.style.width = (viewW + pads.right) + 'px';
-      rail.style.height = (viewH + pads.bottom) + 'px';
+      setBoardPadVar(html, '--jb-ed-pad-left', pads.left);
+      setBoardPadVar(html, '--jb-ed-pad-right', pads.right);
+      setBoardPadVar(html, '--jb-ed-pad-top', pads.top);
+      setBoardPadVar(html, '--jb-ed-pad-bottom', pads.bottom);
       if (pads.left !== prevLeft || pads.top !== prevTop) {
         try { window.scrollBy(pads.left - prevLeft, pads.top - prevTop); } catch (_) {}
+      }
+      if (!needX && (window.scrollX || 0)) {
+        try { window.scrollTo(0, window.scrollY || 0); } catch (_) {}
       }
     }
     function scheduleInkBoard() {
@@ -2458,13 +2476,23 @@
       var step = 28;
       var dx = 0;
       var dy = 0;
-      if (clientX < vis.left + margin) dx = -step;
-      else if (clientX > vis.left + vis.width - margin) dx = step;
-      if (clientY < vis.top + margin) dy = -step;
-      else if (clientY > vis.top + vis.height - margin) dy = step;
+      if (clientX < vis.left + margin) {
+        dx = -step;
+        inkNudge.left = Math.max(inkNudge.left, BOARD_EDGE_BUMP);
+      } else if (clientX > vis.left + vis.width - margin) {
+        dx = step;
+        inkNudge.right = Math.max(inkNudge.right, BOARD_EDGE_BUMP);
+      }
+      if (clientY < vis.top + margin) {
+        dy = -step;
+        inkNudge.top = Math.max(inkNudge.top, BOARD_EDGE_BUMP);
+      } else if (clientY > vis.top + vis.height - margin) {
+        dy = step;
+        inkNudge.bottom = Math.max(inkNudge.bottom, BOARD_EDGE_BUMP);
+      }
       if (!dx && !dy) return;
+      syncInkBoard();
       try { window.scrollBy(dx, dy); } catch (_) {}
-      scheduleInkBoard();
     }
     function syncInkTouchAction() {
       if (!inkCanvas) return;
@@ -2510,16 +2538,22 @@
       scheduleInkBoard();
     }
     function onInkPointerUp() {
+      inkNudge = { left: 0, right: 0, top: 0, bottom: 0 };
       if (inkErasing) {
         inkErasing = false;
         if (inkErased) {
           scheduleInkBoard();
           scheduleInkSave();
+        } else {
+          scheduleInkBoard();
         }
         inkErased = false;
         return;
       }
-      if (!inkCurrent) return;
+      if (!inkCurrent) {
+        scheduleInkBoard();
+        return;
+      }
       inkCurrent = null;
       scheduleInkBoard();
       scheduleInkSave();

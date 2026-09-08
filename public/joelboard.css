@@ -636,11 +636,14 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
   pointer-events: none; touch-action: none;
 }
 html.jb-ed-sheet {
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   scrollbar-width: thin;
+}
+html.jb-ed-sheet.jb-ed-board-x {
+  overflow-x: auto;
 }
 html.jb-ed-sheet::-webkit-scrollbar {
   height: 10px;

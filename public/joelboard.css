@@ -574,7 +574,7 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-surface code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
 .jb-ed-surface a { color: var(--primary, #818cf8); cursor: pointer; }
 .jb-ed-surface hr { border: 0; border-top: 1px solid var(--border, #2d3346); margin: 14px 0; }
-.jb-ed-surface img[data-jb-file] { display: block; max-width: 100%; height: auto; box-sizing: border-box; border-radius: 10px; margin: 10px 0; background: var(--surface2, #232838); cursor: pointer; -webkit-user-drag: none; user-select: none; }
+.jb-ed-surface img[data-jb-file] { display: block; max-width: 100%; height: auto; box-sizing: border-box; border-radius: 10px; margin: 10px 0; background: var(--surface2, #232838); cursor: pointer; -webkit-user-drag: none; user-select: none; touch-action: none; }
 .jb-ed-surface img.jb-ed-img-on { outline: 2px solid var(--primary, #818cf8); outline-offset: 2px; }
 .jb-ed-surface img.jb-ed-img-dragging {
   visibility: hidden; pointer-events: none;

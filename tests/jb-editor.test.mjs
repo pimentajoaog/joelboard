@@ -227,8 +227,34 @@ test('image drag ghost follows the cursor on document.body', function () {
   assert.match(src, /imgGhost\.style\.top = Math\.round\(ev\.clientY\)/);
   assert.match(src, /imgSlot = document\.createElement\('span'\)/);
   assert.match(src, /function computeDropRange/);
+  assert.match(src, /beginImgPointerDrag\(ev, img\)/);
   assert.doesNotMatch(css, /\.jb-ed-img-ghost \{[^}]*transform:/);
   assert.doesNotMatch(css, /img\.jb-ed-img-dragging \{[^}]*height: 0/);
+});
+
+test('note image clipboard round-trips Drive id and width', function () {
+  var id = '1aB-C_defghijklmnopqr';
+  var img = {
+    getAttribute: function (name) {
+      if (name === 'data-jb-file') return id;
+      if (name === 'alt') return 'gráfico';
+      if (name === 'style') return 'width: 320px;';
+      if (name === 'data-jb-ink') return null;
+      if (name === 'width') return null;
+      return null;
+    }
+  };
+  var html = ED.noteImgToClipboardHtml(img);
+  assert.match(html, /data-jb-file="1aB-C_defghijklmnopqr"/);
+  assert.match(html, /alt="gráfico"/);
+  assert.match(html, /width: 320px/);
+  var parsed = ED.parseNoteImgClipboard('<html><body><!--StartFragment-->' + html + '<!--EndFragment--></body></html>');
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].id, id);
+  assert.equal(parsed[0].alt, 'gráfico');
+  assert.equal(parsed[0].width, 320);
+  assert.equal(ED.parseNoteImgClipboard('<img data-jb-ink="1" data-jb-file="' + id + '">').length, 0);
+  assert.equal(ED.noteImgToClipboardHtml(null), '');
 });
 
 test('cssImgWidthPx keeps a sane pixel width', function () {

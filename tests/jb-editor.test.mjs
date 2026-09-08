@@ -100,6 +100,17 @@ test('pasteImageFiles picks clipboard images and skips svg', function () {
   assert.equal(files[0].name, 'snip.png');
 });
 
+test('pasteImageFiles does not double files and items of the same image', function () {
+  var a = { type: 'image/png', name: 'image.png', size: 99, lastModified: 1 };
+  var b = { type: 'image/png', name: 'blob', size: 99, lastModified: 2 };
+  var files = ED.pasteImageFiles({
+    files: [a],
+    items: [{ kind: 'file', type: 'image/png', getAsFile: function () { return b; } }]
+  });
+  assert.equal(files.length, 1);
+  assert.equal(files[0].name, 'image.png');
+});
+
 test('parseFontSizeInput clamps Word-like sizes', function () {
   assert.equal(ED.parseFontSizeInput('13'), 13);
   assert.equal(ED.parseFontSizeInput('13px'), 13);
@@ -173,4 +184,28 @@ test('ink overlay size follows the page box, not scrollHeight', function () {
   assert.match(css, /\.jb-ed-scroll \{[\s\S]*scrollbar-gutter: stable/);
   assert.match(css, /\.jb-ed-page \{[\s\S]*overflow: hidden/);
   assert.match(css, /\.jb-ed-ink-layer \{[\s\S]*inset: 0/);
+});
+
+test('dumpInkStrokes round-trips and hitInkStroke finds the top scribble', function () {
+  var strokes = [
+    { color: '#111827', width: 3, pts: [{ x: 0, y: 0 }, { x: 40, y: 0 }] },
+    { color: '#ef4444', width: 8, pts: [{ x: 10, y: 10 }, { x: 10, y: 50 }] }
+  ];
+  var dump = ED.dumpInkStrokes(strokes);
+  var back = ED.parseInkStrokes(dump);
+  assert.equal(back.length, 2);
+  assert.equal(back[1].color, '#ef4444');
+  assert.equal(back[1].pts.length, 2);
+  assert.equal(ED.hitInkStroke(back, { x: 10, y: 30 }), 1);
+  assert.equal(ED.hitInkStroke(back, { x: 30, y: 0 }), 0);
+  assert.equal(ED.hitInkStroke(back, { x: 200, y: 200 }), -1);
+  var id = '1AbCdEfGhIjKlMnOpQrSt';
+  assert.deepEqual(ED.pullInkStrokes('<img data-jb-ink="1" data-jb-file="' + id + '" data-jb-ink-d="' + dump + '" alt="__jb-ink__">'), back);
+});
+
+test('cssImgWidthPx keeps a sane pixel width', function () {
+  assert.equal(ED.cssImgWidthPx('width: 320px', ''), 320);
+  assert.equal(ED.cssImgWidthPx('', '240'), 240);
+  assert.equal(ED.cssImgWidthPx('width: 12px', ''), 0);
+  assert.equal(ED.cssImgWidthPx('color: red', ''), 0);
 });

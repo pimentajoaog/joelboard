@@ -574,7 +574,22 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-surface code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
 .jb-ed-surface a { color: var(--primary, #818cf8); cursor: pointer; }
 .jb-ed-surface hr { border: 0; border-top: 1px solid var(--border, #2d3346); margin: 14px 0; }
-.jb-ed-surface img[data-jb-file] { display: block; max-width: 100%; height: auto; box-sizing: border-box; border-radius: 10px; margin: 10px 0; background: var(--surface2, #232838); }
+.jb-ed-surface img[data-jb-file] { display: block; max-width: 100%; height: auto; box-sizing: border-box; border-radius: 10px; margin: 10px 0; background: var(--surface2, #232838); cursor: pointer; -webkit-user-drag: none; user-select: none; }
+.jb-ed-surface img.jb-ed-img-on { outline: 2px solid var(--primary, #818cf8); outline-offset: 2px; }
+.jb-ed-img-frame {
+  position: absolute; z-index: 4; box-sizing: border-box; border: 2px solid var(--primary, #818cf8);
+  border-radius: 10px; cursor: move; touch-action: none;
+}
+.jb-ed-img-frame[hidden] { display: none !important; }
+.jb-ed.ink-on .jb-ed-img-frame { display: none !important; }
+.jb-ed-img-handle {
+  position: absolute; width: 12px; height: 12px; background: #fff; border: 2px solid var(--primary, #818cf8);
+  box-sizing: border-box; border-radius: 2px;
+}
+.jb-ed-img-handle.nw { left: -7px; top: -7px; cursor: nwse-resize; }
+.jb-ed-img-handle.ne { right: -7px; top: -7px; cursor: nesw-resize; }
+.jb-ed-img-handle.sw { left: -7px; bottom: -7px; cursor: nesw-resize; }
+.jb-ed-img-handle.se { right: -7px; bottom: -7px; cursor: nwse-resize; }
 .jb-ed-surface img.jb-ed-img-loading { min-height: 88px; }
 .jb-ed-surface img.jb-ed-img-err { outline: 1px dashed var(--border, #2d3346); }
 .jb-ed-compact .jb-ed-scroll { min-height: 112px; max-height: 200px; }
@@ -600,6 +615,7 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
   pointer-events: none; touch-action: none;
 }
 .jb-ed.ink-on .jb-ed-ink-layer { pointer-events: auto; cursor: crosshair; }
+.jb-ed.ink-erase .jb-ed-ink-layer { cursor: cell; }
 .jb-ed-surface img.jb-ed-ink-asset,
 .jb-ed-surface img[data-jb-ink] { display: none !important; }
 .jb-ed-foot { display: flex; align-items: center; gap: 10px; }

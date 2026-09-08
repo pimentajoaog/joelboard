@@ -101,7 +101,8 @@ test('splitByWhen keeps today and later on top, older days at the bottom', funct
   var s = cal.splitByWhen(evs, '2026-09-08');
   assert.equal(s.upcoming.map(function (e) { return e.title; }).join(','), 'Pernas,Prova');
   assert.equal(s.past.map(function (e) { return e.title; }).join(','), 'Lista,Peito');
-  assert.equal(cal.appsInDay(s.upcoming).map(function (g) { return g.app; }).join(','), 'fit,study');
+  var fit = evs.filter(function (e) { return e.app === 'fit'; });
+  assert.equal(cal.orderWithinApp(fit, '2026-09-08').map(function (e) { return e.title; }).join(','), 'Pernas,Peito');
 });
 
 test('appsInDay lists every app that has an event that day', function () {

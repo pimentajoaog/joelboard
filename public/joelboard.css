@@ -1022,12 +1022,6 @@ html.jb-ink-full .fab {
 .jb-cal.compact .jb-cal-app { padding: 6px 6px 2px; margin-bottom: 7px; }
 .jb-cal.compact .jb-cal-sec { margin-top: 14px; }
 .jb-cal.compact .jb-cal-toolbar { margin-bottom: 8px; flex-wrap: nowrap; gap: 6px; }
-.jb-cal-past {
-  margin-top: 16px; padding-top: 10px;
-  border-top: 1px dashed var(--border, #2d3346);
-}
-.jb-cal-past .jb-cal-app { opacity: .9; }
-.jb-cal-app.past .jb-cal-row { opacity: .7; }
 @media (prefers-reduced-motion: reduce) {
   .jb-ed-bar, .jb-ed-btn, .jb-ed-ink-tools, .jb-ed-fs-menu, .jb-ed-hl-menu, .jb-ed-ink-chip, .jb-ed-hl-chip {
     animation: none !important; transition: none !important; transform: none !important;

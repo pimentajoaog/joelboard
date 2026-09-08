@@ -605,10 +605,14 @@
     });
     return { upcoming: sortEvents(upcoming), past: sortEvents(past).reverse() };
   }
+  function orderWithinApp(events, today) {
+    var split = splitByWhen(events, today);
+    return split.upcoming.concat(split.past);
+  }
   function appBlocksHtml(events, opts) {
     opts = opts || {};
     return appsInDay(events).map(function (g) {
-      return appBlockHtml(g.app, g.events, opts);
+      return appBlockHtml(g.app, orderWithinApp(g.events), opts);
     }).join('');
   }
   function appBlockHtml(app, events, opts) {
@@ -631,16 +635,10 @@
   function groupedListHtml(events, emptyHint, opts) {
     opts = opts || {};
     if (!events.length) return emptyPeriodHtml(emptyHint);
-    var split = splitByWhen(events);
-    var blockOpts = { limit: opts.limit, expanded: opts.expanded, compact: opts.compact, toggle: opts.toggle, showDate: true };
-    var html = '';
-    if (split.upcoming.length) html += appBlocksHtml(split.upcoming, Object.assign({}, blockOpts, { scope: 'up' }));
-    if (split.past.length) {
-      html += '<div class="jb-cal-sec jb-cal-past"><div class="jb-cal-sect">'
-        + '<span class="jb-cal-wdchip">Já</span><span class="jb-cal-sectd">foi</span></div>'
-        + appBlocksHtml(split.past, Object.assign({}, blockOpts, { scope: 'past', past: true })) + '</div>';
-    }
-    return html || emptyPeriodHtml(emptyHint);
+    return appBlocksHtml(events, {
+      limit: opts.limit, expanded: opts.expanded, compact: opts.compact,
+      toggle: opts.toggle, showDate: true
+    });
   }
 
   function mount(el, opts) {
@@ -843,7 +841,7 @@
     eventsFromNotas: eventsFromNotas, eventsFromPlanner: eventsFromPlanner,
     isCollabPlannerGrid: isCollabPlannerGrid, isCollabNotasGrid: isCollabNotasGrid,
     eventRowHtml: eventRowHtml, relLabel: relLabel, nearClass: nearClass, daysUntil: daysUntil, fmtBR: fmtBR,
-    loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp, clearHubCache: clearHubCache, appsInDay: appsInDay, splitByWhen: splitByWhen
+    loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp, clearHubCache: clearHubCache, appsInDay: appsInDay, splitByWhen: splitByWhen, orderWithinApp: orderWithinApp
   };
   window.JB_CAL = api;
   if (window.JB) window.JB.cal = api;

@@ -129,24 +129,26 @@ function createPersonalNotasSpreadsheet(){
     .then(function(ss){
       JB.setSheetId('notas',ss.spreadsheetId);
       var data=NOTAS_TABS.map(function(t){return {range:t[0]+'!A1',values:[t[1]]};});
-      return JB.api('POST',notasSheetUrl(ss.spreadsheetId,'/values:batchUpdate'),{valueInputOption:'RAW',data:data});
+      return JB.api('POST',notasSheetUrl(ss.spreadsheetId,'/values:batchUpdate'),{valueInputOption:'RAW',data:data}).then(function(){
+        return JB.sheetTabs(ss.spreadsheetId).then(function(grid){ notasGrid=grid; return grid; });
+      });
     });
 }
 function ensurePersonalNotasSheet(){
   var id=JB.getSheetId('notas');
   if(!id) return createPersonalNotasSpreadsheet();
   return JB.sheetTabs(id).then(function(grid){
-    if(notasRejectCollabAsPersonal(grid)){
+    if(notasRejectCollabAsPersonal(grid) || !grid['Notas']){
       JB.clearSheetId('notas');
       return createPersonalNotasSpreadsheet();
     }
     notasGrid=grid;
-    return grid;
+    return ensureTabs().then(function(){ return notasGrid; });
   });
 }
 function bootSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando suas listas…</div></div>');
-  JB.resolveSheet({ app:'notas', namePart:'Joelboard', requiredTabs: ['Notas','Itens'] })
+  JB.resolveSheet({ app:'notas', namePart:'Joelboard Notas', requiredTabs: ['Notas'] })
     .then(function(ctx){
       if(notasRejectCollabAsPersonal(ctx.grid)){
         JB.clearSheetId('notas');

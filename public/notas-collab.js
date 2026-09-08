@@ -110,6 +110,20 @@ function ncHandlePollResult(res) {
   render();
 }
 
+function ncParseJoinSheetId(raw) {
+  raw = String(raw || '').trim();
+  if (!raw) return '';
+  try { raw = decodeURIComponent(raw.replace(/\+/g, '%20')); } catch (_) {}
+  var sheets = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]{20,})/i);
+  if (sheets) return sheets[1];
+  var join = raw.match(/[?&]join=([^&]+)/i);
+  if (join) {
+    try { raw = decodeURIComponent(join[1]); } catch (_) { raw = join[1]; }
+  }
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(raw)) return raw;
+  return '';
+}
+
 function ncIsCollabSpreadsheetGrid(grid) {
   return !!(grid && grid['Meta'] != null && grid['Membros'] != null);
 }
@@ -265,17 +279,24 @@ function ncLoadCollabLists() {
       var regs = body(res.values || []);
       ncStripCollabFromData();
       if (!regs.length) return;
+      var failed = 0;
       return Promise.all(regs.map(function (reg) {
         var sid = String(reg[1] || '');
         if (!sid) return null;
         return ncFetchCollabPack(sid).then(function (pack) {
-          if (!pack) return;
+          if (!pack) { failed++; return; }
           var n = ncMergeRegistryRow(reg, pack);
-          if (!n) return;
+          if (!n) { failed++; return; }
           DATA.notas.push(n);
           ncSetCollabItems(n.id, ncParseItemRows(pack.itens, n.id), { sheetId: pack.sid, itemRows: pack.itens });
-        }).catch(function () {});
-      }));
+        }).catch(function () { failed++; });
+      })).then(function () {
+        if (failed && typeof toast === 'function') {
+          toast(failed === 1
+            ? 'Uma lista compartilhada não abriu — confira o acesso Editor no Drive.'
+            : failed + ' listas compartilhadas não abriram — confira o acesso no Drive.');
+        }
+      });
     });
   }).catch(function () {});
 }
@@ -375,11 +396,13 @@ function ncAppendRegistry(entry) {
   return JB.api('POST', personalSsUrl('/values/Compartilhadas:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [ncRegistryRowVals(entry)] });
 }
 
-function ncFindRegistryRow(listaId) {
+function ncFindRegistryRow(listaId, sheetId) {
   return JB.api('GET', personalSsUrl('/values/Compartilhadas?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
     var v = res.values || [];
     for (var i = 1; i < v.length; i++) {
-      if (String((v[i] || [])[4]) === String(listaId)) return i + 1;
+      var row = v[i] || [];
+      if (listaId && String(row[4]) === String(listaId)) return i + 1;
+      if (sheetId && String(row[1]) === String(sheetId)) return i + 1;
     }
     return -1;
   });
@@ -411,6 +434,11 @@ function ncCreateCollabSpreadsheet(n, items, inviteEmail) {
     sheets: NC_COLLAB_TABS.map(function (t) { return { properties: { title: t[0] } }; })
   }).then(function (ss) {
     var sid = ss.spreadsheetId;
+    var grid = {};
+    (ss.sheets || []).forEach(function (sh) {
+      if (sh.properties && sh.properties.title) grid[sh.properties.title] = sh.properties.sheetId;
+    });
+    if (grid['Meta'] != null) collabGrids[sid] = grid;
     var data = NC_COLLAB_TABS.map(function (t) { return { range: t[0] + '!A1', values: [t[1]] }; });
     data.push({ range: 'Meta!A2', values: [metaVals] });
     if (itemVals.length) data.push({ range: 'Itens!A2', values: itemVals });
@@ -448,12 +476,22 @@ function ncShareFromPrivate() {
     JB.confirm('Tornar compartilhada?', 'A lista será copiada para uma planilha compartilhada no Drive. A versão privada será removida daqui.', function () {
       loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Criando lista compartilhada…</div></div>');
       var items = itemsOf(n.id);
-      ncCreateCollabSpreadsheet(n, items, '').then(function () {
+      ncCreateCollabSpreadsheet(n, items, '').then(function (sid) {
+        n.collabSheetId = sid;
+        n.collabRole = 'owner';
+        n.collabOwner = ncEmail();
+        n.collabMembers = [{ email: ncEmail(), nome: ncProfileName(), icone: ncProfileIcon(), papel: 'owner', status: 'active' }];
         return ncDeletePrivateList(n);
       }).then(function () {
         DATA.notas = (DATA.notas || []).filter(function (x) { return x.id !== n.id; });
-        return ncLoadCollabLists();
+        DATA.notas.push(n);
+        ncSetCollabItems(n.id, items, { sheetId: n.collabSheetId });
+        return ncLoadCollabLists().catch(function () {});
       }).then(function () {
+        if (!note(n.id)) {
+          DATA.notas.push(n);
+          ncSetCollabItems(n.id, items, { sheetId: n.collabSheetId });
+        }
         show();
         openNote(n.id);
         toast('✓ Lista compartilhada — convide alguém em Compartilhar');
@@ -468,6 +506,18 @@ function ncShareFromPrivate() {
 
 function ncShareJoinUrl(n) {
   return location.origin + '/notas/?join=' + encodeURIComponent(n.collabSheetId);
+}
+
+function ncGrantEditorAccess(sid, email) {
+  return JB.api('POST', 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(sid) + '/permissions?sendNotificationEmail=false&supportsAllDrives=true', {
+    role: 'writer',
+    type: 'user',
+    emailAddress: email
+  }).catch(function (e) {
+    var m = String((e && e.message) || '');
+    if (m.indexOf('403') > -1 || m.indexOf('400') > -1 || m.indexOf('409') > -1 || m.indexOf('already') > -1) return;
+    throw e;
+  });
 }
 
 function ncShareSheetUrl(n) {
@@ -551,6 +601,8 @@ function ncInviteMember() {
     run: function () {
       return JB.api('POST', ncCollabUrl(n.collabSheetId, '/values/Membros:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {
         values: [ncMemberRow(raw, '', '👤', 'editor', 'pending')]
+      }).then(function () {
+        return ncGrantEditorAccess(n.collabSheetId, raw);
       });
     },
     onSuccess: afterAdded,
@@ -561,7 +613,7 @@ function ncInviteMember() {
 }
 
 function ncJoinCollab(sheetId) {
-  sheetId = String(sheetId || '').trim();
+  sheetId = ncParseJoinSheetId(sheetId);
   if (!sheetId) return Promise.reject(new Error('link_invalido'));
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Entrando na lista…</div></div>');
   var bootPersonal = (typeof ensurePersonalNotasSheet === 'function') ? ensurePersonalNotasSheet() : Promise.resolve();
@@ -592,7 +644,7 @@ function ncJoinCollab(sheetId) {
     }
     return { pack: pack, metaRow: metaRow, members: members };
   }).then(function (ctx) {
-    return ncFindRegistryRow(ctx.metaRow[6]).then(function (row) {
+    return ncFindRegistryRow(ctx.metaRow[6], sheetId).then(function (row) {
       if (row > 0) return;
       return ncAppendRegistry({
         titulo: String(ctx.metaRow[0] || ''),
@@ -625,21 +677,30 @@ function ncActivateMember(sid, em) {
   });
 }
 
+function ncJoinErrMessage(e) {
+  var m = String((e && e.message) || '');
+  if (m === 'link_invalido') return 'Link de convite inválido.';
+  if (m === 'planilha_invalida' || m === 'lista_nao_encontrada') return 'Essa planilha não é uma lista compartilhada do Joelboard.';
+  if (m === 'planilha_compartilhada_como_pessoal') return 'Sua planilha pessoal estava apontando para a lista compartilhada — crie uma planilha pessoal separada.';
+  if (m.indexOf('403') > -1 || m.indexOf('PERMISSION') > -1) return 'Sem acesso à planilha. Peça Editor no Drive e abra o link de novo.';
+  if (m.indexOf('404') > -1) return 'Planilha não encontrada. Confira o link.';
+  return m || 'não foi possível entrar';
+}
+
 function ncCheckJoinParam() {
   var m = location.search.match(/[?&]join=([^&]+)/);
   if (!m) return;
-  var sid = decodeURIComponent(m[1]);
-  ncEnsureProfile(function () {
-    ncJoinCollab(sid).catch(function (e) {
-      show();
-      var m = String((e && e.message) || '');
-      if (m === 'planilha_compartilhada_como_pessoal') {
-        toast('Sua planilha pessoal estava apontando para a lista compartilhada — crie uma planilha pessoal separada.');
-        if (typeof notasPersonalGate === 'function') notasPersonalGate('Suas listas privadas precisam de uma planilha só sua, separada das compartilhadas.');
-        return;
-      }
-      toast('Erro: ' + (m || 'não foi possível entrar'));
-    });
+  var sid = ncParseJoinSheetId(m[1]);
+  if (!sid) { toast('Link de convite inválido'); return; }
+  ncJoinCollab(sid).then(function () {
+    if (!ncProfileName()) ncOpenProfile();
+  }).catch(function (e) {
+    show();
+    var msg = ncJoinErrMessage(e);
+    if (String((e && e.message) || '') === 'planilha_compartilhada_como_pessoal') {
+      if (typeof notasPersonalGate === 'function') notasPersonalGate('Suas listas privadas precisam de uma planilha só sua, separada das compartilhadas.');
+    }
+    toast('Erro: ' + msg);
   });
 }
 

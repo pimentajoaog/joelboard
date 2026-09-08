@@ -7,6 +7,7 @@ var HUB_NEWS_SHEET_ID=hubNewsCleanId((typeof window!=='undefined'&&window.JB_HUB
 var HUB_NEWS_SHEET_LOCAL='jb_hub_news_sheet_id';
 var HUB_NEWS_LIMIT=5;
 var HUB_NEWS_DEFAULT=[
+  { app:'planner', kind:'novo', text:'Planner — cole qualquer emoji no ícone do plano, do dia ou do evento, como no Notes.' },
   { app:'hub', kind:'novo', text:'Agenda no Hub — contas, provas, prazos, treinos e planos no mesmo calendário (hoje, 3 dias, semana ou mês).' },
   { app:'planner', kind:'novo', text:'Planner — roteiros e encontros numa linha do tempo; compartilhe com um link Joelboard.' },
   { app:'hub', kind:'novo', text:'Sessão expirada avisa para entrar de novo — banner no topo e tela de login em todos os apps, em vez de falhar no meio de uma ação.' },

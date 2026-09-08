@@ -12,6 +12,7 @@ var PL_TABS=[
 ];
 var PL_DAY_ICONS=['✈️','🏔️','🍷','🍽️','🌆','🚶','🎉','🏠','🌅','🌊','🎿','☕','🎵','🛍️','🏛️','🌴','📝','⭐','🚗','🛏️'];
 var PL_EVT_ICONS=['','✈️','🍽️','☕','🏨','🚶','🍷','🎵','🛍️','🌅','🎉','📍','🚗','🎿'];
+var PL_ICON_EXTRAS=['📅','📌','🎯','💡','📚','🐶','🐱','💼','🎁','🍕','🌱','💪','🎨','📷','💊','🎮','❤️','🔥','🌈','📎','🗂️','💬','🔔','⏰','🏋️','🧘','🛠️','📦','🌸','🍀','🎬','🏖️','🧁','🍳','🏨','📍'];
 var PL_TAG_COLORS=[{k:'warn',hex:'#fb923c'},{k:'ok',hex:'#34d399'},{k:'mute',hex:'#7b85a0'}];
 var PL_WD=['dom','seg','ter','qua','qui','sex','sáb'];
 var PL_PERIODS={
@@ -21,7 +22,7 @@ var PL_PERIODS={
 };
 var PL_TOUR=[
   { title:'Joelboard Planner', body:'Monte roteiros, encontros e viagens — um plano por vez, no seu ritmo.' },
-  { sel:'#fab', title:'Novo plano', body:'Defina título, vibe e as datas. Os dias aparecem sozinhos na linha do tempo.' },
+  { sel:'#fab', title:'Novo plano', body:'Título, vibe e as datas. Cole qualquer emoji no ícone — como no Notes. Os dias aparecem sozinhos na linha do tempo.' },
   { go:function(){}, sel:'#main', title:'Linha do tempo', body:'Toque num dia para o título, num horário para o evento. Tudo é opcional — inclusive o horário.' }
 ];
 
@@ -104,6 +105,10 @@ function plRangeHint(start, end){
   if(!days.length) return 'Escolha um intervalo válido.';
   var n=days.length-1;
   return days.length+' '+(days.length===1?'dia':'dias')+(n?(' · '+n+(n===1?' noite':' noites')):'');
+}
+function plNormIcon(s){
+  var p=Array.from(String(s||'').trim());
+  return p.length?p.slice(0,2).join(''):'';
 }
 
 function rowCacheKeySid(sid, tab){ return sid+'|'+tab; }
@@ -385,16 +390,113 @@ function eventRow(e){
 function toggleEdMenu(){ _edMenuOpen=!_edMenuOpen; var m=$('tlMenu'); if(m) m.classList.toggle('open', _edMenuOpen); }
 function closeEdMenu(){ _edMenuOpen=false; var m=$('tlMenu'); if(m) m.classList.remove('open'); }
 
-function icoGrid(list, cur, fn){
-  return list.map(function(ic){
-    var label=ic||'∅';
-    return '<button type="button" class="pl-ico'+(ic===cur?' on':'')+'" onclick="'+fn+'(\''+escAttr(ic)+'\')">'+label+'</button>';
-  }).join('');
+function plIconDefault(kind){ return kind==='evt'?'':kind==='day'?'📅':'✈️'; }
+function plIconPresets(kind){ return kind==='evt'?PL_EVT_ICONS:PL_DAY_ICONS; }
+function plIconExtras(kind){
+  var seen={};
+  plIconPresets(kind).forEach(function(ic){ if(ic) seen[ic]=1; });
+  return PL_ICON_EXTRAS.filter(function(ic){ return ic && !seen[ic]; });
 }
-function openNew(){ _editPlanId=null; newIcon='✈️'; newStart=plTodayYmd(); newEnd=plAddDays(newStart,4); $('newModalTitle').textContent='Novo plano'; $('newTitle').value=''; $('newSub').value=''; $('newIconWrap').innerHTML=icoGrid(PL_DAY_ICONS,newIcon,'pickNewIcon'); renderNewDates(); $('newOverlay').classList.add('open'); }
-function openEditPlan(){ var p=plan(openPlanId); if(!p) return; _editPlanId=p.id; newIcon=p.icone||'✈️'; newStart=p.inicio; newEnd=p.fim; $('newModalTitle').textContent='Editar plano'; $('newTitle').value=p.titulo||''; $('newSub').value=p.subtitulo||''; $('newIconWrap').innerHTML=icoGrid(PL_DAY_ICONS,newIcon,'pickNewIcon'); renderNewDates(); $('newOverlay').classList.add('open'); }
+function plIconGet(kind){
+  if(kind==='plan') return newIcon||'';
+  if(kind==='day') return window._plDayIcon||'';
+  return window._plEvtIcon||'';
+}
+function plIconSet(kind, ic){
+  if(kind==='plan') newIcon=ic;
+  else if(kind==='day') window._plDayIcon=ic;
+  else window._plEvtIcon=ic;
+}
+function plIconWrapId(kind){ return kind==='plan'?'newIconWrap':kind==='day'?'dayIconWrap':'evtIconWrap'; }
+function plIconPreview(ic){ return ic||'∅'; }
+function plIconIsPreset(kind, ic){
+  var list=plIconPresets(kind);
+  for(var i=0;i<list.length;i++) if(list[i]===ic) return true;
+  return false;
+}
+function plIconPickerHtml(kind, cur){
+  var presets=plIconPresets(kind), extras=plIconExtras(kind);
+  var customVal=plIconIsPreset(kind,cur)?'':cur;
+  var h='<div class="icon-pick"><div class="icon-pick-preview" data-pl-ico-preview>'+plIconPreview(cur)+'</div>';
+  h+='<div class="icon-pick-label">Presets</div><div class="icon-pick-grid">';
+  presets.forEach(function(ic,i){
+    h+='<button type="button" class="icon-pick-btn'+(ic===cur?' on':'')+'" data-pl-ico="preset" data-i="'+i+'" onclick="plPickIcon(\''+kind+'\',\'preset\','+i+')">'+plIconPreview(ic)+'</button>';
+  });
+  h+='</div><div class="icon-pick-label">Mais</div><div class="icon-pick-grid icon-pick-grid-sm">';
+  extras.forEach(function(ic,i){
+    h+='<button type="button" class="icon-pick-btn'+(ic===cur?' on':'')+'" data-pl-ico="extra" data-i="'+i+'" onclick="plPickIcon(\''+kind+'\',\'extra\','+i+')">'+ic+'</button>';
+  });
+  h+='</div><div class="icon-pick-custom"><label class="fl">Outro emoji</label>';
+  h+='<input class="field" id="plIconCustom-'+kind+'" maxlength="8" placeholder="Cole ou digite…" value="'+escAttr(customVal)+'" oninput="plPickIconCustom(\''+kind+'\',this.value)"></div>';
+  if(cur!==plIconDefault(kind)) h+='<button type="button" class="btn ghost icon-pick-reset" onclick="plPickIconReset(\''+kind+'\')">Ícone padrão</button>';
+  return h+'</div>';
+}
+function plPaintIconPicker(kind){
+  var el=$(plIconWrapId(kind));
+  if(el) el.innerHTML=plIconPickerHtml(kind, plIconGet(kind));
+}
+function plSyncIconPicker(kind){
+  var wrap=$(plIconWrapId(kind));
+  if(!wrap) return;
+  var cur=plIconGet(kind);
+  var prev=wrap.querySelector('[data-pl-ico-preview]');
+  if(prev) prev.textContent=plIconPreview(cur);
+  var presets=plIconPresets(kind), extras=plIconExtras(kind);
+  var btns=wrap.querySelectorAll('.icon-pick-btn');
+  for(var i=0;i<btns.length;i++){
+    var b=btns[i], t=b.getAttribute('data-pl-ico'), idx=+b.getAttribute('data-i');
+    var ic=t==='extra'?extras[idx]:presets[idx];
+    b.classList.toggle('on', ic===cur);
+  }
+  var reset=wrap.querySelector('.icon-pick-reset');
+  var wantReset=cur!==plIconDefault(kind);
+  if(wantReset && !reset){
+    var btn=document.createElement('button');
+    btn.type='button';
+    btn.className='btn ghost icon-pick-reset';
+    btn.setAttribute('onclick','plPickIconReset(\''+kind+'\')');
+    btn.textContent='Ícone padrão';
+    wrap.querySelector('.icon-pick').appendChild(btn);
+  } else if(!wantReset && reset) reset.remove();
+}
+function plPickIcon(kind, src, idx){
+  var ic=src==='extra'?plIconExtras(kind)[idx]:plIconPresets(kind)[idx];
+  if(ic==null) return;
+  plIconSet(kind, ic);
+  plPaintIconPicker(kind);
+}
+function plPickIconCustom(kind, val){
+  plIconSet(kind, plNormIcon(val));
+  plSyncIconPicker(kind);
+}
+function plPickIconReset(kind){
+  plIconSet(kind, plIconDefault(kind));
+  plPaintIconPicker(kind);
+}
+function plFocusField(id, select){
+  setTimeout(function(){ var t=$(id); if(!t) return; t.focus(); if(select) t.select(); },60);
+}
+function openNew(){
+  _editPlanId=null; newIcon='✈️'; newStart=plTodayYmd(); newEnd=plAddDays(newStart,4);
+  $('newModalTitle').textContent='Novo plano';
+  var save=$('newSaveBtn'); if(save) save.textContent='Criar';
+  $('newTitle').value=''; $('newSub').value='';
+  plPaintIconPicker('plan'); renderNewDates();
+  $('newOverlay').classList.add('open');
+  plFocusField('newTitle');
+}
+function openEditPlan(){
+  var p=plan(openPlanId); if(!p) return;
+  _editPlanId=p.id; newIcon=p.icone||'✈️'; newStart=p.inicio; newEnd=p.fim;
+  $('newModalTitle').textContent='Editar plano';
+  var save=$('newSaveBtn'); if(save) save.textContent='Salvar';
+  $('newTitle').value=p.titulo||''; $('newSub').value=p.subtitulo||'';
+  plPaintIconPicker('plan'); renderNewDates();
+  $('newOverlay').classList.add('open');
+  plFocusField('newTitle', true);
+}
 function closeNew(){ $('newOverlay').classList.remove('open'); _editPlanId=null; }
-function pickNewIcon(ic){ newIcon=ic; $('newIconWrap').innerHTML=icoGrid(PL_DAY_ICONS,newIcon,'pickNewIcon'); }
+function pickNewIcon(ic){ newIcon=ic; plPaintIconPicker('plan'); }
 function pickNewStart(){ JB.datePicker(newStart, function(iso){ newStart=iso; if(newEnd && plParseYmd(newEnd)<plParseYmd(iso)) newEnd=iso; renderNewDates(); }); }
 function pickNewEnd(){ JB.datePicker(newEnd||newStart, function(iso){ newEnd=iso; if(newStart && plParseYmd(iso)<plParseYmd(newStart)) newStart=iso; renderNewDates(); }); }
 function renderNewDates(){
@@ -421,8 +523,8 @@ function plPersistForPlan(p, opts){
 
 function saveNewPlan(){
   var t=($('newTitle').value||'').trim();
-  if(!t){ toast('Dê um título ao plano'); return; }
   if(!newStart||!newEnd||!plDaysFromRange(newStart,newEnd).length){ toast('Escolha as datas'); return; }
+  if(!t) t=(newIcon?newIcon+' ':'')+plFmtDay(newStart)+(newStart!==newEnd?('–'+plFmtDay(newEnd)):'');
   if(_editPlanId){ applyPlanDates(_editPlanId, t, ($('newSub').value||'').trim(), newStart, newEnd, newIcon); closeNew(); return; }
   var now=new Date().toISOString();
   var p={ id:uuid(), titulo:t, subtitulo:($('newSub').value||'').trim(), inicio:newStart, fim:newEnd, icone:newIcon||'✈️', criado:now, atualizado:now };
@@ -553,11 +655,12 @@ function openDayEdit(id){
   var d=daysOf(openPlanId).find(function(x){return x.id===id;}); if(!d) return;
   _editDayId=id;
   $('dayTitle').value=d.titulo||'';
-  $('dayIconWrap').innerHTML=icoGrid(PL_DAY_ICONS,d.icone||'📅','pickDayIcon');
   window._plDayIcon=d.icone||'📅';
+  plPaintIconPicker('day');
   $('dayOverlay').classList.add('open');
+  plFocusField('dayTitle');
 }
-function pickDayIcon(ic){ window._plDayIcon=ic; $('dayIconWrap').innerHTML=icoGrid(PL_DAY_ICONS,ic,'pickDayIcon'); }
+function pickDayIcon(ic){ window._plDayIcon=ic; plPaintIconPicker('day'); }
 function closeDayEdit(){ $('dayOverlay').classList.remove('open'); _editDayId=null; }
 function commitDayEdit(){
   var d=(DATA.dias||[]).find(function(x){return x.id===_editDayId;}); if(!d) return;
@@ -588,12 +691,13 @@ function openEvtEdit(id, dayId){
   $('evtTag').value=e?e.tag:'';
   window._plEvtIcon=e?e.icone:'';
   window._plEvtTagCor=(e&&e.tagCor)||'warn';
-  $('evtIconWrap').innerHTML=icoGrid(PL_EVT_ICONS, window._plEvtIcon, 'pickEvtIcon');
+  plPaintIconPicker('evt');
   renderTagColors();
   $('evtDelBtn').style.display=e?'block':'none';
   $('evtOverlay').classList.add('open');
+  plFocusField('evtTitle', !!e);
 }
-function pickEvtIcon(ic){ window._plEvtIcon=ic; $('evtIconWrap').innerHTML=icoGrid(PL_EVT_ICONS,ic,'pickEvtIcon'); }
+function pickEvtIcon(ic){ window._plEvtIcon=ic; plPaintIconPicker('evt'); }
 function pickTagCor(k){ window._plEvtTagCor=k; renderTagColors(); }
 function renderTagColors(){
   $('evtTagColors').innerHTML=PL_TAG_COLORS.map(function(c){

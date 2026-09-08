@@ -18,7 +18,7 @@ vm.runInContext(
   + '\nthis.plParseYmd=plParseYmd;this.plDaysFromRange=plDaysFromRange;this.plNights=plNights;'
   + 'this.plHoraMinFromLabel=plHoraMinFromLabel;this.plSortEvents=plSortEvents;'
   + 'this.plWeekday=plWeekday;this.plFmtDay=plFmtDay;this.plRangeHint=plRangeHint;'
-  + 'this.plAddDays=plAddDays;',
+  + 'this.plAddDays=plAddDays;this.plNormIcon=plNormIcon;',
   ctx
 );
 
@@ -57,6 +57,12 @@ test('plSortEvents orders by time then ordem', function () {
     { id: 'a', horaMin: 510, ordem: 2, titulo: 'Manhã' }
   ]);
   assert.deepEqual(list.map(function (e) { return e.id; }), ['a', 'b', 'c']);
+});
+
+test('plNormIcon keeps the first one or two pasted glyphs', function () {
+  assert.equal(ctx.plNormIcon(''), '');
+  assert.equal(ctx.plNormIcon('  🍕  '), '🍕');
+  assert.equal(ctx.plNormIcon('🐶🐱💼'), '🐶🐱');
 });
 
 test('plWeekday and plFmtDay are pt-BR', function () {

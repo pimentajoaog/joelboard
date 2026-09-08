@@ -799,67 +799,152 @@
       var st = el.getAttribute('style');
       if (st != null && !String(st).replace(/\s|;/g, '')) el.removeAttribute('style');
     }
-    function splitHighlightAtCaret(hl, range, sel) {
+    function closestBlock(node) {
+      var el = node && node.nodeType === 1 ? node : (node && node.parentElement);
+      while (el && el !== surface) {
+        if (/^(P|DIV|LI|H1|H2|H3|BLOCKQUOTE|PRE)$/.test(el.tagName)) return el;
+        el = el.parentElement;
+      }
+      return surface;
+    }
+    function highlightNodes() {
+      var out = [];
+      Array.prototype.forEach.call(surface.querySelectorAll('span, font, mark, p, div, li, h1, h2, h3, blockquote'), function (el) {
+        if (elHasHighlight(el)) out.push(el);
+      });
+      return out;
+    }
+    function nodeDepth(el) {
+      var n = 0;
+      while (el && el !== surface) { n++; el = el.parentElement; }
+      return n;
+    }
+    function nodeContainsPoint(el, container, offset) {
+      if (!el || !container) return false;
+      if (el === container) {
+        var max = container.nodeType === 1 ? container.childNodes.length : (container.nodeValue || '').length;
+        return offset < max;
+      }
+      return el.contains(container);
+    }
+    function highlightOverlapsRange(hl, range) {
+      try {
+        if (!range.intersectsNode(hl)) return false;
+      } catch (_) { return false; }
+      try {
+        var startCmp = range.comparePoint(hl, 0);
+        var endCmp = range.comparePoint(hl, hl.childNodes.length);
+        if (startCmp === 1) return false;
+        if (endCmp === -1) return false;
+        var containsStart = nodeContainsPoint(hl, range.startContainer, range.startOffset);
+        if (startCmp === -1 && endCmp === 0 && !containsStart) return false;
+        if (startCmp === 0 && endCmp === 1 && !containsStart) return false;
+      } catch (_) {}
+      return true;
+    }
+    function splitHighlightAtPoint(hl, container, offset) {
+      if (!nodeContainsPoint(hl, container, offset)) return { left: null, right: hl };
       var left = document.createRange();
       try {
         left.setStart(hl, 0);
-        left.setEnd(range.startContainer, range.startOffset);
+        left.setEnd(container, offset);
       } catch (_) {
-        clearElHighlight(hl);
-        var fallback = document.createRange();
-        fallback.setStart(hl, 0);
-        fallback.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(fallback);
-        return fallback;
+        return { left: null, right: hl };
       }
-      if (!left.collapsed) {
-        var frag = left.extractContents();
-        var keep = hl.cloneNode(false);
-        keep.appendChild(frag);
-        if (hl.parentNode) hl.parentNode.insertBefore(keep, hl);
+      if (left.collapsed) return { left: null, right: hl };
+      var frag = left.extractContents();
+      var keep = hl.cloneNode(false);
+      keep.appendChild(frag);
+      if (hl.parentNode) hl.parentNode.insertBefore(keep, hl);
+      return { left: keep, right: hl };
+    }
+    function unhighlightOverlap(hl, range) {
+      if (!hl || !hl.parentNode || !elHasHighlight(hl)) return;
+      if (!highlightOverlapsRange(hl, range)) return;
+      var sc = range.startContainer;
+      var so = range.startOffset;
+      var ec = range.endContainer;
+      var eo = range.endOffset;
+      var startInside = nodeContainsPoint(hl, sc, so);
+      var endInside = nodeContainsPoint(hl, ec, eo);
+      var target = hl;
+      if (startInside) {
+        var startParts = splitHighlightAtPoint(hl, sc, so);
+        target = startParts.right;
+        if (ec === sc) {
+          eo = Math.max(0, eo - so);
+          ec = sc;
+        }
       }
-      clearElHighlight(hl);
-      var caret = document.createRange();
+      if (endInside && target && target.parentNode && !range.collapsed) {
+        var endParts = splitHighlightAtPoint(target, ec, eo);
+        target = endParts.left || target;
+      }
+      clearElHighlight(target);
+      if (target && !target.childNodes.length && target.parentNode) target.parentNode.removeChild(target);
+    }
+    function insertHlMark(container, offset) {
+      var mark = document.createElement('span');
+      mark.setAttribute('data-jb-hl-mark', '1');
       try {
-        caret.setStart(hl, 0);
+        var r = document.createRange();
+        r.setStart(container, offset);
+        r.collapse(true);
+        r.insertNode(mark);
       } catch (_) {
-        caret.selectNodeContents(hl);
+        if (container && container.parentNode) container.parentNode.insertBefore(mark, container.nextSibling);
       }
-      caret.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(caret);
-      return caret;
+      return mark;
+    }
+    function pruneEmptySpans() {
+      Array.prototype.forEach.call(surface.querySelectorAll('span'), function (el) {
+        if (el.getAttribute('data-jb-hl-mark')) return;
+        if (String(el.textContent || '')) return;
+        if (el.parentNode) el.parentNode.removeChild(el);
+      });
     }
     function clearHighlightFromCaret() {
       var sel = window.getSelection();
       if (!sel || !sel.rangeCount) return false;
       var range = sel.getRangeAt(0);
       if (!rangeInSurface(range)) return false;
-      if (!range.collapsed) {
-        var hit = false;
-        Array.prototype.forEach.call(surface.querySelectorAll('span, font, mark, p, div, li, h1, h2, h3'), function (el) {
-          if (!elHasHighlight(el)) return;
-          try { if (!range.intersectsNode(el)) return; } catch (_) { return; }
-          clearElHighlight(el);
-          hit = true;
+      range = range.cloneRange();
+      if (range.collapsed) {
+        var block = closestBlock(range.startContainer);
+        try { range.setEnd(block, block.childNodes.length); } catch (_) {}
+      }
+      if (range.collapsed) return false;
+      var endMark = insertHlMark(range.endContainer, range.endOffset);
+      var startMark = insertHlMark(range.startContainer, range.startOffset);
+      function liveRange() {
+        var r = document.createRange();
+        r.setStartAfter(startMark);
+        r.setEndBefore(endMark);
+        return r;
+      }
+      var hit = false;
+      var guard;
+      for (guard = 0; guard < 12; guard++) {
+        var live = liveRange();
+        var list = highlightNodes().filter(function (el) {
+          return el !== startMark && el !== endMark && highlightOverlapsRange(el, live);
         });
-        return hit;
+        if (!list.length) break;
+        list.sort(function (a, b) { return nodeDepth(b) - nodeDepth(a); });
+        unhighlightOverlap(list[0], live);
+        hit = true;
       }
-      var node = range.startContainer;
-      var el = node.nodeType === 1 ? node : node.parentElement;
-      var stack = [];
-      while (el && el !== surface) {
-        if (elHasHighlight(el)) stack.push(el);
-        el = el.parentElement;
-      }
-      if (!stack.length) return false;
-      var live = range;
-      var i;
-      for (i = 0; i < stack.length; i++) {
-        live = splitHighlightAtCaret(stack[i], live, sel);
-      }
-      return true;
+      try {
+        var caret = document.createRange();
+        caret.setStartAfter(startMark);
+        caret.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(caret);
+      } catch (_) {}
+      if (startMark.parentNode) startMark.parentNode.removeChild(startMark);
+      if (endMark.parentNode) endMark.parentNode.removeChild(endMark);
+      pruneEmptySpans();
+      return hit;
     }
     function paintHlBtn() {
       if (hlSwatch) hlSwatch.style.background = lastHighlight || 'transparent';

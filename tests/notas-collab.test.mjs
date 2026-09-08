@@ -23,6 +23,7 @@ test('collab sheets are not treated as the personal Notes workbook', function ()
   assert.equal(ctx.ncIsCollabSpreadsheetGrid({ Meta: 1, Membros: 2, Itens: 3 }), true);
   assert.equal(ctx.ncIsCollabSpreadsheetGrid({ Notas: 1, Itens: 2 }), false);
   assert.match(notas, /namePart:'Joelboard Not'/);
+  assert.match(notas, /function openNoteEditor/);
   assert.match(notas, /requiredTabs: \['Notas'\]/);
   assert.match(notas, /!grid\['Notas'\]/);
 });

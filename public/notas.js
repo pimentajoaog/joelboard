@@ -1,6 +1,6 @@
 /* Joelboard Notes — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
-var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={}, _renameNoteId=null, _edMenuOpen=false;
+var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={}, _renameNoteId=null, _edMenuOpen=false, _editNoteId=null;
 var HIDE_DONE_KEY='jb_notas_hide_done';
 function hideDonePref(){ try{ return localStorage.getItem(HIDE_DONE_KEY)==='1'; }catch(_){ return false; } }
 function setHideDonePref(on){ try{ localStorage.setItem(HIDE_DONE_KEY, on?'1':'0'); }catch(_){} _doneCollapsed=!!on; if(!on) _doneBucketExpanded={}; }
@@ -96,7 +96,8 @@ function dueStripHtml(){
 }
 function fmtDateBR(iso){ var p=String(iso||'').split('-'); return p.length===3? (p[2]+'/'+p[1]+'/'+p[0]) : iso; }
 function pickNewDate(){ JB.datePicker(newDue, function(iso){ newDue=iso; renderNewDate(); }); }
-function renderNewDate(){ var b=$('newDateBtn'); if(!b) return; b.textContent = newDue? fmtDateBR(newDue) : 'Escolher data…'; b.classList.toggle('empty', !newDue); }
+function renderNewDate(){ var b=$('newDateBtn'); if(!b) return; b.textContent = newDue? fmtDateBR(newDue) : 'Escolher data…'; b.classList.toggle('empty', !newDue); var c=$('newDateClear'); if(c) c.style.display=newDue?'':'none'; }
+function clearNewDate(){ newDue=''; renderNewDate(); }
 function pickDue(){ var n=note(openNoteId); if(!n) return; JB.datePicker(n.vence, function(iso){ commitDue(iso); }); }
 function commitDue(v){ var n=note(openNoteId); if(!n) return; n.vence=v||''; touchNote(n); renderEditor(); }
 function clearDue(){ var n=note(openNoteId); if(!n) return; n.vence=''; touchNote(n); renderEditor(); }
@@ -482,7 +483,7 @@ function noteCard(n){
   var avatars = (typeof ncMemberAvatarsHtml==='function')?ncMemberAvatarsHtml(n):'';
   var sharedBadge = n.collabSheetId ? '<span class="nc-shared">Compartilhada</span>' : '';
   return '<div class="notec'+(n.collabSheetId?' notec-shared':'')+'" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')">'
-    +'<div class="nc-top"><button type="button" class="nc-ico" onclick="startNoteIconEdit(event,\''+n.id+'\')" title="Alterar ícone" aria-label="Alterar ícone">'+noteIcon(n)+'</button><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div>'+(n.collabSheetId?'':('<button class="nc-edit" onclick="startNoteRename(event,\''+n.id+'\')" title="Renomear">✎</button><button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button>'))+'</div>'
+    +'<div class="nc-top"><button type="button" class="nc-ico" onclick="startNoteIconEdit(event,\''+n.id+'\')" title="Alterar ícone" aria-label="Alterar ícone">'+noteIcon(n)+'</button><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div><button class="nc-edit" onclick="openNoteEditor(\''+n.id+'\',event)" title="Editar lista" aria-label="Editar lista">✎</button>'+(n.collabSheetId?'':('<button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button>'))+'</div>'
     +'<div class="nc-kind">'+sharedBadge+esc(kd.label)+'</div>'
     +'<div class="nc-meta">'+metaCount+' · '+esc(relTime(n.atualizado||n.criado))+dueBadge(n)+'</div>'+(avatars?('<div class="nc-members">'+avatars+'</div>'):'')+prog+'</div>';
 }
@@ -496,8 +497,33 @@ function togglePin(ev,id){ ev.stopPropagation(); var n=note(id); if(!n) return; 
 
 /* ---- new note ---- */
 var newKind='tarefas', newCustomIcon='', _iconPickCtx=null;
-function openNew(){ newKind='tarefas'; newCustomIcon=''; renderNewIconPicker(); renderNewKind(); $('newTitle').value=''; newDue=''; renderNewDate(); $('newOverlay').classList.add('open'); setTimeout(function(){ $('newTitle').focus(); },60); }
-function closeNew(){ $('newOverlay').classList.remove('open'); }
+function paintNoteEditorModal(){
+  var editing=!!_editNoteId;
+  var titleEl=$('newModalTitle'), saveEl=$('newSaveBtn'), titleIn=$('newTitle');
+  if(titleEl) titleEl.textContent=editing?'Editar lista':'Nova lista';
+  if(saveEl) saveEl.textContent=editing?'Salvar':'Criar';
+  if(titleIn) titleIn.value=editing?((note(_editNoteId)||{}).titulo||''):'';
+  renderNewIconPicker(); renderNewKind(); renderNewDate();
+}
+function openNew(){
+  _editNoteId=null; newKind='tarefas'; newCustomIcon=''; newDue='';
+  paintNoteEditorModal();
+  $('newOverlay').classList.add('open');
+  setTimeout(function(){ $('newTitle').focus(); },60);
+}
+function openNoteEditor(id, ev){
+  if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+  closeEdMenu();
+  var n=note(id); if(!n) return;
+  _editNoteId=n.id;
+  newKind=n.tipo||'tarefas';
+  newCustomIcon=isCustomIcon(n.cor)?n.cor:'';
+  newDue=n.vence||'';
+  paintNoteEditorModal();
+  $('newOverlay').classList.add('open');
+  setTimeout(function(){ var t=$('newTitle'); if(t){ t.focus(); t.select(); } },60);
+}
+function closeNew(){ $('newOverlay').classList.remove('open'); _editNoteId=null; }
 function renderNewKind(){ var el=$('newKindWrap'); if(!el) return; var cur=kindDef(newKind); el.innerHTML='<div class="jb-dd"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>'+esc(cur.label)+'</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">'+KINDS.map(function(k){return '<div class="jb-dd-opt'+(k.k===newKind?' is-sel':'')+'" onclick="pickNewKind(\''+k.k+'\')">'+k.icon+' '+esc(k.label)+'</div>';}).join('')+'</div></div>'; }
 function pickNewKind(k){ newKind=k; if(window.JB&&JB.ddClose)JB.ddClose(); renderNewKind(); }
 function renderIconPickerBody(ctx){
@@ -552,7 +578,25 @@ function applyIconReset(ctx){
   var n=note(ctx); if(!n) return;
   n.cor=''; touchNote(n); saveNoteRow(n); closeIconPicker();
 }
-function createNote(){ var t=($('newTitle').value||'').trim(); var kd=kindDef(newKind); if(!t){ var d=new Date(); t=kd.label+' — '+MOFULL[d.getMonth()]; } var now=new Date().toISOString(); var n={ id:uuid(), titulo:t, tipo:newKind, cor:newCustomIcon||'', fixado:false, criado:now, atualizado:now, vence:newDue }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); closeNew(); openNote(n.id); }
+function createNote(){
+  var t=($('newTitle').value||'').trim();
+  var kd=kindDef(newKind);
+  if(!t){ var d=new Date(); t=kd.label+' — '+MOFULL[d.getMonth()]; }
+  if(_editNoteId){
+    var cur=note(_editNoteId);
+    if(cur){
+      cur.titulo=t; cur.tipo=newKind; cur.cor=newCustomIcon||''; cur.vence=newDue||'';
+      touchNote(cur);
+    }
+    var stay=openNoteId===_editNoteId;
+    closeNew();
+    if(stay) renderEditor(); else renderHomeList();
+    return;
+  }
+  var now=new Date().toISOString();
+  var n={ id:uuid(), titulo:t, tipo:newKind, cor:newCustomIcon||'', fixado:false, criado:now, atualizado:now, vence:newDue };
+  DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); closeNew(); openNote(n.id);
+}
 
 function noteProgressStats(){
   var its=itemsOf(openNoteId).filter(function(x){ return !isGroup(x) && x.marcavel; });
@@ -582,7 +626,7 @@ function renderEdMenu(n, doneN){
   var dedupeBtn='<button type="button" class="ed-menu-item" onclick="closeEdMenu();dedupeItems(\''+n.id+'\')">🧹 Remover duplicatas</button>';
   var leaveLabel=n.collabSheetId?(n.collabRole==='owner'?'Excluir lista compartilhada':'Sair da lista'):'Excluir lista';
   var leaveFn=n.collabSheetId?'ncLeaveOrDelete()':'deleteNote()';
-  return '<div class="ed-menu-wrap"><button type="button" class="ed-menu-btn" onclick="toggleEdMenu(event)" aria-label="Mais opções">⋯</button><div class="ed-menu" id="edMenu" onclick="event.stopPropagation()"><button type="button" class="ed-menu-item" onclick="closeEdMenu();exportCurrentList()">📤 Exportar</button>'+shareBtn+dueBtn+hideDoneBtn+delChecked+dedupeBtn+'<div class="ed-menu-div"></div><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();'+leaveFn+'">'+esc(leaveLabel)+'</button></div></div>';
+  return '<div class="ed-menu-wrap"><button type="button" class="ed-menu-btn" onclick="toggleEdMenu(event)" aria-label="Mais opções">⋯</button><div class="ed-menu" id="edMenu" onclick="event.stopPropagation()"><button type="button" class="ed-menu-item" onclick="openNoteEditor(\''+n.id+'\')">✎ Editar lista</button><button type="button" class="ed-menu-item" onclick="closeEdMenu();exportCurrentList()">📤 Exportar</button>'+shareBtn+dueBtn+hideDoneBtn+delChecked+dedupeBtn+'<div class="ed-menu-div"></div><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();'+leaveFn+'">'+esc(leaveLabel)+'</button></div></div>';
 }
 
 /* ---- editor ---- */
@@ -1132,7 +1176,7 @@ function toggleNudgePref(){ var off=(DATA.config&&DATA.config.nudgePref)==='off'
 var NOTAS_TOUR=[
   { title:'Bem-vindo ao Notes 📝', body:'Listas marcáveis — compras, tarefas, viagem ou nota livre. Listas compartilhadas aparecem na seção 👥 Compartilhadas.' },
   { sel:'#fab', title:'Nova lista', body:'Toque no + e escolha o tipo. Numa nota livre, qualquer linha vira um item marcável com um toque.' },
-  { sel:'#main', title:'Suas listas', body:'Cada card mostra progresso. Toque para abrir e ir marcando.' },
+  { sel:'#main', title:'Suas listas', body:'Cada card mostra progresso. O lápis abre o editor da lista — o mesmo do menu ⋯.' },
   { title:'Dentro da lista', body:'Use "+ Adicionar grupo" para seções com cabeçalhos colapsáveis. Itens concluídos podem ir para um grupo recolhível no fim (menu ⋯ ou Ajustes → Ocultar concluídos).' },
   { title:'Selecionar vários', body:'Toque em ☑ Selecionar na barra inferior para marcar vários itens de uma vez — ideal no celular. Esc para sair.' },
   { title:'Listas compartilhadas', body:'No menu ⋯, "Tornar compartilhada" convida por e-mail. Membros editam juntos; configure seu perfil em Ajustes → Perfil.' },

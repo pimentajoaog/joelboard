@@ -42,12 +42,12 @@
 <!-- new note modal -->
 <div class="overlay" id="newOverlay" onclick="if(event.target===this)closeNew()">
   <div class="modal">
-    <div class="mh"><div class="mt">Nova lista</div><button class="x" onclick="closeNew()">✕</button></div>
+    <div class="mh"><div class="mt" id="newModalTitle">Nova lista</div><button class="x" onclick="closeNew()">✕</button></div>
     <div class="fg"><label class="fl">Ícone</label><div id="newIconWrap"></div></div>
     <div class="fg"><label class="fl">Tipo</label><div id="newKindWrap"></div><div class="rg">Define o comportamento da lista (marcáveis, sugestões…).</div></div>
     <div class="fg"><label class="fl">Título</label><input class="field" id="newTitle" placeholder="ex.: Compras do mês"></div>
-    <div class="fg"><label class="fl">Prazo (opcional)</label><button type="button" class="field datebtn empty" id="newDateBtn" onclick="pickNewDate()">Escolher data…</button></div>
-    <button class="btn-primary" onclick="createNote()">Criar</button>
+    <div class="fg"><label class="fl">Prazo (opcional)</label><button type="button" class="field datebtn empty" id="newDateBtn" onclick="pickNewDate()">Escolher data…</button><button type="button" class="btn ghost" id="newDateClear" onclick="clearNewDate()" style="display:none;margin-top:8px">Remover prazo</button></div>
+    <button class="btn-primary" id="newSaveBtn" onclick="createNote()">Criar</button>
   </div>
 </div>
 

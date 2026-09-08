@@ -637,6 +637,14 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-ink-layer.jb-ed-ink-full.ink-on { pointer-events: auto; cursor: crosshair; }
 .jb-ed.ink-erase .jb-ed-ink-layer,
 .jb-ed-ink-layer.jb-ed-ink-full.ink-erase { cursor: cell; }
+/* .page.on's enter animation would trap toolbar z-index under the full-page canvas. */
+html.jb-ink-full .page.on,
+html.jb-ink-full .tab-page.active {
+  animation: none;
+  transform: none;
+  filter: none;
+  opacity: 1;
+}
 html.jb-ink-full .header,
 html.jb-ink-full .tabbar,
 html.jb-ink-full .lnk,
@@ -645,7 +653,7 @@ html.jb-ink-full .jb-ed-bar,
 html.jb-ink-full .jb-ed-ink-tools,
 html.jb-ink-full .jb-ed-foot {
   position: relative;
-  z-index: 21;
+  z-index: 30;
   background: var(--bg);
 }
 html.jb-ink-full .door,

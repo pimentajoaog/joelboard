@@ -2157,8 +2157,39 @@
       redrawInk();
       return true;
     }
+    function inkChromeTarget(ev) {
+      if (!inkFullSheet()) return null;
+      var x = ev.clientX, y = ev.clientY;
+      var hits = [];
+      var i, el, chrome;
+      try {
+        if (typeof document.elementsFromPoint === 'function') hits = document.elementsFromPoint(x, y) || [];
+        else if (typeof document.elementFromPoint === 'function') {
+          el = document.elementFromPoint(x, y);
+          if (el) hits = [el];
+        }
+      } catch (_) { return null; }
+      for (i = 0; i < hits.length; i++) {
+        el = hits[i];
+        if (!el || el === inkCanvas) continue;
+        if (el.nodeType !== 1 || !el.closest) continue;
+        chrome = el.closest('.jb-ed-bar, .jb-ed-ink-tools, .jb-ed-foot, .header, .tabbar, .lnk, .modnote-head');
+        if (chrome) return el.closest('button, a, input, select, textarea, label, [role="button"]') || chrome;
+        if (el === document.body || el === document.documentElement) continue;
+        return null;
+      }
+      return null;
+    }
     function onInkPointerDown(ev) {
       if (!inkOpen || ev.button) return;
+      var chrome = inkChromeTarget(ev);
+      if (chrome) {
+        ev.preventDefault();
+        if (typeof chrome.click === 'function') {
+          try { chrome.click(); } catch (_) {}
+        }
+        return;
+      }
       ev.preventDefault();
       try { inkCanvas.setPointerCapture(ev.pointerId); } catch (_) {}
       if (inkErase) {

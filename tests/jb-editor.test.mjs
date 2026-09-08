@@ -206,6 +206,10 @@ test('ink overlay size follows the page box, not scrollHeight', function () {
   assert.match(css, /\.jb-ed-ink-layer \{[\s\S]*inset: 0/);
   assert.match(css, /\.jb-ed-ink-layer\.jb-ed-ink-full/);
   assert.match(css, /html\.jb-ink-full/);
+  assert.match(css, /html\.jb-ink-full \.page\.on/);
+  assert.match(css, /html\.jb-ink-full \.jb-ed-bar/);
+  assert.match(src, /function inkChromeTarget/);
+  assert.match(src, /elementsFromPoint/);
 });
 
 test('dumpInkStrokes round-trips and hitInkStroke finds the top scribble', function () {

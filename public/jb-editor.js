@@ -512,6 +512,7 @@
     var inkDirty = false;
     var inkSaveTimer = null;
     var inkRo = null;
+    var inkSizeRaf = 0;
 
     host.innerHTML = '';
     var root = document.createElement('div');
@@ -1194,19 +1195,24 @@
     }
     function sizeInkCanvas() {
       if (!inkCanvas) return;
-      var cssW = page.clientWidth || scroll.clientWidth || 320;
-      var cssH = Math.max(surface.scrollHeight, scroll.clientHeight, compact ? 112 : 320);
+      var cssW = Math.max(1, Math.round(page.clientWidth || 1));
+      var cssH = Math.max(1, Math.round(page.clientHeight || 1));
       var dpr = Math.min(2, window.devicePixelRatio || 1);
-      inkCanvas.style.width = cssW + 'px';
-      inkCanvas.style.height = cssH + 'px';
       var pxW = Math.max(1, Math.round(cssW * dpr));
       var pxH = Math.max(1, Math.round(cssH * dpr));
-      if (inkCanvas.width !== pxW || inkCanvas.height !== pxH) {
-        inkCanvas.width = pxW;
-        inkCanvas.height = pxH;
-      }
+      if (inkCanvas.width === pxW && inkCanvas.height === pxH) return;
+      inkCanvas.width = pxW;
+      inkCanvas.height = pxH;
       inkCtx = inkCanvas.getContext('2d');
       redrawInk();
+    }
+    function scheduleInkSize() {
+      if (!inkCanvas) return;
+      if (inkSizeRaf) return;
+      inkSizeRaf = requestAnimationFrame(function () {
+        inkSizeRaf = 0;
+        sizeInkCanvas();
+      });
     }
     function paintInkTools() {
       if (!inkTools) return;
@@ -1667,10 +1673,10 @@
     hydrateInk();
     if (inkCanvas) {
       sizeInkCanvas();
-      window.addEventListener('resize', sizeInkCanvas);
+      window.addEventListener('resize', scheduleInkSize);
       if (typeof ResizeObserver === 'function') {
-        inkRo = new ResizeObserver(function () { sizeInkCanvas(); });
-        try { inkRo.observe(surface); inkRo.observe(scroll); } catch (_) {}
+        inkRo = new ResizeObserver(function () { scheduleInkSize(); });
+        try { inkRo.observe(page); } catch (_) {}
       }
     }
 
@@ -1792,7 +1798,8 @@
         if (destroyed) return;
         document.removeEventListener('mousedown', onDocFsDown);
         document.removeEventListener('selectionchange', onSelChange);
-        window.removeEventListener('resize', sizeInkCanvas);
+        window.removeEventListener('resize', scheduleInkSize);
+        if (inkSizeRaf) { cancelAnimationFrame(inkSizeRaf); inkSizeRaf = 0; }
         if (inkRo) { try { inkRo.disconnect(); } catch (_) {} inkRo = null; }
         if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
         if (inkSaveTimer) { clearTimeout(inkSaveTimer); inkSaveTimer = null; }

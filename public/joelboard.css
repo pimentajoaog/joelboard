@@ -551,10 +551,10 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-stage { min-width: 0; }
 .jb-ed-scroll {
   min-height: 320px; background: var(--surface, #191d2c); border: 1px solid var(--border, #2d3346);
-  border-radius: 12px; overflow: auto;
+  border-radius: 12px; overflow-x: hidden; overflow-y: auto; scrollbar-gutter: stable;
 }
 .jb-ed-scroll:focus-within { border-color: var(--primary, #818cf8); }
-.jb-ed-page { position: relative; min-height: 100%; }
+.jb-ed-page { position: relative; min-height: 100%; overflow: hidden; }
 .jb-ed-surface { min-height: 320px; background: transparent; border: 0; border-radius: 0; padding: 16px 18px; overflow: visible; line-height: 1.65; font-size: 16px; color: var(--text, #e7eaf3); outline: none; position: relative; z-index: 1; }
 .jb-ed-surface:focus { outline: none; }
 .jb-ed-surface.is-empty:before { content: attr(data-placeholder); color: var(--muted, #7b85a0); pointer-events: none; }
@@ -574,7 +574,7 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-surface code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
 .jb-ed-surface a { color: var(--primary, #818cf8); cursor: pointer; }
 .jb-ed-surface hr { border: 0; border-top: 1px solid var(--border, #2d3346); margin: 14px 0; }
-.jb-ed-surface img[data-jb-file] { display: block; max-width: 100%; height: auto; border-radius: 10px; margin: 10px 0; background: var(--surface2, #232838); }
+.jb-ed-surface img[data-jb-file] { display: block; max-width: 100%; height: auto; box-sizing: border-box; border-radius: 10px; margin: 10px 0; background: var(--surface2, #232838); }
 .jb-ed-surface img.jb-ed-img-loading { min-height: 88px; }
 .jb-ed-surface img.jb-ed-img-err { outline: 1px dashed var(--border, #2d3346); }
 .jb-ed-compact .jb-ed-scroll { min-height: 112px; max-height: 200px; }
@@ -596,7 +596,7 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 }
 .jb-ed-ink-chip.on { border-color: var(--primary, #818cf8); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #818cf8) 35%, transparent); }
 .jb-ed-ink-layer {
-  position: absolute; left: 0; top: 0; z-index: 2; display: block;
+  position: absolute; inset: 0; z-index: 2; display: block;
   pointer-events: none; touch-action: none;
 }
 .jb-ed.ink-on .jb-ed-ink-layer { pointer-events: auto; cursor: crosshair; }

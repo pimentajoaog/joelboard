@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 
 const src = readFileSync(new URL('../public/jb-editor.js', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../public/joelboard.css', import.meta.url), 'utf8');
 const ctx = { console, File, Blob, Uint8Array };
 vm.createContext(ctx);
 vm.runInContext(src, ctx);
@@ -161,4 +162,15 @@ test('pullInkFileId reads overlay marker', function () {
 
 test('isEmptyHtml treats ink overlay as content', function () {
   assert.equal(ED.isEmptyHtml('<img data-jb-ink="1" data-jb-file="1AbCdEfGhIjKlMnOpQrSt" alt="__jb-ink__">'), false);
+});
+
+test('ink overlay size follows the page box, not scrollHeight', function () {
+  assert.match(src, /page\.clientHeight/);
+  assert.doesNotMatch(src, /surface\.scrollHeight/);
+  assert.match(src, /inkRo\.observe\(page\)/);
+  assert.doesNotMatch(src, /inkRo\.observe\(surface\)/);
+  assert.doesNotMatch(src, /inkRo\.observe\(scroll\)/);
+  assert.match(css, /\.jb-ed-scroll \{[\s\S]*scrollbar-gutter: stable/);
+  assert.match(css, /\.jb-ed-page \{[\s\S]*overflow: hidden/);
+  assert.match(css, /\.jb-ed-ink-layer \{[\s\S]*inset: 0/);
 });

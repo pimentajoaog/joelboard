@@ -27,7 +27,7 @@ vm.createContext(cctx);
 vm.runInContext(
   collab
   + '\nthis.plParseJoinSheetId=plParseJoinSheetId;this.plIsCollabSpreadsheetGrid=plIsCollabSpreadsheetGrid;'
-  + 'this.plJoinErrMessage=plJoinErrMessage;',
+  + 'this.plJoinErrMessage=plJoinErrMessage;this.plMemberNeedsProfileWrite=plMemberNeedsProfileWrite;',
   cctx
 );
 
@@ -122,6 +122,13 @@ test('plParseJoinSheetId accepts a raw id, join URL, or Drive URL', function () 
   assert.equal(cctx.plParseJoinSheetId(''), '');
 });
 
+test('plMemberNeedsProfileWrite updates when the local icon or name is newer', function () {
+  var me = { email: 'joel@x.com', nome: '', icone: '👤' };
+  assert.equal(cctx.plMemberNeedsProfileWrite(me, 'joel@x.com', 'Joel', '🐻'), true);
+  assert.equal(cctx.plMemberNeedsProfileWrite({ email: 'joel@x.com', nome: 'Joel', icone: '🐻' }, 'joel@x.com', 'Joel', '🐻'), false);
+  assert.equal(cctx.plMemberNeedsProfileWrite(me, 'amigo@x.com', 'Joel', '🐻'), false);
+});
+
 test('collab sheets are not treated as the personal Planner workbook', function () {
   assert.equal(cctx.plIsCollabSpreadsheetGrid({ Meta: 1, Membros: 2, Dias: 3 }), true);
   assert.equal(cctx.plIsCollabSpreadsheetGrid({ Planos: 1, Dias: 2 }), false);
@@ -130,4 +137,6 @@ test('collab sheets are not treated as the personal Planner workbook', function 
   assert.match(planner, /requiredTabs: \['Planos'\]/);
   assert.match(collab, /Joelboard Plano —/);
   assert.match(cctx.plJoinErrMessage({ message: 'HTTP 403' }), /Editor no Drive/);
+  assert.match(planner, /plPaintAcct/);
+  assert.doesNotMatch(planner, /acctEmail'\)\.textContent='👤 '\+.*plAcctLabel/);
 });

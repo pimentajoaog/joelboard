@@ -348,7 +348,8 @@ function loadData(){
 }
 function show(){
   $('loading').style.display='none'; $('app').style.display='block';
-  $('acctEmail').textContent='👤 '+((typeof plAcctLabel==='function')?plAcctLabel():(JB.email()||''));
+  if(typeof plPaintAcct==='function') plPaintAcct();
+  else $('acctEmail').textContent='👤 '+(JB.email()||'');
   if(!_pbooted){
     try{ var pid=new URLSearchParams(location.search).get('p'); if(pid && plan(pid)) openPlanId=pid; }catch(_){}
   }

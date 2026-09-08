@@ -25,14 +25,17 @@ function plWithSync(fn) {
   return _plSyncChain;
 }
 
-function plPackSignature(days, events, metaRow) {
+function plPackSignature(days, events, metaRow, members) {
   var d = (days || []).slice().sort(function (a, b) { return String(a.id).localeCompare(String(b.id)); }).map(function (x) {
     return x.id + '\t' + x.data + '\t' + x.titulo + '\t' + x.icone + '\t' + x.ordem;
   }).join('\n');
   var e = (events || []).slice().sort(function (a, b) { return String(a.id).localeCompare(String(b.id)); }).map(function (x) {
     return x.id + '\t' + x.diaId + '\t' + x.hora + '\t' + x.titulo + '\t' + x.nota + '\t' + x.tag + '\t' + x.ordem;
   }).join('\n');
-  return String((metaRow && metaRow[6]) || '') + '\n' + d + '\n' + e;
+  var mem = (members || []).slice().sort(function (a, b) { return String(a.email || '').localeCompare(String(b.email || '')); }).map(function (m) {
+    return (m.email || '') + '\t' + (m.nome || '') + '\t' + (m.icone || '') + '\t' + (m.status || '');
+  }).join('\n');
+  return String((metaRow && metaRow[6]) || '') + '\n' + d + '\n' + e + '\n' + mem;
 }
 
 function plWriteBegin() { _plWritePending++; }
@@ -118,6 +121,11 @@ function plAcctLabel() {
   return (plProfileIcon() + ' ' + (nm || JB.email() || '')).trim();
 }
 
+function plPaintAcct() {
+  var el = $('acctEmail');
+  if (el) el.textContent = plAcctLabel();
+}
+
 function plMemberAvatarsHtml(p) {
   if (!p || !p.collabMembers || !p.collabMembers.length) return '';
   return p.collabMembers.filter(function (m) { return m.status === 'active' || m.status === 'pending'; }).slice(0, 4).map(function (m) {
@@ -129,6 +137,58 @@ function plParseMembers(rows) {
   return body(rows).map(function (r) {
     return { email: String(r[0] || '').toLowerCase(), nome: String(r[1] || ''), icone: String(r[2] || ''), papel: String(r[3] || 'editor'), status: String(r[4] || 'active'), entrou: String(r[5] || '') };
   }).filter(function (m) { return m.email; });
+}
+
+function plMemberNeedsProfileWrite(m, em, nome, icone) {
+  if (!m || (m.email || '').toLowerCase() !== (em || '').toLowerCase()) return false;
+  nome = String(nome || '').trim();
+  icone = String(icone || '').trim();
+  return (nome && m.nome !== nome) || (icone && m.icone !== icone);
+}
+
+function plWriteMemberProfile(sid, m) {
+  if (!sid || !m || !m.email) return Promise.resolve();
+  var em = String(m.email).toLowerCase();
+  var nome = plProfileName();
+  var icone = plProfileIcon();
+  return JB.api('GET', plCollabUrl(sid, '/values/Membros?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
+    var v = res.values || [];
+    for (var i = 1; i < v.length; i++) {
+      if (String((v[i] || [])[0]).toLowerCase() !== em) continue;
+      var r = v[i] || [];
+      var cur = { email: em, nome: String(r[1] || ''), icone: String(r[2] || ''), papel: String(r[3] || m.papel || 'editor'), status: String(r[4] || m.status || 'active'), entrou: String(r[5] || m.entrou || '') };
+      if (!plMemberNeedsProfileWrite(cur, em, nome, icone)) return;
+      var status = cur.status === 'pending' ? 'active' : (cur.status || 'active');
+      var entrou = cur.entrou || new Date().toISOString();
+      return JB.api('PUT', plCollabUrl(sid, '/values/' + encodeURIComponent('Membros!B' + (i + 1) + ':F' + (i + 1)) + '?valueInputOption=RAW'), {
+        values: [[nome, icone, cur.papel || 'editor', status, entrou]]
+      }).then(function () {
+        m.nome = nome;
+        m.icone = icone;
+        m.status = status;
+        m.entrou = entrou;
+      });
+    }
+  });
+}
+
+function plSyncMyMemberProfile(p, membersRows) {
+  if (!p || !p.collabSheetId) return Promise.resolve();
+  var em = plEmail();
+  var members = p.collabMembers || (membersRows ? plParseMembers(membersRows) : []);
+  var mine = null;
+  for (var i = 0; i < members.length; i++) { if (members[i].email === em) { mine = members[i]; break; } }
+  if (!mine || !plMemberNeedsProfileWrite(mine, em, plProfileName(), plProfileIcon())) return Promise.resolve();
+  return plWriteMemberProfile(p.collabSheetId, mine).then(function () {
+    p.collabMembers = members;
+    if (openPlanId === p.id && typeof render === 'function') render();
+  }).catch(function () {});
+}
+
+function plSyncMyMemberOnAllPlans() {
+  (DATA && DATA.planos || []).forEach(function (p) {
+    if (p && p.collabSheetId) plSyncMyMemberProfile(p);
+  });
 }
 
 function plStripCollabFromData() {
@@ -225,7 +285,8 @@ function plLoadCollabPlans() {
           if (!p) { failed++; return; }
           DATA.planos.push(p);
           plApplyCollabPack(p.id, pack);
-          _plCollabSig[p.id] = plPackSignature(daysOf(p.id), eventsOfPlan(p.id), body(pack.meta)[0]);
+          _plCollabSig[p.id] = plPackSignature(daysOf(p.id), eventsOfPlan(p.id), body(pack.meta)[0], p.collabMembers);
+          plSyncMyMemberProfile(p, pack.membros);
         }).catch(function () { failed++; });
       })).then(function () {
         if (failed && typeof toast === 'function') {
@@ -262,7 +323,7 @@ function plRefreshCollabOnly(force) {
         cur.atualizado = String(metaRow[6] || cur.atualizado);
       }
       if (pack.membros && pack.membros.length) cur.collabMembers = plParseMembers(pack.membros);
-      var sig = plPackSignature(daysOf(planId), eventsOfPlan(planId), metaRow);
+      var sig = plPackSignature(daysOf(planId), eventsOfPlan(planId), metaRow, cur.collabMembers);
       var changed = _plCollabSig[planId] !== sig;
       _plCollabSig[planId] = sig;
       return { changed: changed, remote: !!changed };
@@ -270,9 +331,11 @@ function plRefreshCollabOnly(force) {
     if (!force) {
       return plPeekMetaAtualizado(sheetId).then(function (remoteAt) {
         var cur = plan(planId);
-        if (cur && remoteAt && remoteAt === cur.atualizado && _plCollabSig[planId]) return { changed: false };
         _plPollTick++;
-        return plFetchCollabPack(sheetId, { members: (_plPollTick % 4 === 0) }).then(applyPack);
+        var metaSame = cur && remoteAt && remoteAt === cur.atualizado && _plCollabSig[planId];
+        var wantMembers = !metaSame || (_plPollTick % 4 === 0);
+        if (metaSame && !wantMembers) return { changed: false };
+        return plFetchCollabPack(sheetId, { members: wantMembers }).then(applyPack);
       });
     }
     return plFetchCollabPack(sheetId).then(applyPack);
@@ -572,10 +635,14 @@ function plJoinCollab(sheetId) {
     if (me.status === 'pending') {
       return plActivateMember(sheetId, em).then(function () {
         me.status = 'active';
+        me.nome = plProfileName();
+        me.icone = plProfileIcon();
         return { pack: pack, metaRow: metaRow, members: members };
       });
     }
-    return { pack: pack, metaRow: metaRow, members: members };
+    return plWriteMemberProfile(sheetId, me).catch(function () {}).then(function () {
+      return { pack: pack, metaRow: metaRow, members: members };
+    });
   }).then(function (ctx) {
     return plFindRegistryRow(ctx.metaRow[7], sheetId).then(function (row) {
       if (row > 0) return;
@@ -603,8 +670,12 @@ function plActivateMember(sid, em) {
     var v = res.values || [];
     for (var i = 1; i < v.length; i++) {
       if (String((v[i] || [])[0]).toLowerCase() === em) {
-        var row = i + 1;
-        return JB.api('PUT', plCollabUrl(sid, '/values/Membros!E' + row + '?valueInputOption=RAW'), { values: [['active']] });
+        var r = v[i] || [];
+        var papel = String(r[3] || 'editor');
+        var entrou = String(r[5] || '') || new Date().toISOString();
+        return JB.api('PUT', plCollabUrl(sid, '/values/' + encodeURIComponent('Membros!B' + (i + 1) + ':F' + (i + 1)) + '?valueInputOption=RAW'), {
+          values: [[plProfileName(), plProfileIcon(), papel, 'active', entrou]]
+        });
       }
     }
   });
@@ -688,6 +759,8 @@ function plRenderProfileIcons() {
 function plPickProfileIcon(ic) {
   saveConfig('perfil_icone', ic);
   plRenderProfileIcons();
+  plPaintAcct();
+  plSyncMyMemberOnAllPlans();
 }
 
 function plSaveProfile() {
@@ -696,7 +769,8 @@ function plSaveProfile() {
   saveConfig('perfil_nome', nm);
   plCloseProfile();
   toast('✓ Perfil salvo');
-  if ($('acctEmail')) $('acctEmail').textContent = '👤 ' + plAcctLabel();
+  plPaintAcct();
+  plSyncMyMemberOnAllPlans();
   if (window._plProfileCb) { var cb = window._plProfileCb; window._plProfileCb = null; cb(); }
 }
 

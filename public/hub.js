@@ -461,10 +461,11 @@ function bootHubAgenda(){
   clearTimeout(_agendaTimer);
   _agendaTimer=setTimeout(refreshHubAgenda, 60);
 }
+var _agendaWait=null;
 function forceRefreshHubAgenda(){
   if(!JB.isSignedIn()) return;
-  _agendaApi=null;
-  refreshHubAgenda();
+  if(JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();
+  refreshHubAgenda(true);
 }
 function hubAgendaMountOpts(events){
   var wide=hubAgendaWide();
@@ -478,21 +479,21 @@ function hubAgendaMountOpts(events){
     views: wide?['day','3day','week','month']:['day','week','month'],
     emptyHint:'Abra um app e agende algo — a agenda junta tudo aqui.',
     onChange:function(st){
-      var nextView=st.view, nextDate=st.date;
-      if(nextView===_agendaView && nextDate===_agendaDate) return;
-      _agendaView=nextView; _agendaDate=nextDate;
-      refreshHubAgenda();
+      var prevMonth=String(_agendaDate||'').slice(0,7);
+      _agendaView=st.view; _agendaDate=st.date;
+      if(String(st.date||'').slice(0,7)!==prevMonth) refreshHubAgenda();
     }
   };
 }
-function refreshHubAgenda(){
+function refreshHubAgenda(force){
   var host=$('hubAgendaCal'), btn=$('hubAgendaRefresh');
   if(!host || !window.JB || !JB.cal || !JB.cal.loadHubEvents) return;
+  if(_agendaWait && !force) return _agendaWait;
   var seq=++_agendaSeq;
   if(btn) btn.disabled=true;
-  paintAgendaHint(_agendaMissed, true);
+  if(force || !_agendaApi) paintAgendaHint(_agendaMissed, true);
   if(!_agendaApi) host.innerHTML='<div class="rg">Carregando agenda…</div>';
-  JB.cal.loadHubEvents({ view:_agendaView, date:_agendaDate||undefined }).then(function(pack){
+  _agendaWait=JB.cal.loadHubEvents({ view:_agendaView, date:_agendaDate||undefined, force:!!force }).then(function(pack){
     if(seq!==_agendaSeq) return;
     _agendaDate=pack.range && pack.range.date ? pack.range.date : _agendaDate;
     _agendaMissed=pack.missed||[];
@@ -506,7 +507,8 @@ function refreshHubAgenda(){
     paintAgendaHint(_agendaMissed);
     if(!_agendaApi) host.innerHTML=(JB.emptyState?JB.emptyState({ icon:'📅', title:'Nada neste período', hint:'Abra um app e agende algo — a agenda junta tudo aqui.' }):'<div class="rg">Nada neste período.</div>');
     if(btn) btn.disabled=false;
-  });
+  }).then(function(){ if(seq===_agendaSeq) _agendaWait=null; });
+  return _agendaWait;
 }
 function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); applyJulioelUI(false); if(on && !_hbooted){ _hbooted=true; bootHubTours(); } hubNewsInit(); bootHubAgenda(); }
 JB.onAuthRestored(setGreet);

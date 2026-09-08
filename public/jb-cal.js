@@ -299,15 +299,28 @@
       };
     });
   }
+  function mapSeq(items, fn) {
+    var out = [];
+    return (items || []).reduce(function (p, item) {
+      return p.then(function () {
+        return Promise.resolve(fn(item)).then(function (r) { out.push(r); return out; });
+      });
+    }, Promise.resolve([])).then(function () { return out; });
+  }
   function notaItemsDone(itensRows, notaId) {
     var rows = body(itensRows).filter(function (r) { return String(r[0]) === String(notaId) && r[3]; });
     if (!rows.length) return false;
     return rows.every(function (r) { return r[4] === true || r[4] === '1' || r[4] === 1; });
   }
+  var _tabCache = {};
+  function cachedSheetTabs(sid) {
+    if (_tabCache[sid]) return Promise.resolve(_tabCache[sid]);
+    return JB.sheetTabs(sid).then(function (grid) { _tabCache[sid] = grid; return grid; });
+  }
   function loadAppEvents(app, start, end) {
     var sid = JB.getSheetId && JB.getSheetId(app);
     if (!sid) return Promise.resolve([]);
-    return JB.sheetTabs(sid).then(function (grid) {
+    return cachedSheetTabs(sid).then(function (grid) {
       if (app === 'planner' && isCollabPlannerGrid(grid)) return [];
       if (app === 'notas' && isCollabNotasGrid(grid)) return [];
       return loadAppEventsFromGrid(app, sid, grid, start, end);
@@ -353,17 +366,13 @@
         var evs = eventsFromNotas(lists);
         var regs = body(by.Compartilhadas || []).filter(function (r) { return r[1]; });
         if (!regs.length) return evs;
-        return Promise.all(regs.map(function (reg) {
-          var csid = String(reg[1]);
-          return JB.sheetTabs(csid).then(function (grid) {
-            if (!isCollabNotasGrid(grid)) return [];
-            return batchGet(csid, ['Meta']).then(function (pack) {
-              var meta = body(pack.Meta)[0];
-              if (!meta || !meta[7]) return [];
-              return eventsFromNotas([{ id: String(meta[6] || reg[4] || ''), titulo: String(meta[0] || reg[0] || ''), tipo: String(meta[1] || ''), vence: meta[7], done: false }]);
-            });
+        return mapSeq(regs, function (reg) {
+          return batchGet(String(reg[1]), ['Meta']).then(function (pack) {
+            var meta = body(pack.Meta)[0];
+            if (!meta || !meta[7]) return [];
+            return eventsFromNotas([{ id: String(meta[6] || reg[4] || ''), titulo: String(meta[0] || reg[0] || ''), tipo: String(meta[1] || ''), vence: meta[7], done: false }]);
           }).catch(function () { return []; });
-        })).then(function (extra) {
+        }).then(function (extra) {
           extra.forEach(function (arr) { evs = evs.concat(arr); });
           return evs.filter(function (e) { return e.date >= start && e.date <= end; });
         });
@@ -385,23 +394,19 @@
         var evs = eventsFromPlanner(planos, dias, evrows);
         var regs = body(by.Compartilhadas || []).filter(function (r) { return r[1]; });
         if (!regs.length) return evs.filter(function (e) { return e.date >= start && e.date <= end; });
-        return Promise.all(regs.map(function (reg) {
-          var csid = String(reg[1]);
-          return JB.sheetTabs(csid).then(function (grid) {
-            if (!isCollabPlannerGrid(grid)) return [];
-            return batchGet(csid, ['Meta', 'Dias', 'Eventos']).then(function (pack) {
-              var meta = body(pack.Meta)[0];
-              var p = meta && meta[7] ? [{ id: String(meta[7]), titulo: String(meta[0] || '') }] : [];
-              var ds = body(pack.Dias).filter(function (r) { return r[5]; }).map(function (r) {
-                return { id: String(r[5]), planoId: String(r[0] || (p[0] && p[0].id) || ''), data: r[1], titulo: String(r[2] || '') };
-              });
-              var es = body(pack.Eventos).filter(function (r) { return r[9]; }).map(function (r) {
-                return { id: String(r[9]), diaId: String(r[0] || ''), hora: String(r[1] || ''), horaMin: r[2], titulo: String(r[3] || ''), nota: String(r[4] || '') };
-              });
-              return eventsFromPlanner(p, ds, es);
+        return mapSeq(regs, function (reg) {
+          return batchGet(String(reg[1]), ['Meta', 'Dias', 'Eventos']).then(function (pack) {
+            var meta = body(pack.Meta)[0];
+            var p = meta && meta[7] ? [{ id: String(meta[7]), titulo: String(meta[0] || '') }] : [];
+            var ds = body(pack.Dias).filter(function (r) { return r[5]; }).map(function (r) {
+              return { id: String(r[5]), planoId: String(r[0] || (p[0] && p[0].id) || ''), data: r[1], titulo: String(r[2] || '') };
             });
+            var es = body(pack.Eventos).filter(function (r) { return r[9]; }).map(function (r) {
+              return { id: String(r[9]), diaId: String(r[0] || ''), hora: String(r[1] || ''), horaMin: r[2], titulo: String(r[3] || ''), nota: String(r[4] || '') };
+            });
+            return eventsFromPlanner(p, ds, es);
           }).catch(function () { return []; });
-        })).then(function (extra) {
+        }).then(function (extra) {
           extra.forEach(function (arr) { evs = evs.concat(arr); });
           return evs.filter(function (e) { return e.date >= start && e.date <= end; });
         });
@@ -409,20 +414,34 @@
     }
     return Promise.resolve([]);
   }
+  var _hubCache = null;
+  var HUB_CACHE_MS = 90000;
   function loadHubEvents(opts) {
     opts = opts || {};
     var view = opts.view || 'week';
-    var win = fetchWindow(view, opts.date);
+    var focus = rangeForView(view, opts.date);
+    var win = fetchWindow('month', opts.date);
+    if (!opts.force && _hubCache && (Date.now() - _hubCache.at) < HUB_CACHE_MS
+      && _hubCache.start <= focus.start && _hubCache.end >= focus.end) {
+      return Promise.resolve({ events: _hubCache.events, missed: _hubCache.missed, range: focus, window: win, cached: true });
+    }
     var apps = opts.apps || ['finance', 'fit', 'study', 'notas', 'planner'];
     var missed = [];
-    return Promise.all(apps.map(function (app) {
-      return loadAppEvents(app, win.start, win.end).catch(function () { missed.push(app); return []; });
-    })).then(function (parts) {
-      var all = [];
-      parts.forEach(function (p) { all = all.concat(p); });
-      return { events: sortEvents(all), missed: missed, range: win.focus, window: win };
+    var chain = Promise.resolve([]);
+    apps.forEach(function (app) {
+      chain = chain.then(function (all) {
+        return loadAppEvents(app, win.start, win.end)
+          .catch(function () { missed.push(app); return []; })
+          .then(function (part) { return all.concat(part); });
+      });
+    });
+    return chain.then(function (all) {
+      var pack = { events: sortEvents(all), missed: missed, range: focus, window: win };
+      _hubCache = { at: Date.now(), start: win.start, end: win.end, events: pack.events, missed: missed };
+      return pack;
     });
   }
+  function clearHubCache() { _hubCache = null; _tabCache = {}; }
 
   function eventRowHtml(e, opts) {
     opts = opts || {};
@@ -694,7 +713,7 @@
     eventsFromNotas: eventsFromNotas, eventsFromPlanner: eventsFromPlanner,
     isCollabPlannerGrid: isCollabPlannerGrid, isCollabNotasGrid: isCollabNotasGrid,
     eventRowHtml: eventRowHtml, relLabel: relLabel, nearClass: nearClass, daysUntil: daysUntil, fmtBR: fmtBR,
-    loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp
+    loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp, clearHubCache: clearHubCache
   };
   window.JB_CAL = api;
   if (window.JB) window.JB.cal = api;

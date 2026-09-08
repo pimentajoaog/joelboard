@@ -1,4 +1,4 @@
-/* Tests for Joelboard Notas shared lists. © 2026 Joel Soluções LTDA. */
+/* Tests for Joelboard Notes shared lists. © 2026 Joel Soluções LTDA. */
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,10 +19,10 @@ test('ncParseJoinSheetId accepts a raw id, join URL, or Drive URL', function () 
   assert.equal(ctx.ncParseJoinSheetId('not-a-sheet'), '');
 });
 
-test('collab sheets are not treated as the personal Notas workbook', function () {
+test('collab sheets are not treated as the personal Notes workbook', function () {
   assert.equal(ctx.ncIsCollabSpreadsheetGrid({ Meta: 1, Membros: 2, Itens: 3 }), true);
   assert.equal(ctx.ncIsCollabSpreadsheetGrid({ Notas: 1, Itens: 2 }), false);
-  assert.match(notas, /namePart:'Joelboard Notas'/);
+  assert.match(notas, /namePart:'Joelboard Not'/);
   assert.match(notas, /requiredTabs: \['Notas'\]/);
   assert.match(notas, /!grid\['Notas'\]/);
 });

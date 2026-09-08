@@ -1,6 +1,6 @@
 # Joelboard — Shared Kit & New-App Starter
 
-The Joelboard suite (Hub, Finance, Fit, Study, Notas, Planner, Mini) is **one Vite multi-page app** with **Tailwind**.
+The Joelboard suite (Hub, Finance, Fit, Study, Notes, Planner, Mini) is **one Vite multi-page app** with **Tailwind**.
 Every app shares core logic, styles, design tokens, and interaction conventions.
 **Read this before building a new app or extending shared UI.**
 
@@ -116,7 +116,7 @@ Background reloads: wrap fetches in `JB.syncWrap(promise)` for top sync bar + he
 | `JB.emptyState({ icon, title, hint, action, onclick })` | Empty list placeholder HTML |
 | `JB.skeletonHtml('fit'\|'study'\|'notas'\|'planner')` | Loading shimmer |
 | `JB.staggerChildren(el, key)` | First-render list cascade |
-| `JB.searchFocus`, `searchBlur`, `searchClearVis` | Notas search bar polish |
+| `JB.searchFocus`, `searchBlur`, `searchClearVis` | Notes search bar polish |
 
 Scroll-lock behind `.overlay.open` is automatic (`.jb-noscroll` on `<html>`/`<body>`).
 
@@ -180,7 +180,7 @@ Tailwind maps via `tailwind.config.js`. **Do not** introduce `--accent`/`--ok` o
 | Finance | `finance` | All: Transactions, Budget, Goals, … (see finance-sheets.js) |
 | Fit | `fit` | Exercicios, Treinos, Sessoes, Series, Peso, MacroFoods, MacroLog, … |
 | Study | `study` | Materias, Eventos (not Config alone) |
-| Notas | `notas` | Notas, Itens (not Config alone) |
+| Notes | `notas` | Notas, Itens (not Config alone) |
 | Planner | `planner` | Planos (not Config alone; shared files use Meta) |
 
 Each app: gate → create/link sheet → `loadData` → `show`.

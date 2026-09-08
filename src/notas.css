@@ -1,4 +1,4 @@
-/* Joelboard Notas — styles, Tailwind-based. © 2026 Joel Soluções LTDA.
+/* Joelboard Notes — styles, Tailwind-based. © 2026 Joel Soluções LTDA.
    Preflight off (tailwind.config) so the reset below is the single source of truth.
    :root tokens use the shared neutral vocabulary; --primary is Notas's amber accent. */
 @tailwind base;

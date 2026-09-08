@@ -8,7 +8,7 @@ Guias de uso por app. Para desenvolvimento, veja [STARTER.md](../STARTER.md). Vi
 | [finance.md](finance.md) | Finanças pessoais |
 | [fit.md](fit.md) | Treinos, progresso, macros |
 | [study.md](study.md) | Calendário, matérias, foco |
-| [notas.md](notas.md) | Listas e itens |
+| [notas.md](notas.md) | Notes — listas e itens |
 | [planner.md](planner.md) | Roteiros e linha do tempo |
 | [mini.md](mini.md) | Extensões Replace, Refresh e Report |
 

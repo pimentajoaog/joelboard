@@ -1,4 +1,4 @@
-/* Joelboard Notas — app logic. © 2026 Joel Soluções LTDA.
+/* Joelboard Notes — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. Edit behavior here, markup in the .html. */
 var DATA=null, notasGrid={}, authDone=false, openNoteId=null, homeQuery='', _nbooted=false, _stNotasHome=false, newDue='', _selMode=false, _sel={}, _renameNoteId=null, _edMenuOpen=false;
 var HIDE_DONE_KEY='jb_notas_hide_done';
@@ -105,16 +105,16 @@ function clearDue(){ var n=note(openNoteId); if(!n) return; n.vence=''; touchNot
 function startAuth(){
   if (JB.cachedToken()){ afterAuth(); return; }
   if (JB.bootAuthIfExpired(function(){ authDone=false; showSignIn(true); }, function(){ authDone=true; afterAuth(); })) {
-    loadingHtml('<div class="gate"><div class="gt">📝 Joelboard Notas</div><div class="gs">Carregando…</div></div>');
+    loadingHtml('<div class="gate"><div class="gt">📝 Joelboard Notes</div><div class="gs">Carregando…</div></div>');
     return;
   }
-  loadingHtml('<div class="gate"><div class="gt">📝 Joelboard Notas</div><div class="gs">Entrando…</div></div>');
+  loadingHtml('<div class="gate"><div class="gt">📝 Joelboard Notes</div><div class="gs">Entrando…</div></div>');
   JB.requestToken(false).then(function(){ authDone=true; afterAuth(); }).catch(showSignIn);
   setTimeout(function(){ if(!authDone && !JB.cachedToken()) showSignIn(); }, 16000);
 }
 JB.onSessionExpired(function(){ authDone=false; showSignIn(true); });
 JB.onAuthRestored(function(){ if(!JB.isSignedIn()||authDone) return; authDone=true; afterAuth(); });
-function showSignIn(expired){ loadingHtml('<div class="gate"><div class="gt">📝 Joelboard Notas</div><div class="gs">'+(expired?'Sua sessão expirou. Entre de novo com Google para continuar.':'Listas e notas que você marca — num lugar só.')+'</div><button class="btn" onclick="doSignIn()">Entrar com Google</button></div>'); }
+function showSignIn(expired){ loadingHtml('<div class="gate"><div class="gt">📝 Joelboard Notes</div><div class="gs">'+(expired?'Sua sessão expirou. Entre de novo com Google para continuar.':'Listas e notas que você marca — num lugar só.')+'</div><button class="btn" onclick="doSignIn()">Entrar com Google</button></div>'); }
 function doSignIn(){ JB.signIn({ onSuccess: function(){ authDone=true; afterAuth(); } }); }
 function notasSignOut(){ JB.signOut(); location.reload(); }
 function afterAuth(){ loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>'); JB.fetchEmail().then(bootSheet); }
@@ -133,7 +133,7 @@ function notasRejectCollabAsPersonal(grid){
   return typeof ncIsCollabSpreadsheetGrid==='function' && ncIsCollabSpreadsheetGrid(grid);
 }
 function createPersonalNotasSpreadsheet(){
-  var title='📝 Joelboard Notas — '+(JB.email()?JB.email().split('@')[0]:'Pessoal');
+  var title='📝 Joelboard Notes — '+(JB.email()?JB.email().split('@')[0]:'Pessoal');
   return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets',{ properties:{title:title}, sheets:NOTAS_TABS.map(function(t){return {properties:{title:t[0]}};}) })
     .then(function(ss){
       JB.setSheetId('notas',ss.spreadsheetId);
@@ -157,7 +157,7 @@ function ensurePersonalNotasSheet(){
 }
 function bootSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando suas listas…</div></div>');
-  JB.resolveSheet({ app:'notas', namePart:'Joelboard Notas', requiredTabs: ['Notas'] })
+  JB.resolveSheet({ app:'notas', namePart:'Joelboard Not', requiredTabs: ['Notas'] })
     .then(function(ctx){
       if(notasRejectCollabAsPersonal(ctx.grid)){
         JB.clearSheetId('notas');
@@ -1130,7 +1130,7 @@ function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++){ var on=ps[j].getAttribute('data-pane')===name; ps[j].style.display=on?'':'none'; ps[j].classList.toggle('active', on); } }
 function toggleNudgePref(){ var off=(DATA.config&&DATA.config.nudgePref)==='off'; var nv=off?'on':'off'; saveConfig('nudgePref', nv); $('setNudge').classList.toggle('on', nv!=='off'); }
 var NOTAS_TOUR=[
-  { title:'Bem-vindo ao Notas 📝', body:'Listas marcáveis — compras, tarefas, viagem ou nota livre. Listas compartilhadas aparecem na seção 👥 Compartilhadas.' },
+  { title:'Bem-vindo ao Notes 📝', body:'Listas marcáveis — compras, tarefas, viagem ou nota livre. Listas compartilhadas aparecem na seção 👥 Compartilhadas.' },
   { sel:'#fab', title:'Nova lista', body:'Toque no + e escolha o tipo. Numa nota livre, qualquer linha vira um item marcável com um toque.' },
   { sel:'#main', title:'Suas listas', body:'Cada card mostra progresso. Toque para abrir e ir marcando.' },
   { title:'Dentro da lista', body:'Use "+ Adicionar grupo" para seções com cabeçalhos colapsáveis. Itens concluídos podem ir para um grupo recolhível no fim (menu ⋯ ou Ajustes → Ocultar concluídos).' },

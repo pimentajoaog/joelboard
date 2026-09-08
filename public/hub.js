@@ -14,7 +14,7 @@ var HUB_NEWS_DEFAULT=[
   { app:'notas', kind:'correcao', text:'Duplicatas fantasma em listas corrigidas; Remover duplicatas no menu ⋯ de cada lista.' }
 ];
 var HUB_NEWS=HUB_NEWS_DEFAULT.slice();
-var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', planner:'Planner', mini:'Mini', hub:'Hub', study:'Study' };
+var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notes', planner:'Planner', mini:'Mini', hub:'Hub', study:'Study' };
 var HUB_NEWS_KIND={ novo:'Novo', correcao:'Correção' };
 var HUB_NEWS_APPS=['hub','finance','fit','study','notas','planner','mini'];
 var _hubNewsIgnoreEnv=false;
@@ -309,7 +309,7 @@ function $(id){ return document.getElementById(id); }
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só — entre com Google para sincronizar dados no seu Drive.' },
   { sel:'#hubAgenda', title:'Agenda', body:'Calendário compacto à esquerda. O grupo de ícones filtra os apps; a lista junta por app, com o que vem pela frente no topo.' },
-  { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas, Planner ou Mini (extensões Chrome).' },
+  { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notes, Planner ou Mini (extensões Chrome).' },
   { sel:'#hubNews', title:'Novidades', body:'Fique por dentro das últimas mudanças nos apps — atualizado aqui no Hub.' },
   { sel:'.gear', title:'Ajustes', body:'Tema, login, tutorial, privacidade e aviso legal ficam aqui.' }
 ];
@@ -418,7 +418,7 @@ function bootHubTours(){
 }
 var _agendaApi=null, _agendaView='month', _agendaDate='', _agendaSeq=0, _agendaTimer=0, _agendaMissed=[], _agendaWide=false;
 var HUB_AGENDA_WIDE='jb_hub_agenda_wide';
-var HUB_AGENDA_LABEL={ finance:'Finance', fit:'Fit', study:'Study', notas:'Notas', planner:'Planner' };
+var HUB_AGENDA_LABEL={ finance:'Finance', fit:'Fit', study:'Study', notas:'Notes', planner:'Planner' };
 function hubAgendaWide(){
   try{ return localStorage.getItem(HUB_AGENDA_WIDE)==='1'; }catch(_){ return false; }
 }

@@ -1,4 +1,4 @@
-/* Joelboard Notas — shared lists (collab). © 2026 Joel Soluções LTDA. */
+/* Joelboard Notes — shared lists (collab). © 2026 Joel Soluções LTDA. */
 var NC_COLLAB_TABS = [
   ['Meta', ['Titulo', 'Tipo', 'Cor', 'Fixado', 'Criado', 'Atualizado', 'ID', 'Vence', 'OwnerEmail']],
   ['Itens', ['NotaID', 'Ordem', 'Texto', 'Marcavel', 'Feito', 'ID', 'Tipo']],
@@ -546,7 +546,7 @@ function ncMailInvite(email, n) {
   var sheetUrl = ncShareSheetUrl(n);
   var sub = encodeURIComponent('Lista compartilhada no Joelboard: ' + (n.titulo || 'Lista'));
   var body = encodeURIComponent(
-    'Oi!\n\nCompartilhei uma lista com você no Joelboard Notas.\n\n'
+    'Oi!\n\nCompartilhei uma lista com você no Joelboard Notes.\n\n'
     + '1) Abra este link e entre com Google:\n' + joinUrl + '\n\n'
     + '2) No Google Drive, aceite acesso Editor à planilha (se ainda não tiver):\n' + sheetUrl + '\n'
   );

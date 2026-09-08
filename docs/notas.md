@@ -1,8 +1,8 @@
-# Notas
+# Notes
 
 Listas flexíveis — compras, tarefas, notas livres e viagem — com itens marcáveis, grupos, prazos e fixação.
 
-Dados na planilha **Joelboard Notas** no seu Drive.
+Dados na planilha **Joelboard Notes** no seu Drive.
 
 ## Tela inicial
 

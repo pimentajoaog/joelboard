@@ -127,6 +127,14 @@
     <a class="mbtn hub-legal-btn" href="/privacy.html">🔒 Privacidade</a>
     <a class="mbtn hub-legal-btn" href="/aviso.html">⚖️ Aviso legal</a>
     <button class="mbtn" id="hubAuthBtn" onclick="hubAuth()">Entrar com Google</button>
+    <div class="hub-set-label">Agenda</div>
+    <div class="hub-limit-cap">Itens por app</div>
+    <div class="hub-limit-row">
+      <button type="button" class="hub-limit-chip" data-hub-limit="1" onclick="setHubAgendaLimit(1)">1</button>
+      <button type="button" class="hub-limit-chip" data-hub-limit="3" onclick="setHubAgendaLimit(3)">3</button>
+      <button type="button" class="hub-limit-chip" data-hub-limit="5" onclick="setHubAgendaLimit(5)">5</button>
+      <input class="hub-limit-n" id="hubAgendaLimitN" type="number" min="1" max="99" inputmode="numeric" aria-label="Quantidade personalizada" onchange="setHubAgendaLimit(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
+    </div>
     <div style="font-size:12px;color:var(--muted);margin:14px 0 8px">Tema</div>
     <div id="hubSkins"></div>
     <div class="vrs">Joelboard · © 2026 Joel Soluções LTDA</div>

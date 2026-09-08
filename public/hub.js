@@ -418,6 +418,8 @@ function bootHubTours(){
 }
 var _agendaApi=null, _agendaView='month', _agendaDate='', _agendaSeq=0, _agendaTimer=0, _agendaMissed=[], _agendaWide=false;
 var HUB_AGENDA_WIDE='jb_hub_agenda_wide';
+var HUB_AGENDA_LIMIT='jb_hub_agenda_limit';
+var HUB_AGENDA_LIMIT_DEFAULT=5;
 var HUB_AGENDA_LABEL={ finance:'Finance', fit:'Fit', study:'Study', notas:'Notes', planner:'Planner' };
 function hubAgendaWide(){
   try{ return localStorage.getItem(HUB_AGENDA_WIDE)==='1'; }catch(_){ return false; }
@@ -476,7 +478,7 @@ function hubAgendaMountOpts(events){
     compact:!wide,
     showFilters:wide,
     picked: _agendaView==='month' ? null : undefined,
-    appLimit:5,
+    appLimit:hubAgendaLimit(),
     views: wide?['day','3day','week','month']:['day','week','month'],
     emptyHint:'Abra um app e agende algo — a agenda junta tudo aqui.',
     onChange:function(st){
@@ -606,7 +608,32 @@ function renderFbChips(base){ // chips = Tudo + one per app present (known apps 
   }).join('');
 }
 function fbSetFilter(f){ fbFilter=f; renderFB(); }
-function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; JB.renderSkinPicker('hub', document.getElementById("hubSkins")); document.getElementById("hubSet").classList.add("open"); }
+function hubAgendaLimit(){
+  try{
+    var n=parseInt(localStorage.getItem(HUB_AGENDA_LIMIT),10);
+    if(n>=1 && n<=99) return n;
+  }catch(_){}
+  return HUB_AGENDA_LIMIT_DEFAULT;
+}
+function paintHubAgendaLimit(){
+  var n=hubAgendaLimit();
+  document.querySelectorAll('[data-hub-limit]').forEach(function(b){
+    b.classList.toggle('on', Number(b.getAttribute('data-hub-limit'))===n);
+  });
+  var inp=$('hubAgendaLimitN');
+  if(inp && document.activeElement!==inp) inp.value=String(n);
+}
+function setHubAgendaLimit(raw){
+  var n=parseInt(raw,10);
+  if(!(n>=1 && n<=99)) n=HUB_AGENDA_LIMIT_DEFAULT;
+  try{
+    if(n===HUB_AGENDA_LIMIT_DEFAULT) localStorage.removeItem(HUB_AGENDA_LIMIT);
+    else localStorage.setItem(HUB_AGENDA_LIMIT, String(n));
+  }catch(_){}
+  paintHubAgendaLimit();
+  if(_agendaApi && _agendaApi.setAppLimit) _agendaApi.setAppLimit(n);
+}
+function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; JB.renderSkinPicker('hub', document.getElementById("hubSkins")); paintHubAgendaLimit(); document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
 function hubAuth(){ var on=JB.isSignedIn(); closeHubSet(); if(on) doOut(); else doIn(); }
 function miniReplaceMsg(type, extra) {

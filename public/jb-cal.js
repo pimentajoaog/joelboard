@@ -825,6 +825,11 @@
       setEvents: function (list) { state.events = list || []; paint(); },
       setView: function (v) { state.view = v; paint(); },
       setDate: function (d) { state.date = d; paint(); },
+      setAppLimit: function (n) {
+        state.appLimit = Number(n) > 0 ? Number(n) : 0;
+        state.expandedApps = {};
+        paint();
+      },
       getState: function () { return state; },
       render: paint
     };

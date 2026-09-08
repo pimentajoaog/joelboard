@@ -105,6 +105,21 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 .mbtn{ @apply block w-full bg-surface2 border border-border text-ink rounded-[11px] p-3 text-sm font-bold cursor-pointer mb-2.5; font-family:inherit; }
 .mbtn:hover{ @apply border-primary; }
 .vrs{ @apply text-center text-[11px] text-muted opacity-60 mt-1.5; }
+.hub-set-label{ font-size:12px; color:var(--muted); margin:14px 0 8px; }
+.hub-limit-cap{ font-size:13px; font-weight:700; margin:0 0 8px; }
+.hub-limit-row{ display:flex; align-items:center; gap:8px; margin:0 0 4px; }
+.hub-limit-chip{
+  min-width:36px; height:36px; padding:0 10px; border-radius:999px;
+  border:1px solid var(--border); background:var(--surface2); color:var(--muted);
+  font:inherit; font-size:13px; font-weight:800; cursor:pointer;
+}
+.hub-limit-chip.on{ color:var(--text); border-color:var(--primary); background:color-mix(in srgb, var(--primary) 16%, var(--surface)); }
+.hub-limit-n{
+  width:64px; height:36px; border-radius:11px; padding:0 8px; text-align:center;
+  border:1px solid var(--border); background:var(--surface2); color:var(--text);
+  font:inherit; font-size:13px; font-weight:800;
+}
+.hub-limit-n:focus{ outline:none; border-color:var(--primary); }
 
 /* Feedback viewer (Hub admin, owner-only) */
 .empty{ text-align:center; color:var(--muted); padding:40px 16px; font-size:13px; }

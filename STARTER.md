@@ -1,6 +1,6 @@
 # Joelboard — Shared Kit & New-App Starter
 
-The Joelboard suite (Hub, Finance, Fit, Study, Notas, Mini) is **one Vite multi-page app** with **Tailwind**.
+The Joelboard suite (Hub, Finance, Fit, Study, Notas, Planner, Mini) is **one Vite multi-page app** with **Tailwind**.
 Every app shares core logic, styles, design tokens, and interaction conventions.
 **Read this before building a new app or extending shared UI.**
 
@@ -17,6 +17,7 @@ joelboard/
   fit/index.html
   study/index.html
   notas/index.html
+  planner/index.html
   mini/index.html         # redirects to Hub Mini panel
   src/<app>.css           # Tailwind per app (@tailwind + :root + @apply)
   public/
@@ -34,7 +35,7 @@ joelboard/
   docs/                   # user documentation per app
   scripts/                # build helpers (bump-sw, zip-extensions, …)
   tailwind.config.js      # preflight: false
-  vite.config.js          # MPA inputs (6 entries)
+  vite.config.js          # MPA inputs
 ```
 
 ---
@@ -113,7 +114,7 @@ Background reloads: wrap fetches in `JB.syncWrap(promise)` for top sync bar + he
 | `JB.datePicker`, `JB.dpOpen`, `JB.dpSet`, `JB.dpGet`, `JB.fmtDate` | In-app calendar (no native `<input type=date>`) |
 | `JB.tour(app, steps[, { onDone }])`, `JB.tourDone(app)` | Coach-mark onboarding |
 | `JB.emptyState({ icon, title, hint, action, onclick })` | Empty list placeholder HTML |
-| `JB.skeletonHtml('fit'\|'study'\|'notas')` | Loading shimmer |
+| `JB.skeletonHtml('fit'\|'study'\|'notas'\|'planner')` | Loading shimmer |
 | `JB.staggerChildren(el, key)` | First-render list cascade |
 | `JB.searchFocus`, `searchBlur`, `searchClearVis` | Notas search bar polish |
 
@@ -166,7 +167,7 @@ Provides:
 
 `--bg --surface --surface2 --border --text --muted --radius --radius-sm --primary --success --brand --on-brand`
 
-**App-specific:** Finance `--income --expense --font-display`; Hub `--fit --study --notas --mini` tile colors; Fit `--accent2`.
+**App-specific:** Finance `--income --expense --font-display`; Hub `--fit --study --notas --planner --mini` tile colors; Fit `--accent2`.
 
 Tailwind maps via `tailwind.config.js`. **Do not** introduce `--accent`/`--ok` outside legacy cleanup — use `--primary`/`--success`.
 
@@ -180,6 +181,7 @@ Tailwind maps via `tailwind.config.js`. **Do not** introduce `--accent`/`--ok` o
 | Fit | `fit` | Exercicios, Treinos, Sessoes, Series, Peso, MacroFoods, MacroLog, … |
 | Study | `study` | Materias, Eventos (not Config alone) |
 | Notas | `notas` | Notas, Itens (not Config alone) |
+| Planner | `planner` | Planos (not Config alone; shared files use Meta) |
 
 Each app: gate → create/link sheet → `loadData` → `show`.
 

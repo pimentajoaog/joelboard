@@ -1488,6 +1488,10 @@
       return '<div class="jb-skel-wrap"><div class="jb-skel jb-skel-title"></div>'
         + skelRow(4, 'jb-skel-card') + '<div class="jb-skel-hint">Carregando listas…</div></div>';
     }
+    if (app === 'planner') {
+      return '<div class="jb-skel-wrap"><div class="jb-skel jb-skel-title"></div>'
+        + skelRow(3, 'jb-skel-card') + '<div class="jb-skel-hint">Carregando planos…</div></div>';
+    }
     return '<div class="jb-skel-wrap">' + skelRow(3) + '<div class="jb-skel-hint">Carregando…</div></div>';
   }
   function staggerChildren(el, key) {

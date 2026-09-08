@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{ --bg:#0d0f18; --surface:#1b1f32; --surface2:#252a40; --border:#2b3147; --primary:#818cf8; --income:#34d399; --fit:#fb7185; --study:#a78bfa; --notas:#f59e0b; --mini:#22d3ee; --text:#e7eaf3; --muted:#7b85a0; --radius:18px; --radius-sm:11px; --brand:var(--primary); --on-brand:#fff; --success: var(--income); }
+:root{ --bg:#0d0f18; --surface:#1b1f32; --surface2:#252a40; --border:#2b3147; --primary:#818cf8; --income:#34d399; --fit:#fb7185; --study:#a78bfa; --notas:#f59e0b; --planner:#2dd4bf; --mini:#22d3ee; --text:#e7eaf3; --muted:#7b85a0; --radius:18px; --radius-sm:11px; --brand:var(--primary); --on-brand:#fff; --success: var(--income); }
 
 *,::before,::after{ box-sizing:border-box; margin:0; padding:0; border-width:0; border-style:solid; border-color:var(--border); }
 button,input,select,textarea{ font-family:inherit; }
@@ -66,6 +66,7 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 .nov-app.fit{ background:rgba(251,113,133,0.16); color:var(--fit); }
 .nov-app.finance{ background:rgba(52,211,153,0.16); color:var(--income); }
 .nov-app.notas{ background:rgba(245,158,11,0.16); color:var(--notas); }
+.nov-app.planner{ background:rgba(45,212,191,0.16); color:var(--planner); }
 .nov-app.mini{ background:rgba(34,211,238,0.14); color:var(--mini); }
 .nov-app.hub{ background:rgba(129,140,248,0.16); color:var(--primary); }
 .nov-kind{ font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }

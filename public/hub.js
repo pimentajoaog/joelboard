@@ -7,16 +7,16 @@ var HUB_NEWS_SHEET_ID=hubNewsCleanId((typeof window!=='undefined'&&window.JB_HUB
 var HUB_NEWS_SHEET_LOCAL='jb_hub_news_sheet_id';
 var HUB_NEWS_LIMIT=5;
 var HUB_NEWS_DEFAULT=[
+  { app:'planner', kind:'novo', text:'Planner — roteiros e encontros numa linha do tempo; compartilhe com um link Joelboard.' },
   { app:'hub', kind:'novo', text:'Sessão expirada avisa para entrar de novo — banner no topo e tela de login em todos os apps, em vez de falhar no meio de uma ação.' },
   { app:'mini', kind:'novo', text:'Sites permitidos sincronizam na planilha Joelboard Mini (aba ReplaceSites) — entre Hub, Replace e Refresh.' },
   { app:'notas', kind:'correcao', text:'Duplicatas fantasma em listas corrigidas; Remover duplicatas no menu ⋯ de cada lista.' },
-  { app:'notas', kind:'novo', text:'Ícones personalizados nas listas — presets e emoji no editor e na grade inicial.' },
-  { app:'mini', kind:'correcao', text:'Login e sync Replace com a extensão — página de auth espera a ponte antes de enviar o token.' }
+  { app:'notas', kind:'novo', text:'Ícones personalizados nas listas — presets e emoji no editor e na grade inicial.' }
 ];
 var HUB_NEWS=HUB_NEWS_DEFAULT.slice();
-var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', mini:'Mini', hub:'Hub', study:'Study' };
+var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', planner:'Planner', mini:'Mini', hub:'Hub', study:'Study' };
 var HUB_NEWS_KIND={ novo:'Novo', correcao:'Correção' };
-var HUB_NEWS_APPS=['hub','finance','fit','study','notas','mini'];
+var HUB_NEWS_APPS=['hub','finance','fit','study','notas','planner','mini'];
 var _hubNewsIgnoreEnv=false;
 
 function hubNewsCleanId(raw){
@@ -308,7 +308,7 @@ function hubNewsEditSave(){
 function $(id){ return document.getElementById(id); }
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só — entre com Google para sincronizar dados no seu Drive.' },
-  { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas ou Mini (extensões Chrome).' },
+  { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas, Planner ou Mini (extensões Chrome).' },
   { sel:'#hubNews', title:'Novidades', body:'Fique por dentro das últimas mudanças nos apps — atualizado aqui no Hub.' },
   { sel:'.gear', title:'Ajustes', body:'Tema, login, tutorial, privacidade e aviso legal ficam aqui.' }
 ];

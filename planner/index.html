@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!-- Joelboard Planner. © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Joelboard Planner</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/joelboard.css">
+<script src="/skin-boot.js"></script>
+<link rel="stylesheet" href="/themes.css">
+<meta name="theme-color" content="#0d0f18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Planner">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Chakra+Petch:wght@500;600;700&family=Cormorant+Garamond:wght@500;600&family=Darker+Grotesque:wght@500;700;900&family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/planner.css">
+</head>
+<body>
+<div id="loading"></div>
+
+<div id="app">
+  <div class="header">
+    <div class="hl"><a class="hub-home" href="/" title="Voltar ao Joelboard" aria-label="Voltar ao Joelboard"><img src="/icon-192.png" alt="Joelboard"></a><h1>Planner</h1></div>
+    <div class="acct"><span id="acctEmail"></span><button class="lnk" onclick="openSettings()" title="Ajustes">⚙</button><button class="lnk" onclick="plSignOut()">Sair</button></div>
+  </div>
+
+  <div id="main"></div>
+
+  <div class="foot">© 2026 Joel Soluções LTDA · <a href="/privacy.html">Privacidade</a> · <a href="/aviso.html">Aviso legal</a></div>
+</div>
+
+<button class="door" onclick="location.href='/'" title="Voltar ao Joelboard" aria-label="Voltar ao Joelboard">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg>
+</button>
+<button class="fab" id="fab" onclick="openNew()" title="Novo plano">+</button>
+
+<div class="overlay" id="newOverlay" onclick="if(event.target===this)closeNew()">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="newModalTitle">Novo plano</div><button class="x" onclick="closeNew()">✕</button></div>
+    <div class="fg"><label class="fl">Ícone</label><div id="newIconWrap"></div></div>
+    <div class="fg"><label class="fl">Título</label><input class="field" id="newTitle" placeholder="ex.: Chile — julho 2026"></div>
+    <div class="fg"><label class="fl">Vibe (opcional)</label><input class="field" id="newSub" placeholder="ex.: 5 noites · Santiago · gastronomia"></div>
+    <div class="fg"><label class="fl">Início</label><button type="button" class="field datebtn empty" id="newStartBtn" onclick="pickNewStart()">Escolher data…</button></div>
+    <div class="fg"><label class="fl">Fim</label><button type="button" class="field datebtn empty" id="newEndBtn" onclick="pickNewEnd()">Escolher data…</button></div>
+    <div class="rg" id="newRangeHint"></div>
+    <button class="btn-primary" onclick="saveNewPlan()">Salvar</button>
+  </div>
+</div>
+
+<div class="overlay" id="dayOverlay" onclick="if(event.target===this)closeDayEdit()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Dia</div><button class="x" onclick="closeDayEdit()">✕</button></div>
+    <div class="fg"><label class="fl">Ícone</label><div id="dayIconWrap"></div></div>
+    <div class="fg"><label class="fl">Título do dia</label><input class="field" id="dayTitle" placeholder="ex.: Santiago urbano"></div>
+    <button class="btn-primary" onclick="commitDayEdit()">Salvar</button>
+  </div>
+</div>
+
+<div class="overlay" id="evtOverlay" onclick="if(event.target===this)closeEvtEdit()">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="evtModalTitle">Evento</div><button class="x" onclick="closeEvtEdit()">✕</button></div>
+    <div class="fg"><label class="fl">Ícone (opcional)</label><div id="evtIconWrap"></div></div>
+    <div class="fg"><label class="fl">Título</label><input class="field" id="evtTitle" placeholder="ex.: Check-in no hotel"></div>
+    <div class="fg"><label class="fl">Horário (opcional)</label><input class="field" id="evtHora" placeholder="8h30, ~16h, tarde…"></div>
+    <div class="fg"><label class="fl">Nota</label><textarea class="field evt-note" id="evtNote" rows="3" placeholder="Detalhe curto, reserva, endereço…"></textarea></div>
+    <div class="fg"><label class="fl">Destaque (opcional)</label><input class="field" id="evtTag" placeholder="ex.: Reserva online antes"></div>
+    <div class="fg"><label class="fl">Cor do destaque</label><div class="pl-tag-colors" id="evtTagColors"></div></div>
+    <button class="btn-primary" onclick="commitEvtEdit()">Salvar</button>
+    <button class="del" id="evtDelBtn" onclick="deleteEditingEvt()" style="display:none">Excluir evento</button>
+  </div>
+</div>
+
+<div class="overlay" id="setOverlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>
+    <div class="set-tabs">
+      <button class="set-tab active" data-st="tema" onclick="switchSet('tema')">Tema</button>
+      <button class="set-tab" data-st="perfil" onclick="switchSet('perfil')">Perfil</button>
+      <button class="set-tab" data-st="sobre" onclick="switchSet('sobre')">Sobre</button>
+    </div>
+    <div class="set-pane" data-pane="tema">
+      <div class="fg"><label class="fl">Tema do app</label><div id="setSkins"></div></div>
+    </div>
+    <div class="set-pane" data-pane="perfil" style="display:none">
+      <div class="fg">
+        <label class="fl">Como você aparece em planos compartilhados</label>
+        <div class="nc-set-profile">
+          <span class="nc-set-prev" id="setProfilePreview">👤</span>
+          <div><div class="nc-set-name" id="setProfileName">—</div><div class="rg">Nome e ícone visíveis para quem compartilha um plano com você.</div></div>
+        </div>
+        <button class="btn ghost" style="width:100%;margin-top:10px" onclick="plOpenProfileFromSettings()">✏ Editar perfil</button>
+      </div>
+    </div>
+    <div class="set-pane" data-pane="sobre" style="display:none">
+      <div class="fg"><button class="btn ghost" style="width:100%" onclick="plVerTutorial()">🧭 Ver tutorial</button></div>
+      <div class="fg"><button class="btn ghost" style="width:100%" onclick="JB.feedback('Joelboard Planner')">💬 Enviar feedback</button></div>
+      <div class="fg"><button class="del" style="width:100%" onclick="plSignOut()">Sair</button></div>
+      <div class="rg" style="text-align:center;font-size:11px;margin-top:4px">Joelboard Planner</div>
+    </div>
+    <button class="btn-primary" onclick="closeSettings()">Pronto</button>
+  </div>
+</div>
+
+<div class="overlay" id="shareOverlay" onclick="if(event.target===this)plCloseShare()">
+  <div class="modal modal-wide">
+    <div class="mh"><div class="mt">Compartilhar — <span id="shareListTitle"></span></div><button class="x" onclick="plCloseShare()">✕</button></div>
+    <div class="fg">
+      <label class="fl">Convidar por e-mail</label>
+      <div class="share-invite-row">
+        <input class="field" id="shareInviteEmail" placeholder="amigo@gmail.com" type="email">
+        <button class="btn" type="button" onclick="plInviteMember()">Convidar</button>
+      </div>
+      <div class="rg">Salva o convite, tenta dar acesso <b>Editor</b> no Drive e abre o e-mail com o <b>link Joelboard</b> (é esse que o outro precisa abrir).</div>
+    </div>
+    <div class="fg">
+      <label class="fl">Membros</label>
+      <div id="shareMembers" class="share-members"></div>
+    </div>
+    <div class="fg">
+      <label class="fl">Link Joelboard</label>
+      <div class="share-copy-row">
+        <input class="field share-link-inp" id="shareJoinLink" type="text" readonly>
+        <button class="share-copy-btn" type="button" onclick="plCopyShareField('shareJoinLink')">Copiar</button>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Link da planilha (Google Drive)</label>
+      <div class="share-copy-row">
+        <input class="field share-link-inp" id="shareSheetLink" type="text" readonly>
+        <button class="share-copy-btn" type="button" onclick="plCopyShareField('shareSheetLink')">Copiar</button>
+      </div>
+      <div class="rg" style="margin-top:8px">Se o convite automático falhar, abra a planilha e compartilhe com <b>Editor</b>. O outro entra pelo <b>link Joelboard</b>, não só pelo link do Drive.</div>
+      <button class="btn ghost" style="width:100%;margin-top:8px" type="button" onclick="plOpenDriveShare()">↗ Abrir planilha no Drive</button>
+    </div>
+    <button class="btn-primary" onclick="plCloseShare()">Pronto</button>
+  </div>
+</div>
+
+<div class="overlay" id="profileOverlay" onclick="if(event.target===this)plCloseProfile()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Seu perfil</div><button class="x" onclick="plCloseProfile()">✕</button></div>
+    <div class="fg"><label class="fl">Ícone</label><div class="nc-pick-grid" id="profileIcons"></div></div>
+    <div class="fg"><label class="fl">Nome de exibição</label><input class="field" id="profileName" placeholder="Como quer aparecer"></div>
+    <button class="btn-primary" onclick="plSaveProfile()">Salvar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="/joelboard.js"></script>
+<script src="/planner.js"></script>
+<script src="/planner-collab.js"></script>
+</body>
+</html>

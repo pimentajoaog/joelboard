@@ -107,6 +107,7 @@ export default defineConfig(({ mode }) => {
           fit: 'fit/index.html',
           study: 'study/index.html',
           notas: 'notas/index.html',
+          planner: 'planner/index.html',
           prateleira: 'prateleira/index.html',
           movies: 'movies/index.html',
           mini: 'mini/index.html',

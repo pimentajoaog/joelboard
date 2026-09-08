@@ -1,0 +1,84 @@
+/* Tests for Joelboard Planner. © 2026 Joel Soluções LTDA. */
+import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+
+const planner = readFileSync(new URL('../public/planner.js', import.meta.url), 'utf8');
+const collab = readFileSync(new URL('../public/planner-collab.js', import.meta.url), 'utf8');
+
+const start = planner.indexOf('var PL_WD=');
+const end = planner.indexOf('function rowCacheKeySid');
+assert.ok(start > 0 && end > start, 'helper block in planner.js');
+const helpers = planner.slice(start, end);
+const ctx = { console };
+vm.createContext(ctx);
+vm.runInContext(
+  helpers
+  + '\nthis.plParseYmd=plParseYmd;this.plDaysFromRange=plDaysFromRange;this.plNights=plNights;'
+  + 'this.plHoraMinFromLabel=plHoraMinFromLabel;this.plSortEvents=plSortEvents;'
+  + 'this.plWeekday=plWeekday;this.plFmtDay=plFmtDay;this.plRangeHint=plRangeHint;'
+  + 'this.plAddDays=plAddDays;',
+  ctx
+);
+
+const cctx = { console };
+vm.createContext(cctx);
+vm.runInContext(
+  collab
+  + '\nthis.plParseJoinSheetId=plParseJoinSheetId;this.plIsCollabSpreadsheetGrid=plIsCollabSpreadsheetGrid;'
+  + 'this.plJoinErrMessage=plJoinErrMessage;',
+  cctx
+);
+
+test('plDaysFromRange is inclusive and nights is length-1', function () {
+  var days = ctx.plDaysFromRange('2026-07-13', '2026-07-18');
+  assert.equal(days.length, 6);
+  assert.equal(days[0].date, '2026-07-13');
+  assert.equal(days[5].date, '2026-07-18');
+  assert.equal(ctx.plNights('2026-07-13', '2026-07-18'), 5);
+  assert.equal(ctx.plDaysFromRange('2026-07-18', '2026-07-13').length, 0);
+});
+
+test('plHoraMinFromLabel accepts clock, tilde, and period words', function () {
+  assert.equal(ctx.plHoraMinFromLabel('8h30'), 8 * 60 + 30);
+  assert.equal(ctx.plHoraMinFromLabel('~16h'), 16 * 60);
+  assert.equal(ctx.plHoraMinFromLabel('16:00'), 16 * 60);
+  assert.equal(ctx.plHoraMinFromLabel('tarde'), 900);
+  assert.equal(ctx.plHoraMinFromLabel('noite'), 1200);
+  assert.equal(ctx.plHoraMinFromLabel(''), '');
+  assert.equal(ctx.plHoraMinFromLabel('quando der'), '');
+});
+
+test('plSortEvents orders by time then ordem', function () {
+  var list = ctx.plSortEvents([
+    { id: 'c', horaMin: '', ordem: 1, titulo: 'Livre' },
+    { id: 'b', horaMin: 960, ordem: 0, titulo: 'Tarde' },
+    { id: 'a', horaMin: 510, ordem: 2, titulo: 'Manhã' }
+  ]);
+  assert.deepEqual(list.map(function (e) { return e.id; }), ['a', 'b', 'c']);
+});
+
+test('plWeekday and plFmtDay are pt-BR', function () {
+  assert.equal(ctx.plWeekday('2026-07-13'), 'seg');
+  assert.equal(ctx.plFmtDay('2026-07-13'), '13/07');
+  assert.match(ctx.plRangeHint('2026-07-13', '2026-07-18'), /6 dias/);
+});
+
+test('plParseJoinSheetId accepts a raw id, join URL, or Drive URL', function () {
+  var id = '1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
+  assert.equal(cctx.plParseJoinSheetId(id), id);
+  assert.equal(cctx.plParseJoinSheetId('https://joelboard.vercel.app/planner/?join=' + id), id);
+  assert.equal(cctx.plParseJoinSheetId('https://docs.google.com/spreadsheets/d/' + id + '/edit#gid=0'), id);
+  assert.equal(cctx.plParseJoinSheetId(''), '');
+});
+
+test('collab sheets are not treated as the personal Planner workbook', function () {
+  assert.equal(cctx.plIsCollabSpreadsheetGrid({ Meta: 1, Membros: 2, Dias: 3 }), true);
+  assert.equal(cctx.plIsCollabSpreadsheetGrid({ Planos: 1, Dias: 2 }), false);
+  assert.equal(cctx.plIsCollabSpreadsheetGrid({ Meta: 1, Membros: 2, Planos: 3 }), false);
+  assert.match(planner, /namePart:'Joelboard Planner'/);
+  assert.match(planner, /requiredTabs: \['Planos'\]/);
+  assert.match(collab, /Joelboard Plano —/);
+  assert.match(cctx.plJoinErrMessage({ message: 'HTTP 403' }), /Editor no Drive/);
+});

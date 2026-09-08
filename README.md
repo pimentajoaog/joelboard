@@ -1,6 +1,6 @@
 # Joelboard
 
-Personal productivity suite by **Joel Soluções LTDA** — Finance, Fit, Study, Notas, and Chrome Mini extensions, unified under one Hub with shared Google login and design system.
+Personal productivity suite by **Joel Soluções LTDA** — Finance, Fit, Study, Notas, Planner, and Chrome Mini extensions, unified under one Hub with shared Google login and design system.
 
 **Live:** [joelboard.vercel.app](https://joelboard.vercel.app)
 
@@ -15,6 +15,7 @@ Personal productivity suite by **Joel Soluções LTDA** — Finance, Fit, Study,
 | **Fit** | `/fit` | Workouts, exercise library, session logging, progress, macros |
 | **Study** | `/study` | Calendar, subjects, exams, focus mode, attachments |
 | **Notas** | `/notas` | Lists (shopping, tasks, notes, travel), checkboxes, due dates |
+| **Planner** | `/planner` | Dated plans (trips, hangouts) with a day timeline and optional share |
 | **Mini** | Hub → Mini panel | Chrome extensions: **Replace** (text expansion) and **Refresh** (auto-reload tab) |
 
 User guides: **[docs/](docs/README.md)**

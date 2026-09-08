@@ -9,6 +9,7 @@ Guias de uso por app. Para desenvolvimento, veja [STARTER.md](../STARTER.md). Vi
 | [fit.md](fit.md) | Treinos, progresso, macros |
 | [study.md](study.md) | Calendário, matérias, foco |
 | [notas.md](notas.md) | Listas e itens |
+| [planner.md](planner.md) | Roteiros e linha do tempo |
 | [mini.md](mini.md) | Extensões Replace, Refresh e Report |
 
 **Primeira vez:** entre com Google em qualquer app. Na primeira abertura, o app cria (ou vincula) uma planilha no seu Drive. O login é compartilhado entre todos os apps do Hub.

@@ -1,0 +1,704 @@
+/* Joelboard Planner — app logic. © 2026 Joel Soluções LTDA.
+   Classic global script (NOT a module); loads after /joelboard.js. */
+var DATA=null, plannerGrid={}, authDone=false, openPlanId=null, homeQuery='', _pbooted=false, _edMenuOpen=false;
+var _editPlanId=null, _editDayId=null, _editEvtId=null, _editEvtDayId=null, newStart='', newEnd='', newIcon='✈️';
+var _rowCache={};
+var PL_TABS=[
+  ['Planos',['Titulo','Subtitulo','Inicio','Fim','Icone','Criado','Atualizado','ID']],
+  ['Dias',['PlanoID','Data','Titulo','Icone','Ordem','ID']],
+  ['Eventos',['DiaID','Hora','HoraMin','Titulo','Nota','Icone','Tag','TagCor','Ordem','ID']],
+  ['Config',['Chave','Valor']],
+  ['Compartilhadas',['Titulo','SheetID','Papel','Owner','PlanoID','Atualizado']]
+];
+var PL_DAY_ICONS=['✈️','🏔️','🍷','🍽️','🌆','🚶','🎉','🏠','🌅','🌊','🎿','☕','🎵','🛍️','🏛️','🌴','📝','⭐','🚗','🛏️'];
+var PL_EVT_ICONS=['','✈️','🍽️','☕','🏨','🚶','🍷','🎵','🛍️','🌅','🎉','📍','🚗','🎿'];
+var PL_TAG_COLORS=[{k:'warn',hex:'#fb923c'},{k:'ok',hex:'#34d399'},{k:'mute',hex:'#7b85a0'}];
+var PL_WD=['dom','seg','ter','qua','qui','sex','sáb'];
+var PL_PERIODS={
+  madrugada:180, manha:540, 'manhã':540, manhã:540,
+  'meio-dia':720, meiodia:720, almoco:750, 'almoço':750,
+  tarde:900, 'fim de tarde':1020, noite:1200
+};
+var PL_TOUR=[
+  { title:'Joelboard Planner', body:'Monte roteiros, encontros e viagens — um plano por vez, no seu ritmo.' },
+  { sel:'#fab', title:'Novo plano', body:'Defina título, vibe e as datas. Os dias aparecem sozinhos na linha do tempo.' },
+  { go:function(){}, sel:'#main', title:'Linha do tempo', body:'Toque num dia para o título, num horário para o evento. Tudo é opcional — inclusive o horário.' }
+];
+
+function $(id){ return document.getElementById(id); }
+function uuid(){ return 'xxxxxxxxxxxx4xxychxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);}); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+function loadingHtml(h){ $('loading').style.display='block'; $('loading').innerHTML=h; }
+function toast(m){ JB.toast(m); }
+function plWriteErr(e){ toast(JB.writeErrMessage ? JB.writeErrMessage(e) : ('Erro: '+((e&&e.message)||'falha ao salvar'))); }
+function plRowErr(tab){ return new Error('Registro não encontrado em '+tab+' — atualize a página.'); }
+function body(rows){ return (rows||[]).slice(1); }
+
+function plParseYmd(x){
+  var s=String(x||'').trim();
+  var m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return null;
+  var d=new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+  if(d.getFullYear()!==Number(m[1]) || d.getMonth()!==Number(m[2])-1 || d.getDate()!==Number(m[3])) return null;
+  return d;
+}
+function plYmd(d){
+  var y=d.getFullYear(), m=d.getMonth()+1, day=d.getDate();
+  return y+'-'+(m<10?'0':'')+m+'-'+(day<10?'0':'')+day;
+}
+function plTodayYmd(){ return (JB.todayYmd && JB.todayYmd()) || plYmd(new Date()); }
+function plAddDays(ymd, n){
+  var d=plParseYmd(ymd); if(!d) return '';
+  d.setDate(d.getDate()+n);
+  return plYmd(d);
+}
+function plDaysFromRange(start, end){
+  var a=plParseYmd(start), b=plParseYmd(end);
+  if(!a || !b || b<a) return [];
+  var out=[], cur=new Date(a.getTime()), i=0;
+  while(cur<=b && i<366){
+    out.push({ date:plYmd(cur), ordem:i });
+    cur.setDate(cur.getDate()+1);
+    i++;
+  }
+  return out;
+}
+function plNights(start, end){
+  var days=plDaysFromRange(start, end);
+  return days.length ? days.length-1 : 0;
+}
+function plHoraMinFromLabel(raw){
+  var s=String(raw||'').trim().toLowerCase().replace(/~/g,'').replace(/\s+/g,' ');
+  if(!s) return '';
+  if(PL_PERIODS[s]!=null) return PL_PERIODS[s];
+  var m=s.match(/^(\d{1,2})h(\d{2})?$/);
+  if(m){ var h=+m[1], mi=m[2]?+m[2]:0; if(h>=0&&h<24&&mi>=0&&mi<60) return h*60+mi; }
+  m=s.match(/^(\d{1,2}):(\d{2})$/);
+  if(m){ var h2=+m[1], mi2=+m[2]; if(h2>=0&&h2<24&&mi2>=0&&mi2<60) return h2*60+mi2; }
+  m=s.match(/^(\d{1,2})h$/);
+  if(m){ var h3=+m[1]; if(h3>=0&&h3<24) return h3*60; }
+  return '';
+}
+function plSortEvents(list){
+  return (list||[]).slice().sort(function(a,b){
+    var am=a.horaMin===''||a.horaMin==null?1e9:Number(a.horaMin);
+    var bm=b.horaMin===''||b.horaMin==null?1e9:Number(b.horaMin);
+    if(am!==bm) return am-bm;
+    if((a.ordem||0)!==(b.ordem||0)) return (a.ordem||0)-(b.ordem||0);
+    return String(a.titulo||'').localeCompare(String(b.titulo||''));
+  });
+}
+function plWeekday(ymd){ var d=plParseYmd(ymd); return d?PL_WD[d.getDay()]:''; }
+function plFmtDay(ymd){
+  var d=plParseYmd(ymd); if(!d) return ymd||'';
+  return (d.getDate()<10?'0':'')+d.getDate()+'/'+((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1);
+}
+function plFmtRange(start, end){
+  if(!start && !end) return '';
+  if(start && end) return plFmtDay(start)+' – '+plFmtDay(end);
+  return plFmtDay(start||end);
+}
+function plRangeHint(start, end){
+  var days=plDaysFromRange(start, end);
+  if(!days.length) return 'Escolha um intervalo válido.';
+  var n=days.length-1;
+  return days.length+' '+(days.length===1?'dia':'dias')+(n?(' · '+n+(n===1?' noite':' noites')):'');
+}
+
+function rowCacheKeySid(sid, tab){ return sid+'|'+tab; }
+function seedRowCacheForSid(sid, tab, rows, idCol){
+  var map={};
+  for(var i=1;i<(rows||[]).length;i++){ var id=String((rows[i]||[])[idCol]); if(id) map[id]=i+1; }
+  _rowCache[rowCacheKeySid(sid, tab)]=map;
+}
+function invalidateRowCacheForSid(sid, tab){ delete _rowCache[rowCacheKeySid(sid, tab)]; }
+function findRowInSid(sid, tab, idCol, id){
+  var key=rowCacheKeySid(sid, tab), cached=_rowCache[key];
+  if(cached && cached[String(id)]!=null) return Promise.resolve(cached[String(id)]);
+  return JB.api('GET', plSheetUrl(sid, '/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+    seedRowCacheForSid(sid, tab, res.values||[], idCol);
+    var row=_rowCache[key]?_rowCache[key][String(id)]:null;
+    return row!=null?row:-1;
+  });
+}
+
+function plSheetUrl(sid, p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+sid+p; }
+function plSidForPlan(p){ if(p&&p.collabSheetId) return p.collabSheetId; return JB.getSheetId('planner'); }
+function plPlanTab(p){ return (p&&p.collabSheetId)?'Meta':'Planos'; }
+function plGridForPlan(p){ if(p&&p.collabSheetId) return (typeof collabGrids!=='undefined'&&collabGrids[p.collabSheetId])||{}; return plannerGrid; }
+function personalSsUrl(p){ return plSheetUrl(JB.getSheetId('planner'), p); }
+function ssUrl(p){ return plSheetUrl(plSidForPlan(plan(openPlanId)), p); }
+
+function plRejectCollabAsPersonal(grid){
+  return typeof plIsCollabSpreadsheetGrid==='function' && plIsCollabSpreadsheetGrid(grid);
+}
+
+function startAuth(){
+  if (JB.cachedToken()){ afterAuth(); return; }
+  if (JB.bootAuthIfExpired(function(){ authDone=false; showSignIn(true); }, function(){ authDone=true; afterAuth(); })) {
+    loadingHtml('<div class="gate"><div class="gt">📅 Joelboard Planner</div><div class="gs">Carregando…</div></div>');
+    return;
+  }
+  loadingHtml('<div class="gate"><div class="gt">📅 Joelboard Planner</div><div class="gs">Entrando…</div></div>');
+  JB.requestToken(false).then(function(){ authDone=true; afterAuth(); }).catch(showSignIn);
+  setTimeout(function(){ if(!authDone && !JB.cachedToken()) showSignIn(); }, 16000);
+}
+JB.onSessionExpired(function(){ authDone=false; showSignIn(true); });
+JB.onAuthRestored(function(){ if(!JB.isSignedIn()||authDone) return; authDone=true; afterAuth(); });
+function showSignIn(expired){ loadingHtml('<div class="gate"><div class="gt">📅 Joelboard Planner</div><div class="gs">'+(expired?'Sua sessão expirou. Entre de novo com Google para continuar.':'Roteiros e encontros — juntos ou só seus.')+'</div><button class="btn" onclick="doSignIn()">Entrar com Google</button></div>'); }
+function doSignIn(){ JB.signIn({ onSuccess: function(){ authDone=true; afterAuth(); } }); }
+function plSignOut(){ JB.signOut(); location.reload(); }
+function afterAuth(){ loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Carregando…</div></div>'); JB.fetchEmail().then(bootSheet); }
+
+function createPersonalPlannerSpreadsheet(){
+  var title='📝 Joelboard Planner — '+(JB.email()?JB.email().split('@')[0]:'Pessoal');
+  return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets',{ properties:{title:title}, sheets:PL_TABS.map(function(t){return {properties:{title:t[0]}};}) })
+    .then(function(ss){
+      JB.setSheetId('planner',ss.spreadsheetId);
+      var data=PL_TABS.map(function(t){return {range:t[0]+'!A1',values:[t[1]]};});
+      return JB.api('POST',plSheetUrl(ss.spreadsheetId,'/values:batchUpdate'),{valueInputOption:'RAW',data:data}).then(function(){
+        return JB.sheetTabs(ss.spreadsheetId).then(function(grid){ plannerGrid=grid; return grid; });
+      });
+    });
+}
+function ensurePersonalPlannerSheet(){
+  var id=JB.getSheetId('planner');
+  if(!id) return createPersonalPlannerSpreadsheet();
+  return JB.sheetTabs(id).then(function(grid){
+    if(plRejectCollabAsPersonal(grid) || !grid['Planos']){
+      JB.clearSheetId('planner');
+      return createPersonalPlannerSpreadsheet();
+    }
+    plannerGrid=grid;
+    return ensureTabs().then(function(){ return plannerGrid; });
+  });
+}
+function bootSheet(){
+  loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando seus planos…</div></div>');
+  JB.resolveSheet({ app:'planner', namePart:'Joelboard Planner', requiredTabs: ['Planos'] })
+    .then(function(ctx){
+      if(plRejectCollabAsPersonal(ctx.grid)){
+        JB.clearSheetId('planner');
+        plPersonalGate('A planilha conectada é de um plano compartilhado. Crie ou conecte uma planilha pessoal.');
+        return;
+      }
+      plannerGrid=ctx.grid;
+      return ensureTabs().then(loadData);
+    })
+    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(m)+'</div></div>'); });
+}
+function ensureTabs(){
+  var missing=PL_TABS.filter(function(t){ return plannerGrid[t[0]]==null; });
+  if(!missing.length) return Promise.resolve();
+  return JB.api('POST', personalSsUrl(':batchUpdate'), { requests: missing.map(function(t){ return { addSheet:{ properties:{ title:t[0] } } }; }) })
+    .then(function(res){ (res.replies||[]).forEach(function(rep){ if(rep&&rep.addSheet){ plannerGrid[rep.addSheet.properties.title]=rep.addSheet.properties.sheetId; } });
+      return JB.api('POST', personalSsUrl('/values:batchUpdate'), { valueInputOption:'RAW', data: missing.map(function(t){ return { range:t[0]+'!A1', values:[t[1]] }; }) }); });
+}
+function plPersonalGate(msg){
+  loadingHtml('<div class="gate"><div class="gt">📅 Seus planos pessoais</div><div class="gs">'+(msg||'Planos privados ficam numa planilha só sua — separada dos compartilhados.')+'</div>'
+    + '<button class="btn-primary" onclick="createSheet()">✨ Criar minha planilha pessoal</button>'
+    + '<div style="color:var(--muted);font-size:12px;margin:16px 0 10px">— ou já tem uma? —</div>'
+    + '<input class="field" id="plUrl" placeholder="Cole o link da planilha pessoal"><button class="btn ghost" style="width:100%;margin-top:10px" onclick="linkSheet()">Conectar planilha</button>'
+    + '<div id="plErr" style="color:var(--primary);font-size:12px;margin-top:10px"></div></div>');
+}
+function gate(){ plPersonalGate(); }
+function offerLink(f){ loadingHtml('<div class="gate"><div class="gt">Encontramos seus planos 🎉</div><div class="gs">'+esc(f.name)+'</div><button class="btn-primary" onclick="pick(\''+f.id+'\')">Vincular e abrir</button><button class="del" onclick="gate()">usar outro / criar novo</button></div>'); }
+function pick(id){ JB.setSheetId('planner',id); bootSheet(); }
+function createSheet(){
+  loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Criando seus planos…</div></div>');
+  createPersonalPlannerSpreadsheet().then(bootSheet).catch(function(e){ loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro ao criar: '+esc(e.message)+'</div></div>'); });
+}
+function linkSheet(){
+  var u=($('plUrl').value||'').trim(); var m=u.match(/[a-zA-Z0-9_-]{30,}/);
+  if(!m){ var err=$('plErr'); if(err) err.textContent='Link inválido.'; return; }
+  var id=m[0];
+  JB.sheetTabs(id).then(function(grid){
+    if(plRejectCollabAsPersonal(grid)){
+      var err2=$('plErr'); if(err2) err2.textContent='Esta é uma planilha de plano compartilhado. Crie ou conecte sua planilha pessoal.';
+      return;
+    }
+    if(!grid['Planos']){
+      var err3=$('plErr'); if(err3) err3.textContent='Planilha precisa ter a aba Planos (planilha pessoal do Planner).';
+      return;
+    }
+    JB.setSheetId('planner',id); bootSheet();
+  }).catch(function(){ var err4=$('plErr'); if(err4) err4.textContent='Não foi possível abrir a planilha.'; });
+}
+
+function parsePlanos(rows){
+  return body(rows).filter(function(r){return r[7];}).map(function(r){
+    return { id:String(r[7]), titulo:String(r[0]||''), subtitulo:String(r[1]||''), inicio:String(r[2]||''), fim:String(r[3]||''), icone:String(r[4]||'📅'), criado:String(r[5]||''), atualizado:String(r[6]||'') };
+  });
+}
+function parseDias(rows){
+  return body(rows).filter(function(r){return r[5];}).map(function(r){
+    return { id:String(r[5]), planoId:String(r[0]||''), data:String(r[1]||''), titulo:String(r[2]||''), icone:String(r[3]||''), ordem:Number(r[4])||0 };
+  });
+}
+function parseEventos(rows){
+  return body(rows).filter(function(r){return r[9];}).map(function(r){
+    var hm=r[2];
+    return { id:String(r[9]), diaId:String(r[0]||''), hora:String(r[1]||''), horaMin:(hm===''||hm==null)?'':Number(hm), titulo:String(r[3]||''), nota:String(r[4]||''), icone:String(r[5]||''), tag:String(r[6]||''), tagCor:String(r[7]||'warn'), ordem:Number(r[8])||0 };
+  });
+}
+function buildPlanner(t){
+  var config={}; body(t.Config).forEach(function(r){ if(r[0]) config[r[0]]=r[1]; });
+  return { planos:parsePlanos(t.Planos), dias:parseDias(t.Dias), eventos:parseEventos(t.Eventos), config:config };
+}
+function loadData(){
+  loadingHtml(JB.skeletonHtml('planner'));
+  var want=PL_TABS.map(function(t){return t[0];}).filter(function(t){return plannerGrid[t]!=null;});
+  var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
+  return JB.api('GET', personalSsUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+    var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
+    if(by.Planos) seedRowCacheForSid(JB.getSheetId('planner'),'Planos',by.Planos,7);
+    if(by.Dias) seedRowCacheForSid(JB.getSheetId('planner'),'Dias',by.Dias,5);
+    if(by.Eventos) seedRowCacheForSid(JB.getSheetId('planner'),'Eventos',by.Eventos,9);
+    DATA=buildPlanner(by);
+    var collabLoad=(typeof plLoadCollabPlans==='function')?plLoadCollabPlans():Promise.resolve();
+    return collabLoad.then(show).catch(show);
+  }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('planner'); bootSheet(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(e.message)+'</div></div>'); });
+}
+function show(){
+  $('loading').style.display='none'; $('app').style.display='block';
+  $('acctEmail').textContent='👤 '+((typeof plAcctLabel==='function')?plAcctLabel():(JB.email()||''));
+  render();
+  if(!_pbooted){
+    _pbooted=true;
+    if(typeof plCheckJoinParam==='function') plCheckJoinParam();
+    if(typeof plStartCollabPoll==='function') plStartCollabPoll();
+    if(!JB.tourDone('planner')) setTimeout(function(){ JB.tour('planner', PL_TOUR); }, 600);
+  }
+  if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('planner', refreshData); }
+}
+function refreshData(){
+  if(!$('app') || $('app').style.display==='none' || !DATA) return;
+  if(typeof plRefreshCollabOnly==='function' && openPlanId && plan(openPlanId) && plan(openPlanId).collabSheetId){
+    plRefreshCollabOnly(true).then(function(res){ if(typeof plHandlePollResult==='function') plHandlePollResult(res); else if(res && res.changed) render(); }).catch(function(){});
+    return;
+  }
+  var want=PL_TABS.map(function(t){return t[0];}).filter(function(t){return plannerGrid[t]!=null;});
+  var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
+  JB.syncWrap(JB.api('GET', personalSsUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+    var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
+    DATA=buildPlanner(by);
+    var collabLoad=(typeof plLoadCollabPlans==='function')?plLoadCollabPlans():Promise.resolve();
+    collabLoad.then(function(){ render(); }).catch(function(){ render(); });
+  })).catch(function(){});
+}
+
+function plan(id){ return (DATA.planos||[]).find(function(p){return p.id===id;}); }
+function daysOf(planId){ return (DATA.dias||[]).filter(function(d){return d.planoId===planId;}).slice().sort(function(a,b){ return String(a.data).localeCompare(String(b.data)) || (a.ordem-b.ordem); }); }
+function eventsOf(diaId){ return plSortEvents((DATA.eventos||[]).filter(function(e){return e.diaId===diaId;})); }
+function eventsOfPlan(planId){
+  var ids={}; daysOf(planId).forEach(function(d){ ids[d.id]=1; });
+  return (DATA.eventos||[]).filter(function(e){ return ids[e.diaId]; });
+}
+
+function render(){
+  var ed=!!(openPlanId&&plan(openPlanId));
+  $('fab').style.display=ed?'none':'flex';
+  if(ed) renderTimeline(); else renderHome();
+}
+function openPlan(id){
+  openPlanId=id; _edMenuOpen=false;
+  if(typeof plSetCollabWatch==='function'){ var p=plan(id); plSetCollabWatch(p&&p.collabSheetId?p.collabSheetId:null); }
+  render(); window.scrollTo(0,0);
+}
+function backHome(){ openPlanId=null; _edMenuOpen=false; if(typeof plSetCollabWatch==='function') plSetCollabWatch(null); render(); }
+
+function renderHome(){
+  var list=(DATA.planos||[]).slice().sort(function(a,b){ return String(b.atualizado||b.criado||'').localeCompare(String(a.atualizado||a.criado||'')); });
+  if(homeQuery){ var q=homeQuery.toLowerCase(); list=list.filter(function(p){ return (p.titulo+' '+p.subtitulo).toLowerCase().indexOf(q)>-1; }); }
+  var shared=list.filter(function(p){return p.collabSheetId;}), priv=list.filter(function(p){return !p.collabSheetId;});
+  $('main').innerHTML='<div class="jb-search searchbar">'
+    +'<input class="field jb-search-input" id="homeSearch" type="search" placeholder="Buscar planos…" value="'+escAttr(homeQuery)+'" oninput="onHomeSearch(this.value)" onfocus="JB.searchFocus(this)" onblur="JB.searchBlur(this)">'
+    +'<button type="button" class="jb-search-clear" id="homeSearchClear" onclick="clearHomeSearch()" aria-label="Limpar busca" style="display:'+(homeQuery?'flex':'none')+'">✕</button>'
+    +'</div><div id="homeList"></div>';
+  var el=$('homeList');
+  if(!list.length){
+    el.innerHTML=(DATA.planos&&DATA.planos.length)? JB.emptyState({ icon:'🔎', title:'Nada encontrado', hint:'Tente outro termo.' }) : JB.emptyState({ icon:'📅', title:'Nenhum plano ainda', hint:'Crie um roteiro, um fim de semana ou um encontro.', action:'+ Novo plano', onclick:'openNew()' });
+    return;
+  }
+  var html='';
+  if(shared.length){ html+='<div class="secbar"><div class="sect">Compartilhados</div></div>'+shared.map(planCard).join(''); }
+  if(priv.length){ html+='<div class="secbar"><div class="sect">'+(shared.length?'Seus planos':'Planos')+'</div></div>'+priv.map(planCard).join(''); }
+  el.innerHTML=html;
+}
+function planCard(p){
+  var av=(typeof plMemberAvatarsHtml==='function'&&p.collabSheetId)?plMemberAvatarsHtml(p):'';
+  var n=plNights(p.inicio,p.fim);
+  var meta=plFmtRange(p.inicio,p.fim)+(n?(' · '+n+(n===1?' noite':' noites')):'');
+  return '<div class="planc'+(p.collabSheetId?' planc-shared':'')+'" onclick="openPlan(\''+p.id+'\')">'
+    +'<div class="pc-top"><div class="pc-ico">'+esc(p.icone||'📅')+'</div><div><div class="pc-title">'+esc(p.titulo||'(sem título)')+'</div>'
+    +(p.subtitulo?'<div class="pc-sub">'+esc(p.subtitulo)+'</div>':'')+'</div></div>'
+    +'<div class="pc-meta">'+(p.collabSheetId?'<span class="pl-shared">Compartilhado</span>':'')+'<span class="rg" style="margin:0">'+esc(meta)+'</span>'+av+'</div></div>';
+}
+function onHomeSearch(v){ homeQuery=v; JB.searchClearVis('homeSearch','homeSearchClear',!!v); renderHome(); }
+function clearHomeSearch(){ homeQuery=''; var i=$('homeSearch'); if(i) i.value=''; JB.searchClearVis('homeSearch','homeSearchClear',false); renderHome(); }
+
+function renderTimeline(){
+  var p=plan(openPlanId); if(!p){ backHome(); return; }
+  var days=daysOf(p.id);
+  var n=plNights(p.inicio,p.fim);
+  var sub=p.subtitulo || (n? (n+' '+(n===1?'noite':'noites')+' · '+plFmtRange(p.inicio,p.fim)) : plFmtRange(p.inicio,p.fim));
+  var av=(typeof plMemberAvatarsHtml==='function'&&p.collabSheetId)?('<div class="ed-head-avatars">'+plMemberAvatarsHtml(p)+'</div>'):'';
+  var shareBtn=p.collabSheetId
+    ?'<button type="button" class="ed-menu-item" onclick="closeEdMenu();plOpenShare()">👥 Compartilhar</button>'
+    :'<button type="button" class="ed-menu-item" onclick="closeEdMenu();plShareFromPrivate()">👥 Tornar compartilhado</button>';
+  var leaveLabel=p.collabSheetId?(p.collabRole==='owner'?'Excluir plano compartilhado':'Sair do plano'):'Excluir plano';
+  var leaveFn=p.collabSheetId?'plLeaveOrDelete()':'deletePlan()';
+  var html='<div class="tl-head"><div class="tl-kicker"><button class="tl-back" onclick="backHome()">← Planos</button>'
+    +'<div class="tl-menu-wrap"><button class="tl-menu-btn" onclick="toggleEdMenu()" aria-label="Menu">⋯</button>'
+    +'<div class="tl-menu'+(_edMenuOpen?' open':'')+'" id="tlMenu">'
+    +'<button type="button" class="ed-menu-item" onclick="closeEdMenu();openEditPlan()">✏ Editar plano</button>'
+    +shareBtn
+    +'<button type="button" class="ed-menu-item" onclick="closeEdMenu();'+leaveFn+'">'+esc(leaveLabel)+'</button>'
+    +'</div></div></div>'
+    +'<div class="tl-title">'+esc(p.titulo||'(sem título)')+'</div>'
+    +(sub?'<div class="tl-sub">'+esc(sub)+'</div>':'')+av+'</div>';
+  html+='<div class="pl-spine">'+days.map(function(d){ return dayBlock(d); }).join('')+'</div>';
+  $('main').innerHTML=html;
+}
+function dayBlock(d){
+  var evs=eventsOf(d.id);
+  var evHtml=evs.length?evs.map(eventRow).join(''):'<div class="pl-empty-day">Nada neste dia — toque + para um horário.</div>';
+  return '<div class="pl-day">'
+    +'<div class="pl-rail"><div class="pl-dd">'+esc(plFmtDay(d.data))+'</div>'
+    +'<button type="button" class="pl-dico" onclick="openDayEdit(\''+d.id+'\')" title="Editar dia">'+esc(d.icone||'📅')+'</button>'
+    +'<div class="pl-wd">'+esc(plWeekday(d.data))+'</div></div>'
+    +'<div class="pl-card"><div class="pl-card-h"><button type="button" class="pl-card-t" onclick="openDayEdit(\''+d.id+'\')">'+(d.titulo?esc(d.titulo):'<span style="color:var(--muted);font-weight:700">Sem título</span>')+'</button>'
+    +'<button type="button" class="pl-add" onclick="openEvtEdit(\'\',\''+d.id+'\')" title="Adicionar evento">+</button></div>'
+    +evHtml+'</div></div>';
+}
+function eventRow(e){
+  var pill=e.tag?'<span class="pl-pill '+esc(e.tagCor||'warn')+'">'+esc(e.tag)+'</span>':'';
+  var title=(e.icone?esc(e.icone)+' ':'')+esc(e.titulo||'(sem título)');
+  return '<div class="pl-evt" onclick="openEvtEdit(\''+e.id+'\',\''+e.diaId+'\')"><div class="pl-time">'+esc(e.hora||'—')+'</div>'
+    +'<div><div class="pl-et">'+title+'</div>'+(e.nota?'<div class="pl-en">'+esc(e.nota)+'</div>':'')+pill+'</div></div>';
+}
+
+function toggleEdMenu(){ _edMenuOpen=!_edMenuOpen; var m=$('tlMenu'); if(m) m.classList.toggle('open', _edMenuOpen); }
+function closeEdMenu(){ _edMenuOpen=false; var m=$('tlMenu'); if(m) m.classList.remove('open'); }
+
+function icoGrid(list, cur, fn){
+  return list.map(function(ic){
+    var label=ic||'∅';
+    return '<button type="button" class="pl-ico'+(ic===cur?' on':'')+'" onclick="'+fn+'(\''+escAttr(ic)+'\')">'+label+'</button>';
+  }).join('');
+}
+function openNew(){ _editPlanId=null; newIcon='✈️'; newStart=plTodayYmd(); newEnd=plAddDays(newStart,4); $('newModalTitle').textContent='Novo plano'; $('newTitle').value=''; $('newSub').value=''; $('newIconWrap').innerHTML=icoGrid(PL_DAY_ICONS,newIcon,'pickNewIcon'); renderNewDates(); $('newOverlay').classList.add('open'); }
+function openEditPlan(){ var p=plan(openPlanId); if(!p) return; _editPlanId=p.id; newIcon=p.icone||'✈️'; newStart=p.inicio; newEnd=p.fim; $('newModalTitle').textContent='Editar plano'; $('newTitle').value=p.titulo||''; $('newSub').value=p.subtitulo||''; $('newIconWrap').innerHTML=icoGrid(PL_DAY_ICONS,newIcon,'pickNewIcon'); renderNewDates(); $('newOverlay').classList.add('open'); }
+function closeNew(){ $('newOverlay').classList.remove('open'); _editPlanId=null; }
+function pickNewIcon(ic){ newIcon=ic; $('newIconWrap').innerHTML=icoGrid(PL_DAY_ICONS,newIcon,'pickNewIcon'); }
+function pickNewStart(){ JB.datePicker(newStart, function(iso){ newStart=iso; if(newEnd && plParseYmd(newEnd)<plParseYmd(iso)) newEnd=iso; renderNewDates(); }); }
+function pickNewEnd(){ JB.datePicker(newEnd||newStart, function(iso){ newEnd=iso; if(newStart && plParseYmd(iso)<plParseYmd(newStart)) newStart=iso; renderNewDates(); }); }
+function renderNewDates(){
+  var a=$('newStartBtn'), b=$('newEndBtn'), h=$('newRangeHint');
+  if(a){ a.textContent=newStart?plFmtDay(newStart):'Escolher data…'; a.classList.toggle('empty',!newStart); }
+  if(b){ b.textContent=newEnd?plFmtDay(newEnd):'Escolher data…'; b.classList.toggle('empty',!newEnd); }
+  if(h) h.textContent=(newStart&&newEnd)?plRangeHint(newStart,newEnd):'';
+}
+
+function planRowVals(p){ return [p.titulo,p.subtitulo||'',p.inicio,p.fim,p.icone||'',p.criado,p.atualizado,p.id]; }
+function dayRowVals(d){ return [d.planoId,d.data,d.titulo||'',d.icone||'',d.ordem,d.id]; }
+function evtRowVals(e){ return [e.diaId,e.hora||'',e.horaMin===''||e.horaMin==null?'':e.horaMin,e.titulo||'',e.nota||'',e.icone||'',e.tag||'',e.tagCor||'warn',e.ordem,e.id]; }
+function metaRowVals(p){ return [p.titulo,p.subtitulo||'',p.inicio,p.fim,p.icone||'',p.criado,p.atualizado,p.id,p.collabOwner||'']; }
+
+function plPersistForPlan(p, opts){
+  opts=opts||{};
+  var track=!!(p&&p.collabSheetId);
+  if(track && typeof plWriteBegin==='function') plWriteBegin();
+  var os=opts.onSuccess, oe=opts.onError;
+  opts.onSuccess=function(r){ if(track && typeof plWriteEnd==='function') plWriteEnd(); if(os) os(r); };
+  opts.onError=function(e){ if(track && typeof plWriteEnd==='function') plWriteEnd(); if(oe) oe(e); };
+  return JB.persist(opts);
+}
+
+function saveNewPlan(){
+  var t=($('newTitle').value||'').trim();
+  if(!t){ toast('Dê um título ao plano'); return; }
+  if(!newStart||!newEnd||!plDaysFromRange(newStart,newEnd).length){ toast('Escolha as datas'); return; }
+  if(_editPlanId){ applyPlanDates(_editPlanId, t, ($('newSub').value||'').trim(), newStart, newEnd, newIcon); closeNew(); return; }
+  var now=new Date().toISOString();
+  var p={ id:uuid(), titulo:t, subtitulo:($('newSub').value||'').trim(), inicio:newStart, fim:newEnd, icone:newIcon||'✈️', criado:now, atualizado:now };
+  var days=plDaysFromRange(newStart,newEnd).map(function(x,i){
+    return { id:uuid(), planoId:p.id, data:x.date, titulo:'', icone:i===0?'✈️':(i===x.ordem && i===plDaysFromRange(newStart,newEnd).length-1?'✈️':'📅'), ordem:x.ordem };
+  });
+  if(days.length===1) days[0].icone=newIcon||'📅';
+  else { days[0].icone=newIcon||'✈️'; days[days.length-1].icone='✈️'; days.forEach(function(d,i){ if(i&&i<days.length-1 && !d.icone) d.icone='📅'; }); }
+  DATA.planos=DATA.planos||[]; DATA.planos.push(p);
+  DATA.dias=(DATA.dias||[]).concat(days);
+  closeNew();
+  plPersistForPlan(p, {
+    run: function(){
+      return JB.api('POST', personalSsUrl('/values/Planos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[planRowVals(p)] })
+        .then(function(){
+          if(!days.length) return;
+          return JB.api('POST', personalSsUrl('/values/Dias:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:days.map(dayRowVals) });
+        });
+    },
+    onSuccess: function(){ invalidateRowCacheForSid(JB.getSheetId('planner'),'Planos'); invalidateRowCacheForSid(JB.getSheetId('planner'),'Dias'); openPlan(p.id); toast('✓ Plano criado'); },
+    onError: function(e){ DATA.planos=DATA.planos.filter(function(x){return x.id!==p.id;}); DATA.dias=DATA.dias.filter(function(d){return d.planoId!==p.id;}); plWriteErr(e); render(); }
+  });
+}
+
+function applyPlanDates(id, titulo, subtitulo, start, end, icone){
+  var p=plan(id); if(!p) return;
+  var oldDays=daysOf(id);
+  var wanted=plDaysFromRange(start, end);
+  var wantSet={}; wanted.forEach(function(w){ wantSet[w.date]=w; });
+  var keep={}, extra=[];
+  oldDays.forEach(function(d){ if(wantSet[d.data]) keep[d.data]=d; else extra.push(d); });
+  var extraHasEvt=extra.some(function(d){ return eventsOf(d.id).length; });
+  function go(){
+    var add=wanted.filter(function(w){ return !keep[w.date]; }).map(function(w){
+      return { id:uuid(), planoId:id, data:w.date, titulo:'', icone:'📅', ordem:w.ordem };
+    });
+    extra.forEach(function(d){
+      DATA.eventos=(DATA.eventos||[]).filter(function(e){ return e.diaId!==d.id; });
+      DATA.dias=(DATA.dias||[]).filter(function(x){ return x.id!==d.id; });
+    });
+    DATA.dias=(DATA.dias||[]).concat(add);
+    daysOf(id).forEach(function(d){ var w=wantSet[d.data]; if(w) d.ordem=w.ordem; });
+    p.titulo=titulo; p.subtitulo=subtitulo; p.inicio=start; p.fim=end; p.icone=icone||p.icone; p.atualizado=new Date().toISOString();
+    persistPlanShape(p, extra, add);
+    render();
+  }
+  if(extraHasEvt){
+    JB.confirm('Encurtar o plano?','Dias que saírem do intervalo (e seus eventos) serão removidos.', go, { yes:'Remover dias', no:'Cancelar', danger:true });
+    return;
+  }
+  go();
+}
+
+function persistPlanShape(p, removedDays, addedDays){
+  var sid=plSidForPlan(p), grid=plGridForPlan(p), tab=plPlanTab(p);
+  plPersistForPlan(p, {
+    run: function(){
+      var chain=Promise.resolve();
+      if(removedDays && removedDays.length){
+        chain=chain.then(function(){
+          return deleteDayRows(p, removedDays);
+        });
+      }
+      if(addedDays && addedDays.length){
+        chain=chain.then(function(){
+          return JB.api('POST', plSheetUrl(sid, '/values/Dias:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:addedDays.map(dayRowVals) });
+        });
+      }
+      return chain.then(function(){
+        return findRowInSid(sid, tab, p.collabSheetId?7:7, p.id).then(function(row){
+          if(row<0) throw plRowErr(tab);
+          var vals=p.collabSheetId?metaRowVals(p):planRowVals(p);
+          var last=p.collabSheetId?'I':'H';
+          return JB.api('PUT', plSheetUrl(sid, '/values/'+encodeURIComponent(tab+'!A'+row+':'+last+row)+'?valueInputOption=RAW'), { values:[vals] });
+        });
+      }).then(function(){
+        var kept=daysOf(p.id);
+        return Promise.all(kept.map(function(d){
+          return findRowInSid(sid,'Dias',5,d.id).then(function(row){
+            if(row<0) return;
+            return JB.api('PUT', plSheetUrl(sid, '/values/'+encodeURIComponent('Dias!A'+row+':F'+row)+'?valueInputOption=RAW'), { values:[dayRowVals(d)] });
+          });
+        }));
+      });
+    },
+    onSuccess: function(){ invalidateRowCacheForSid(sid,'Dias'); invalidateRowCacheForSid(sid,'Eventos'); invalidateRowCacheForSid(sid,tab); toast('✓ Plano atualizado'); },
+    onError: plWriteErr
+  });
+}
+
+function deleteDayRows(p, days){
+  var sid=plSidForPlan(p), grid=plGridForPlan(p);
+  var ids=days.map(function(d){return d.id;});
+  return JB.api('GET', plSheetUrl(sid, '/values/Eventos?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+    var v=res.values||[], evRows=[], reqs=[];
+    for(var i=1;i<v.length;i++){ if(ids.indexOf(String((v[i]||[])[0]))>-1) evRows.push(i+1); }
+    evRows.sort(function(a,b){return b-a;});
+    evRows.forEach(function(r){ reqs.push({ deleteDimension:{ range:{ sheetId:grid['Eventos'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }); });
+    return JB.api('GET', plSheetUrl(sid, '/values/Dias?valueRenderOption=UNFORMATTED_VALUE')).then(function(res2){
+      var v2=res2.values||[], dRows=[];
+      for(var j=1;j<v2.length;j++){ if(ids.indexOf(String((v2[j]||[])[5]))>-1) dRows.push(j+1); }
+      dRows.sort(function(a,b){return b-a;});
+      dRows.forEach(function(r){ reqs.push({ deleteDimension:{ range:{ sheetId:grid['Dias'], dimension:'ROWS', startIndex:r-1, endIndex:r } } }); });
+      if(!reqs.length) return;
+      return JB.api('POST', plSheetUrl(sid, ':batchUpdate'), { requests:reqs });
+    });
+  });
+}
+
+function touchPlan(p){
+  p.atualizado=new Date().toISOString();
+  if(typeof plBumpCollabActivity==='function') plBumpCollabActivity();
+  var sid=plSidForPlan(p), tab=plPlanTab(p);
+  plPersistForPlan(p, {
+    run: function(){
+      return findRowInSid(sid, tab, 7, p.id).then(function(row){
+        if(row<0) throw plRowErr(tab);
+        var vals=p.collabSheetId?metaRowVals(p):planRowVals(p);
+        var last=p.collabSheetId?'I':'H';
+        return JB.api('PUT', plSheetUrl(sid, '/values/'+encodeURIComponent(tab+'!A'+row+':'+last+row)+'?valueInputOption=RAW'), { values:[vals] });
+      });
+    },
+    onError: plWriteErr
+  });
+}
+
+function openDayEdit(id){
+  var d=daysOf(openPlanId).find(function(x){return x.id===id;}); if(!d) return;
+  _editDayId=id;
+  $('dayTitle').value=d.titulo||'';
+  $('dayIconWrap').innerHTML=icoGrid(PL_DAY_ICONS,d.icone||'📅','pickDayIcon');
+  window._plDayIcon=d.icone||'📅';
+  $('dayOverlay').classList.add('open');
+}
+function pickDayIcon(ic){ window._plDayIcon=ic; $('dayIconWrap').innerHTML=icoGrid(PL_DAY_ICONS,ic,'pickDayIcon'); }
+function closeDayEdit(){ $('dayOverlay').classList.remove('open'); _editDayId=null; }
+function commitDayEdit(){
+  var d=(DATA.dias||[]).find(function(x){return x.id===_editDayId;}); if(!d) return;
+  d.titulo=($('dayTitle').value||'').trim();
+  d.icone=window._plDayIcon||d.icone;
+  var p=plan(openPlanId);
+  var sid=plSidForPlan(p);
+  plPersistForPlan(p, {
+    run: function(){
+      return findRowInSid(sid,'Dias',5,d.id).then(function(row){
+        if(row<0) throw plRowErr('Dias');
+        return JB.api('PUT', plSheetUrl(sid, '/values/'+encodeURIComponent('Dias!A'+row+':F'+row)+'?valueInputOption=RAW'), { values:[dayRowVals(d)] });
+      });
+    },
+    onSuccess: function(){ touchPlan(p); closeDayEdit(); render(); },
+    onError: plWriteErr
+  });
+}
+
+function openEvtEdit(id, dayId){
+  _editEvtId=id||'';
+  _editEvtDayId=dayId;
+  var e=id && (DATA.eventos||[]).find(function(x){return x.id===id;});
+  $('evtModalTitle').textContent=e?'Editar evento':'Novo evento';
+  $('evtTitle').value=e?e.titulo:'';
+  $('evtHora').value=e?e.hora:'';
+  $('evtNote').value=e?e.nota:'';
+  $('evtTag').value=e?e.tag:'';
+  window._plEvtIcon=e?e.icone:'';
+  window._plEvtTagCor=(e&&e.tagCor)||'warn';
+  $('evtIconWrap').innerHTML=icoGrid(PL_EVT_ICONS, window._plEvtIcon, 'pickEvtIcon');
+  renderTagColors();
+  $('evtDelBtn').style.display=e?'block':'none';
+  $('evtOverlay').classList.add('open');
+}
+function pickEvtIcon(ic){ window._plEvtIcon=ic; $('evtIconWrap').innerHTML=icoGrid(PL_EVT_ICONS,ic,'pickEvtIcon'); }
+function pickTagCor(k){ window._plEvtTagCor=k; renderTagColors(); }
+function renderTagColors(){
+  $('evtTagColors').innerHTML=PL_TAG_COLORS.map(function(c){
+    return '<button type="button" class="pl-tag-sw'+(c.k===window._plEvtTagCor?' on':'')+'" style="background:'+c.hex+'" onclick="pickTagCor(\''+c.k+'\')"></button>';
+  }).join('');
+}
+function closeEvtEdit(){ $('evtOverlay').classList.remove('open'); _editEvtId=null; _editEvtDayId=null; }
+function commitEvtEdit(){
+  var p=plan(openPlanId); if(!p) return;
+  var title=($('evtTitle').value||'').trim();
+  if(!title){ toast('Dê um título ao evento'); return; }
+  var hora=($('evtHora').value||'').trim();
+  var nota=($('evtNote').value||'').trim();
+  var tag=($('evtTag').value||'').trim();
+  var sid=plSidForPlan(p);
+  if(_editEvtId){
+    var e=(DATA.eventos||[]).find(function(x){return x.id===_editEvtId;}); if(!e) return;
+    e.titulo=title; e.hora=hora; e.horaMin=plHoraMinFromLabel(hora); e.nota=nota; e.icone=window._plEvtIcon||''; e.tag=tag; e.tagCor=window._plEvtTagCor||'warn';
+    plPersistForPlan(p, {
+      run: function(){
+        return findRowInSid(sid,'Eventos',9,e.id).then(function(row){
+          if(row<0) throw plRowErr('Eventos');
+          return JB.api('PUT', plSheetUrl(sid, '/values/'+encodeURIComponent('Eventos!A'+row+':J'+row)+'?valueInputOption=RAW'), { values:[evtRowVals(e)] });
+        });
+      },
+      onSuccess: function(){ touchPlan(p); closeEvtEdit(); render(); },
+      onError: plWriteErr
+    });
+    return;
+  }
+  var ord=1; eventsOf(_editEvtDayId).forEach(function(x){ if(x.ordem>=ord) ord=x.ordem+1; });
+  var ev={ id:uuid(), diaId:_editEvtDayId, hora:hora, horaMin:plHoraMinFromLabel(hora), titulo:title, nota:nota, icone:window._plEvtIcon||'', tag:tag, tagCor:window._plEvtTagCor||'warn', ordem:ord };
+  DATA.eventos=DATA.eventos||[]; DATA.eventos.push(ev);
+  plPersistForPlan(p, {
+    run: function(){
+      return JB.api('POST', plSheetUrl(sid, '/values/Eventos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[evtRowVals(ev)] });
+    },
+    onSuccess: function(){ invalidateRowCacheForSid(sid,'Eventos'); touchPlan(p); closeEvtEdit(); render(); },
+    onError: function(e2){ DATA.eventos=DATA.eventos.filter(function(x){return x.id!==ev.id;}); plWriteErr(e2); render(); }
+  });
+}
+function deleteEditingEvt(){
+  var id=_editEvtId; if(!id) return;
+  JB.confirm('Excluir evento?','Ele some do dia para todo mundo neste plano.', function(){
+    var p=plan(openPlanId); var sid=plSidForPlan(p), grid=plGridForPlan(p);
+    plPersistForPlan(p, {
+      run: function(){
+        return findRowInSid(sid,'Eventos',9,id).then(function(row){
+          if(row<0) throw plRowErr('Eventos');
+          return JB.api('POST', plSheetUrl(sid, ':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:grid['Eventos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
+        });
+      },
+      onSuccess: function(){ DATA.eventos=(DATA.eventos||[]).filter(function(x){return x.id!==id;}); invalidateRowCacheForSid(sid,'Eventos'); touchPlan(p); closeEvtEdit(); render(); toast('✓ Evento removido'); },
+      onError: plWriteErr
+    });
+  }, { yes:'Excluir', no:'Cancelar', danger:true });
+}
+
+function deletePlan(){
+  var p=plan(openPlanId); if(!p) return;
+  if(p.collabSheetId && typeof plLeaveOrDelete==='function'){ plLeaveOrDelete(); return; }
+  JB.confirm('Excluir plano?','"'+ (p.titulo||'') +'" e todos os dias serão removidos.', function(){
+    var sid=plSidForPlan(p), grid=plGridForPlan(p);
+    var days=daysOf(p.id);
+    plPersistForPlan(p, {
+      run: function(){
+        return deleteDayRows(p, days).then(function(){
+          return findRowInSid(sid,'Planos',7,p.id).then(function(row){
+            if(row<0) throw plRowErr('Planos');
+            return JB.api('POST', plSheetUrl(sid, ':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:grid['Planos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
+          });
+        });
+      },
+      onSuccess: function(){
+        DATA.eventos=(DATA.eventos||[]).filter(function(e){ return days.every(function(d){ return d.id!==e.diaId; }); });
+        DATA.dias=(DATA.dias||[]).filter(function(d){ return d.planoId!==p.id; });
+        DATA.planos=(DATA.planos||[]).filter(function(x){ return x.id!==p.id; });
+        openPlanId=null; render(); toast('✓ Excluído');
+      },
+      onError: plWriteErr
+    });
+  }, { yes:'Excluir', no:'Cancelar', danger:true });
+}
+
+function saveConfig(k,v){
+  DATA.config=DATA.config||{};
+  DATA.config[k]=v;
+  JB.persist({
+    run: function(){
+      return JB.api('GET', personalSsUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
+        var vals=res.values||[];
+        for(var i=1;i<vals.length;i++){
+          if(String((vals[i]||[])[0])===k) return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]});
+        }
+        return JB.api('POST', personalSsUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]});
+      });
+    },
+    onError: plWriteErr
+  });
+}
+
+function openSettings(){ $('setOverlay').classList.add('open'); JB.renderSkinPicker('planner',$('setSkins')); if(typeof plInitProfileSettings==='function') plInitProfileSettings(); switchSet('tema'); }
+function closeSettings(){ $('setOverlay').classList.remove('open'); }
+function switchSet(name){
+  document.querySelectorAll('#setOverlay .set-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-st')===name); });
+  document.querySelectorAll('#setOverlay .set-pane').forEach(function(p){ p.style.display=p.getAttribute('data-pane')===name?'block':'none'; });
+}
+function plVerTutorial(){ closeSettings(); JB.tour('planner', PL_TOUR); }
+
+JB.applySkin('planner');
+startAuth();

@@ -405,14 +405,6 @@
         meta.removeAttribute('data-jb-vp');
       }
     }
-    try {
-      var next = meta.cloneNode(true);
-      meta.parentNode.replaceChild(next, meta);
-    } catch (_) {}
-  }
-
-  function isMobileEditorUi() {
-    return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 540px)').matches;
   }
 
   function blobToUploadFile(blob, name) {
@@ -821,7 +813,7 @@
     var inkPending = null;
     var inkPtrIds = {};
     var inkPinch = false;
-    var footEl = null;
+    var inkSwallowClick = 0;
     var lastInkOrigin = null;
     var selectedImg = null;
     var imgFrame = null;
@@ -2534,7 +2526,15 @@
     }
     function syncInkTouchAction() {
       if (!inkCanvas) return;
-      inkCanvas.classList.toggle('jb-ed-ink-pan', !!(inkOpen && inkFullSheet() && inkAllowsPan()));
+      inkCanvas.classList.remove('jb-ed-ink-pan');
+    }
+    function onInkSwallowClick(ev) {
+      if (!inkSwallowClick) return;
+      if (!ev.isTrusted) return;
+      ev.preventDefault();
+      if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      else ev.stopPropagation();
+      inkSwallowClick = 0;
     }
     function inkPointerCount() {
       var n = 0;
@@ -2577,7 +2577,9 @@
     function startInkStroke(ev, origin, tap) {
       if (!tap) {
         try { ev.preventDefault(); } catch (_) {}
-        try { inkCanvas.setPointerCapture(ev.pointerId); } catch (_) {}
+        if (ev.pointerType !== 'touch') {
+          try { inkCanvas.setPointerCapture(ev.pointerId); } catch (_) {}
+        }
       }
       if (inkErase) {
         inkErasing = true;
@@ -2603,13 +2605,17 @@
       var chrome = inkChromeTarget(ev);
       if (chrome) {
         ev.preventDefault();
-        if (typeof chrome.click === 'function') {
+        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        else if (ev.stopPropagation) ev.stopPropagation();
+        inkSwallowClick = 1;
+        if (inkBtn && (chrome === inkBtn || (inkBtn.contains && inkBtn.contains(chrome)))) {
+          toggleInk();
+        } else if (typeof chrome.click === 'function') {
           try { chrome.click(); } catch (_) {}
         }
         return;
       }
       inkPtrIds[ev.pointerId] = true;
-      if (ev.pointerType !== 'mouse' && inkAllowsPan()) return;
       if (ev.pointerType === 'touch') {
         if (inkPinch || inkPointerCount() > 1 || ev.isPrimary === false) {
           inkBeginPinch();
@@ -3037,38 +3043,15 @@
       foot.appendChild(timerEl);
       foot.appendChild(saveBtn);
       root.appendChild(foot);
-      footEl = foot;
     }
     host.appendChild(root);
     setEmptyClass();
     hydrateImages();
     hydrateInk();
     resetEditorHistory();
-    function syncMobileFoot() {
-      if (!footEl || compact || destroyed) return;
-      if (!isMobileEditorUi()) {
-        footEl.classList.remove('jb-ed-foot-float');
-        footEl.style.left = '';
-        footEl.style.width = '';
-        footEl.style.bottom = '';
-        root.style.paddingBottom = '';
-        return;
-      }
-      var vv = window.visualViewport;
-      var gap = 0;
-      if (vv) gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-      var r = root.getBoundingClientRect();
-      footEl.classList.add('jb-ed-foot-float');
-      footEl.style.left = Math.round(r.left) + 'px';
-      footEl.style.width = Math.round(r.width) + 'px';
-      footEl.style.bottom = gap + 'px';
-      var h = footEl.offsetHeight || 48;
-      root.style.paddingBottom = (h + 8) + 'px';
-    }
     function onWinResize() {
       scheduleInkSize();
       paintImgFrame();
-      syncMobileFoot();
     }
     function onInkViewChange() {
       if (inkFullSheet()) {
@@ -3078,7 +3061,6 @@
       }
       syncInkTouchAction();
       paintImgFrame();
-      syncMobileFoot();
     }
     function onEditorKey(ev) {
       if (destroyed) return;
@@ -3116,6 +3098,7 @@
       }
     }
     document.addEventListener('keydown', onEditorKey, true);
+    document.addEventListener('click', onInkSwallowClick, true);
     document.addEventListener('copy', onEditorCopy, true);
     document.addEventListener('cut', onEditorCut, true);
     document.addEventListener('paste', onEditorPaste, true);
@@ -3140,7 +3123,6 @@
         try { inkRo.observe(page); } catch (_) {}
       }
     }
-    syncMobileFoot();
 
     surface.addEventListener('beforeinput', function (ev) {
       if (ev.inputType === 'historyUndo') {
@@ -3312,6 +3294,7 @@
         document.removeEventListener('mousedown', onDocFsDown);
         document.removeEventListener('selectionchange', onSelChange);
         document.removeEventListener('keydown', onEditorKey, true);
+        document.removeEventListener('click', onInkSwallowClick, true);
         document.removeEventListener('copy', onEditorCopy, true);
         document.removeEventListener('cut', onEditorCut, true);
         document.removeEventListener('paste', onEditorPaste, true);
@@ -3322,13 +3305,6 @@
           window.visualViewport.removeEventListener('scroll', onInkViewChange);
         }
         scroll.removeEventListener('scroll', onInkViewChange);
-        if (footEl) {
-          footEl.classList.remove('jb-ed-foot-float');
-          footEl.style.left = '';
-          footEl.style.width = '';
-          footEl.style.bottom = '';
-        }
-        root.style.paddingBottom = '';
         document.documentElement.classList.remove('jb-ink-full');
         document.documentElement.classList.remove('jb-ed-sheet');
         setSheetViewport(false);

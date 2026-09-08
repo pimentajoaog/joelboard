@@ -13,6 +13,19 @@
     'large': '18px', 'x-large': '24px', 'xx-large': '32px', 'xxx-large': '48px'
   };
   var FONT_TAG_SIZE = { '1': '10px', '2': '13px', '3': '16px', '4': '18px', '5': '24px', '6': '32px', '7': '48px' };
+  var HIGHLIGHTS = [
+    { label: 'Amarelo', color: '#fff59d' },
+    { label: 'Verde', color: '#b9f6ca' },
+    { label: 'Azul', color: '#84ffff' },
+    { label: 'Rosa', color: '#f8bbd0' },
+    { label: 'Laranja', color: '#ffcc80' },
+    { label: 'Roxo', color: '#e1bee7' }
+  ];
+  var HIGHLIGHT_NAMED = {
+    yellow: '#fff59d', lime: '#b9f6ca', green: '#b9f6ca', aqua: '#84ffff', cyan: '#84ffff',
+    turquoise: '#84ffff', fuchsia: '#f8bbd0', magenta: '#f8bbd0', pink: '#f8bbd0',
+    orange: '#ffcc80', red: '#ff8a80', blue: '#82b1ff', purple: '#e1bee7', violet: '#e1bee7'
+  };
   var ALLOWED = { P:1, H1:1, H2:1, H3:1, DIV:1, BR:1, SPAN:1, STRONG:1, B:1, EM:1, I:1, U:1, S:1, STRIKE:1, A:1, UL:1, OL:1, LI:1, BLOCKQUOTE:1, PRE:1, CODE:1, HR:1, FONT:1, IMG:1 };
 
   function parseFontSizeInput(raw) {
@@ -49,6 +62,33 @@
     if (el.tagName === 'FONT' && String(el.getAttribute('size') || '') === '7') return true;
     var st = String(el.getAttribute('style') || '').toLowerCase();
     return /font-size\s*:\s*(-webkit-)?(xxx-large|xx-large)\s*(;|$)/.test(st);
+  }
+  function rgbToHex(r, g, b) {
+    function hx(n) {
+      n = Math.max(0, Math.min(255, n | 0));
+      return (n < 16 ? '0' : '') + n.toString(16);
+    }
+    return '#' + hx(r) + hx(g) + hx(b);
+  }
+  function normalizeHex(h) {
+    h = String(h || '').toLowerCase();
+    if (/^#[0-9a-f]{3}$/.test(h)) return '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+    if (/^#[0-9a-f]{6}$/.test(h)) return h;
+    return '';
+  }
+  function cssHighlightFromStyle(st) {
+    st = String(st || '');
+    if (/background-color\s*:\s*(transparent|inherit|initial|none)\b/i.test(st)) return '';
+    var hex = st.match(/background-color\s*:\s*(#(?:[0-9a-f]{3}|[0-9a-f]{6}))\b/i);
+    if (hex) return normalizeHex(hex[1]);
+    var rgb = st.match(/background-color\s*:\s*rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/i);
+    if (rgb) {
+      if (rgb[4] != null && Number(rgb[4]) <= 0) return '';
+      return rgbToHex(+rgb[1], +rgb[2], +rgb[3]);
+    }
+    var named = st.match(/background-color\s*:\s*([a-z]+)/i);
+    if (named) return HIGHLIGHT_NAMED[named[1].toLowerCase()] || '';
+    return '';
   }
 
   function safeDriveFileId(id) {
@@ -227,11 +267,13 @@
           if (alt) child.setAttribute('alt', alt);
           return;
         }
-        if (tag === 'FONT') {
-          var fontPx = FONT_TAG_SIZE[String(child.getAttribute('size') || '')] || '';
+        if (tag === 'FONT' || tag === 'MARK') {
+          var fontPx = tag === 'FONT' ? (FONT_TAG_SIZE[String(child.getAttribute('size') || '')] || '') : '';
           var fromStyle = cssFontSizeFromStyle(child.getAttribute('style'));
+          var bg = cssHighlightFromStyle(child.getAttribute('style')) || (tag === 'MARK' ? '#fff59d' : '');
           var span = document.createElement('span');
           if (fromStyle || fontPx) span.style.fontSize = fromStyle || fontPx;
+          if (bg) span.style.backgroundColor = bg;
           while (child.firstChild) span.appendChild(child.firstChild);
           node.replaceChild(span, child);
           walk(span);
@@ -250,9 +292,12 @@
             if (url) child.setAttribute('href', url);
             else child.removeAttribute('href');
           } else if (n === 'style') {
-            var px = cssFontSizeFromStyle(child.getAttribute('style'));
+            var st = child.getAttribute('style');
+            var px = cssFontSizeFromStyle(st);
+            var bg = cssHighlightFromStyle(st);
             child.removeAttribute('style');
             if (px) child.style.fontSize = px;
+            if (bg) child.style.backgroundColor = bg;
           } else if (!keep || n.indexOf('on') === 0) {
             child.removeAttribute(attr.name);
           }
@@ -377,6 +422,10 @@
     var fsCombo = null;
     var fsMenu = null;
     var savedRange = null;
+    var hlWrap = null;
+    var hlMenu = null;
+    var hlSwatch = null;
+    var lastHighlight = HIGHLIGHTS[0].color;
 
     host.innerHTML = '';
     var root = document.createElement('div');
@@ -573,6 +622,79 @@
       if (fsInput) fsInput.value = String(size);
       markDirty();
     }
+    function wrapSelectionHighlight(bg) {
+      var sel = window.getSelection();
+      if (!sel) return;
+      if (!sel.rangeCount) {
+        var r0 = document.createRange();
+        r0.selectNodeContents(surface);
+        r0.collapse(false);
+        sel.addRange(r0);
+      }
+      var range = sel.getRangeAt(0);
+      if (!rangeInSurface(range)) return;
+      if (range.collapsed) {
+        expandRangeToWord(range);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      if (range.collapsed) return;
+      try {
+        var span = document.createElement('span');
+        if (bg) span.style.backgroundColor = bg;
+        range.surroundContents(span);
+        sel.removeAllRanges();
+        var after = document.createRange();
+        after.selectNodeContents(span);
+        sel.addRange(after);
+      } catch (_) {
+        var wrap = document.createElement('span');
+        if (bg) wrap.style.backgroundColor = bg;
+        wrap.appendChild(range.extractContents());
+        range.insertNode(wrap);
+      }
+    }
+    function clearTransparentHighlights() {
+      Array.prototype.forEach.call(surface.querySelectorAll('span, mark'), function (el) {
+        var bg = String((el.style && el.style.backgroundColor) || '');
+        if (!bg) return;
+        if (bg === 'transparent' || bg === 'inherit' || bg === 'rgba(0, 0, 0, 0)') {
+          el.style.backgroundColor = '';
+          var st = el.getAttribute('style');
+          if (st != null && !String(st).replace(/\s|;/g, '')) el.removeAttribute('style');
+        }
+      });
+    }
+    function paintHlBtn() {
+      if (hlSwatch) hlSwatch.style.background = lastHighlight || 'transparent';
+    }
+    function applyHighlight(color) {
+      var bg = color ? cssHighlightFromStyle('background-color:' + color) : '';
+      var sel = window.getSelection();
+      var inEditor = sel && sel.rangeCount && rangeInSurface(sel.getRangeAt(0));
+      if (!inEditor) restoreSelection();
+      surface.focus();
+      sel = window.getSelection();
+      if (sel && sel.rangeCount) {
+        var live = sel.getRangeAt(0);
+        if (rangeInSurface(live) && live.collapsed) {
+          expandRangeToWord(live);
+          sel.removeAllRanges();
+          sel.addRange(live);
+        }
+      }
+      try { document.execCommand('styleWithCSS', false, true); } catch (_) {}
+      var ok = false;
+      try { ok = document.execCommand('hiliteColor', false, bg || 'transparent'); } catch (_) {}
+      if (!ok) {
+        try { ok = document.execCommand('backColor', false, bg || 'transparent'); } catch (_) {}
+      }
+      if (!ok) wrapSelectionHighlight(bg);
+      clearTransparentHighlights();
+      if (bg) lastHighlight = bg;
+      paintHlBtn();
+      markDirty();
+    }
     function addLink() {
       var sel = '';
       try { sel = String(window.getSelection() || ''); } catch (_) {}
@@ -687,6 +809,11 @@
         if (n) fsInput.value = String(n);
       }
     }
+    function setHlMenuOpen(open) {
+      if (!hlMenu || !hlWrap) return;
+      hlMenu.hidden = !open;
+      hlWrap.classList.toggle('open', !!open);
+    }
     function setFsMenuOpen(open) {
       if (!fsMenu || !fsCombo) return;
       fsMenu.hidden = !open;
@@ -698,9 +825,8 @@
       });
     }
     function onDocFsDown(ev) {
-      if (!fsCombo || !fsMenu || fsMenu.hidden) return;
-      if (fsCombo.contains(ev.target)) return;
-      setFsMenuOpen(false);
+      if (fsCombo && fsMenu && !fsMenu.hidden && !fsCombo.contains(ev.target)) setFsMenuOpen(false);
+      if (hlWrap && hlMenu && !hlMenu.hidden && !hlWrap.contains(ev.target)) setHlMenuOpen(false);
     }
     function onSelChange() { saveSelection(); }
 
@@ -715,6 +841,61 @@
       b.addEventListener('click', function () { cmd(t.cmd); });
       bar.appendChild(b);
     });
+
+    hlWrap = document.createElement('div');
+    hlWrap.className = 'jb-ed-hl';
+    var hlApply = btn('A', 'Realçar');
+    hlApply.className += ' jb-ed-hl-apply';
+    hlSwatch = document.createElement('span');
+    hlSwatch.className = 'jb-ed-hl-swatch';
+    hlApply.appendChild(hlSwatch);
+    hlApply.addEventListener('click', function () { applyHighlight(lastHighlight); });
+    var hlCaret = document.createElement('button');
+    hlCaret.type = 'button';
+    hlCaret.className = 'jb-ed-hl-caret';
+    hlCaret.setAttribute('aria-label', 'Cor do realce');
+    hlCaret.title = 'Cor do realce';
+    hlCaret.textContent = '▾';
+    hlCaret.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+    hlCaret.addEventListener('click', function () { setHlMenuOpen(hlMenu.hidden); });
+    hlMenu = document.createElement('div');
+    hlMenu.className = 'jb-ed-hl-menu';
+    hlMenu.hidden = true;
+    HIGHLIGHTS.forEach(function (h) {
+      var o = document.createElement('button');
+      o.type = 'button';
+      o.className = 'jb-ed-hl-chip';
+      o.title = h.label;
+      o.setAttribute('aria-label', h.label);
+      o.style.background = h.color;
+      o.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+      o.addEventListener('click', function () {
+        lastHighlight = h.color;
+        paintHlBtn();
+        applyHighlight(h.color);
+        setHlMenuOpen(false);
+        surface.focus();
+      });
+      hlMenu.appendChild(o);
+    });
+    var hlNone = document.createElement('button');
+    hlNone.type = 'button';
+    hlNone.className = 'jb-ed-hl-chip none';
+    hlNone.title = 'Sem realce';
+    hlNone.setAttribute('aria-label', 'Sem realce');
+    hlNone.textContent = '×';
+    hlNone.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+    hlNone.addEventListener('click', function () {
+      applyHighlight('');
+      setHlMenuOpen(false);
+      surface.focus();
+    });
+    hlMenu.appendChild(hlNone);
+    hlWrap.appendChild(hlApply);
+    hlWrap.appendChild(hlCaret);
+    hlWrap.appendChild(hlMenu);
+    bar.appendChild(hlWrap);
+    paintHlBtn();
 
     [
       { label: 'H1', title: 'Título', tag: 'h1' },
@@ -911,7 +1092,9 @@
     FONT_SIZES: FONT_SIZES,
     parseFontSizeInput: parseFontSizeInput,
     stepFontSize: stepFontSize,
-    cssFontSizeFromStyle: cssFontSizeFromStyle
+    cssFontSizeFromStyle: cssFontSizeFromStyle,
+    cssHighlightFromStyle: cssHighlightFromStyle,
+    HIGHLIGHTS: HIGHLIGHTS
   };
 
   if (typeof window !== 'undefined') {

@@ -121,3 +121,12 @@ test('cssFontSizeFromStyle keeps px and maps named sizes', function () {
   assert.equal(ED.cssFontSizeFromStyle('font-size: -webkit-xxx-large'), '48px');
   assert.equal(ED.cssFontSizeFromStyle('color: red'), '');
 });
+
+test('cssHighlightFromStyle keeps safe highlight colors', function () {
+  assert.equal(ED.cssHighlightFromStyle('background-color: #fff59d'), '#fff59d');
+  assert.equal(ED.cssHighlightFromStyle('background-color: #ff0'), '#ffff00');
+  assert.equal(ED.cssHighlightFromStyle('background-color: rgb(255, 245, 157)'), '#fff59d');
+  assert.equal(ED.cssHighlightFromStyle('background-color: yellow'), '#fff59d');
+  assert.equal(ED.cssHighlightFromStyle('background-color: transparent'), '');
+  assert.equal(ED.cssHighlightFromStyle('background-color: url(x)'), '');
+});

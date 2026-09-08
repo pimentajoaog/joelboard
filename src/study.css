@@ -10,8 +10,8 @@
 *,::before,::after{ box-sizing:border-box; margin:0; padding:0; border-width:0; border-style:solid; border-color:var(--border); }
 button,input,select,textarea{ font-family:inherit; }
 html,body{ overflow-x:hidden; }
-html.jb-ed-sheet{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
-html.jb-ed-sheet body{ overflow-x:visible; }
+html.jb-ed-sheet{ overflow-x:auto; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+html.jb-ed-sheet body{ overflow-x:visible; overflow-y:visible; }
 body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg); font-family:var(--font-body); padding:26px 18px 90px; }
 
 #loading{ @apply max-w-[480px] mx-auto; }

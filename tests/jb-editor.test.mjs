@@ -221,7 +221,13 @@ test('ink overlay size follows the page box, not scrollHeight', function () {
   assert.match(src, /function inkBoardPads/);
   assert.match(src, /function setSheetViewport/);
   assert.match(src, /user-scalable=yes/);
+  assert.match(src, /minimum-scale=0\.25/);
   assert.match(src, /function inkAllowsPan/);
+  assert.match(src, /function inkBoardGrow/);
+  assert.match(src, /function inkEdgeScroll/);
+  assert.match(src, /visualViewport/);
+  assert.match(src, /--jb-ed-pad-top/);
+  assert.match(css, /margin-top: var\(--jb-ed-pad-top/);
   assert.match(src, /jb-ed-ink-pan/);
 });
 
@@ -253,6 +259,8 @@ test('inkBoardPads grows sideways only when doodles leave the viewport', functio
   var none = ED.inkBoardPads([], 760, 1200, 220, 40);
   assert.equal(none.left, 0);
   assert.equal(none.right, 0);
+  assert.equal(none.top, 0);
+  assert.equal(none.bottom, 0);
   var side = ED.inkBoardPads(
     [{ color: '#111827', width: 3, pts: [{ x: -80, y: 12 }, { x: -20, y: 12 }] }],
     360, 390, 18, 40
@@ -265,6 +273,31 @@ test('inkBoardPads grows sideways only when doodles leave the viewport', functio
   );
   assert.equal(far.left, 0);
   assert.ok(far.right >= 500);
+});
+
+test('inkBoardGrow keeps extra room around the current view and grows when zoomed out', function () {
+  var rest = ED.inkBoardGrow({ left: 0, right: 0, top: 0, bottom: 0 }, {
+    pageLeft: 0, pageTop: 0, width: 1200, height: 800, viewW: 1200, viewH: 800
+  }, 160);
+  assert.equal(rest.left, 160);
+  assert.equal(rest.right, 160);
+  assert.equal(rest.top, 160);
+  assert.equal(rest.bottom, 160);
+  var held = ED.inkBoardGrow(rest, {
+    pageLeft: 160, pageTop: 160, width: 1200, height: 800, viewW: 1200, viewH: 800
+  }, 160);
+  assert.equal(held.left, 160);
+  assert.equal(held.right, 160);
+  var zoomOut = ED.inkBoardGrow(held, {
+    pageLeft: 160, pageTop: 160, width: 2400, height: 1600, viewW: 1200, viewH: 800
+  }, 160);
+  assert.equal(zoomOut.left, 160);
+  assert.ok(zoomOut.right >= 1360);
+  assert.ok(zoomOut.bottom >= 960);
+  var noShrink = ED.inkBoardGrow(zoomOut, {
+    pageLeft: 160, pageTop: 160, width: 1200, height: 800, viewW: 1200, viewH: 800
+  }, 160);
+  assert.equal(noShrink.right, zoomOut.right);
 });
 
 test('image drag ghost follows the cursor on document.body', function () {

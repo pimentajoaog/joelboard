@@ -16,7 +16,7 @@ vm.createContext(ctx);
 vm.runInContext(
   helpers
   + '\nthis.plParseYmd=plParseYmd;this.plDaysFromRange=plDaysFromRange;this.plNights=plNights;'
-  + 'this.plHoraMinFromLabel=plHoraMinFromLabel;this.plParseHora=plParseHora;this.plSortEvents=plSortEvents;'
+  + 'this.plHoraMinFromLabel=plHoraMinFromLabel;this.plParseHora=plParseHora;this.plEventMin=plEventMin;this.plSortEvents=plSortEvents;'
   + 'this.plWeekday=plWeekday;this.plFmtDay=plFmtDay;this.plRangeHint=plRangeHint;'
   + 'this.plAddDays=plAddDays;this.plNormIcon=plNormIcon;',
   ctx
@@ -90,6 +90,16 @@ test('plSortEvents orders by time then ordem', function () {
     { id: 'a', horaMin: 510, ordem: 2, titulo: 'Manhã' }
   ]);
   assert.deepEqual(list.map(function (e) { return e.id; }), ['a', 'b', 'c']);
+});
+
+test('plSortEvents uses the clock label when horaMin is missing', function () {
+  var list = ctx.plSortEvents([
+    { id: 'late', hora: '20:30h', horaMin: '', ordem: 0, titulo: 'Restaurante' },
+    { id: 'early', hora: '07:00h', horaMin: '', ordem: 1, titulo: 'Aeroporto' },
+    { id: 'open', hora: 'quando der', horaMin: '', ordem: 0, titulo: 'Livre' }
+  ]);
+  assert.deepEqual(list.map(function (e) { return e.id; }), ['early', 'late', 'open']);
+  assert.equal(ctx.plEventMin({ hora: '07:00h', horaMin: '' }), 7 * 60);
 });
 
 test('plNormIcon keeps the first one or two pasted glyphs', function () {

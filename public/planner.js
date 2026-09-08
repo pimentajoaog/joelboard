@@ -151,10 +151,15 @@ function plHoraMinFromLabel(raw){
   var p=plParseHora(raw);
   return p.ok?p.min:'';
 }
+function plEventMin(e){
+  if(!e) return 1e9;
+  if(e.horaMin!=='' && e.horaMin!=null && isFinite(Number(e.horaMin))) return Number(e.horaMin);
+  var p=plParseHora(e.hora||'');
+  return (p.ok && p.min!=='')?Number(p.min):1e9;
+}
 function plSortEvents(list){
   return (list||[]).slice().sort(function(a,b){
-    var am=a.horaMin===''||a.horaMin==null?1e9:Number(a.horaMin);
-    var bm=b.horaMin===''||b.horaMin==null?1e9:Number(b.horaMin);
+    var am=plEventMin(a), bm=plEventMin(b);
     if(am!==bm) return am-bm;
     if((a.ordem||0)!==(b.ordem||0)) return (a.ordem||0)-(b.ordem||0);
     return String(a.titulo||'').localeCompare(String(b.titulo||''));
@@ -313,8 +318,14 @@ function parseDias(rows){
 }
 function parseEventos(rows){
   return body(rows).filter(function(r){return r[9];}).map(function(r){
+    var hora=String(r[1]||'');
     var hm=r[2];
-    return { id:String(r[9]), diaId:String(r[0]||''), hora:String(r[1]||''), horaMin:(hm===''||hm==null)?'':Number(hm), titulo:String(r[3]||''), nota:String(r[4]||''), icone:String(r[5]||''), tag:String(r[6]||''), tagCor:String(r[7]||'warn'), ordem:Number(r[8])||0 };
+    var horaMin=(hm===''||hm==null)?'':Number(hm);
+    if(horaMin==='' || !isFinite(horaMin)){
+      var parsed=plParseHora(hora);
+      if(parsed.ok && parsed.min!=='') horaMin=parsed.min;
+    }
+    return { id:String(r[9]), diaId:String(r[0]||''), hora:hora, horaMin:horaMin, titulo:String(r[3]||''), nota:String(r[4]||''), icone:String(r[5]||''), tag:String(r[6]||''), tagCor:String(r[7]||'warn'), ordem:Number(r[8])||0 };
   });
 }
 function buildPlanner(t){

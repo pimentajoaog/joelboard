@@ -1,7 +1,7 @@
 /* Joelboard Planner — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. */
 var DATA=null, plannerGrid={}, authDone=false, openPlanId=null, homeQuery='', _pbooted=false, _edMenuOpen=false;
-var _editPlanId=null, _editDayId=null, _editEvtId=null, _editEvtDayId=null, newStart='', newEnd='', newIcon='✈️';
+var _editPlanId=null, _editDayId=null, _editEvtId=null, _editEvtDayId=null, _plEvtMer='', newStart='', newEnd='', newIcon='✈️';
 var _rowCache={};
 var PL_TABS=[
   ['Planos',['Titulo','Subtitulo','Inicio','Fim','Icone','Criado','Atualizado','ID']],
@@ -16,9 +16,10 @@ var PL_ICON_EXTRAS=['📅','📌','🎯','💡','📚','🐶','🐱','💼','�
 var PL_TAG_COLORS=[{k:'warn',hex:'#fb923c'},{k:'ok',hex:'#34d399'},{k:'mute',hex:'#7b85a0'}];
 var PL_WD=['dom','seg','ter','qua','qui','sex','sáb'];
 var PL_PERIODS={
-  madrugada:180, manha:540, 'manhã':540, manhã:540,
-  'meio-dia':720, meiodia:720, almoco:750, 'almoço':750,
-  tarde:900, 'fim de tarde':1020, noite:1200
+  madrugada:180, manha:540, 'manhã':540, manhã:540, morning:540,
+  'meio-dia':720, meiodia:720, 'meio dia':720, noon:720, almoco:750, 'almoço':750,
+  tarde:900, afternoon:900, 'fim de tarde':1020, noite:1200, evening:1200, night:1200,
+  'meia-noite':0, meianoite:0, 'meia noite':0, midnight:0
 };
 var PL_TOUR=[
   { title:'Joelboard Planner', body:'Monte roteiros, encontros e viagens — um plano por vez, no seu ritmo.' },
@@ -69,17 +70,86 @@ function plNights(start, end){
   var days=plDaysFromRange(start, end);
   return days.length ? days.length-1 : 0;
 }
+function plFmtHoraLabel(min, approx){
+  var h=Math.floor(Number(min)/60), m=Number(min)%60;
+  var label=h+'h'+(m?((m<10?'0':'')+m):'');
+  return (approx?'~':'')+label;
+}
+function plApplyMeridiem(h, mer){
+  if(h<1 || h>12) return -1;
+  if(mer==='night') return h===12?0:h+12;
+  if(mer==='am') return h===12?0:h;
+  if(mer==='pm') return h===12?12:h+12;
+  return -1;
+}
+function plParseHora(raw, merHint){
+  var original=String(raw==null?'':raw).trim();
+  if(!original) return { ok:true, ask:false, label:'', min:'' };
+  var approx=/^[~≈～]/.test(original) || /^(cerca de|por volta d[aeos]*|uns)\s+/i.test(original);
+  var s=original.toLowerCase()
+    .replace(/^[~≈～]+\s*/,'')
+    .replace(/^(cerca de|por volta d[aeos]*|uns)\s+/,'')
+    .replace(/^(às|as|at)\s+/,'')
+    .replace(/\s+/g,' ')
+    .trim();
+  if(PL_PERIODS[s]!=null) return { ok:true, ask:false, label:original, min:PL_PERIODS[s] };
+  var mer='';
+  var merM=s.match(/\s*(a\.?\s*m\.?|p\.?\s*m\.?|da manh[aã]|de manh[aã]|da tarde|da noite|da madrugada)$/);
+  if(merM){
+    var w=merM[1].replace(/[\s.]/g,'');
+    if(w==='danoite') mer='night';
+    else if(w.charAt(0)==='p' || w==='datarde') mer='pm';
+    else mer='am';
+    s=s.slice(0, merM.index).trim();
+  } else {
+    var glue=s.match(/^(.*?)(a\.?m\.?|p\.?m\.?)$/);
+    if(glue && /[0-9]/.test(glue[1])){
+      mer=glue[2].charAt(0)==='p'?'pm':'am';
+      s=glue[1].replace(/[\s.]+$/,'');
+    }
+  }
+  s=s.replace(/\s*(horas?|hs)$/,'').trim();
+  var h=-1, mi=0, clock=false, bareHour=false, m;
+  m=s.match(/^(\d{1,2})\s*[h:.](\d{2})\s*h?s?$/);
+  if(m){ h=+m[1]; mi=+m[2]; clock=true; }
+  else {
+    m=s.match(/^(\d{1,2})\s*h\s*s?$/);
+    if(m){ h=+m[1]; mi=0; clock=true; }
+    else {
+      m=s.match(/^(\d{1,2})$/);
+      if(m){ h=+m[1]; mi=0; clock=true; bareHour=m[1].length<2; }
+    }
+  }
+  if(!clock){
+    if(/[0-9]/.test(original) || mer) return { ok:false, ask:false, label:original, min:'' };
+    return { ok:true, ask:false, label:original, min:'' };
+  }
+  if(mi<0 || mi>59) return { ok:false, ask:false, label:original, min:'' };
+  if(mer){
+    h=plApplyMeridiem(h, mer);
+    if(h<0) return { ok:false, ask:false, label:original, min:'' };
+  } else {
+    if(bareHour) return { ok:false, ask:false, label:original, min:'' };
+    if(h<0 || h>23) return { ok:false, ask:false, label:original, min:'' };
+    var ambiguous=h>=1 && h<=12;
+    var hint=(merHint==='am'||merHint==='pm')?merHint:'';
+    if(ambiguous && !hint){
+      var prov=h*60+mi;
+      return { ok:true, ask:true, label:plFmtHoraLabel(prov, approx), min:prov, hour:h, mi:mi, approx:approx };
+    }
+    if(ambiguous && hint){
+      h=plApplyMeridiem(h, hint);
+      if(h<0) return { ok:false, ask:true, label:original, min:'' };
+      var resolved=h*60+mi;
+      return { ok:true, ask:true, label:plFmtHoraLabel(resolved, approx), min:resolved, hour:h, mi:mi, approx:approx };
+    }
+  }
+  var min=h*60+mi;
+  return { ok:true, ask:false, label:plFmtHoraLabel(min, approx), min:min };
+}
 function plHoraMinFromLabel(raw){
-  var s=String(raw||'').trim().toLowerCase().replace(/~/g,'').replace(/\s+/g,' ');
-  if(!s) return '';
-  if(PL_PERIODS[s]!=null) return PL_PERIODS[s];
-  var m=s.match(/^(\d{1,2})h(\d{2})?$/);
-  if(m){ var h=+m[1], mi=m[2]?+m[2]:0; if(h>=0&&h<24&&mi>=0&&mi<60) return h*60+mi; }
-  m=s.match(/^(\d{1,2}):(\d{2})$/);
-  if(m){ var h2=+m[1], mi2=+m[2]; if(h2>=0&&h2<24&&mi2>=0&&mi2<60) return h2*60+mi2; }
-  m=s.match(/^(\d{1,2})h$/);
-  if(m){ var h3=+m[1]; if(h3>=0&&h3<24) return h3*60; }
-  return '';
+  var p=plParseHora(raw);
+  return p.ok?p.min:'';
 }
 function plSortEvents(list){
   return (list||[]).slice().sort(function(a,b){
@@ -687,6 +757,12 @@ function openEvtEdit(id, dayId){
   $('evtModalTitle').textContent=e?'Editar evento':'Novo evento';
   $('evtTitle').value=e?e.titulo:'';
   $('evtHora').value=e?e.hora:'';
+  _plEvtMer='';
+  if(e && e.horaMin!=='' && e.horaMin!=null){
+    var peek=plParseHora(e.hora,'');
+    if(peek.ask) _plEvtMer=Number(e.horaMin)>=12*60?'pm':'am';
+  }
+  renderEvtHoraHint();
   $('evtNote').value=e?e.nota:'';
   $('evtTag').value=e?e.tag:'';
   window._plEvtIcon=e?e.icone:'';
@@ -704,18 +780,42 @@ function renderTagColors(){
     return '<button type="button" class="pl-tag-sw'+(c.k===window._plEvtTagCor?' on':'')+'" style="background:'+c.hex+'" onclick="pickTagCor(\''+c.k+'\')"></button>';
   }).join('');
 }
-function closeEvtEdit(){ $('evtOverlay').classList.remove('open'); _editEvtId=null; _editEvtDayId=null; }
+function closeEvtEdit(){ $('evtOverlay').classList.remove('open'); _editEvtId=null; _editEvtDayId=null; _plEvtMer=''; }
+function pickEvtMer(k){ _plEvtMer=(k==='am'||k==='pm')?k:''; renderEvtHoraHint(); }
+function renderEvtAmPm(show, mer){
+  var el=$('evtAmPm'); if(!el) return;
+  if(!show){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='flex';
+  el.innerHTML='<button type="button" class="pl-ampm-btn'+(mer==='am'?' on':'')+'" onclick="pickEvtMer(\'am\')">AM</button>'
+    +'<button type="button" class="pl-ampm-btn'+(mer==='pm'?' on':'')+'" onclick="pickEvtMer(\'pm\')">PM</button>';
+}
+function renderEvtHoraHint(){
+  var el=$('evtHoraHint'); if(!el) return;
+  var raw=(($('evtHora')||{}).value||'').trim();
+  if(!raw){ el.textContent=''; el.classList.remove('err'); renderEvtAmPm(false); return; }
+  var peek=plParseHora(raw,'');
+  if(!peek.ask) _plEvtMer='';
+  var p=plParseHora(raw, _plEvtMer);
+  renderEvtAmPm(!!p.ask, _plEvtMer);
+  if(!p.ok){ el.textContent='Horário incompleto — use 16h, 16:00 ou 4 PM.'; el.classList.add('err'); return; }
+  el.classList.remove('err');
+  if(p.ask && !_plEvtMer){ el.textContent='Esse horário é AM ou PM? Fica só no app — o plano grava em 24h.'; return; }
+  el.textContent=(p.min!=='' && p.label && p.label!==raw)?('Vira '+p.label):'';
+}
 function commitEvtEdit(){
   var p=plan(openPlanId); if(!p) return;
   var title=($('evtTitle').value||'').trim();
   if(!title){ toast('Dê um título ao evento'); return; }
-  var hora=($('evtHora').value||'').trim();
+  var parsed=plParseHora(($('evtHora').value||'').trim(), _plEvtMer);
+  if(!parsed.ok){ toast('Horário incompleto — use 16h, 16:00 ou 4 PM.'); renderEvtHoraHint(); return; }
+  if(parsed.ask && !_plEvtMer){ toast('Esse horário é AM ou PM?'); renderEvtHoraHint(); return; }
+  var hora=parsed.label;
   var nota=($('evtNote').value||'').trim();
   var tag=($('evtTag').value||'').trim();
   var sid=plSidForPlan(p);
   if(_editEvtId){
     var e=(DATA.eventos||[]).find(function(x){return x.id===_editEvtId;}); if(!e) return;
-    e.titulo=title; e.hora=hora; e.horaMin=plHoraMinFromLabel(hora); e.nota=nota; e.icone=window._plEvtIcon||''; e.tag=tag; e.tagCor=window._plEvtTagCor||'warn';
+    e.titulo=title; e.hora=hora; e.horaMin=parsed.min; e.nota=nota; e.icone=window._plEvtIcon||''; e.tag=tag; e.tagCor=window._plEvtTagCor||'warn';
     plPersistForPlan(p, {
       run: function(){
         return findRowInSid(sid,'Eventos',9,e.id).then(function(row){
@@ -729,7 +829,7 @@ function commitEvtEdit(){
     return;
   }
   var ord=1; eventsOf(_editEvtDayId).forEach(function(x){ if(x.ordem>=ord) ord=x.ordem+1; });
-  var ev={ id:uuid(), diaId:_editEvtDayId, hora:hora, horaMin:plHoraMinFromLabel(hora), titulo:title, nota:nota, icone:window._plEvtIcon||'', tag:tag, tagCor:window._plEvtTagCor||'warn', ordem:ord };
+  var ev={ id:uuid(), diaId:_editEvtDayId, hora:hora, horaMin:parsed.min, titulo:title, nota:nota, icone:window._plEvtIcon||'', tag:tag, tagCor:window._plEvtTagCor||'warn', ordem:ord };
   DATA.eventos=DATA.eventos||[]; DATA.eventos.push(ev);
   plPersistForPlan(p, {
     run: function(){

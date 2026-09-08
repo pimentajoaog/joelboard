@@ -16,7 +16,7 @@ vm.createContext(ctx);
 vm.runInContext(
   helpers
   + '\nthis.plParseYmd=plParseYmd;this.plDaysFromRange=plDaysFromRange;this.plNights=plNights;'
-  + 'this.plHoraMinFromLabel=plHoraMinFromLabel;this.plSortEvents=plSortEvents;'
+  + 'this.plHoraMinFromLabel=plHoraMinFromLabel;this.plParseHora=plParseHora;this.plSortEvents=plSortEvents;'
   + 'this.plWeekday=plWeekday;this.plFmtDay=plFmtDay;this.plRangeHint=plRangeHint;'
   + 'this.plAddDays=plAddDays;this.plNormIcon=plNormIcon;',
   ctx
@@ -48,6 +48,39 @@ test('plHoraMinFromLabel accepts clock, tilde, and period words', function () {
   assert.equal(ctx.plHoraMinFromLabel('noite'), 1200);
   assert.equal(ctx.plHoraMinFromLabel(''), '');
   assert.equal(ctx.plHoraMinFromLabel('quando der'), '');
+});
+
+test('plParseHora accepts 24h, 12h, and rejects a bare hour', function () {
+  function min(raw){ return ctx.plParseHora(raw).min; }
+  function label(raw){ return ctx.plParseHora(raw).label; }
+  assert.equal(min('16'), 16 * 60);
+  assert.equal(label('16'), '16h');
+  assert.equal(min('16:00h'), 16 * 60);
+  assert.equal(min('4 PM'), 16 * 60);
+  assert.equal(label('4 PM'), '16h');
+  assert.equal(min('~4PM'), 16 * 60);
+  assert.equal(label('~4PM'), '~16h');
+  assert.equal(min('4:30 pm'), 16 * 60 + 30);
+  assert.equal(label('4:30 pm'), '16h30');
+  assert.equal(min('4h'), 4 * 60);
+  assert.equal(min('04'), 4 * 60);
+  assert.equal(min('12am'), 0);
+  assert.equal(min('12pm'), 12 * 60);
+  assert.equal(min('4 da tarde'), 16 * 60);
+  assert.equal(min('10 da noite'), 22 * 60);
+  assert.equal(ctx.plParseHora('09:30').ask, true);
+  assert.equal(ctx.plParseHora('09:30').min, 9 * 60 + 30);
+  assert.equal(ctx.plParseHora('09:30', 'pm').min, 21 * 60 + 30);
+  assert.equal(ctx.plParseHora('09:30', 'pm').label, '21h30');
+  assert.equal(ctx.plParseHora('8h30').ask, true);
+  assert.equal(ctx.plParseHora('16:00').ask, false);
+  assert.equal(ctx.plParseHora('16').ask, false);
+  assert.equal(ctx.plParseHora('4').ok, false);
+  assert.equal(ctx.plParseHora('25').ok, false);
+  assert.equal(ctx.plParseHora('4:99').ok, false);
+  assert.equal(ctx.plParseHora('13pm').ok, false);
+  assert.equal(ctx.plParseHora('quando der').ok, true);
+  assert.equal(ctx.plParseHora('quando der').min, '');
 });
 
 test('plSortEvents orders by time then ordem', function () {

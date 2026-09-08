@@ -28,6 +28,10 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .btn-primary{ @apply w-full bg-primary border-0 rounded-full px-[15px] py-3 font-extrabold text-[14px] cursor-pointer text-[color:var(--on-brand)] mt-1; font-family:inherit; }
 .modal-wide{ max-width:480px; }
 .rg{ @apply text-xs text-muted mt-px; }
+.rg.err{ color:#f87171; }
+.pl-ampm{ display:flex; gap:8px; margin-top:8px; }
+.pl-ampm-btn{ flex:1; background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:999px; padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; font-family:inherit; }
+.pl-ampm-btn.on{ color:var(--text); border-color:var(--primary); background:color-mix(in srgb, var(--primary) 14%, var(--surface2)); }
 .empty{ @apply text-muted text-center py-10 px-4 text-[13px]; }
 .foot{ @apply text-center text-muted text-[11px] opacity-[0.55] mt-9; }
 .del{ @apply bg-transparent border border-border text-[#f87171] rounded-full px-[15px] py-2.5 font-bold text-[13px] cursor-pointer mt-2; font-family:inherit; width:100%; }

@@ -66,7 +66,7 @@
     <div class="mh"><div class="mt" id="evtModalTitle">Evento</div><button class="x" onclick="closeEvtEdit()">✕</button></div>
     <div class="fg"><label class="fl">Ícone (opcional)</label><div id="evtIconWrap"></div></div>
     <div class="fg"><label class="fl">Título</label><input class="field" id="evtTitle" placeholder="ex.: Check-in no hotel"></div>
-    <div class="fg"><label class="fl">Horário (opcional)</label><input class="field" id="evtHora" placeholder="8h30, ~16h, tarde…"></div>
+    <div class="fg"><label class="fl">Horário (opcional)</label><input class="field" id="evtHora" placeholder="16h, 4 PM, ~16:00…" oninput="renderEvtHoraHint()"><div class="rg" id="evtHoraHint"></div><div class="pl-ampm" id="evtAmPm" style="display:none"></div></div>
     <div class="fg"><label class="fl">Nota</label><textarea class="field evt-note" id="evtNote" rows="3" placeholder="Detalhe curto, reserva, endereço…"></textarea></div>
     <div class="fg"><label class="fl">Destaque (opcional)</label><input class="field" id="evtTag" placeholder="ex.: Reserva online antes"></div>
     <div class="fg"><label class="fl">Cor do destaque</label><div class="pl-tag-colors" id="evtTagColors"></div></div>

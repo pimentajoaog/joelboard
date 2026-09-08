@@ -407,6 +407,15 @@
     }
   }
 
+  function inkStickyCanvas() {
+    if (typeof window === 'undefined' || !window.matchMedia) return false;
+    try {
+      return window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(max-width: 540px)').matches;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function blobToUploadFile(blob, name) {
     name = String(name || 'sharpie.png');
     var type = (blob && blob.type) || 'image/png';
@@ -2029,6 +2038,9 @@
     function inkFullSheet() {
       return !compact && !!inkCanvas;
     }
+    function inkViewportOverlay() {
+      return inkFullSheet() && !inkStickyCanvas();
+    }
     function inkViewRect() {
       var vv = window.visualViewport;
       var layoutW = Math.max(1, Math.round(window.innerWidth || 1));
@@ -2075,7 +2087,7 @@
     }
     function placeInkCanvas() {
       if (!inkCanvas) return;
-      if (inkFullSheet()) {
+      if (inkViewportOverlay()) {
         inkCanvas.classList.add('jb-ed-ink-full');
         if (inkCanvas.parentNode !== document.body) document.body.appendChild(inkCanvas);
       } else {
@@ -2088,7 +2100,7 @@
       }
     }
     function syncInkCanvasBox() {
-      if (!inkCanvas || !inkFullSheet()) return false;
+      if (!inkCanvas || !inkViewportOverlay()) return false;
       var vis = inkViewRect();
       inkCanvas.style.left = vis.left + 'px';
       inkCanvas.style.top = vis.top + 'px';
@@ -2134,7 +2146,7 @@
       if (!isFinite(dpr) || dpr <= 0) dpr = 1;
       inkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       inkCtx.clearRect(0, 0, cssW, cssH);
-      if (inkFullSheet()) {
+      if (inkViewportOverlay()) {
         var origin = inkOriginRect();
         var cr = r;
         lastInkOrigin = {
@@ -2157,7 +2169,7 @@
     }
     function tickInkView() {
       inkViewRaf = 0;
-      if (destroyed || !inkFullSheet()) return;
+      if (destroyed || !inkViewportOverlay()) return;
       syncInkCanvasBox();
       var o = inkOriginRect();
       var cr = inkCanvas.getBoundingClientRect();
@@ -2175,7 +2187,7 @@
       inkViewRaf = requestAnimationFrame(tickInkView);
     }
     function ensureInkViewTick() {
-      if (!inkFullSheet()) {
+      if (!inkViewportOverlay()) {
         lastInkOrigin = null;
         if (inkViewRaf) { cancelAnimationFrame(inkViewRaf); inkViewRaf = 0; }
         return;
@@ -2200,7 +2212,7 @@
       else html.style.removeProperty(name);
     }
     function syncInkBoard() {
-      if (destroyed || compact || typeof document === 'undefined') {
+      if (destroyed || compact || inkStickyCanvas() || typeof document === 'undefined') {
         clearInkBoard();
         return;
       }
@@ -2266,7 +2278,7 @@
     function sizeInkCanvas() {
       if (!inkCanvas) return;
       placeInkCanvas();
-      if (inkFullSheet()) {
+      if (inkViewportOverlay()) {
         syncInkCanvasBox();
         if (!inkCtx) inkCtx = inkCanvas.getContext('2d');
       } else {
@@ -2332,7 +2344,7 @@
       if (!uploadImage || !inkCanvas) return;
       inkOpen = !!on;
       root.classList.toggle('ink-on', inkOpen);
-      document.documentElement.classList.toggle('jb-ink-full', inkOpen && inkFullSheet());
+      document.documentElement.classList.toggle('jb-ink-full', inkOpen && inkViewportOverlay());
       if (inkTools) inkTools.hidden = !inkOpen;
       if (inkBtn) inkBtn.classList.toggle('on', inkOpen);
       if (inkOpen) {
@@ -2455,7 +2467,7 @@
       if (!inkBase || !inkCanvas || !inkCtx) return false;
       try {
         var cr = inkCanvas.getBoundingClientRect();
-        var origin = inkFullSheet() ? inkOriginRect() : cr;
+        var origin = inkViewportOverlay() ? inkOriginRect() : cr;
         var cssX = (origin.left - cr.left) + pos.x;
         var cssY = (origin.top - cr.top) + pos.y;
         var x = Math.round(cssX * inkCanvas.width / (cr.width || 1));
@@ -2469,7 +2481,7 @@
       return true;
     }
     function inkChromeTarget(ev) {
-      if (!inkFullSheet()) return null;
+      if (!inkViewportOverlay()) return null;
       var x = ev.clientX, y = ev.clientY;
       var hits = [];
       var i, el, chrome;
@@ -2499,7 +2511,7 @@
       return inkViewScale() > 1.05;
     }
     function inkEdgeScroll(clientX, clientY, ev) {
-      if (compact || !inkFullSheet()) return;
+      if (compact || !inkViewportOverlay()) return;
       var vis = inkViewRect();
       var touch = ev && ev.pointerType === 'touch';
       var margin = touch ? 18 : 40;
@@ -3050,11 +3062,15 @@
     hydrateInk();
     resetEditorHistory();
     function onWinResize() {
-      scheduleInkSize();
       paintImgFrame();
+      if (inkStickyCanvas()) {
+        var scale = inkViewScale();
+        if (scale > 1.02 || scale < 0.98) return;
+      }
+      scheduleInkSize();
     }
     function onInkViewChange() {
-      if (inkFullSheet()) {
+      if (inkViewportOverlay()) {
         syncInkCanvasBox();
         scheduleInkBoard();
         redrawInk();

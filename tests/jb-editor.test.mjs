@@ -199,6 +199,9 @@ test('ink overlay size follows the page box, not scrollHeight', function () {
   assert.doesNotMatch(src, /inkRo\.observe\(scroll\)/);
   assert.match(src, /function tickInkView/);
   assert.match(src, /function ensureInkViewTick/);
+  assert.match(src, /function inkStickyCanvas/);
+  assert.match(src, /function inkViewportOverlay/);
+  assert.match(src, /inkFullSheet\(\) && !inkStickyCanvas/);
   assert.match(src, /document\.body\.appendChild\(inkCanvas\)/);
   assert.match(src, /inkCanvas\.classList\.add\('jb-ed-ink-full'\)/);
   assert.match(src, /c\.width = 8/);
@@ -263,6 +266,8 @@ test('mobile editor delays ink capture so pinch can run', function () {
   assert.doesNotMatch(css, /jb-ed-foot-float/);
   assert.match(css, /@media \(pointer: coarse\) \{[\s\S]*\.jb-ed-img-handle \{ width: 22px/);
   assert.match(css, /\.jb-ed-compact \.jb-ed-surface \{ font-size: 16px; \}/);
+  assert.match(src, /inkStickyCanvas\(\)/);
+  assert.match(css, /\.jb-ed\.ink-on \.jb-ed-ink-layer,[\s\S]*touch-action: pan-x pan-y pinch-zoom/);
 });
 
 test('dumpInkStrokes round-trips and hitInkStroke finds the top scribble', function () {

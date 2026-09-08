@@ -729,7 +729,7 @@ html.jb-ed-sheet .jb-ed-scroll {
   touch-action: pan-x pan-y pinch-zoom;
 }
 .jb-ed.ink-on .jb-ed-ink-layer,
-.jb-ed-ink-layer.jb-ed-ink-full.ink-on { pointer-events: auto; cursor: crosshair; }
+.jb-ed-ink-layer.jb-ed-ink-full.ink-on { pointer-events: auto; cursor: crosshair; touch-action: pan-x pan-y pinch-zoom; }
 .jb-ed.ink-erase .jb-ed-ink-layer,
 .jb-ed-ink-layer.jb-ed-ink-full.ink-erase { cursor: cell; }
 /* .page.on's enter animation would trap toolbar z-index under the full-page canvas. */

@@ -5,14 +5,51 @@
   var AUTOSAVE_MS = 20000;
   var IMAGE_MAX_BYTES = 10 * 1024 * 1024;
   var IMAGE_OK = { 'image/png': 1, 'image/jpeg': 1, 'image/jpg': 1, 'image/webp': 1, 'image/gif': 1 };
-  var SIZES = [
-    { label: '13', px: '13px' },
-    { label: '16', px: '16px' },
-    { label: '20', px: '20px' },
-    { label: '24', px: '24px' },
-    { label: '32', px: '32px' }
-  ];
+  var FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72];
+  var FONT_SIZE_MIN = 8;
+  var FONT_SIZE_MAX = 72;
+  var FONT_SIZE_NAMED = {
+    'xx-small': '9px', 'x-small': '10px', 'small': '13px', 'medium': '16px',
+    'large': '18px', 'x-large': '24px', 'xx-large': '32px', 'xxx-large': '48px'
+  };
+  var FONT_TAG_SIZE = { '1': '10px', '2': '13px', '3': '16px', '4': '18px', '5': '24px', '6': '32px', '7': '48px' };
   var ALLOWED = { P:1, H1:1, H2:1, H3:1, DIV:1, BR:1, SPAN:1, STRONG:1, B:1, EM:1, I:1, U:1, S:1, STRIKE:1, A:1, UL:1, OL:1, LI:1, BLOCKQUOTE:1, PRE:1, CODE:1, HR:1, FONT:1, IMG:1 };
+
+  function parseFontSizeInput(raw) {
+    var n = parseFloat(String(raw == null ? '' : raw).replace(',', '.').replace(/px$/i, '').trim());
+    if (!isFinite(n) || n <= 0) return 0;
+    n = Math.round(n);
+    if (n < FONT_SIZE_MIN) n = FONT_SIZE_MIN;
+    if (n > FONT_SIZE_MAX) n = FONT_SIZE_MAX;
+    return n;
+  }
+  function stepFontSize(current, dir) {
+    var n = parseFontSizeInput(current) || 16;
+    var i;
+    if (dir > 0) {
+      for (i = 0; i < FONT_SIZES.length; i++) if (FONT_SIZES[i] > n) return FONT_SIZES[i];
+      return FONT_SIZES[FONT_SIZES.length - 1];
+    }
+    for (i = FONT_SIZES.length - 1; i >= 0; i--) if (FONT_SIZES[i] < n) return FONT_SIZES[i];
+    return FONT_SIZES[0];
+  }
+  function cssFontSizeFromStyle(st) {
+    st = String(st || '');
+    var fs = st.match(/font-size\s*:\s*([0-9.]+)px/i);
+    if (fs) {
+      var n = parseFontSizeInput(fs[1]);
+      return n ? n + 'px' : '';
+    }
+    var named = st.match(/font-size\s*:\s*(-webkit-)?(xx-small|x-small|small|medium|large|x-large|xx-large|xxx-large)/i);
+    if (named) return FONT_SIZE_NAMED[named[2].toLowerCase()] || '';
+    return '';
+  }
+  function isExecFontSizeMarker(el) {
+    if (!el || el.nodeType !== 1) return false;
+    if (el.tagName === 'FONT' && String(el.getAttribute('size') || '') === '7') return true;
+    var st = String(el.getAttribute('style') || '').toLowerCase();
+    return /font-size\s*:\s*(-webkit-)?(xxx-large|xx-large)\s*(;|$)/.test(st);
+  }
 
   function safeDriveFileId(id) {
     var s = String(id || '').trim();
@@ -190,6 +227,16 @@
           if (alt) child.setAttribute('alt', alt);
           return;
         }
+        if (tag === 'FONT') {
+          var fontPx = FONT_TAG_SIZE[String(child.getAttribute('size') || '')] || '';
+          var fromStyle = cssFontSizeFromStyle(child.getAttribute('style'));
+          var span = document.createElement('span');
+          if (fromStyle || fontPx) span.style.fontSize = fromStyle || fontPx;
+          while (child.firstChild) span.appendChild(child.firstChild);
+          node.replaceChild(span, child);
+          walk(span);
+          return;
+        }
         if (!ALLOWED[tag]) {
           while (child.firstChild) node.insertBefore(child.firstChild, child);
           node.removeChild(child);
@@ -203,10 +250,9 @@
             if (url) child.setAttribute('href', url);
             else child.removeAttribute('href');
           } else if (n === 'style') {
-            var st = String(child.getAttribute('style') || '');
-            var fs = st.match(/font-size\s*:\s*([0-9.]+px)/i);
+            var px = cssFontSizeFromStyle(child.getAttribute('style'));
             child.removeAttribute('style');
-            if (fs) child.style.fontSize = fs[1];
+            if (px) child.style.fontSize = px;
           } else if (!keep || n.indexOf('on') === 0) {
             child.removeAttribute(attr.name);
           }
@@ -327,6 +373,10 @@
     var cycle = remain;
     var status = null;
     var timerEl = null;
+    var fsInput = null;
+    var fsCombo = null;
+    var fsMenu = null;
+    var savedRange = null;
 
     host.innerHTML = '';
     var root = document.createElement('div');
@@ -400,17 +450,127 @@
       try { cur = String(document.queryCommandValue('formatBlock') || '').replace(/[<>]/g, '').toLowerCase(); } catch (_) {}
       cmd('formatBlock', cur === tag ? 'p' : tag);
     }
-    function applySize(px) {
+    function rangeInSurface(range) {
+      if (!range) return false;
+      var n = range.commonAncestorContainer;
+      return n === surface || surface.contains(n);
+    }
+    function expandRangeToWord(range) {
+      if (!range || !range.collapsed) return;
+      var node = range.startContainer;
+      if (node.nodeType !== 3) return;
+      var text = node.nodeValue || '';
+      var a = range.startOffset;
+      var b = range.startOffset;
+      while (a > 0 && /[0-9A-Za-zÀ-ÿ]/.test(text.charAt(a - 1))) a--;
+      while (b < text.length && /[0-9A-Za-zÀ-ÿ]/.test(text.charAt(b))) b++;
+      if (b > a) {
+        range.setStart(node, a);
+        range.setEnd(node, b);
+      }
+    }
+    function clearDescendantFontSize(el) {
+      if (!el || !el.querySelectorAll) return;
+      var nodes = el.querySelectorAll('span, font');
+      var i;
+      for (i = 0; i < nodes.length; i++) {
+        nodes[i].style.fontSize = '';
+        nodes[i].removeAttribute('size');
+        var st = nodes[i].getAttribute('style');
+        if (st != null && !String(st).replace(/\s|;/g, '')) nodes[i].removeAttribute('style');
+      }
+    }
+    function applyPxToMarker(el, css) {
+      clearDescendantFontSize(el);
+      el.removeAttribute('size');
+      el.style.fontSize = css;
+      if (el.tagName !== 'FONT') return;
+      var span = document.createElement('span');
+      span.style.fontSize = css;
+      while (el.firstChild) span.appendChild(el.firstChild);
+      if (el.parentNode) el.parentNode.replaceChild(span, el);
+    }
+    function saveSelection() {
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      var r = sel.getRangeAt(0);
+      if (rangeInSurface(r)) savedRange = r.cloneRange();
+    }
+    function restoreSelection() {
+      if (!savedRange) return;
       surface.focus();
+      var sel = window.getSelection();
+      if (!sel) return;
+      sel.removeAllRanges();
+      try { sel.addRange(savedRange); } catch (_) {}
+    }
+    function wrapSelectionWithSize(css) {
+      var sel = window.getSelection();
+      if (!sel) return;
+      if (!sel.rangeCount) {
+        var r0 = document.createRange();
+        r0.selectNodeContents(surface);
+        r0.collapse(false);
+        sel.addRange(r0);
+      }
+      var range = sel.getRangeAt(0);
+      if (!rangeInSurface(range)) return;
+      if (range.collapsed) {
+        var hold = document.createElement('span');
+        hold.style.fontSize = css;
+        hold.appendChild(document.createTextNode('\u200b'));
+        range.insertNode(hold);
+        var caret = document.createRange();
+        caret.selectNodeContents(hold);
+        caret.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(caret);
+        return;
+      }
+      try {
+        var span = document.createElement('span');
+        span.style.fontSize = css;
+        range.surroundContents(span);
+        sel.removeAllRanges();
+        var after = document.createRange();
+        after.selectNodeContents(span);
+        sel.addRange(after);
+      } catch (_) {
+        var wrap = document.createElement('span');
+        wrap.style.fontSize = css;
+        wrap.appendChild(range.extractContents());
+        range.insertNode(wrap);
+      }
+    }
+    function applySize(px) {
+      var size = parseFontSizeInput(px);
+      if (!size) return;
+      var css = size + 'px';
+      var sel = window.getSelection();
+      var inEditor = sel && sel.rangeCount && rangeInSurface(sel.getRangeAt(0));
+      if (!inEditor) restoreSelection();
+      surface.focus();
+      sel = window.getSelection();
+      if (sel && sel.rangeCount) {
+        var live = sel.getRangeAt(0);
+        if (rangeInSurface(live) && live.collapsed) {
+          expandRangeToWord(live);
+          sel.removeAllRanges();
+          sel.addRange(live);
+        }
+      }
       try { document.execCommand('styleWithCSS', false, true); } catch (_) {}
       try { document.execCommand('fontSize', false, '7'); } catch (_) {}
-      var fonts = surface.querySelectorAll('font[size="7"]');
-      Array.prototype.forEach.call(fonts, function (f) {
-        var span = document.createElement('span');
-        if (px) span.style.fontSize = px;
-        while (f.firstChild) span.appendChild(f.firstChild);
-        if (f.parentNode) f.parentNode.replaceChild(span, f);
+      var markers = [];
+      Array.prototype.forEach.call(surface.querySelectorAll('font, span'), function (el) {
+        if (isExecFontSizeMarker(el)) markers.push(el);
       });
+      if (markers.length) {
+        markers.forEach(function (el) { applyPxToMarker(el, css); });
+      } else {
+        wrapSelectionWithSize(css);
+      }
+      if (fsInput) fsInput.value = String(size);
       markDirty();
     }
     function addLink() {
@@ -502,6 +662,17 @@
       }
       next();
     }
+    function currentFontSizePx() {
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return 0;
+      var node = sel.anchorNode;
+      if (node && node.nodeType === 3) node = node.parentElement;
+      if (!node || !surface.contains(node)) return 0;
+      try {
+        var cs = window.getComputedStyle(node);
+        return parseFontSizeInput(cs && cs.fontSize);
+      } catch (_) { return 0; }
+    }
     function syncBar() {
       var map = { bold: 'bold', italic: 'italic', underline: 'underline', strikeThrough: 'strike' };
       Object.keys(map).forEach(function (command) {
@@ -511,7 +682,27 @@
         try { on = document.queryCommandState(command); } catch (_) {}
         el.classList.toggle('on', !!on);
       });
+      if (fsInput && document.activeElement !== fsInput) {
+        var n = currentFontSizePx();
+        if (n) fsInput.value = String(n);
+      }
     }
+    function setFsMenuOpen(open) {
+      if (!fsMenu || !fsCombo) return;
+      fsMenu.hidden = !open;
+      fsCombo.classList.toggle('open', !!open);
+      if (!open) return;
+      var cur = parseFontSizeInput(fsInput && fsInput.value);
+      Array.prototype.forEach.call(fsMenu.querySelectorAll('[data-size]'), function (b) {
+        b.classList.toggle('on', Number(b.getAttribute('data-size')) === cur);
+      });
+    }
+    function onDocFsDown(ev) {
+      if (!fsCombo || !fsMenu || fsMenu.hidden) return;
+      if (fsCombo.contains(ev.target)) return;
+      setFsMenuOpen(false);
+    }
+    function onSelChange() { saveSelection(); }
 
     [
       { label: 'B', title: 'Negrito', cmd: 'bold', key: 'bold' },
@@ -535,25 +726,77 @@
       bar.appendChild(b);
     });
 
-    var sizeSel = document.createElement('select');
-    sizeSel.className = 'jb-ed-size';
-    sizeSel.title = 'Tamanho do texto';
-    var opt0 = document.createElement('option');
-    opt0.value = '';
-    opt0.textContent = 'Aa';
-    sizeSel.appendChild(opt0);
-    SIZES.forEach(function (sz) {
-      var o = document.createElement('option');
-      o.value = sz.px;
-      o.textContent = sz.label;
-      sizeSel.appendChild(o);
+    var fsWrap = document.createElement('div');
+    fsWrap.className = 'jb-ed-fontsize';
+    var fsDec = btn('A−', 'Diminuir fonte');
+    fsDec.addEventListener('click', function () { applySize(stepFontSize(fsInput.value, -1)); });
+    fsCombo = document.createElement('div');
+    fsCombo.className = 'jb-ed-fs-combo';
+    fsInput = document.createElement('input');
+    fsInput.type = 'text';
+    fsInput.inputMode = 'numeric';
+    fsInput.className = 'jb-ed-fs-input';
+    fsInput.setAttribute('aria-label', 'Tamanho da fonte');
+    fsInput.title = 'Tamanho da fonte';
+    fsInput.value = '16';
+    fsInput.addEventListener('mousedown', saveSelection);
+    fsInput.addEventListener('focus', saveSelection);
+    fsInput.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        applySize(fsInput.value);
+        setFsMenuOpen(false);
+        surface.focus();
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        applySize(stepFontSize(fsInput.value, 1));
+      } else if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        applySize(stepFontSize(fsInput.value, -1));
+      } else if (ev.key === 'Escape') {
+        setFsMenuOpen(false);
+        surface.focus();
+      }
     });
-    sizeSel.addEventListener('mousedown', function (ev) { ev.stopPropagation(); });
-    sizeSel.addEventListener('change', function () {
-      applySize(sizeSel.value);
-      sizeSel.value = '';
+    fsInput.addEventListener('change', function () { applySize(fsInput.value); });
+    var fsCaret = document.createElement('button');
+    fsCaret.type = 'button';
+    fsCaret.className = 'jb-ed-fs-caret';
+    fsCaret.setAttribute('aria-label', 'Lista de tamanhos');
+    fsCaret.title = 'Lista de tamanhos';
+    fsCaret.textContent = '▾';
+    fsCaret.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+    fsCaret.addEventListener('click', function () { setFsMenuOpen(fsMenu.hidden); });
+    fsMenu = document.createElement('div');
+    fsMenu.className = 'jb-ed-fs-menu';
+    fsMenu.hidden = true;
+    fsMenu.setAttribute('role', 'listbox');
+    FONT_SIZES.forEach(function (sz) {
+      var o = document.createElement('button');
+      o.type = 'button';
+      o.setAttribute('role', 'option');
+      o.setAttribute('data-size', String(sz));
+      o.style.fontSize = Math.min(sz, 22) + 'px';
+      o.textContent = String(sz);
+      o.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+      o.addEventListener('click', function () {
+        applySize(sz);
+        setFsMenuOpen(false);
+        surface.focus();
+      });
+      fsMenu.appendChild(o);
     });
-    bar.appendChild(sizeSel);
+    fsCombo.appendChild(fsInput);
+    fsCombo.appendChild(fsCaret);
+    fsCombo.appendChild(fsMenu);
+    var fsInc = btn('A+', 'Aumentar fonte');
+    fsInc.addEventListener('click', function () { applySize(stepFontSize(fsInput.value, 1)); });
+    fsWrap.appendChild(fsDec);
+    fsWrap.appendChild(fsCombo);
+    fsWrap.appendChild(fsInc);
+    bar.appendChild(fsWrap);
+    document.addEventListener('mousedown', onDocFsDown);
+    document.addEventListener('selectionchange', onSelChange);
 
     var listBtn = btn('•', 'Lista');
     listBtn.addEventListener('click', function () { cmd('insertUnorderedList'); });
@@ -640,6 +883,8 @@
       destroy: function () {
         if (destroyed) return;
         destroyed = true;
+        document.removeEventListener('mousedown', onDocFsDown);
+        document.removeEventListener('selectionchange', onSelChange);
         if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
         if (dirty) persist(false);
         if (root.parentNode) root.parentNode.removeChild(root);
@@ -662,7 +907,11 @@
     isEmptyHtml: isEmptyHtml,
     safeDriveFileId: safeDriveFileId,
     pasteImageFiles: pasteImageFiles,
-    IMAGE_MAX_BYTES: IMAGE_MAX_BYTES
+    IMAGE_MAX_BYTES: IMAGE_MAX_BYTES,
+    FONT_SIZES: FONT_SIZES,
+    parseFontSizeInput: parseFontSizeInput,
+    stepFontSize: stepFontSize,
+    cssFontSizeFromStyle: cssFontSizeFromStyle
   };
 
   if (typeof window !== 'undefined') {

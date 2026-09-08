@@ -98,3 +98,26 @@ test('pasteImageFiles picks clipboard images and skips svg', function () {
   assert.equal(files.length, 1);
   assert.equal(files[0].name, 'snip.png');
 });
+
+test('parseFontSizeInput clamps Word-like sizes', function () {
+  assert.equal(ED.parseFontSizeInput('13'), 13);
+  assert.equal(ED.parseFontSizeInput('13px'), 13);
+  assert.equal(ED.parseFontSizeInput('7'), 8);
+  assert.equal(ED.parseFontSizeInput('200'), 72);
+  assert.equal(ED.parseFontSizeInput('abc'), 0);
+});
+
+test('stepFontSize walks the preset list', function () {
+  assert.equal(ED.stepFontSize(16, 1), 18);
+  assert.equal(ED.stepFontSize(16, -1), 14);
+  assert.equal(ED.stepFontSize(13, 1), 14);
+  assert.equal(ED.stepFontSize(8, -1), 8);
+  assert.equal(ED.stepFontSize(72, 1), 72);
+});
+
+test('cssFontSizeFromStyle keeps px and maps named sizes', function () {
+  assert.equal(ED.cssFontSizeFromStyle('font-size: 13px'), '13px');
+  assert.equal(ED.cssFontSizeFromStyle('font-size: xxx-large'), '48px');
+  assert.equal(ED.cssFontSizeFromStyle('font-size: -webkit-xxx-large'), '48px');
+  assert.equal(ED.cssFontSizeFromStyle('color: red'), '');
+});

@@ -832,6 +832,17 @@
 
     var bar = document.createElement('div');
     bar.className = 'jb-ed-bar';
+    function cluster() {
+      var g = document.createElement('div');
+      g.className = 'jb-ed-cluster';
+      bar.appendChild(g);
+      return g;
+    }
+    var cMarks = cluster();
+    var cPaint = cluster();
+    var cHeads = cluster();
+    var cSize = cluster();
+    var cBlocks = cluster();
 
     var stage = document.createElement('div');
     stage.className = 'jb-ed-stage';
@@ -2692,7 +2703,7 @@
       var b = btn(t.label, t.title);
       b.setAttribute('data-cmd', t.key);
       b.addEventListener('click', function () { cmd(t.cmd); });
-      bar.appendChild(b);
+      cMarks.appendChild(b);
     });
 
     hlWrap = document.createElement('div');
@@ -2748,14 +2759,15 @@
     hlWrap.appendChild(hlApply);
     hlWrap.appendChild(hlCaret);
     hlWrap.appendChild(hlMenu);
-    bar.appendChild(hlWrap);
+    cPaint.appendChild(hlWrap);
     paintHlBtn();
 
     if (uploadImage) {
       inkBtn = btn('✎', 'Sharpie');
+      inkBtn.className += ' jb-ed-ink-toggle';
       inkBtn.setAttribute('aria-label', 'Sharpie');
       inkBtn.addEventListener('click', toggleInk);
-      bar.appendChild(inkBtn);
+      cPaint.appendChild(inkBtn);
 
       inkTools = document.createElement('div');
       inkTools.className = 'jb-ed-ink-tools';
@@ -2807,7 +2819,7 @@
     ].forEach(function (t) {
       var b = btn(t.label, t.title);
       b.addEventListener('click', function () { block(t.tag); });
-      bar.appendChild(b);
+      cHeads.appendChild(b);
     });
 
     var fsWrap = document.createElement('div');
@@ -2878,22 +2890,22 @@
     fsWrap.appendChild(fsDec);
     fsWrap.appendChild(fsCombo);
     fsWrap.appendChild(fsInc);
-    bar.appendChild(fsWrap);
+    cSize.appendChild(fsWrap);
     document.addEventListener('mousedown', onDocFsDown);
     document.addEventListener('selectionchange', onSelChange);
 
     var listBtn = btn('•', 'Lista');
     listBtn.addEventListener('click', function () { cmd('insertUnorderedList'); });
-    bar.appendChild(listBtn);
+    cBlocks.appendChild(listBtn);
     var numBtn = btn('1.', 'Lista numerada');
     numBtn.addEventListener('click', function () { cmd('insertOrderedList'); });
-    bar.appendChild(numBtn);
+    cBlocks.appendChild(numBtn);
     var qBtn = btn('“', 'Citação');
     qBtn.addEventListener('click', function () { block('blockquote'); });
-    bar.appendChild(qBtn);
+    cBlocks.appendChild(qBtn);
     var linkBtn = btn('🔗', 'Link');
     linkBtn.addEventListener('click', addLink);
-    bar.appendChild(linkBtn);
+    cBlocks.appendChild(linkBtn);
 
     var chrome = document.createElement('div');
     chrome.className = 'jb-ed-chrome';

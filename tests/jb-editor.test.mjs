@@ -212,6 +212,11 @@ test('ink overlay size follows the page box, not scrollHeight', function () {
   assert.match(css, /\.jb-ed-chrome/);
   assert.match(css, /\.jb-ed:not\(\.jb-ed-compact\) \.jb-ed-ink-tools \{[\s\S]*position: absolute/);
   assert.match(src, /jb-ed-chrome/);
+  assert.match(css, /\.jb-ed-cluster/);
+  assert.match(src, /jb-ed-cluster/);
+  assert.match(css, /@keyframes jb-ed-bar-in/);
+  assert.match(css, /@keyframes jb-ed-ink-in/);
+  assert.match(css, /prefers-reduced-motion/);
   assert.match(css, /html\.jb-ed-sheet \{[\s\S]*overflow-x: hidden/);
   assert.match(css, /html\.jb-ed-sheet\.jb-ed-board-x \{[\s\S]*overflow-x: auto/);
   assert.match(css, /html\.jb-ed-sheet \.jb-ed-scroll \{[\s\S]*touch-action: pan-y pinch-zoom/);

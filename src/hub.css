@@ -20,7 +20,11 @@ body{ @apply min-h-screen text-ink; background:var(--bg); font-family:var(--font
 .acct{ @apply flex items-center gap-3 text-[13px] text-muted; }
 .authbtn{ @apply bg-surface2 border border-border text-primary font-bold text-xs rounded-full px-[13px] py-1.5 cursor-pointer; font-family:inherit; }
 .authbtn:hover{ @apply border-primary; }
-.sub{ @apply text-sm text-muted; margin:8px 2px 28px; }
+.sub{ @apply text-sm text-muted; margin:8px 2px 18px; }
+.hub-agenda{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px 16px 12px; margin:0 0 22px; }
+.hub-agenda-h{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.hub-agenda-title{ font-size:15px; font-weight:800; letter-spacing:-.2px; }
+.hub-agenda-hint{ font-size:12px; color:var(--muted); text-align:right; }
 .grid{ @apply gap-4; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); }
 .tile{ @apply flex flex-col items-start gap-[3px] bg-surface border border-border rounded-[18px] p-[22px] no-underline text-ink; transition:transform .15s ease, border-color .15s ease; }
 .tile.clickable{ cursor:pointer; }

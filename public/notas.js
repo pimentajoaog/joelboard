@@ -81,9 +81,18 @@ function noteOpen(n){ return noteChk(n).filter(function(x){return !x.feito;}).le
 function noteDone(n){ var c=noteChk(n); return c.length>0 && c.every(function(x){return x.feito;}); }
 function dueBadge(n){ if(!n.vence) return ''; if(noteDone(n)) return ' · <span class="due-badge done">✅ feito</span>'; return ' · <span class="due-badge '+dueClass(n.vence)+'">📅 '+esc(dueLabel(n.vence))+'</span>'; }
 function dueStripHtml(){
-  var ds=(DATA.notas||[]).filter(function(n){ return n.vence && !noteDone(n); }).filter(function(n){ var d=daysUntilD(n.vence); return d!=null && d<=14; }).sort(function(a,b){ return String(a.vence).localeCompare(String(b.vence)); }).slice(0,8);
+  var lists=(DATA.notas||[]).filter(function(n){ return n.vence && !noteDone(n); }).map(function(n){
+    return { id:n.id, titulo:n.titulo, tipo:n.tipo, vence:n.vence, done:false };
+  });
+  if(window.JB && JB.cal && JB.cal.eventsFromNotas){
+    var evs=JB.cal.eventsFromNotas(lists).filter(function(e){ var d=JB.cal.daysUntil(e.date); return d!=null && d<=14; }).slice(0,8);
+    if(!evs.length) return '';
+    return '<div class="secbar" style="margin-bottom:8px"><div class="sect">⏳ Com prazo</div></div><div class="due-strip" onclick="if(event.target.closest(\'.jb-cal-row\')){ var id=event.target.closest(\'.jb-cal-row\').getAttribute(\'data-raw\'); if(id) openNote(id); }">'
+      + evs.map(function(e){ var n=note(e.rawId); var open=n?noteOpen(n):0; if(open) e.subtitle=(e.subtitle?e.subtitle+' · ':'')+'faltam '+open; return JB.cal.eventRowHtml(e, { showDate:true }); }).join('') + '</div>';
+  }
+  var ds=lists.filter(function(n){ var d=daysUntilD(n.vence); return d!=null && d<=14; }).sort(function(a,b){ return String(a.vence).localeCompare(String(b.vence)); }).slice(0,8);
   if(!ds.length) return '';
-  return '<div class="secbar" style="margin-bottom:8px"><div class="sect">⏳ Com prazo</div></div><div class="due-strip">'+ds.map(function(n){ var kd=kindDef(n.tipo); var open=noteOpen(n); return '<div class="due-row" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')"><span class="dr-ico">'+noteIcon(n)+'</span><span class="dr-title">'+esc(n.titulo)+'</span>'+(open?'<span class="dr-rem">faltam '+open+'</span>':'')+'<span class="due-badge '+dueClass(n.vence)+'">'+esc(dueLabel(n.vence))+'</span></div>'; }).join('')+'</div>';
+  return '<div class="secbar" style="margin-bottom:8px"><div class="sect">⏳ Com prazo</div></div><div class="due-strip">'+ds.map(function(n){ var full=note(n.id)||n; var kd=kindDef(full.tipo); var open=noteOpen(full); return '<div class="due-row" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')"><span class="dr-ico">'+noteIcon(full)+'</span><span class="dr-title">'+esc(full.titulo)+'</span>'+(open?'<span class="dr-rem">faltam '+open+'</span>':'')+'<span class="due-badge '+dueClass(n.vence)+'">'+esc(dueLabel(n.vence))+'</span></div>'; }).join('')+'</div>';
 }
 function fmtDateBR(iso){ var p=String(iso||'').split('-'); return p.length===3? (p[2]+'/'+p[1]+'/'+p[0]) : iso; }
 function pickNewDate(){ JB.datePicker(newDue, function(iso){ newDue=iso; renderNewDate(); }); }
@@ -247,7 +256,7 @@ function buildNotas(t){
     config: config
   };
 }
-function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+((typeof ncAcctLabel==='function')?ncAcctLabel():(JB.email()||'')); render(); if(!_nbooted){ _nbooted=true; if(typeof ncCheckJoinParam==='function') ncCheckJoinParam(); if(typeof ncStartCollabPoll==='function') ncStartCollabPoll(); if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('notas', refreshData); } }
+function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+((typeof ncAcctLabel==='function')?ncAcctLabel():(JB.email()||'')); if(!_nbooted){ try{ var lid=new URLSearchParams(location.search).get('lista'); if(lid && note(lid)) openNoteId=lid; }catch(_){ } } render(); if(!_nbooted){ _nbooted=true; if(typeof ncCheckJoinParam==='function') ncCheckJoinParam(); if(typeof ncStartCollabPoll==='function') ncStartCollabPoll(); if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('notas', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   if(typeof ncRefreshCollabOnly==='function' && openNoteId && note(openNoteId) && note(openNoteId).collabSheetId){ ncRefreshCollabOnly(true).then(function(res){ if(typeof ncHandlePollResult==='function') ncHandlePollResult(res); else if(res && res.changed) render(); }).catch(function(){}); return; }

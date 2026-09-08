@@ -7,11 +7,11 @@ var HUB_NEWS_SHEET_ID=hubNewsCleanId((typeof window!=='undefined'&&window.JB_HUB
 var HUB_NEWS_SHEET_LOCAL='jb_hub_news_sheet_id';
 var HUB_NEWS_LIMIT=5;
 var HUB_NEWS_DEFAULT=[
+  { app:'hub', kind:'novo', text:'Agenda no Hub — contas, provas, prazos, treinos e planos no mesmo calendário (hoje, 3 dias, semana ou mês).' },
   { app:'planner', kind:'novo', text:'Planner — roteiros e encontros numa linha do tempo; compartilhe com um link Joelboard.' },
   { app:'hub', kind:'novo', text:'Sessão expirada avisa para entrar de novo — banner no topo e tela de login em todos os apps, em vez de falhar no meio de uma ação.' },
   { app:'mini', kind:'novo', text:'Sites permitidos sincronizam na planilha Joelboard Mini (aba ReplaceSites) — entre Hub, Replace e Refresh.' },
-  { app:'notas', kind:'correcao', text:'Duplicatas fantasma em listas corrigidas; Remover duplicatas no menu ⋯ de cada lista.' },
-  { app:'notas', kind:'novo', text:'Ícones personalizados nas listas — presets e emoji no editor e na grade inicial.' }
+  { app:'notas', kind:'correcao', text:'Duplicatas fantasma em listas corrigidas; Remover duplicatas no menu ⋯ de cada lista.' }
 ];
 var HUB_NEWS=HUB_NEWS_DEFAULT.slice();
 var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notas', planner:'Planner', mini:'Mini', hub:'Hub', study:'Study' };
@@ -308,6 +308,7 @@ function hubNewsEditSave(){
 function $(id){ return document.getElementById(id); }
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só — entre com Google para sincronizar dados no seu Drive.' },
+  { sel:'#hubAgenda', title:'Agenda', body:'Hoje, 3 dias, semana ou mês — contas, provas, prazos, treinos e planos no mesmo calendário. Toque para abrir o app.' },
   { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notas, Planner ou Mini (extensões Chrome).' },
   { sel:'#hubNews', title:'Novidades', body:'Fique por dentro das últimas mudanças nos apps — atualizado aqui no Hub.' },
   { sel:'.gear', title:'Ajustes', body:'Tema, login, tutorial, privacidade e aviso legal ficam aqui.' }
@@ -415,7 +416,56 @@ function bootHubTours(){
   }
   maybeJulioelHint();
 }
-function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); applyJulioelUI(false); if(on && !_hbooted){ _hbooted=true; bootHubTours(); } hubNewsInit(); }
+var _agendaApi=null, _agendaView='week', _agendaDate='', _agendaSeq=0, _agendaTimer=0;
+var HUB_AGENDA_LABEL={ finance:'Finance', fit:'Fit', study:'Study', notas:'Notas', planner:'Planner' };
+function hubAgendaSignedOut(){
+  var host=$('hubAgendaCal'), hint=$('hubAgendaHint');
+  if(hint) hint.textContent='';
+  _agendaApi=null;
+  if(!host) return;
+  host.innerHTML=(JB.emptyState?JB.emptyState({ icon:'📅', title:'Entre para ver a agenda', hint:'Contas, provas, prazos, treinos e planos num só lugar.' }):'<div class="rg">Entre para ver a agenda.</div>');
+}
+function bootHubAgenda(){
+  if(!JB.isSignedIn()){ hubAgendaSignedOut(); return; }
+  clearTimeout(_agendaTimer);
+  _agendaTimer=setTimeout(refreshHubAgenda, 60);
+}
+function refreshHubAgenda(){
+  var host=$('hubAgendaCal'), hint=$('hubAgendaHint');
+  if(!host || !window.JB || !JB.cal || !JB.cal.loadHubEvents) return;
+  var seq=++_agendaSeq;
+  if(!_agendaApi) host.innerHTML='<div class="rg">Carregando agenda…</div>';
+  JB.cal.loadHubEvents({ view:_agendaView, date:_agendaDate||undefined }).then(function(pack){
+    if(seq!==_agendaSeq) return;
+    _agendaDate=pack.range && pack.range.date ? pack.range.date : _agendaDate;
+    if(!_agendaApi){
+      _agendaApi=JB.cal.mount(host, {
+        events:pack.events,
+        view:_agendaView,
+        date:_agendaDate,
+        emptyHint:'Abra um app e agende algo — a agenda junta tudo aqui.',
+        onChange:function(st){
+          var nextView=st.view, nextDate=st.date;
+          if(nextView===_agendaView && nextDate===_agendaDate) return;
+          _agendaView=nextView; _agendaDate=nextDate;
+          refreshHubAgenda();
+        }
+      });
+    } else {
+      _agendaApi.setEvents(pack.events);
+    }
+    if(hint){
+      hint.textContent=(pack.missed&&pack.missed.length)
+        ? ('não deu para ler '+pack.missed.map(function(a){ return HUB_AGENDA_LABEL[a]||a; }).join(', '))
+        : '';
+    }
+  }).catch(function(){
+    if(seq!==_agendaSeq) return;
+    if(hint) hint.textContent='não deu para ler a agenda';
+    if(!_agendaApi) host.innerHTML=(JB.emptyState?JB.emptyState({ icon:'📅', title:'Nada neste período', hint:'Abra um app e agende algo — a agenda junta tudo aqui.' }):'<div class="rg">Nada neste período.</div>');
+  });
+}
+function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); applyJulioelUI(false); if(on && !_hbooted){ _hbooted=true; bootHubTours(); } hubNewsInit(); bootHubAgenda(); }
 JB.onAuthRestored(setGreet);
 function doIn(){ JB.signIn({ onSuccess: function(){ setGreet(); } }); }
 function doOut(){ try{ localStorage.removeItem(JULIOEL_KEY); }catch(_){} JB.signOut(); setGreet(); }

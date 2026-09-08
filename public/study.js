@@ -161,13 +161,37 @@ function mat(id){ return (DATA.materias||[]).find(function(m){return m.id===id;}
 function matColor(id){ var m=mat(id); return m?m.cor:'var(--muted)'; }
 
 /* ---- calendar ---- */
-var calNow=new Date(), calY=calNow.getFullYear(), calM=calNow.getMonth(), selDate=todayISO();
-function calNav(d){ calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} renderCal(); }
+function studyDateFromQuery(){
+  try { var q=new URLSearchParams(location.search).get('date'); if(q && /^\d{4}-\d{2}-\d{2}$/.test(q)) return q; } catch(_){}
+  return '';
+}
+var calNow=new Date(), selDate=studyDateFromQuery()||todayISO();
+var calY=(function(){ var d=parseISO(selDate); return d.getFullYear(); })();
+var calM=(function(){ var d=parseISO(selDate); return d.getMonth(); })();
+function calNav(d){ calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} selDate=isoDate(new Date(calY,calM,Math.min(parseISO(selDate).getDate(), new Date(calY,calM+1,0).getDate()))); renderCal(); }
 function calToday(){ calY=calNow.getFullYear(); calM=calNow.getMonth(); selDate=todayISO(); renderCal(); }
-function selectDay(iso){ selDate=iso; renderCal(); }
+function selectDay(iso){ selDate=iso; var d=parseISO(iso); calY=d.getFullYear(); calM=d.getMonth(); renderCal(); }
 function evtsOn(iso){ return (DATA.eventos||[]).filter(function(e){return e.data===iso;}).sort(function(a,b){return (a.hora||'').localeCompare(b.hora||'');}); }
 function renderCal(){
   var el=$('cal'); if(!el) return;
+  if(window.JB && JB.cal && JB.cal.mount){
+    var events=JB.cal.eventsFromStudy(DATA.eventos||[], DATA.materias||[]);
+    events.forEach(function(e){ if(evtAnexos(e.rawId).length) e.subtitle=(e.subtitle?e.subtitle+' · ':'')+'📎'; });
+    JB.cal.mount(el, {
+      events:events,
+      view:'month',
+      date:selDate,
+      views:['month'],
+      showFilters:false,
+      showUpcoming:true,
+      dayActionsHtml:'<button type="button" class="btn" onclick="openEvt(null)">+ Adicionar</button>',
+      footerHtml:focoTrackHtml(),
+      onSelect:function(ymd){ selDate=ymd; var d=parseISO(ymd); calY=d.getFullYear(); calM=d.getMonth(); },
+      onOpen:function(ev){ if(ev && ev.rawId) openEvt(ev.rawId); },
+      onToggle:function(ev){ if(ev && ev.rawId) toggleDone(ev.rawId); }
+    });
+    return;
+  }
   var first=new Date(calY,calM,1).getDay(), dim=new Date(calY,calM+1,0).getDate(), todayIso=todayISO();
   var cells='';
   for(var i=0;i<first;i++) cells+='<div class="cd empty"></div>';

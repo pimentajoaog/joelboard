@@ -30,6 +30,14 @@
   </div>
   <div class="sub" id="hubSub">Seus apps, num lugar só.</div>
 
+  <section class="hub-agenda" id="hubAgenda" aria-label="Agenda">
+    <div class="hub-agenda-h">
+      <div class="hub-agenda-title">Agenda</div>
+      <div class="hub-agenda-hint" id="hubAgendaHint"></div>
+    </div>
+    <div id="hubAgendaCal"></div>
+  </section>
+
   <div class="hub-body">
   <div class="grid">
     <a class="tile joelboard-tile" href="/finance">
@@ -208,6 +216,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="/joelboard.js"></script>
+<script src="/jb-cal.js"></script>
 <script src="/hub.js"></script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}</script>
 </body>

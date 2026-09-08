@@ -446,6 +446,7 @@
     var hlMenu = null;
     var hlSwatch = null;
     var lastHighlight = HIGHLIGHTS[0].color;
+    var linkMouse = null;
 
     host.innerHTML = '';
     var root = document.createElement('div');
@@ -1044,6 +1045,11 @@
     if (uploadImage) surface.addEventListener('paste', pasteImages);
     surface.addEventListener('keyup', syncBar);
     surface.addEventListener('mouseup', syncBar);
+    surface.addEventListener('mousedown', function (ev) {
+      if (ev.button !== 0) { linkMouse = null; return; }
+      var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
+      linkMouse = (a && surface.contains(a)) ? { x: ev.clientX, y: ev.clientY } : null;
+    });
     surface.addEventListener('keydown', function (ev) {
       var key = (ev.key || '').toLowerCase();
       if ((ev.ctrlKey || ev.metaKey) && key === 's') {
@@ -1052,6 +1058,21 @@
       }
     });
     surface.addEventListener('click', function (ev) {
+      var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
+      if (a && surface.contains(a) && ev.button === 0) {
+        var moved = linkMouse && (Math.abs(ev.clientX - linkMouse.x) > 5 || Math.abs(ev.clientY - linkMouse.y) > 5);
+        linkMouse = null;
+        if (!moved) {
+          var url = safeHref(a.getAttribute('href'));
+          if (url) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            window.open(url, '_blank', 'noopener,noreferrer');
+            return;
+          }
+        }
+      }
+      linkMouse = null;
       var li = ev.target && ev.target.closest ? ev.target.closest('ul.jb-ed-tasks li') : null;
       if (!li || !surface.contains(li)) return;
       var rect = li.getBoundingClientRect();

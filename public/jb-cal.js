@@ -455,21 +455,15 @@
     var d = parseYmd(iso); if (!d) return iso || '';
     return d.getDate() + ' ' + MO[d.getMonth()];
   }
-  function listDateLabel(iso, past) {
-    if (past) return shortDay(iso);
-    var n = daysUntil(iso);
-    if (n != null && n < 0) return shortDay(iso);
-    return relLabel(iso);
-  }
   function eventRowHtml(e, opts) {
     opts = opts || {};
     var past = !!opts.past || (daysUntil(e.date) != null && daysUntil(e.date) < 0);
-    var dlabel = listDateLabel(e.date, past);
     var nc = past ? '' : nearClass(e.date, e.done);
-    var flag = opts.showDate ? ('<span class="jb-cal-flag ' + nc + '">' + esc(dlabel) + '</span>') : '';
+    var flagText = opts.showDate && !past ? relLabel(e.date) : '';
+    var flag = flagText ? ('<span class="jb-cal-flag ' + nc + '">' + esc(flagText) + '</span>') : '';
     var time = e.time ? esc(e.time) : '';
     var meta = opts.compact
-      ? ((e.time ? esc(e.time) : '') + (opts.showDate ? ((e.time ? ' · ' : '') + esc(dlabel)) : ''))
+      ? ((e.time ? esc(e.time) : '') + (opts.showDate ? ((e.time ? ' · ' : '') + esc(shortDay(e.date))) : ''))
       : ((e.kind ? '<span class="jb-cal-kind">' + esc(e.kind) + '</span>' : '') + (time ? (' · ' + time) : '') + (opts.showDate ? (' · ' + esc(fmtBR(e.date))) : ''));
     if (!opts.compact && e.subtitle) meta += (meta ? ' · ' : '') + esc(e.subtitle);
     var href = e.href ? ' data-href="' + esc(e.href) + '"' : '';

@@ -114,6 +114,16 @@ test('appsInDay lists every app that has an event that day', function () {
   assert.equal(groups[0].events.length, 2);
 });
 
+test('compact row puts the calendar day in meta and the relative time in the flag', function () {
+  var html = cal.eventRowHtml(
+    { date: '2026-10-10', title: 'Luz', app: 'finance', color: '#34d399' },
+    { compact: true, showDate: true }
+  );
+  assert.equal((html.match(/10 out/g) || []).length, 1);
+  assert.match(html, /jb-cal-flag/);
+  assert.equal((html.match(/em \d+ dias/g) || []).length, 1);
+});
+
 test('rangeForView covers day, 3-day, week and month', function () {
   var day = cal.rangeForView('day', '2026-03-04');
   assert.equal(day.start, '2026-03-04');

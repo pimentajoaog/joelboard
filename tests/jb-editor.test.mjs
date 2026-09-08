@@ -201,6 +201,9 @@ test('dumpInkStrokes round-trips and hitInkStroke finds the top scribble', funct
   assert.equal(ED.hitInkStroke(back, { x: 200, y: 200 }), -1);
   var id = '1AbCdEfGhIjKlMnOpQrSt';
   assert.deepEqual(ED.pullInkStrokes('<img data-jb-ink="1" data-jb-file="' + id + '" data-jb-ink-d="' + dump + '" alt="__jb-ink__">'), back);
+  var legacy = ED.parseInkStrokes('#ef4444,8,10 10 10 50');
+  assert.equal(legacy.length, 1);
+  assert.equal(legacy[0].color, '#ef4444');
 });
 
 test('cssImgWidthPx keeps a sane pixel width', function () {

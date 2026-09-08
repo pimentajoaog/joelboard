@@ -212,8 +212,17 @@ test('ink overlay size follows the page box, not scrollHeight', function () {
   assert.match(css, /\.jb-ed-chrome/);
   assert.match(css, /\.jb-ed:not\(\.jb-ed-compact\) \.jb-ed-ink-tools \{[\s\S]*position: absolute/);
   assert.match(src, /jb-ed-chrome/);
-  assert.match(src, /function inkChromeTarget/);
-  assert.match(src, /elementsFromPoint/);
+  assert.match(css, /html\.jb-ed-sheet \{[\s\S]*overflow-x: auto/);
+  assert.match(css, /html\.jb-ed-sheet \.jb-ed-scroll \{[\s\S]*touch-action: pan-y pinch-zoom/);
+  assert.match(css, /touch-action: pinch-zoom/);
+  assert.match(css, /\.jb-ed-ink-pan \{[\s\S]*pan-x pan-y pinch-zoom/);
+  assert.match(css, /\.jb-ed-board-rail/);
+  assert.match(src, /jb-ed-board-rail/);
+  assert.match(src, /function inkBoardPads/);
+  assert.match(src, /function setSheetViewport/);
+  assert.match(src, /user-scalable=yes/);
+  assert.match(src, /function inkAllowsPan/);
+  assert.match(src, /jb-ed-ink-pan/);
 });
 
 test('dumpInkStrokes round-trips and hitInkStroke finds the top scribble', function () {
@@ -238,6 +247,24 @@ test('dumpInkStrokes round-trips and hitInkStroke finds the top scribble', funct
   var legacy = ED.parseInkStrokes('#ef4444,8,10 10 10 50');
   assert.equal(legacy.length, 1);
   assert.equal(legacy[0].color, '#ef4444');
+});
+
+test('inkBoardPads grows sideways only when doodles leave the viewport', function () {
+  var none = ED.inkBoardPads([], 760, 1200, 220, 40);
+  assert.equal(none.left, 0);
+  assert.equal(none.right, 0);
+  var side = ED.inkBoardPads(
+    [{ color: '#111827', width: 3, pts: [{ x: -80, y: 12 }, { x: -20, y: 12 }] }],
+    360, 390, 18, 40
+  );
+  assert.ok(side.left >= 100);
+  assert.equal(side.right, 0);
+  var far = ED.inkBoardPads(
+    [{ color: '#111827', width: 3, pts: [{ x: 900, y: 10 }, { x: 940, y: 10 }] }],
+    360, 390, 18, 40
+  );
+  assert.equal(far.left, 0);
+  assert.ok(far.right >= 500);
 });
 
 test('image drag ghost follows the cursor on document.body', function () {

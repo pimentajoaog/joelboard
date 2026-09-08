@@ -295,6 +295,68 @@
     return -1;
   }
 
+  var SHEET_VIEWPORT = 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=yes';
+
+  function inkStrokeBounds(strokes) {
+    var minX = 0, minY = 0, maxX = 0, maxY = 0, any = false;
+    var i, j, s, p, pad;
+    for (i = 0; i < (strokes || []).length; i++) {
+      s = strokes[i];
+      if (!s || !s.pts || !s.pts.length) continue;
+      pad = Math.max(2, (Number(s.width) || 3) / 2 + 1);
+      for (j = 0; j < s.pts.length; j++) {
+        p = s.pts[j];
+        if (!p) continue;
+        if (!any) {
+          minX = p.x - pad;
+          minY = p.y - pad;
+          maxX = p.x + pad;
+          maxY = p.y + pad;
+          any = true;
+        } else {
+          minX = Math.min(minX, p.x - pad);
+          minY = Math.min(minY, p.y - pad);
+          maxX = Math.max(maxX, p.x + pad);
+          maxY = Math.max(maxY, p.y + pad);
+        }
+      }
+    }
+    return { minX: minX, minY: minY, maxX: maxX, maxY: maxY, any: any };
+  }
+
+  function inkBoardPads(strokes, pageW, viewW, homeOriginLeft, extra, maxPad) {
+    extra = extra == null ? 40 : extra;
+    maxPad = maxPad == null ? 1600 : maxPad;
+    pageW = Math.max(1, Number(pageW) || 1);
+    viewW = Math.max(1, Number(viewW) || 1);
+    var home = Number(homeOriginLeft);
+    if (!isFinite(home)) home = 0;
+    var b = inkStrokeBounds(strokes);
+    var marginLeft = Math.max(0, home);
+    var marginRight = Math.max(0, viewW - home - pageW);
+    var left = Math.max(0, Math.ceil(-b.minX + extra - marginLeft));
+    var right = Math.max(0, Math.ceil(b.maxX - pageW + extra - marginRight));
+    if (!isFinite(left)) left = 0;
+    if (!isFinite(right)) right = 0;
+    return { left: Math.min(maxPad, left), right: Math.min(maxPad, right) };
+  }
+
+  function setSheetViewport(on) {
+    if (typeof document === 'undefined') return;
+    var meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) return;
+    if (on) {
+      if (!meta.getAttribute('data-jb-vp')) meta.setAttribute('data-jb-vp', meta.getAttribute('content') || '');
+      meta.setAttribute('content', SHEET_VIEWPORT);
+    } else {
+      var prev = meta.getAttribute('data-jb-vp');
+      if (prev != null) {
+        meta.setAttribute('content', prev);
+        meta.removeAttribute('data-jb-vp');
+      }
+    }
+  }
+
   function blobToUploadFile(blob, name) {
     name = String(name || 'sharpie.png');
     var type = (blob && blob.type) || 'image/png';
@@ -695,6 +757,7 @@
     var inkRo = null;
     var inkSizeRaf = 0;
     var inkViewRaf = 0;
+    var inkBoardRaf = 0;
     var lastInkOrigin = null;
     var selectedImg = null;
     var imgFrame = null;
@@ -712,7 +775,10 @@
     host.innerHTML = '';
     var root = document.createElement('div');
     root.className = 'jb-ed jb-ed-live' + (compact ? ' jb-ed-compact' : '');
-    if (!compact) document.documentElement.classList.add('jb-ed-sheet');
+    if (!compact) {
+      document.documentElement.classList.add('jb-ed-sheet');
+      setSheetViewport(true);
+    }
 
     var bar = document.createElement('div');
     bar.className = 'jb-ed-bar';
@@ -1958,6 +2024,54 @@
       }
       if (!inkViewRaf) inkViewRaf = requestAnimationFrame(tickInkView);
     }
+    function clearInkBoard() {
+      if (typeof document === 'undefined') return;
+      var html = document.documentElement;
+      html.style.removeProperty('--jb-ed-pad-left');
+      html.style.removeProperty('--jb-ed-pad-right');
+      var rail = document.getElementById('jb-ed-board-rail');
+      if (rail && rail.parentNode) rail.parentNode.removeChild(rail);
+    }
+    function syncInkBoard() {
+      if (destroyed || compact || typeof document === 'undefined') {
+        clearInkBoard();
+        return;
+      }
+      var html = document.documentElement;
+      var sl = window.scrollX || html.scrollLeft || 0;
+      var prevLeft = parseFloat(html.style.getPropertyValue('--jb-ed-pad-left')) || 0;
+      var origin = inkOriginRect();
+      var home = origin.left + sl - prevLeft;
+      var viewW = Math.max(1, Math.round(window.innerWidth || html.clientWidth || 1));
+      var pads = inkBoardPads(
+        inkStrokes,
+        page.clientWidth || origin.width || 1,
+        viewW,
+        home
+      );
+      var rail = document.getElementById('jb-ed-board-rail');
+      if (!rail) {
+        rail = document.createElement('div');
+        rail.id = 'jb-ed-board-rail';
+        rail.className = 'jb-ed-board-rail';
+        rail.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(rail);
+      }
+      html.style.setProperty('--jb-ed-pad-left', pads.left + 'px');
+      html.style.setProperty('--jb-ed-pad-right', pads.right + 'px');
+      rail.style.width = (viewW + pads.right) + 'px';
+      if (pads.left !== prevLeft) {
+        try { window.scrollBy(pads.left - prevLeft, 0); } catch (_) {}
+      }
+    }
+    function scheduleInkBoard() {
+      if (compact || destroyed) return;
+      if (inkBoardRaf) return;
+      inkBoardRaf = requestAnimationFrame(function () {
+        inkBoardRaf = 0;
+        syncInkBoard();
+      });
+    }
     function sizeInkCanvas() {
       if (!inkCanvas) return;
       placeInkCanvas();
@@ -1979,6 +2093,8 @@
       }
       inkCtx = inkCanvas.getContext('2d');
       ensureInkViewTick();
+      syncInkBoard();
+      syncInkTouchAction();
       redrawInk();
     }
     function scheduleInkSize() {
@@ -2043,6 +2159,7 @@
         scheduleInkSize();
       }
       paintInkTools();
+      syncInkTouchAction();
     }
     function toggleInk() {
       setInkMode(!inkOpen);
@@ -2134,6 +2251,7 @@
       inkBase = null;
       inkFileId = '';
       redrawInk();
+      scheduleInkBoard();
       scheduleInkSave();
     }
     function eraseInkAt(ev) {
@@ -2142,6 +2260,7 @@
       if (idx >= 0) {
         inkStrokes.splice(idx, 1);
         redrawInk();
+        scheduleInkBoard();
         return true;
       }
       if (!inkBase || !inkCanvas || !inkCtx) return false;
@@ -2157,6 +2276,7 @@
       } catch (_) { return false; }
       inkBase = null;
       redrawInk();
+      scheduleInkBoard();
       return true;
     }
     function inkChromeTarget(ev) {
@@ -2182,6 +2302,17 @@
       }
       return null;
     }
+    function inkViewScale() {
+      var vv = window.visualViewport;
+      return (vv && vv.scale) || 1;
+    }
+    function inkAllowsPan() {
+      return inkViewScale() > 1.05;
+    }
+    function syncInkTouchAction() {
+      if (!inkCanvas) return;
+      inkCanvas.classList.toggle('jb-ed-ink-pan', !!(inkOpen && inkFullSheet() && inkAllowsPan()));
+    }
     function onInkPointerDown(ev) {
       if (!inkOpen || ev.button) return;
       var chrome = inkChromeTarget(ev);
@@ -2192,6 +2323,7 @@
         }
         return;
       }
+      if (ev.pointerType !== 'mouse' && (inkAllowsPan() || ev.isPrimary === false)) return;
       ev.preventDefault();
       try { inkCanvas.setPointerCapture(ev.pointerId); } catch (_) {}
       if (inkErase) {
@@ -2204,6 +2336,7 @@
       inkCurrent = { color: inkColor, width: inkWidth, pts: [inkPos(ev)] };
       inkStrokes.push(inkCurrent);
       redrawInk();
+      scheduleInkBoard();
     }
     function onInkPointerMove(ev) {
       if (inkErasing) {
@@ -2215,16 +2348,21 @@
       ev.preventDefault();
       inkCurrent.pts.push(inkPos(ev));
       redrawInk();
+      scheduleInkBoard();
     }
     function onInkPointerUp() {
       if (inkErasing) {
         inkErasing = false;
-        if (inkErased) scheduleInkSave();
+        if (inkErased) {
+          scheduleInkBoard();
+          scheduleInkSave();
+        }
         inkErased = false;
         return;
       }
       if (!inkCurrent) return;
       inkCurrent = null;
+      scheduleInkBoard();
       scheduleInkSave();
     }
     function pasteImages(ev) {
@@ -2598,6 +2736,7 @@
     }
     function onInkViewChange() {
       if (inkFullSheet()) redrawInk();
+      syncInkTouchAction();
       paintImgFrame();
     }
     function onEditorKey(ev) {
@@ -2641,6 +2780,10 @@
     document.addEventListener('paste', onEditorPaste, true);
     window.addEventListener('resize', onWinResize);
     window.addEventListener('scroll', onInkViewChange, true);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', onWinResize);
+      window.visualViewport.addEventListener('scroll', onInkViewChange);
+    }
     scroll.addEventListener('scroll', onInkViewChange);
     imgFrame.addEventListener('pointerdown', onImgFrameDown);
     imgFrame.addEventListener('pointermove', onImgFrameMove);
@@ -2832,12 +2975,19 @@
         document.removeEventListener('paste', onEditorPaste, true);
         window.removeEventListener('resize', onWinResize);
         window.removeEventListener('scroll', onInkViewChange, true);
+        if (window.visualViewport) {
+          window.visualViewport.removeEventListener('resize', onWinResize);
+          window.visualViewport.removeEventListener('scroll', onInkViewChange);
+        }
         scroll.removeEventListener('scroll', onInkViewChange);
         document.documentElement.classList.remove('jb-ink-full');
         document.documentElement.classList.remove('jb-ed-sheet');
+        setSheetViewport(false);
+        clearInkBoard();
         clearImgSelect();
         if (inkSizeRaf) { cancelAnimationFrame(inkSizeRaf); inkSizeRaf = 0; }
         if (inkViewRaf) { cancelAnimationFrame(inkViewRaf); inkViewRaf = 0; }
+        if (inkBoardRaf) { cancelAnimationFrame(inkBoardRaf); inkBoardRaf = 0; }
         if (imgGhost && imgGhost.parentNode) imgGhost.parentNode.removeChild(imgGhost);
         imgGhost = null;
         if (inkCanvas && inkCanvas.parentNode) inkCanvas.parentNode.removeChild(inkCanvas);
@@ -2906,6 +3056,8 @@
     parseInkStrokes: parseInkStrokes,
     pullInkStrokes: pullInkStrokes,
     hitInkStroke: hitInkStroke,
+    inkStrokeBounds: inkStrokeBounds,
+    inkBoardPads: inkBoardPads,
     cssImgWidthPx: cssImgWidthPx,
     noteImgToClipboardHtml: noteImgToClipboardHtml,
     parseNoteImgClipboard: parseNoteImgClipboard

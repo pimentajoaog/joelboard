@@ -221,6 +221,16 @@ test('dumpInkStrokes round-trips and hitInkStroke finds the top scribble', funct
   assert.equal(legacy[0].color, '#ef4444');
 });
 
+test('image drag ghost follows the cursor on document.body', function () {
+  assert.match(src, /document\.body\.appendChild\(imgGhost\)/);
+  assert.match(src, /imgGhost\.style\.left = Math\.round\(ev\.clientX\)/);
+  assert.match(src, /imgGhost\.style\.top = Math\.round\(ev\.clientY\)/);
+  assert.match(src, /imgSlot = document\.createElement\('span'\)/);
+  assert.match(src, /function computeDropRange/);
+  assert.doesNotMatch(css, /\.jb-ed-img-ghost \{[^}]*transform:/);
+  assert.doesNotMatch(css, /img\.jb-ed-img-dragging \{[^}]*height: 0/);
+});
+
 test('cssImgWidthPx keeps a sane pixel width', function () {
   assert.equal(ED.cssImgWidthPx('width: 320px', ''), 320);
   assert.equal(ED.cssImgWidthPx('', '240'), 240);

@@ -577,19 +577,18 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-surface img[data-jb-file] { display: block; max-width: 100%; height: auto; box-sizing: border-box; border-radius: 10px; margin: 10px 0; background: var(--surface2, #232838); cursor: pointer; -webkit-user-drag: none; user-select: none; }
 .jb-ed-surface img.jb-ed-img-on { outline: 2px solid var(--primary, #818cf8); outline-offset: 2px; }
 .jb-ed-surface img.jb-ed-img-dragging {
-  visibility: hidden; height: 0 !important; margin: 0 !important; min-height: 0 !important;
-  overflow: hidden; pointer-events: none;
+  visibility: hidden; pointer-events: none;
 }
 .jb-ed-img-slot {
-  display: block; box-sizing: border-box; margin: 10px 0; border-radius: 10px; overflow: hidden;
+  display: block; box-sizing: border-box; margin: 8px 0; border-radius: 10px; overflow: hidden;
   pointer-events: none; opacity: 0.5; outline: 2px dashed var(--primary, #818cf8); outline-offset: -2px;
-  background: color-mix(in srgb, var(--primary, #818cf8) 14%, transparent);
+  background: color-mix(in srgb, var(--primary, #818cf8) 14%, transparent); max-width: 100%;
 }
 .jb-ed-img-slot img { display: block; width: 100%; height: 100%; object-fit: cover; margin: 0; border-radius: 10px; pointer-events: none; }
 .jb-ed-img-ghost {
-  position: fixed; z-index: 80; pointer-events: none; width: 160px; opacity: 0.72;
+  position: fixed; z-index: 100000; pointer-events: none; width: 148px; opacity: 0.78;
   border-radius: 10px; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,.4);
-  transform: rotate(3deg); border: 1px solid rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.12); margin: 0; right: auto; bottom: auto;
 }
 .jb-ed-img-ghost[hidden] { display: none !important; }
 .jb-ed-img-ghost img { display: block; width: 100%; height: auto; margin: 0; }

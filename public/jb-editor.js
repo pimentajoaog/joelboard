@@ -1367,90 +1367,140 @@
       if (String(el.textContent || '').replace(/\u200b/g, '').trim()) return;
       el.parentNode.removeChild(el);
     }
-    function dropKey(block, after) {
-      var i = 0, n = surface.firstChild;
-      while (n) {
-        if (n === block) break;
-        i++;
-        n = n.nextSibling;
-      }
-      return i + (after ? 'a' : 'b');
+    function caretRangeAt(x, y) {
+      var range = null;
+      try {
+        if (document.caretRangeFromPoint) range = document.caretRangeFromPoint(x, y);
+        else if (document.caretPositionFromPoint) {
+          var pos = document.caretPositionFromPoint(x, y);
+          if (pos && pos.offsetNode) {
+            range = document.createRange();
+            range.setStart(pos.offsetNode, pos.offset);
+            range.collapse(true);
+          }
+        }
+      } catch (_) { range = null; }
+      return range;
     }
-    function hitElAt(x, y) {
-      var hidden = [];
-      function hide(el) {
-        if (!el || el.hidden) return;
-        hidden.push(el);
-        el.hidden = true;
-      }
-      hide(imgGhost);
-      hide(imgFrame);
-      var el = document.elementFromPoint(x, y);
+    function rangeKey(range) {
+      if (!range) return '';
+      var n = range.startContainer;
+      var id = n.nodeType === 3 ? 't:' + String(n.nodeValue || '').slice(0, 24) : (n.tagName || 'n');
+      return id + ':' + range.startOffset;
+    }
+    function isDropBlock(el) {
+      return !!(el && el !== surface && /^(P|DIV|H1|H2|H3|LI|BLOCKQUOTE|PRE)$/.test(el.tagName));
+    }
+    function skipDropEl(el, img) {
+      if (!el) return true;
+      if (el === img || el === imgSlot || el === imgGhost || el === imgFrame || el === inkCanvas) return true;
+      if (img && img.contains(el)) return true;
+      if (el.classList && (el.classList.contains('jb-ed-img-slot') || el.classList.contains('jb-ed-img-ghost'))) return true;
+      return false;
+    }
+    function nestedDropBlocks(el, img) {
+      var list = [];
+      if (!el || !el.children) return list;
+      var kids = el.children;
       var i;
-      for (i = 0; i < hidden.length; i++) hidden[i].hidden = false;
-      return el;
+      for (i = 0; i < kids.length; i++) {
+        if (isDropBlock(kids[i]) && !skipDropEl(kids[i], img) && kids[i].tagName !== 'IMG') list.push(kids[i]);
+      }
+      return list;
+    }
+    function childBlockAtY(parent, y, img) {
+      var kids = nestedDropBlocks(parent, img);
+      var best = null;
+      var bestDist = Infinity;
+      var i;
+      for (i = 0; i < kids.length; i++) {
+        var br = kids[i].getBoundingClientRect();
+        if (y >= br.top && y <= br.bottom) return kids[i];
+        var dist = y < br.top ? br.top - y : y - br.bottom;
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = kids[i];
+        }
+      }
+      return best;
+    }
+    function hitSurfaceEl(x, y, img) {
+      var stack = [];
+      try { stack = document.elementsFromPoint(x, y) || []; } catch (_) { stack = []; }
+      var i;
+      for (i = 0; i < stack.length; i++) {
+        var el = stack[i];
+        if (skipDropEl(el, img)) continue;
+        if (el === surface || surface.contains(el)) return el;
+      }
+      return null;
+    }
+    function rangeBeforeAfter(el, after) {
+      var r = document.createRange();
+      if (after) r.setStartAfter(el);
+      else r.setStartBefore(el);
+      r.collapse(true);
+      return r;
+    }
+    function computeDropRange(x, y, img) {
+      var range = caretRangeAt(x, y);
+      var node = range && surface.contains(range.commonAncestorContainer) ? range.startContainer : null;
+      if (node && (node === img || (img && img.contains(node)) || (imgSlot && (node === imgSlot || imgSlot.contains(node))))) node = null;
+      var el = node ? (node.nodeType === 1 ? node : node.parentElement) : null;
+      if (!el || !surface.contains(el)) el = hitSurfaceEl(x, y, img);
+      if (!el || skipDropEl(el, img)) return null;
+      var block = el;
+      while (block && block !== surface && !isDropBlock(block)) block = block.parentElement;
+      if (!block || block === surface) {
+        block = childBlockAtY(surface, y, img);
+        if (!block) {
+          if (range && surface.contains(range.commonAncestorContainer)) {
+            var cr = range.cloneRange();
+            cr.collapse(true);
+            return cr;
+          }
+          return null;
+        }
+      }
+      while (nestedDropBlocks(block, img).length) {
+        var inner = childBlockAtY(block, y, img);
+        if (!inner || inner === block) break;
+        block = inner;
+      }
+      if (block === img || skipDropEl(block, img)) return null;
+      var br = block.getBoundingClientRect();
+      var edge = 18;
+      var tall = br.height > 72;
+      if (tall && range && y > br.top + edge && y < br.bottom - edge) {
+        var inside = range.startContainer;
+        var host = inside && inside.nodeType === 1 ? inside : (inside && inside.parentNode);
+        if (host && block.contains(host)) {
+          var at = range.cloneRange();
+          at.collapse(true);
+          return at;
+        }
+      }
+      return rangeBeforeAfter(block, y >= br.top + br.height / 2);
     }
     function dropRangeAt(x, y, img) {
       if (!img || inkOpen) return null;
-      if (imgSlot && imgSlot.parentNode) {
-        var sr = imgSlot.getBoundingClientRect();
-        if (x >= sr.left && x <= sr.right && y >= sr.top && y <= sr.bottom) return null;
-      }
-      var el = hitElAt(x, y);
-      if (!el) return null;
-      if (imgSlot && (el === imgSlot || imgSlot.contains(el))) return null;
-      if (el === img || img.contains(el)) return null;
-      if (!surface.contains(el) && el !== surface) return null;
-      var block = el;
-      if (block.nodeType === 3) block = block.parentElement;
-      while (block && block.parentElement && block.parentElement !== surface) {
-        if (block === imgSlot || block === img) return null;
-        block = block.parentElement;
-      }
-      var r = document.createRange();
-      if (!block || block === surface) {
-        var kids = surface.childNodes;
-        var i, chose = null, cr, after = true;
-        for (i = 0; i < kids.length; i++) {
-          var kid = kids[i];
-          if (kid === img || kid === imgSlot || kid.nodeType !== 1) continue;
-          cr = kid.getBoundingClientRect();
-          if (y < cr.top + cr.height / 2) {
-            chose = kid;
-            after = false;
-            break;
-          }
-          chose = kid;
-          after = y >= cr.top + cr.height / 2;
-          if (y <= cr.bottom) break;
-        }
-        if (!chose) {
-          r.selectNodeContents(surface);
-          r.collapse(false);
-          return { range: r, key: 'end' };
-        }
-        if (after) r.setStartAfter(chose);
-        else r.setStartBefore(chose);
-        r.collapse(true);
-        return { range: r, key: dropKey(chose, after) };
-      }
-      if (block === img || block === imgSlot) return null;
-      var br = block.getBoundingClientRect();
-      var afterBlk = y > br.top + br.height / 2;
-      if (afterBlk) r.setStartAfter(block);
-      else r.setStartBefore(block);
-      r.collapse(true);
-      return { range: r, key: dropKey(block, afterBlk) };
+      var slotOn = imgSlot && imgSlot.parentNode;
+      if (slotOn) imgSlot.style.display = 'none';
+      var r = null;
+      try { r = computeDropRange(x, y, img); } catch (_) { r = null; }
+      if (slotOn) imgSlot.style.display = '';
+      if (!r) return null;
+      return { range: r, key: rangeKey(r) };
     }
     function ensureImgGhost() {
       if (imgGhost) return;
       imgGhost = document.createElement('div');
       imgGhost.className = 'jb-ed-img-ghost';
-      imgGhost.hidden = true;
       imgGhost.setAttribute('aria-hidden', 'true');
-      root.appendChild(imgGhost);
+      imgGhost.style.cssText = 'position:fixed;z-index:100000;pointer-events:none;margin:0;right:auto;bottom:auto;';
+      document.body.appendChild(imgGhost);
     }
-    function startImgDragPreview(img) {
+    function startImgDragPreview(img, ev) {
       if (!img) return;
       ensureImgGhost();
       imgGhost.innerHTML = '';
@@ -1459,15 +1509,17 @@
       g.alt = '';
       imgGhost.appendChild(g);
       imgGhost.hidden = false;
+      paintImgGhost(ev);
       img.classList.add('jb-ed-img-dragging');
       if (imgFrame) imgFrame.hidden = true;
       if (!imgSlot) {
-        imgSlot = document.createElement('div');
+        imgSlot = document.createElement('span');
         imgSlot.className = 'jb-ed-img-slot';
         imgSlot.setAttribute('aria-hidden', 'true');
       }
-      imgSlot.style.width = Math.round(img.getBoundingClientRect().width || img.offsetWidth || 160) + 'px';
-      imgSlot.style.height = Math.round(img.getBoundingClientRect().height || 90) + 'px';
+      var ir = img.getBoundingClientRect();
+      imgSlot.style.width = Math.round(Math.max(64, ir.width || img.offsetWidth || 160)) + 'px';
+      imgSlot.style.height = Math.round(Math.max(36, Math.min(72, ir.height || 56))) + 'px';
       imgSlot.innerHTML = '';
       var preview = document.createElement('img');
       preview.src = img.currentSrc || img.src || '';
@@ -1475,9 +1527,15 @@
       imgSlot.appendChild(preview);
     }
     function paintImgGhost(ev) {
-      if (!imgGhost || imgGhost.hidden) return;
-      imgGhost.style.left = (ev.clientX + 16) + 'px';
-      imgGhost.style.top = (ev.clientY + 16) + 'px';
+      if (!imgGhost || !ev) return;
+      imgGhost.hidden = false;
+      imgGhost.style.position = 'fixed';
+      imgGhost.style.left = Math.round(ev.clientX) + 'px';
+      imgGhost.style.top = Math.round(ev.clientY) + 'px';
+      imgGhost.style.right = 'auto';
+      imgGhost.style.bottom = 'auto';
+      imgGhost.style.margin = '0';
+      imgGhost.style.transform = 'translate(14px, 12px) rotate(3deg)';
     }
     function placeImgSlot(drop) {
       if (!drop || !drop.range || !imgSlot) return;
@@ -1539,11 +1597,14 @@
       ev.preventDefault();
       if (!imgDrag.moved && (Math.abs(ev.clientX - imgDrag.x) > 4 || Math.abs(ev.clientY - imgDrag.y) > 4)) {
         imgDrag.moved = true;
-        startImgDragPreview(imgDrag.img);
+        startImgDragPreview(imgDrag.img, ev);
       }
       if (!imgDrag.moved) return;
       paintImgGhost(ev);
       var drop = dropRangeAt(ev.clientX, ev.clientY, imgDrag.img);
+      if ((!drop || !drop.range) && imgSlot && !imgSlot.parentNode && imgDrag.img.parentNode) {
+        drop = { range: rangeBeforeAfter(imgDrag.img, true), key: 'origin' };
+      }
       if (drop && drop.key && drop.key !== imgDrag.dropKey) {
         imgDrag.dropKey = drop.key;
         placeImgSlot(drop);
@@ -2336,6 +2397,8 @@
         scroll.removeEventListener('scroll', paintImgFrame);
         clearImgSelect();
         if (inkSizeRaf) { cancelAnimationFrame(inkSizeRaf); inkSizeRaf = 0; }
+        if (imgGhost && imgGhost.parentNode) imgGhost.parentNode.removeChild(imgGhost);
+        imgGhost = null;
         if (inkRo) { try { inkRo.disconnect(); } catch (_) {} inkRo = null; }
         if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
         if (inkSaveTimer) { clearTimeout(inkSaveTimer); inkSaveTimer = null; }

@@ -90,6 +90,29 @@
     if (named) return HIGHLIGHT_NAMED[named[1].toLowerCase()] || '';
     return '';
   }
+  function cssTextMarksFromStyle(st) {
+    st = String(st || '');
+    var out = { fontStyle: '', fontWeight: '', textDecoration: '' };
+    if (/\bfont-style\s*:\s*(italic|oblique)\b/i.test(st)) out.fontStyle = 'italic';
+    if (/\bfont-weight\s*:\s*(bold|bolder|[5-9]00)\b/i.test(st)) out.fontWeight = 'bold';
+    var dec = [];
+    if (/\btext-decoration(?:-line)?\s*:[^;}]*underline/i.test(st)) dec.push('underline');
+    if (/\btext-decoration(?:-line)?\s*:[^;}]*line-through/i.test(st)) dec.push('line-through');
+    if (dec.length) out.textDecoration = dec.join(' ');
+    return out;
+  }
+  function applySafeInlineStyle(el, st) {
+    if (!el) return;
+    var px = cssFontSizeFromStyle(st);
+    var bg = cssHighlightFromStyle(st);
+    var marks = cssTextMarksFromStyle(st);
+    el.removeAttribute('style');
+    if (px) el.style.fontSize = px;
+    if (bg) el.style.backgroundColor = bg;
+    if (marks.fontStyle) el.style.fontStyle = marks.fontStyle;
+    if (marks.fontWeight) el.style.fontWeight = marks.fontWeight;
+    if (marks.textDecoration) el.style.textDecoration = marks.textDecoration;
+  }
 
   function safeDriveFileId(id) {
     var s = String(id || '').trim();
@@ -268,12 +291,14 @@
           return;
         }
         if (tag === 'FONT' || tag === 'MARK') {
-          var fontPx = tag === 'FONT' ? (FONT_TAG_SIZE[String(child.getAttribute('size') || '')] || '') : '';
-          var fromStyle = cssFontSizeFromStyle(child.getAttribute('style'));
-          var bg = cssHighlightFromStyle(child.getAttribute('style')) || (tag === 'MARK' ? '#fff59d' : '');
+          var st0 = child.getAttribute('style');
           var span = document.createElement('span');
-          if (fromStyle || fontPx) span.style.fontSize = fromStyle || fontPx;
-          if (bg) span.style.backgroundColor = bg;
+          applySafeInlineStyle(span, st0);
+          if (tag === 'FONT' && !span.style.fontSize) {
+            var fontPx = FONT_TAG_SIZE[String(child.getAttribute('size') || '')] || '';
+            if (fontPx) span.style.fontSize = fontPx;
+          }
+          if (tag === 'MARK' && !span.style.backgroundColor) span.style.backgroundColor = '#fff59d';
           while (child.firstChild) span.appendChild(child.firstChild);
           node.replaceChild(span, child);
           walk(span);
@@ -292,12 +317,7 @@
             if (url) child.setAttribute('href', url);
             else child.removeAttribute('href');
           } else if (n === 'style') {
-            var st = child.getAttribute('style');
-            var px = cssFontSizeFromStyle(st);
-            var bg = cssHighlightFromStyle(st);
-            child.removeAttribute('style');
-            if (px) child.style.fontSize = px;
-            if (bg) child.style.backgroundColor = bg;
+            applySafeInlineStyle(child, child.getAttribute('style'));
           } else if (!keep || n.indexOf('on') === 0) {
             child.removeAttribute(attr.name);
           }
@@ -490,6 +510,9 @@
     }
     function cmd(name, val) {
       surface.focus();
+      if (name === 'bold' || name === 'italic' || name === 'underline' || name === 'strikeThrough') {
+        try { document.execCommand('styleWithCSS', false, false); } catch (_) {}
+      }
       try { document.execCommand(name, false, val); } catch (_) {}
       markDirty();
     }
@@ -620,6 +643,7 @@
         wrapSelectionWithSize(css);
       }
       if (fsInput) fsInput.value = String(size);
+      try { document.execCommand('styleWithCSS', false, false); } catch (_) {}
       markDirty();
     }
     function wrapSelectionHighlight(bg) {
@@ -693,6 +717,7 @@
       clearTransparentHighlights();
       if (bg) lastHighlight = bg;
       paintHlBtn();
+      try { document.execCommand('styleWithCSS', false, false); } catch (_) {}
       markDirty();
     }
     function addLink() {
@@ -1094,6 +1119,7 @@
     stepFontSize: stepFontSize,
     cssFontSizeFromStyle: cssFontSizeFromStyle,
     cssHighlightFromStyle: cssHighlightFromStyle,
+    cssTextMarksFromStyle: cssTextMarksFromStyle,
     HIGHLIGHTS: HIGHLIGHTS
   };
 

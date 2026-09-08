@@ -130,3 +130,16 @@ test('cssHighlightFromStyle keeps safe highlight colors', function () {
   assert.equal(ED.cssHighlightFromStyle('background-color: transparent'), '');
   assert.equal(ED.cssHighlightFromStyle('background-color: url(x)'), '');
 });
+
+test('cssTextMarksFromStyle keeps italic bold underline strike', function () {
+  var italic = ED.cssTextMarksFromStyle('font-style: italic');
+  assert.equal(italic.fontStyle, 'italic');
+  var bold = ED.cssTextMarksFromStyle('font-weight: 700');
+  assert.equal(bold.fontWeight, 'bold');
+  var both = ED.cssTextMarksFromStyle('text-decoration: underline line-through');
+  assert.equal(both.textDecoration, 'underline line-through');
+  var empty = ED.cssTextMarksFromStyle('color: red; font-weight: 400');
+  assert.equal(empty.fontStyle, '');
+  assert.equal(empty.fontWeight, '');
+  assert.equal(empty.textDecoration, '');
+});

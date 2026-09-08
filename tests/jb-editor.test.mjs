@@ -60,10 +60,25 @@ test('wrapSelection toggles markers off', function () {
 test('looksLikeHtml detects stored notes', function () {
   assert.equal(ED.looksLikeHtml('<p>oi</p>'), true);
   assert.equal(ED.looksLikeHtml('# Título'), false);
+  assert.equal(ED.looksLikeHtml('plain'), false);
+  assert.equal(ED.looksLikeHtml('setds<div>gds</div><div><span style="background-color: rgb(255, 245, 157);">aaaaa</span></div>'), true);
+  assert.equal(ED.looksLikeHtml('setds&lt;div&gt;gds&lt;/div&gt;'), true);
 });
 
 test('valueToHtml keeps markdown notes readable', function () {
   assert.match(ED.valueToHtml('**oi**'), /<strong>oi<\/strong>/);
+});
+
+test('valueToHtml does not escape contenteditable HTML that starts with text', function () {
+  var html = ED.valueToHtml('setds<div>gds</div><div><span style="background-color: rgb(255, 245, 157);">aaaaa</span>aaaaa</div>');
+  assert.match(html, /<div>gds<\/div>/);
+  assert.doesNotMatch(html, /&lt;div/);
+  var escaped = ED.valueToHtml('setds&lt;div&gt;gds&lt;/div&gt;');
+  assert.match(escaped, /<div>gds<\/div>/);
+  assert.doesNotMatch(escaped, /&lt;div/);
+  var wrapped = ED.valueToHtml('<p>setds&lt;div&gt;gds&lt;/div&gt;</p>');
+  assert.match(wrapped, /<div>gds<\/div>/);
+  assert.doesNotMatch(wrapped, /&lt;div/);
 });
 
 test('wrapSelection prefixes selected lines and can toggle off', function () {

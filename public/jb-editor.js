@@ -409,14 +409,37 @@
     return out.join('');
   }
 
+  function decodeHtmlEntities(s) {
+    return String(s == null ? '' : s)
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/gi, '&');
+  }
+
+  var HTML_HINT = /<(?:div|span|p|br|h[1-3]|ul|ol|li|blockquote|img|strong|em|b|i|u|s|pre|code|hr|font|mark)\b/i;
+  var HTML_HINT_ESC = /&lt;(?:div|span|p|br|h[1-3]|ul|ol|li|blockquote|img|strong|em|b|i|u|s|pre|code|hr|font|mark)\b/i;
+
+  function recoverStoredHtml(s) {
+    s = String(s == null ? '' : s);
+    var hasEscapedBlock = HTML_HINT_ESC.test(s);
+    var hasRealBlock = /<(?:div|span|h[1-3]|ul|ol|li|blockquote|img)\b/i.test(s);
+    if (hasEscapedBlock && !hasRealBlock) return decodeHtmlEntities(s);
+    return s;
+  }
+
   function looksLikeHtml(v) {
-    return /^\s*</.test(String(v || '')) && /<\/?[a-z][\s\S]*>/i.test(String(v || ''));
+    var s = recoverStoredHtml(v);
+    if (HTML_HINT.test(s)) return true;
+    return /^\s*</.test(s) && /<\/?[a-z][\s\S]*>/i.test(s);
   }
 
   function sanitizeHtml(html) {
     if (typeof document === 'undefined') return String(html || '');
     var box = document.createElement('div');
-    box.innerHTML = String(html || '');
+    box.innerHTML = recoverStoredHtml(html);
     function walk(node) {
       var kids = Array.prototype.slice.call(node.childNodes || []);
       kids.forEach(function (child) {
@@ -484,12 +507,24 @@
       });
     }
     walk(box);
+    if (box.querySelector('*')) {
+      while (box.firstChild && box.firstChild.nodeType === 3) {
+        var lead = box.firstChild;
+        if (!String(lead.nodeValue || '').trim()) {
+          box.removeChild(lead);
+          continue;
+        }
+        var p = document.createElement('p');
+        p.appendChild(lead);
+        box.insertBefore(p, box.firstChild);
+      }
+    }
     return box.innerHTML;
   }
 
   function valueToHtml(v) {
-    v = String(v == null ? '' : v);
-    if (!v.trim()) return '';
+    v = recoverStoredHtml(v);
+    if (!String(v || '').trim()) return '';
     if (looksLikeHtml(v)) return sanitizeHtml(v);
     return mdToHtml(v);
   }

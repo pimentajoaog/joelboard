@@ -144,7 +144,8 @@
       done: !!o.done,
       href: o.href || '',
       color: o.color || meta.color,
-      kind: o.kind || meta.kind
+      kind: o.kind || meta.kind,
+      listaIds: (window.JB && JB.link) ? JB.link.parseIds(o.listaIds) : (o.listaIds || [])
     };
   }
 
@@ -225,7 +226,7 @@
     });
   }
   function eventsFromNotas(lists) {
-    return (lists || []).filter(function (n) { return n.vence; }).map(function (n) {
+    return (lists || []).filter(function (n) { return n.vence && !n.preset; }).map(function (n) {
       var date = sheetsDate(n.vence);
       return ev({
         app: 'notas', id: 'notas:' + n.id, rawId: String(n.id || ''),
@@ -243,11 +244,13 @@
       var date = sheetsDate(d.data || d.date);
       if (!date) return;
       var p = planBy[d.planoId] || {};
+      var dayIds = (window.JB && JB.link) ? JB.link.mergeIds(p.listaIds, d.listaIds) : [];
       out.push(ev({
         app: 'planner', id: 'planner-day:' + d.id, rawId: String(p.id || d.planoId || ''),
         date: date, title: String(d.titulo || p.titulo || 'Dia do plano'),
         subtitle: p.titulo && d.titulo ? String(p.titulo) : '',
-        href: '/planner/?p=' + encodeURIComponent(p.id || d.planoId || ''), kind: 'plano'
+        href: '/planner/?p=' + encodeURIComponent(p.id || d.planoId || ''), kind: 'plano',
+        listaIds: dayIds
       }));
     });
     (eventos || []).forEach(function (e) {
@@ -255,11 +258,13 @@
       var date = day ? sheetsDate(day.data || day.date) : '';
       if (!date) return;
       var p = planBy[day.planoId] || {};
+      var evtIds = (window.JB && JB.link) ? JB.link.mergeIds(p.listaIds, day.listaIds) : [];
       out.push(ev({
         app: 'planner', id: 'planner-evt:' + e.id, rawId: String(p.id || day.planoId || ''),
         date: date, time: e.hora || '', timeMin: e.horaMin, title: String(e.titulo || 'Evento'),
         subtitle: e.nota ? String(e.nota) : (p.titulo || ''),
-        href: '/planner/?p=' + encodeURIComponent(p.id || day.planoId || ''), kind: 'plano'
+        href: '/planner/?p=' + encodeURIComponent(p.id || day.planoId || ''), kind: 'plano',
+        listaIds: evtIds
       }));
     });
     return out;
@@ -331,7 +336,7 @@
         return String(it.notaId) === String(n.id) && it.marcavel;
       });
       var done = items.length > 0 && items.every(function (it) { return !!it.feito; });
-      return { id: n.id, titulo: n.titulo, tipo: n.tipo, vence: n.vence, done: done };
+      return { id: n.id, titulo: n.titulo, tipo: n.tipo, vence: n.vence, done: done, preset: !!n.preset };
     });
   }
   function ghostAppEvents(app, start, end) {
@@ -391,7 +396,7 @@
       if (nt.indexOf('Notas') < 0) return [];
       return batchGet(sid, nt).then(function (by) {
         var lists = body(by.Notas).filter(function (r) { return r[6]; }).map(function (r) {
-          return { id: String(r[6]), titulo: String(r[0] || ''), tipo: String(r[1] || ''), vence: r[7] || '', done: notaItemsDone(by.Itens, r[6]) };
+          return { id: String(r[6]), titulo: String(r[0] || ''), tipo: String(r[1] || ''), vence: r[7] || '', done: notaItemsDone(by.Itens, r[6]), preset: r[8] === true || r[8] === '1' || r[8] === 1 };
         });
         var evs = eventsFromNotas(lists);
         var regs = body(by.Compartilhadas || []).filter(function (r) { return r[1]; });
@@ -416,11 +421,12 @@
       var pt = tabsPresent(grid, ['Planos', 'Dias', 'Eventos', 'Compartilhadas']);
       if (pt.indexOf('Dias') < 0 && pt.indexOf('Eventos') < 0) return [];
       return batchGet(sid, pt).then(function (by) {
+        var linkParse = (window.JB && JB.link) ? JB.link.parseIds : function (s) { return String(s || '') ? [String(s)] : []; };
         var planos = body(by.Planos).filter(function (r) { return r[7]; }).map(function (r) {
-          return { id: String(r[7]), titulo: String(r[0] || '') };
+          return { id: String(r[7]), titulo: String(r[0] || ''), listaIds: linkParse(r[8]) };
         });
         var dias = body(by.Dias).filter(function (r) { return r[5]; }).map(function (r) {
-          return { id: String(r[5]), planoId: String(r[0] || ''), data: r[1], titulo: String(r[2] || '') };
+          return { id: String(r[5]), planoId: String(r[0] || ''), data: r[1], titulo: String(r[2] || ''), listaIds: linkParse(r[6]) };
         });
         var evrows = body(by.Eventos).filter(function (r) { return r[9]; }).map(function (r) {
           return { id: String(r[9]), diaId: String(r[0] || ''), hora: String(r[1] || ''), horaMin: r[2], titulo: String(r[3] || ''), nota: String(r[4] || '') };
@@ -431,9 +437,9 @@
         return mapSeq(regs, function (reg) {
           return batchGet(String(reg[1]), ['Meta', 'Dias', 'Eventos']).then(function (pack) {
             var meta = body(pack.Meta)[0];
-            var p = meta && meta[7] ? [{ id: String(meta[7]), titulo: String(meta[0] || '') }] : [];
+            var p = meta && meta[7] ? [{ id: String(meta[7]), titulo: String(meta[0] || ''), listaIds: linkParse(meta[9]) }] : [];
             var ds = body(pack.Dias).filter(function (r) { return r[5]; }).map(function (r) {
-              return { id: String(r[5]), planoId: String(r[0] || (p[0] && p[0].id) || ''), data: r[1], titulo: String(r[2] || '') };
+              return { id: String(r[5]), planoId: String(r[0] || (p[0] && p[0].id) || ''), data: r[1], titulo: String(r[2] || ''), listaIds: linkParse(r[6]) };
             });
             var es = body(pack.Eventos).filter(function (r) { return r[9]; }).map(function (r) {
               return { id: String(r[9]), diaId: String(r[0] || ''), hora: String(r[1] || ''), horaMin: r[2], titulo: String(r[3] || ''), nota: String(r[4] || '') };
@@ -470,9 +476,14 @@
       });
     });
     return chain.then(function (all) {
-      var pack = { events: sortEvents(all), missed: missed, range: focus, window: win };
-      _hubCache = { at: Date.now(), start: win.start, end: win.end, events: pack.events, missed: missed };
-      return pack;
+      if (window.JB && JB.link && JB.link.mergeCalEvents) all = JB.link.mergeCalEvents(all);
+      var finish = function (events) {
+        var pack = { events: sortEvents(events), missed: missed, range: focus, window: win };
+        _hubCache = { at: Date.now(), start: win.start, end: win.end, events: pack.events, missed: missed };
+        return pack;
+      };
+      if (window.JB && JB.link && JB.link.decorateCalEvents) return JB.link.decorateCalEvents(all).then(finish);
+      return finish(all);
     });
   }
   function clearHubCache() { _hubCache = null; _tabCache = {}; }
@@ -497,10 +508,12 @@
     var chk = opts.toggle
       ? ('<button type="button" class="jb-cal-chk' + (e.done ? ' on' : '') + '" data-toggle="' + esc(e.id) + '" title="Concluir">' + (e.done ? '✓' : '') + '</button>')
       : '';
-    return '<div class="jb-cal-row' + (e.done ? ' done' : '') + '" data-id="' + esc(e.id) + '" data-app="' + esc(e.app) + '"' + href + raw + '>'
-      + '<span class="jb-cal-bar" style="background:' + esc(e.color) + '"></span>'
+    var linkPill = (e.linkedNotes && e.linkPeek) ? ('<span class="jb-cal-flag jb-cal-linkpill">' + esc(e.linkPeek) + '</span>') : '';
+    var barBg = (e.linkedNotes && window.JB && JB.link) ? JB.link.barCss(true) : ('background:' + esc(e.color));
+    return '<div class="jb-cal-row' + (e.done ? ' done' : '') + (e.linkedNotes ? ' linked' : '') + '" data-id="' + esc(e.id) + '" data-app="' + esc(e.app) + '"' + href + raw + '>'
+      + '<span class="jb-cal-bar" style="' + barBg + '"></span>'
       + '<div class="jb-cal-info"><div class="jb-cal-title">' + esc(e.title || '(sem título)') + '</div>'
-      + (meta ? '<div class="jb-cal-meta">' + meta + '</div>' : '') + '</div>' + flag + chk + '</div>';
+      + (meta ? '<div class="jb-cal-meta">' + meta + '</div>' : '') + '</div>' + flag + linkPill + chk + '</div>';
   }
 
   function monthCellsHtml(events, date, sel) {
@@ -520,7 +533,8 @@
       var iso = ymd(new Date(y, m, day));
       var evs = byDay[iso] || [];
       var dots = evs.slice(0, 4).map(function (e) {
-        return '<span class="jb-cal-dot" style="background:' + esc(e.color) + (e.done ? ';opacity:.4' : '') + '"></span>';
+        var bg = (e.linkedNotes && window.JB && JB.link) ? JB.link.dotCss(true) : ('background:' + esc(e.color));
+        return '<span class="jb-cal-dot" style="' + bg + (e.done ? ';opacity:.4' : '') + '"></span>';
       }).join('');
       cells += '<div class="jb-cal-cd' + (iso === today ? ' today' : '') + (sel && iso === sel ? ' sel' : '') + (evs.length ? ' has' : '') + '" data-date="' + iso + '">'
         + '<span class="jb-cal-cdn">' + day + '</span><span class="jb-cal-dots">' + dots + '</span></div>';

@@ -139,4 +139,7 @@ test('collab sheets are not treated as the personal Planner workbook', function 
   assert.match(cctx.plJoinErrMessage({ message: 'HTTP 403' }), /Editor no Drive/);
   assert.match(planner, /plPaintAcct/);
   assert.doesNotMatch(planner, /acctEmail'\)\.textContent='👤 '\+.*plAcctLabel/);
+  assert.match(planner, /\['Planos',\[.*'Listas'\]/);
+  assert.match(planner, /Colar lista do Notes/);
+  assert.match(collab, /OwnerEmail', 'Listas'/);
 });

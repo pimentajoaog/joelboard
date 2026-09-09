@@ -5,9 +5,12 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 
 const src = readFileSync(new URL('../public/jb-cal.js', import.meta.url), 'utf8');
+const linkSrc = readFileSync(new URL('../public/jb-link.js', import.meta.url), 'utf8');
 const ctx = { console, Date, Math, Number, String, Object, Array, Promise, Boolean };
 ctx.window = ctx;
 vm.createContext(ctx);
+vm.runInContext(linkSrc, ctx);
+ctx.JB = { link: ctx.JB_LINK };
 vm.runInContext(src, ctx);
 const cal = ctx.JB_CAL;
 assert.ok(cal, 'JB_CAL is attached');
@@ -123,6 +126,30 @@ test('compact row puts the calendar day in meta and the relative time in the fla
   assert.equal((html.match(/10 out/g) || []).length, 1);
   assert.match(html, /jb-cal-flag/);
   assert.equal((html.match(/em \d+ dias/g) || []).length, 1);
+});
+
+test('eventsFromNotas skips presets even with a due date', function () {
+  var evs = cal.eventsFromNotas([
+    { id: 'pre', titulo: 'Viagem nacional', tipo: 'viagem', vence: '2026-10-01', preset: true },
+    { id: 'due', titulo: 'Chile', tipo: 'viagem', vence: '2026-10-12', done: false }
+  ]);
+  assert.equal(evs.map(function (e) { return e.rawId; }).join(','), 'due');
+});
+
+test('eventsFromPlanner copies list ids and the row wears the dual-hue pill', function () {
+  var evs = cal.eventsFromPlanner(
+    [{ id: 'p1', titulo: 'Fim de semana', listaIds: ['n6'] }],
+    [{ id: 'd1', planoId: 'p1', data: '2026-09-12', titulo: 'Chegada', listaIds: [] }],
+    []
+  );
+  assert.equal(evs[0].listaIds.join(','), 'n6');
+  var html = cal.eventRowHtml({
+    date: '2026-09-12', title: 'Fim de semana', app: 'planner', color: '#2dd4bf',
+    linkedNotes: true, linkPeek: '1/3'
+  }, { compact: true, showDate: true });
+  assert.match(html, /jb-cal-row linked/);
+  assert.match(html, /jb-cal-linkpill/);
+  assert.match(html, /1\/3/);
 });
 
 test('eventsFromNotas keeps completed due lists as done', function () {

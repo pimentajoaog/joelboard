@@ -46,16 +46,25 @@
         grid: { Notas: 0, Itens: 1, Config: 2, Compartilhadas: 3 },
         data: {
           notas: [
-            { id: 'ghost-n1', titulo: 'Compras da semana', tipo: 'compras', cor: '', fixado: true, criado: iso, atualizado: iso, vence: '' },
-            { id: 'ghost-n2', titulo: 'Viagem Chile', tipo: 'viagem', cor: '✈️', fixado: false, criado: iso, atualizado: iso, vence: jbGhostYmdFrom(today, 34) },
-            { id: 'ghost-n3', titulo: 'Farmácia', tipo: 'compras', cor: '', fixado: false, criado: iso, atualizado: iso, vence: today }
+            { id: 'ghost-n1', titulo: 'Compras da semana', tipo: 'compras', cor: '', fixado: true, criado: iso, atualizado: iso, vence: '', preset: false },
+            { id: 'ghost-n2', titulo: 'Viagem Chile', tipo: 'viagem', cor: '✈️', fixado: false, criado: iso, atualizado: iso, vence: jbGhostYmdFrom(today, 34), preset: false },
+            { id: 'ghost-n3', titulo: 'Farmácia', tipo: 'compras', cor: '', fixado: false, criado: iso, atualizado: iso, vence: today, preset: false },
+            { id: 'ghost-n4', titulo: 'Viagem nacional', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: true },
+            { id: 'ghost-n5', titulo: 'Viagem internacional', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: true },
+            { id: 'ghost-n6', titulo: 'Mala — fim de semana', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: false }
           ],
           itens: [
             { id: 'ghost-i1', notaId: 'ghost-n1', ordem: 0, texto: 'Pão', marcavel: true, feito: false, tipo: '' },
             { id: 'ghost-i2', notaId: 'ghost-n1', ordem: 1, texto: 'Leite', marcavel: true, feito: true, tipo: '' },
             { id: 'ghost-i3', notaId: 'ghost-n2', ordem: 0, texto: 'Reservar hotel', marcavel: true, feito: false, tipo: '' },
             { id: 'ghost-i4', notaId: 'ghost-n3', ordem: 0, texto: 'Dipirona', marcavel: true, feito: true, tipo: '' },
-            { id: 'ghost-i5', notaId: 'ghost-n3', ordem: 1, texto: 'Protetor', marcavel: true, feito: true, tipo: '' }
+            { id: 'ghost-i5', notaId: 'ghost-n3', ordem: 1, texto: 'Protetor', marcavel: true, feito: true, tipo: '' },
+            { id: 'ghost-i6', notaId: 'ghost-n4', ordem: 0, texto: 'Documentos', marcavel: false, feito: false, tipo: 'g' },
+            { id: 'ghost-i7', notaId: 'ghost-n4', ordem: 1, texto: 'RG ou CNH', marcavel: true, feito: false, tipo: '' },
+            { id: 'ghost-i8', notaId: 'ghost-n5', ordem: 0, texto: 'Passaporte', marcavel: true, feito: false, tipo: '' },
+            { id: 'ghost-i9', notaId: 'ghost-n6', ordem: 0, texto: 'Carregador', marcavel: true, feito: true, tipo: '' },
+            { id: 'ghost-i10', notaId: 'ghost-n6', ordem: 1, texto: 'Roupas', marcavel: true, feito: false, tipo: '' },
+            { id: 'ghost-i11', notaId: 'ghost-n6', ordem: 2, texto: 'Chaves', marcavel: true, feito: false, tipo: '' }
           ],
           config: { perfil_nome: 'Cursor', perfil_icone: '👻' }
         }
@@ -66,11 +75,11 @@
       return {
         grid: { Planos: 0, Dias: 1, Eventos: 2, Config: 3, Compartilhadas: 4 },
         data: {
-          planos: [{ id: 'ghost-p1', titulo: 'Fim de semana em casa', subtitulo: '2 noites · fixture ghost', inicio: d0, fim: d2, icone: '🏠', criado: iso, atualizado: iso }],
+          planos: [{ id: 'ghost-p1', titulo: 'Fim de semana em casa', subtitulo: '2 noites · fixture ghost', inicio: d0, fim: d2, icone: '🏠', criado: iso, atualizado: iso, listaIds: ['ghost-n6'] }],
           dias: [
-            { id: 'ghost-d1', planoId: 'ghost-p1', data: d0, titulo: 'Chegada', icone: '🌅', ordem: 0 },
-            { id: 'ghost-d2', planoId: 'ghost-p1', data: d1, titulo: 'Passeio', icone: '🚶', ordem: 1 },
-            { id: 'ghost-d3', planoId: 'ghost-p1', data: d2, titulo: 'Volta', icone: '🏠', ordem: 2 }
+            { id: 'ghost-d1', planoId: 'ghost-p1', data: d0, titulo: 'Chegada', icone: '🌅', ordem: 0, listaIds: ['ghost-n6'] },
+            { id: 'ghost-d2', planoId: 'ghost-p1', data: d1, titulo: 'Passeio', icone: '🚶', ordem: 1, listaIds: [] },
+            { id: 'ghost-d3', planoId: 'ghost-p1', data: d2, titulo: 'Volta', icone: '🏠', ordem: 2, listaIds: [] }
           ],
           eventos: [
             { id: 'ghost-e1', diaId: 'ghost-d1', hora: '16h', horaMin: 960, titulo: 'Check-in', nota: '', icone: '🏨', tag: '', tagCor: 'warn', ordem: 0 },

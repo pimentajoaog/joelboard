@@ -1,7 +1,7 @@
 /* Joelboard Planner — shared plans (collab). © 2026 Joel Soluções LTDA. */
 var PL_COLLAB_TABS = [
-  ['Meta', ['Titulo', 'Subtitulo', 'Inicio', 'Fim', 'Icone', 'Criado', 'Atualizado', 'ID', 'OwnerEmail']],
-  ['Dias', ['PlanoID', 'Data', 'Titulo', 'Icone', 'Ordem', 'ID']],
+  ['Meta', ['Titulo', 'Subtitulo', 'Inicio', 'Fim', 'Icone', 'Criado', 'Atualizado', 'ID', 'OwnerEmail', 'Listas']],
+  ['Dias', ['PlanoID', 'Data', 'Titulo', 'Icone', 'Ordem', 'ID', 'Listas']],
   ['Eventos', ['DiaID', 'Hora', 'HoraMin', 'Titulo', 'Nota', 'Icone', 'Tag', 'TagCor', 'Ordem', 'ID']],
   ['Membros', ['Email', 'Nome', 'Icone', 'Papel', 'Status', 'Entrou']]
 ];
@@ -27,7 +27,7 @@ function plWithSync(fn) {
 
 function plPackSignature(days, events, metaRow, members) {
   var d = (days || []).slice().sort(function (a, b) { return String(a.id).localeCompare(String(b.id)); }).map(function (x) {
-    return x.id + '\t' + x.data + '\t' + x.titulo + '\t' + x.icone + '\t' + x.ordem;
+    return x.id + '\t' + x.data + '\t' + x.titulo + '\t' + x.icone + '\t' + x.ordem + '\t' + ((typeof plFmtIds==='function')?plFmtIds(x.listaIds):(x.listaIds||[]).join(','));
   }).join('\n');
   var e = (events || []).slice().sort(function (a, b) { return String(a.id).localeCompare(String(b.id)); }).map(function (x) {
     return x.id + '\t' + x.diaId + '\t' + x.hora + '\t' + x.titulo + '\t' + x.nota + '\t' + x.tag + '\t' + x.ordem;
@@ -35,7 +35,23 @@ function plPackSignature(days, events, metaRow, members) {
   var mem = (members || []).slice().sort(function (a, b) { return String(a.email || '').localeCompare(String(b.email || '')); }).map(function (m) {
     return (m.email || '') + '\t' + (m.nome || '') + '\t' + (m.icone || '') + '\t' + (m.status || '');
   }).join('\n');
-  return String((metaRow && metaRow[6]) || '') + '\n' + d + '\n' + e + '\n' + mem;
+  return String((metaRow && metaRow[6]) || '') + '\t' + String((metaRow && metaRow[9]) || '') + '\n' + d + '\n' + e + '\n' + mem;
+}
+
+function ensureCollabLinkHeaders(sid) {
+  if (!sid || !JB.api) return Promise.resolve();
+  return Promise.all([
+    JB.api('GET', plCollabUrl(sid, '/values/' + encodeURIComponent('Meta!1:1'))).then(function (res) {
+      var h = (res.values && res.values[0]) || [];
+      if (h[9] === 'Listas') return;
+      return JB.api('PUT', plCollabUrl(sid, '/values/' + encodeURIComponent('Meta!J1') + '?valueInputOption=RAW'), { values: [['Listas']] });
+    }).catch(function () {}),
+    JB.api('GET', plCollabUrl(sid, '/values/' + encodeURIComponent('Dias!1:1'))).then(function (res) {
+      var h = (res.values && res.values[0]) || [];
+      if (h[6] === 'Listas') return;
+      return JB.api('PUT', plCollabUrl(sid, '/values/' + encodeURIComponent('Dias!G1') + '?valueInputOption=RAW'), { values: [['Listas']] });
+    }).catch(function () {})
+  ]);
 }
 
 function plWriteBegin() { _plWritePending++; }
@@ -59,7 +75,8 @@ function plHandlePollResult(res) {
   if (!res || !res.changed) return;
   if (plCollabSyncBlocked()) { plPollDefer(); return; }
   if (res.remote) toast('Plano atualizado em outro dispositivo');
-  render();
+  if (typeof plRefreshLinks==='function') plRefreshLinks();
+  else render();
 }
 
 function plParseJoinSheetId(raw) {
@@ -271,7 +288,8 @@ function plMergeRegistryRow(reg, pack) {
     collabSheetId: pack.sid,
     collabRole: String(reg[2] || (my && my.papel) || 'editor'),
     collabOwner: String(reg[3] || metaRow[8] || ''),
-    collabMembers: members
+    collabMembers: members,
+    listaIds: (typeof plIds==='function')?plIds(metaRow[9]):String(metaRow[9]||'').split(',').filter(Boolean)
   };
 }
 
@@ -328,6 +346,7 @@ function plRefreshCollabOnly(force) {
         cur.fim = String(metaRow[3] || '');
         cur.icone = String(metaRow[4] || cur.icone);
         cur.atualizado = String(metaRow[6] || cur.atualizado);
+        cur.listaIds = (typeof plIds==='function')?plIds(metaRow[9]):String(metaRow[9]||'').split(',').filter(Boolean);
       }
       if (pack.membros && pack.membros.length) cur.collabMembers = plParseMembers(pack.membros);
       var sig = plPackSignature(daysOf(planId), eventsOfPlan(planId), metaRow, cur.collabMembers);
@@ -427,7 +446,9 @@ function plMemberRow(em, nome, icone, papel, status) {
 function plCreateCollabSpreadsheet(p, days, events, inviteEmail) {
   var em = plEmail();
   var title = '📝 Joelboard Plano — ' + (p.titulo || 'Plano compartilhado');
-  var metaVals = [p.titulo, p.subtitulo || '', p.inicio, p.fim, p.icone || '', p.criado, new Date().toISOString(), p.id, em];
+  var metaVals = (typeof metaRowVals==='function')
+    ? metaRowVals({ titulo:p.titulo, subtitulo:p.subtitulo, inicio:p.inicio, fim:p.fim, icone:p.icone, criado:p.criado, atualizado:new Date().toISOString(), id:p.id, collabOwner:em, listaIds:p.listaIds })
+    : [p.titulo, p.subtitulo || '', p.inicio, p.fim, p.icone || '', p.criado, new Date().toISOString(), p.id, em, (p.listaIds||[]).join(',')];
   var dayVals = (days || []).map(dayRowVals);
   var evtVals = (events || []).map(evtRowVals);
   var members = [plMemberRow(em, plProfileName(), plProfileIcon(), 'owner', 'active')];

@@ -1048,6 +1048,53 @@ html.jb-ink-full .fab {
 .jb-cal.compact .jb-cal-app { padding: 6px 6px 2px; margin-bottom: 7px; }
 .jb-cal.compact .jb-cal-sec { margin-top: 14px; }
 .jb-cal.compact .jb-cal-toolbar { margin-bottom: 8px; flex-wrap: nowrap; gap: 6px; }
+.jb-cal-row.linked .jb-cal-bar { background: linear-gradient(180deg, var(--planner, #2dd4bf), var(--notas, #f59e0b)) !important; }
+.jb-cal-linkpill {
+  background:
+    linear-gradient(var(--surface2, #252a40), var(--surface2, #252a40)) padding-box,
+    linear-gradient(90deg, var(--planner, #2dd4bf), var(--notas, #f59e0b)) border-box;
+  border: 1px solid transparent;
+  color: var(--text, #e7eaf3);
+}
+.jb-link-wrap { margin-top: 12px; }
+.jb-link-sticker {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: var(--surface2, #252a40); border: 1px solid var(--border, #2d3346);
+  border-radius: 12px; padding: 8px 10px; color: var(--text, #e7eaf3);
+  font: inherit; font-weight: 700; cursor: pointer; text-align: left;
+  position: relative; overflow: hidden;
+}
+.jb-link-sticker.open { border-radius: 12px 12px 0 0; }
+.jb-link-hue {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: linear-gradient(180deg, var(--planner, #2dd4bf), var(--notas, #f59e0b));
+}
+.jb-link-ico { font-size: 16px; margin-left: 4px; }
+.jb-link-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.jb-link-prog {
+  font-size: 11px; font-weight: 800; border-radius: 999px; padding: 2px 8px;
+  background:
+    linear-gradient(var(--surface, #191d2c), var(--surface, #191d2c)) padding-box,
+    linear-gradient(90deg, var(--planner, #2dd4bf), var(--notas, #f59e0b)) border-box;
+  border: 1px solid transparent;
+}
+.jb-link-chev { color: var(--muted, #7b85a0); font-size: 12px; }
+.jb-link-body {
+  background: color-mix(in srgb, var(--surface2, #252a40) 70%, transparent);
+  border: 1px solid var(--border, #2d3346); border-top: 0;
+  border-radius: 0 0 12px 12px; padding: 8px 12px 10px;
+}
+.jb-link-item { font-size: 13px; padding: 5px 0; color: var(--text, #e7eaf3); }
+.jb-link-item.mute, .jb-link-more, .jb-link-hint { color: var(--muted, #7b85a0); font-size: 12px; }
+.jb-link-open { display: inline-block; margin-top: 8px; color: var(--planner, #2dd4bf); font-size: 12px; font-weight: 800; text-decoration: none; }
+.jb-link-unlink {
+  display: inline-block; margin-left: 12px; margin-top: 8px;
+  background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
+  color: var(--muted, #7b85a0); font-size: 12px; font-weight: 700;
+}
+.jb-link-wrap.compact { margin-top: 8px; }
+.jb-link-sticker.compact { padding: 6px 8px; border-radius: 10px; }
+.nc-preset-badge { font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: #f59e0b; background: rgba(245,158,11,.14); border-radius: 999px; padding: 2px 8px; }
 @media (prefers-reduced-motion: reduce) {
   .jb-ed-bar, .jb-ed-btn, .jb-ed-ink-tools, .jb-ed-fs-menu, .jb-ed-hl-menu, .jb-ed-ink-chip, .jb-ed-hl-chip {
     animation: none !important; transition: none !important; transform: none !important;

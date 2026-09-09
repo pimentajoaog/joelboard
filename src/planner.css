@@ -124,6 +124,20 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .pl-card-h{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
 .pl-card-t{ font-weight:800; font-size:16px; letter-spacing:-.2px; flex:1; background:transparent; border:0; color:var(--text); cursor:pointer; text-align:left; font-family:inherit; }
 .pl-add{ background:transparent; border:0; color:var(--primary); font-weight:800; font-size:20px; line-height:1; cursor:pointer; width:28px; height:28px; }
+.pl-pin{ background:transparent; border:0; cursor:pointer; width:28px; height:28px; font-size:14px; line-height:1; opacity:.85; }
+.pl-link-chip{
+  display:inline-flex; align-items:center; margin-right:8px; padding:2px 8px; border-radius:999px;
+  font-size:10px; font-weight:800; letter-spacing:.3px; text-transform:uppercase; color:var(--text);
+  background:
+    linear-gradient(var(--surface2), var(--surface2)) padding-box,
+    linear-gradient(90deg, var(--planner, #2dd4bf), var(--notas, #f59e0b)) border-box;
+  border:1px solid transparent;
+}
+.pl-pick-row{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%;
+  background:var(--surface2); border:1px solid var(--border); color:var(--text);
+  border-radius:12px; padding:10px 12px; margin-bottom:8px; font:inherit; font-weight:700; cursor:pointer; text-align:left;
+}
 
 .pl-evt{ display:grid; grid-template-columns:52px 1fr; gap:8px; padding:8px 0; cursor:pointer; border-radius:8px; }
 .pl-evt + .pl-evt{ border-top:1px solid color-mix(in srgb, var(--border) 70%, transparent); }

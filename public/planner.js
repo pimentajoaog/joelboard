@@ -1,11 +1,12 @@
 /* Joelboard Planner — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. */
 var DATA=null, plannerGrid={}, authDone=false, openPlanId=null, homeQuery='', _pbooted=false, _edMenuOpen=false;
+var _linkOpen={}, _linkSnaps={}, _linkTarget=null;
 var _editPlanId=null, _editDayId=null, _editEvtId=null, _editEvtDayId=null, _plEvtMer='', newStart='', newEnd='', newIcon='✈️';
 var _rowCache={};
 var PL_TABS=[
-  ['Planos',['Titulo','Subtitulo','Inicio','Fim','Icone','Criado','Atualizado','ID']],
-  ['Dias',['PlanoID','Data','Titulo','Icone','Ordem','ID']],
+  ['Planos',['Titulo','Subtitulo','Inicio','Fim','Icone','Criado','Atualizado','ID','Listas']],
+  ['Dias',['PlanoID','Data','Titulo','Icone','Ordem','ID','Listas']],
   ['Eventos',['DiaID','Hora','HoraMin','Titulo','Nota','Icone','Tag','TagCor','Ordem','ID']],
   ['Config',['Chave','Valor']],
   ['Compartilhadas',['Titulo','SheetID','Papel','Owner','PlanoID','Atualizado']]
@@ -272,7 +273,7 @@ function bootSheet(){
         return;
       }
       plannerGrid=ctx.grid;
-      return ensureTabs().then(loadData);
+      return ensureTabs().then(ensurePlannerLinkHeaders).then(loadData);
     })
     .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(m)+'</div></div>'); });
 }
@@ -314,14 +315,34 @@ function linkSheet(){
   }).catch(function(){ var err4=$('plErr'); if(err4) err4.textContent='Não foi possível abrir a planilha.'; });
 }
 
+function plIds(s){ return (window.JB&&JB.link)?JB.link.parseIds(s):String(s||'').split(',').filter(Boolean); }
+function plFmtIds(arr){ return (window.JB&&JB.link)?JB.link.formatIds(arr):(arr||[]).join(','); }
+function ensurePlannerLinkHeaders(){
+  var jobs=[];
+  if(plannerGrid['Planos']!=null){
+    jobs.push(JB.api('GET', personalSsUrl('/values/'+encodeURIComponent('Planos!1:1'))).then(function(res){
+      var h=(res.values&&res.values[0])||[];
+      if(h[8]==='Listas') return;
+      return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Planos!I1')+'?valueInputOption=RAW'), { values:[['Listas']] });
+    }).catch(function(){}));
+  }
+  if(plannerGrid['Dias']!=null){
+    jobs.push(JB.api('GET', personalSsUrl('/values/'+encodeURIComponent('Dias!1:1'))).then(function(res){
+      var h=(res.values&&res.values[0])||[];
+      if(h[6]==='Listas') return;
+      return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Dias!G1')+'?valueInputOption=RAW'), { values:[['Listas']] });
+    }).catch(function(){}));
+  }
+  return jobs.length?Promise.all(jobs):Promise.resolve();
+}
 function parsePlanos(rows){
   return body(rows).filter(function(r){return r[7];}).map(function(r){
-    return { id:String(r[7]), titulo:String(r[0]||''), subtitulo:String(r[1]||''), inicio:String(r[2]||''), fim:String(r[3]||''), icone:String(r[4]||'📅'), criado:String(r[5]||''), atualizado:String(r[6]||'') };
+    return { id:String(r[7]), titulo:String(r[0]||''), subtitulo:String(r[1]||''), inicio:String(r[2]||''), fim:String(r[3]||''), icone:String(r[4]||'📅'), criado:String(r[5]||''), atualizado:String(r[6]||''), listaIds:plIds(r[8]) };
   });
 }
 function parseDias(rows){
   return body(rows).filter(function(r){return r[5];}).map(function(r){
-    return { id:String(r[5]), planoId:String(r[0]||''), data:String(r[1]||''), titulo:String(r[2]||''), icone:String(r[3]||''), ordem:Number(r[4])||0 };
+    return { id:String(r[5]), planoId:String(r[0]||''), data:String(r[1]||''), titulo:String(r[2]||''), icone:String(r[3]||''), ordem:Number(r[4])||0, listaIds:plIds(r[6]) };
   });
 }
 function parseEventos(rows){
@@ -364,7 +385,8 @@ function show(){
     try{ var pid=new URLSearchParams(location.search).get('p'); if(pid && plan(pid)) openPlanId=pid; }catch(_){}
     if(JB.ensureProfile && !JB.profileReady()) JB.ensureProfile(function(){ if(typeof plPaintAcct==='function') plPaintAcct(); });
   }
-  render();
+  plBindLinkClicks();
+  if(openPlanId) plRefreshLinks(); else render();
   if(!_pbooted){
     _pbooted=true;
     if(typeof plCheckJoinParam==='function') plCheckJoinParam();
@@ -386,7 +408,7 @@ function refreshData(){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
     DATA=buildPlanner(by);
     var collabLoad=(typeof plLoadCollabPlans==='function')?plLoadCollabPlans():Promise.resolve();
-    collabLoad.then(function(){ render(); }).catch(function(){ render(); });
+    collabLoad.then(function(){ if(openPlanId) plRefreshLinks(); else render(); }).catch(function(){ if(openPlanId) plRefreshLinks(); else render(); });
   })).catch(function(){});
 }
 
@@ -406,7 +428,7 @@ function render(){
 function openPlan(id){
   openPlanId=id; _edMenuOpen=false;
   if(typeof plSetCollabWatch==='function'){ var p=plan(id); plSetCollabWatch(p&&p.collabSheetId?p.collabSheetId:null); }
-  render(); window.scrollTo(0,0);
+  plRefreshLinks(); window.scrollTo(0,0);
 }
 function backHome(){ openPlanId=null; _edMenuOpen=false; if(typeof plSetCollabWatch==='function') plSetCollabWatch(null); render(); }
 
@@ -435,7 +457,9 @@ function planCard(p){
   return '<div class="planc'+(p.collabSheetId?' planc-shared':'')+'" onclick="openPlan(\''+p.id+'\')">'
     +'<div class="pc-top"><div class="pc-ico">'+esc(p.icone||'📅')+'</div><div><div class="pc-title">'+esc(p.titulo||'(sem título)')+'</div>'
     +(p.subtitulo?'<div class="pc-sub">'+esc(p.subtitulo)+'</div>':'')+'</div></div>'
-    +'<div class="pc-meta">'+(p.collabSheetId?'<span class="pl-shared">Compartilhado</span>':'')+'<span class="rg" style="margin:0">'+esc(meta)+'</span>'+av+'</div></div>';
+    +'<div class="pc-meta">'    +(p.collabSheetId?'<span class="pl-shared">Compartilhado</span>':'')
+    +(plIds(p.listaIds).length?'<span class="pl-link-chip" title="Lista do Notes">lista</span>':'')
+    +'<span class="rg" style="margin:0">'+esc(meta)+'</span>'+av+'</div></div>';
 }
 function onHomeSearch(v){ homeQuery=v; JB.searchClearVis('homeSearch','homeSearchClear',!!v); renderHome(); }
 function clearHomeSearch(){ homeQuery=''; var i=$('homeSearch'); if(i) i.value=''; JB.searchClearVis('homeSearch','homeSearchClear',false); renderHome(); }
@@ -455,11 +479,13 @@ function renderTimeline(){
     +'<div class="tl-menu-wrap"><button class="tl-menu-btn" onclick="toggleEdMenu()" aria-label="Menu">⋯</button>'
     +'<div class="tl-menu'+(_edMenuOpen?' open':'')+'" id="tlMenu">'
     +'<button type="button" class="ed-menu-item" onclick="closeEdMenu();openEditPlan()">✏ Editar plano</button>'
+    +'<button type="button" class="ed-menu-item" onclick="closeEdMenu();openLinkPicker(\'plan\',\''+p.id+'\')">📌 Colar lista do Notes</button>'
     +shareBtn
     +'<button type="button" class="ed-menu-item" onclick="closeEdMenu();'+leaveFn+'">'+esc(leaveLabel)+'</button>'
     +'</div></div></div>'
     +'<div class="tl-title">'+esc(p.titulo||'(sem título)')+'</div>'
-    +(sub?'<div class="tl-sub">'+esc(sub)+'</div>':'')+av+'</div>';
+    +(sub?'<div class="tl-sub">'+esc(sub)+'</div>':'')+av
+    +plPeekBlock(p.listaIds,'plan',p.id,false)+'</div>';
   html+='<div class="pl-spine">'+days.map(function(d){ return dayBlock(d); }).join('')+'</div>';
   $('main').innerHTML=html;
 }
@@ -471,7 +497,9 @@ function dayBlock(d){
     +'<button type="button" class="pl-dico" onclick="openDayEdit(\''+d.id+'\')" title="Editar dia">'+esc(d.icone||'📅')+'</button>'
     +'<div class="pl-wd">'+esc(plWeekday(d.data))+'</div></div>'
     +'<div class="pl-card"><div class="pl-card-h"><button type="button" class="pl-card-t" onclick="openDayEdit(\''+d.id+'\')">'+(d.titulo?esc(d.titulo):'<span style="color:var(--muted);font-weight:700">Sem título</span>')+'</button>'
+    +'<button type="button" class="pl-pin" onclick="openLinkPicker(\'day\',\''+d.id+'\')" title="Colar lista neste dia">📌</button>'
     +'<button type="button" class="pl-add" onclick="openEvtEdit(\'\',\''+d.id+'\')" title="Adicionar evento">+</button></div>'
+    +plPeekBlock(d.listaIds,'day',d.id,true)
     +evHtml+'</div></div>';
 }
 function eventRow(e){
@@ -483,6 +511,151 @@ function eventRow(e){
 
 function toggleEdMenu(){ _edMenuOpen=!_edMenuOpen; var m=$('tlMenu'); if(m) m.classList.toggle('open', _edMenuOpen); }
 function closeEdMenu(){ _edMenuOpen=false; var m=$('tlMenu'); if(m) m.classList.remove('open'); }
+
+function plLinkIds(){
+  var p=plan(openPlanId); if(!p) return [];
+  var ids=plIds(p.listaIds);
+  daysOf(p.id).forEach(function(d){ ids=ids.concat(plIds(d.listaIds)); });
+  return (window.JB&&JB.link)?JB.link.uniq(ids):ids;
+}
+function plRefreshLinks(){
+  var p=plan(openPlanId);
+  if(!p){ render(); return; }
+  var ids=plLinkIds();
+  var apply=function(snaps){
+    _linkSnaps={};
+    (snaps||[]).forEach(function(s){ _linkSnaps[s.id]=s; });
+    render();
+  };
+  if(window.JB&&JB.link&&JB.link.loadSnapshots) JB.link.loadSnapshots(ids).then(apply);
+  else apply([]);
+}
+function plShareHint(){
+  var p=plan(openPlanId);
+  return (p&&p.collabSheetId)?'Esta lista é só sua. Compartilhe no Notes se o grupo precisar.':'';
+}
+function plPeekBlock(ids, kind, ownerId, compact){
+  ids=plIds(ids);
+  if(!ids.length || !window.JB || !JB.link || !JB.link.peekHtml) return '';
+  var hint=plShareHint();
+  return ids.map(function(id){
+    var snap=_linkSnaps[id];
+    var key=kind+'|'+ownerId+'|'+id;
+    if(!snap){
+      return '<div class="jb-link-wrap'+(compact?' compact':'')+'"><div class="jb-link-sticker'+(compact?' compact':'')+'"><span class="jb-link-hue" aria-hidden="true"></span><span class="jb-link-title">Lista anexada</span></div></div>';
+    }
+    return JB.link.peekHtml(snap, { open:!!_linkOpen[key], key:key, compact:!!compact, shareHint:hint, canUnlink:true, unlinkKey:key });
+  }).join('');
+}
+function toggleLinkPeek(key){
+  _linkOpen[key]=!_linkOpen[key];
+  render();
+}
+function unlinkList(key){
+  var parts=String(key||'').split('|');
+  if(parts.length<3) return;
+  var kind=parts[0], ownerId=parts[1], noteId=parts.slice(2).join('|');
+  var p=plan(openPlanId); if(!p) return;
+  if(kind==='plan' && p.id===ownerId){
+    p.listaIds=plIds(p.listaIds).filter(function(id){ return id!==noteId; });
+    persistListaTarget('plan', p);
+    return;
+  }
+  var d=(DATA.dias||[]).find(function(x){ return x.id===ownerId; });
+  if(!d) return;
+  d.listaIds=plIds(d.listaIds).filter(function(id){ return id!==noteId; });
+  persistListaTarget('day', d);
+}
+function persistListaTarget(kind, obj){
+  if(JB.isGhost&&JB.isGhost()){ plRefreshLinks(); return; }
+  var p=kind==='plan'?obj:plan(obj.planoId);
+  var go=function(){
+    if(kind==='plan'){ touchPlan(obj); plRefreshLinks(); return; }
+    persistDay(obj, { onSuccess: function(){ if(p) touchPlan(p); plRefreshLinks(); } });
+  };
+  if(p&&p.collabSheetId&&typeof ensureCollabLinkHeaders==='function'){
+    ensureCollabLinkHeaders(p.collabSheetId).then(go).catch(go);
+    return;
+  }
+  go();
+}
+function plBindLinkClicks(){
+  var main=$('main'); if(!main || main._linkBound) return;
+  main._linkBound=1;
+  main.addEventListener('click', function(ev){
+    var u=ev.target.closest && ev.target.closest('[data-link-unlink]');
+    if(u){ ev.preventDefault(); ev.stopPropagation(); unlinkList(u.getAttribute('data-link-unlink')); return; }
+    var t=ev.target.closest && ev.target.closest('[data-link-toggle]');
+    if(t){ ev.preventDefault(); ev.stopPropagation(); toggleLinkPeek(t.getAttribute('data-link-toggle')); }
+  });
+}
+function openLinkPicker(kind, id){
+  _linkTarget={ kind:kind, id:id };
+  var title=$('linkModalTitle');
+  if(title) title.textContent=kind==='day'?'Colar lista neste dia':'Colar lista no plano';
+  var box=$('linkPickerList');
+  if(box) box.innerHTML='<div class="rg">Carregando listas…</div>';
+  $('linkOverlay').classList.add('open');
+  var attached={};
+  if(kind==='plan'){ var p=plan(id); plIds(p&&p.listaIds).forEach(function(x){ attached[x]=1; }); }
+  else { var d=(DATA.dias||[]).find(function(x){ return x.id===id; }); plIds(d&&d.listaIds).forEach(function(x){ attached[x]=1; }); }
+  var hint=plan(openPlanId)&&plan(openPlanId).collabSheetId
+    ? '<div class="rg" style="margin-top:10px">O plano é compartilhado. A lista continua pessoal até você compartilhá-la no Notes.</div>'
+    : '';
+  var paint=function(snaps){
+    snaps=snaps||[];
+    var presets=snaps.filter(function(s){ return s.preset && !attached[s.id]; });
+    var lists=snaps.filter(function(s){ return !s.preset && !attached[s.id]; });
+    var html='';
+    if(presets.length){
+      html+='<div class="sect" style="margin:4px 0 8px">✦ Presets</div>';
+      html+=presets.map(function(s){
+        return '<button type="button" class="pl-pick-row" onclick="pickLinkedList(\''+escAttr(s.id)+'\',true)"><span>'+esc(s.icon||'🧳')+' '+esc(s.titulo)+'</span><span class="rg">clonar</span></button>';
+      }).join('');
+    }
+    if(lists.length){
+      html+='<div class="sect" style="margin:12px 0 8px">Suas listas</div>';
+      html+=lists.map(function(s){
+        var prog=s.total?(s.done+'/'+s.total):'';
+        return '<button type="button" class="pl-pick-row" onclick="pickLinkedList(\''+escAttr(s.id)+'\',false)"><span>'+esc(s.icon||'✅')+' '+esc(s.titulo)+'</span><span class="rg">'+esc(prog)+'</span></button>';
+      }).join('');
+    }
+    if(!html) html='<div class="rg">Nenhuma lista livre. Crie uma no Notes ou use um preset.</div>';
+    box.innerHTML=html+hint;
+  };
+  if(window.JB&&JB.link&&JB.link.loadCatalog) JB.link.loadCatalog().then(paint).catch(function(){ paint([]); });
+  else paint([]);
+}
+function closeLinkPicker(){ $('linkOverlay').classList.remove('open'); _linkTarget=null; }
+function pickLinkedList(noteId, fromPreset){
+  var tgt=_linkTarget; if(!tgt) return;
+  var attach=function(id){
+    if(tgt.kind==='plan'){
+      var p=plan(tgt.id); if(!p) return;
+      p.listaIds=plIds(p.listaIds).concat([id]);
+      if(window.JB&&JB.link) p.listaIds=JB.link.uniq(p.listaIds);
+      closeLinkPicker();
+      persistListaTarget('plan', p);
+      if(p.collabSheetId) toast('Lista colada. Ela continua só sua — compartilhe no Notes se o grupo precisar.');
+      else toast('✓ Lista colada no plano');
+      return;
+    }
+    var d=(DATA.dias||[]).find(function(x){ return x.id===tgt.id; }); if(!d) return;
+    d.listaIds=plIds(d.listaIds).concat([id]);
+    if(window.JB&&JB.link) d.listaIds=JB.link.uniq(d.listaIds);
+    closeLinkPicker();
+    persistListaTarget('day', d);
+    var planObj=plan(openPlanId);
+    if(planObj&&planObj.collabSheetId) toast('Lista colada. Ela continua só sua — compartilhe no Notes se o grupo precisar.');
+    else toast('✓ Lista colada no dia');
+  };
+  if(!fromPreset){ attach(noteId); return; }
+  if(!window.JB||!JB.link||!JB.link.clonePreset){ toast('Não deu para clonar o preset'); return; }
+  JB.link.clonePreset(noteId).then(function(snap){
+    if(!snap||!snap.id){ toast('Não deu para clonar o preset'); return; }
+    attach(snap.id);
+  }).catch(function(){ toast('Abra o Notes uma vez para criar a planilha, depois cole o preset.'); });
+}
 
 function plIconDefault(kind){ return kind==='evt'?'':kind==='day'?'📅':'✈️'; }
 function plIconPresets(kind){ return kind==='evt'?PL_EVT_ICONS:PL_DAY_ICONS; }
@@ -600,10 +773,10 @@ function renderNewDates(){
   if(h) h.textContent=(newStart&&newEnd)?plRangeHint(newStart,newEnd):'';
 }
 
-function planRowVals(p){ return [p.titulo,p.subtitulo||'',p.inicio,p.fim,p.icone||'',p.criado,p.atualizado,p.id]; }
-function dayRowVals(d){ return [d.planoId,d.data,d.titulo||'',d.icone||'',d.ordem,d.id]; }
+function planRowVals(p){ return [p.titulo,p.subtitulo||'',p.inicio,p.fim,p.icone||'',p.criado,p.atualizado,p.id,plFmtIds(p.listaIds)]; }
+function dayRowVals(d){ return [d.planoId,d.data,d.titulo||'',d.icone||'',d.ordem,d.id,plFmtIds(d.listaIds)]; }
 function evtRowVals(e){ return [e.diaId,e.hora||'',e.horaMin===''||e.horaMin==null?'':e.horaMin,e.titulo||'',e.nota||'',e.icone||'',e.tag||'',e.tagCor||'warn',e.ordem,e.id]; }
-function metaRowVals(p){ return [p.titulo,p.subtitulo||'',p.inicio,p.fim,p.icone||'',p.criado,p.atualizado,p.id,p.collabOwner||'']; }
+function metaRowVals(p){ return [p.titulo,p.subtitulo||'',p.inicio,p.fim,p.icone||'',p.criado,p.atualizado,p.id,p.collabOwner||'',plFmtIds(p.listaIds)]; }
 
 function plPersistForPlan(p, opts){
   opts=opts||{};
@@ -621,9 +794,9 @@ function saveNewPlan(){
   if(!t) t=(newIcon?newIcon+' ':'')+plFmtDay(newStart)+(newStart!==newEnd?('–'+plFmtDay(newEnd)):'');
   if(_editPlanId){ applyPlanDates(_editPlanId, t, ($('newSub').value||'').trim(), newStart, newEnd, newIcon); closeNew(); return; }
   var now=new Date().toISOString();
-  var p={ id:uuid(), titulo:t, subtitulo:($('newSub').value||'').trim(), inicio:newStart, fim:newEnd, icone:newIcon||'✈️', criado:now, atualizado:now };
+  var p={ id:uuid(), titulo:t, subtitulo:($('newSub').value||'').trim(), inicio:newStart, fim:newEnd, icone:newIcon||'✈️', criado:now, atualizado:now, listaIds:[] };
   var days=plDaysFromRange(newStart,newEnd).map(function(x,i){
-    return { id:uuid(), planoId:p.id, data:x.date, titulo:'', icone:i===0?'✈️':(i===x.ordem && i===plDaysFromRange(newStart,newEnd).length-1?'✈️':'📅'), ordem:x.ordem };
+    return { id:uuid(), planoId:p.id, data:x.date, titulo:'', icone:i===0?'✈️':(i===x.ordem && i===plDaysFromRange(newStart,newEnd).length-1?'✈️':'📅'), ordem:x.ordem, listaIds:[] };
   });
   if(days.length===1) days[0].icone=newIcon||'📅';
   else { days[0].icone=newIcon||'✈️'; days[days.length-1].icone='✈️'; days.forEach(function(d,i){ if(i&&i<days.length-1 && !d.icone) d.icone='📅'; }); }
@@ -653,7 +826,7 @@ function applyPlanDates(id, titulo, subtitulo, start, end, icone){
   var extraHasEvt=extra.some(function(d){ return eventsOf(d.id).length; });
   function go(){
     var add=wanted.filter(function(w){ return !keep[w.date]; }).map(function(w){
-      return { id:uuid(), planoId:id, data:w.date, titulo:'', icone:'📅', ordem:w.ordem };
+      return { id:uuid(), planoId:id, data:w.date, titulo:'', icone:'📅', ordem:w.ordem, listaIds:[] };
     });
     extra.forEach(function(d){
       DATA.eventos=(DATA.eventos||[]).filter(function(e){ return e.diaId!==d.id; });
@@ -691,7 +864,7 @@ function persistPlanShape(p, removedDays, addedDays){
         return findRowInSid(sid, tab, p.collabSheetId?7:7, p.id).then(function(row){
           if(row<0) throw plRowErr(tab);
           var vals=p.collabSheetId?metaRowVals(p):planRowVals(p);
-          var last=p.collabSheetId?'I':'H';
+          var last=p.collabSheetId?'J':'I';
           return JB.api('PUT', plSheetUrl(sid, '/values/'+encodeURIComponent(tab+'!A'+row+':'+last+row)+'?valueInputOption=RAW'), { values:[vals] });
         });
       }).then(function(){
@@ -699,7 +872,7 @@ function persistPlanShape(p, removedDays, addedDays){
         return Promise.all(kept.map(function(d){
           return findRowInSid(sid,'Dias',5,d.id).then(function(row){
             if(row<0) return;
-            return JB.api('PUT', plSheetUrl(sid, '/values/'+encodeURIComponent('Dias!A'+row+':F'+row)+'?valueInputOption=RAW'), { values:[dayRowVals(d)] });
+            return JB.api('PUT', plSheetUrl(sid, '/values/'+encodeURIComponent('Dias!A'+row+':G'+row)+'?valueInputOption=RAW'), { values:[dayRowVals(d)] });
           });
         }));
       });
@@ -737,7 +910,7 @@ function touchPlan(p){
       return findRowInSid(sid, tab, 7, p.id).then(function(row){
         if(row<0) throw plRowErr(tab);
         var vals=p.collabSheetId?metaRowVals(p):planRowVals(p);
-        var last=p.collabSheetId?'I':'H';
+        var last=p.collabSheetId?'J':'I';
         return JB.api('PUT', plSheetUrl(sid, '/values/'+encodeURIComponent(tab+'!A'+row+':'+last+row)+'?valueInputOption=RAW'), { values:[vals] });
       });
     },
@@ -756,22 +929,29 @@ function openDayEdit(id){
 }
 function pickDayIcon(ic){ window._plDayIcon=ic; plPaintIconPicker('day'); }
 function closeDayEdit(){ $('dayOverlay').classList.remove('open'); _editDayId=null; }
-function commitDayEdit(){
-  var d=(DATA.dias||[]).find(function(x){return x.id===_editDayId;}); if(!d) return;
-  d.titulo=($('dayTitle').value||'').trim();
-  d.icone=window._plDayIcon||d.icone;
-  var p=plan(openPlanId);
+function persistDay(d, opts){
+  opts=opts||{};
+  var p=plan(d.planoId)||plan(openPlanId);
+  if(!p) return;
+  if(JB.isGhost&&JB.isGhost()){ if(opts.onSuccess) opts.onSuccess(); return; }
   var sid=plSidForPlan(p);
   plPersistForPlan(p, {
     run: function(){
       return findRowInSid(sid,'Dias',5,d.id).then(function(row){
         if(row<0) throw plRowErr('Dias');
-        return JB.api('PUT', plSheetUrl(sid, '/values/'+encodeURIComponent('Dias!A'+row+':F'+row)+'?valueInputOption=RAW'), { values:[dayRowVals(d)] });
+        return JB.api('PUT', plSheetUrl(sid, '/values/'+encodeURIComponent('Dias!A'+row+':G'+row)+'?valueInputOption=RAW'), { values:[dayRowVals(d)] });
       });
     },
-    onSuccess: function(){ touchPlan(p); closeDayEdit(); render(); },
-    onError: plWriteErr
+    onSuccess: opts.onSuccess,
+    onError: opts.onError||plWriteErr
   });
+}
+function commitDayEdit(){
+  var d=(DATA.dias||[]).find(function(x){return x.id===_editDayId;}); if(!d) return;
+  d.titulo=($('dayTitle').value||'').trim();
+  d.icone=window._plDayIcon||d.icone;
+  var p=plan(openPlanId);
+  persistDay(d, { onSuccess: function(){ if(p) touchPlan(p); closeDayEdit(); render(); } });
 }
 
 function openEvtEdit(id, dayId){

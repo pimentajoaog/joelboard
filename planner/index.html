@@ -75,6 +75,14 @@
   </div>
 </div>
 
+<div class="overlay" id="linkOverlay" onclick="if(event.target===this)closeLinkPicker()">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="linkModalTitle">Colar lista</div><button class="x" onclick="closeLinkPicker()">✕</button></div>
+    <div class="rg" style="margin-bottom:10px">O Notes continua sendo o editor. Aqui você só cola a lista no plano ou no dia.</div>
+    <div id="linkPickerList"></div>
+  </div>
+</div>
+
 <div class="overlay" id="setOverlay" onclick="if(event.target===this)closeSettings()">
   <div class="modal">
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>
@@ -149,6 +157,7 @@
 
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="/joelboard.js"></script>
+<script src="/jb-link.js"></script>
 <script src="/planner.js"></script>
 <script src="/planner-collab.js"></script>
 </body>

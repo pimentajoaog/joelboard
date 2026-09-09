@@ -178,7 +178,7 @@ function bootSheet(){
       notasGrid=ctx.grid;
       return ensureTabs().then(ensureVenceHeader).then(ensurePresetHeader).then(ensureStickerHeader).then(ensureTipoHeader).then(loadData);
     })
-    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(m)+'</div></div>'); });
+    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } if(JB.isTransientErr&&JB.isTransientErr(e)){ loadingHtml(JB.bootRetryHtml('bootSheet()')); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(m)+'</div></div>'); });
 }
 function ensureTabs(){
   var missing=NOTAS_TABS.filter(function(t){ return notasGrid[t[0]]==null; });

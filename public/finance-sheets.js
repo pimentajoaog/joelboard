@@ -152,6 +152,11 @@ function jbBootSheet(){
     var m = String((e&&e.message)||'');
     if (m.indexOf('silent_timeout')>-1 || m.indexOf('auth_failed')>-1 || m.indexOf('401')>-1 || m.indexOf('cancelled')>-1) { jbShowSignIn(); return; }
     if (m === 'JB_NEED_SHEET'){ var f=(e.files||[]); if (f.length>1) jbOfferPick(f); else jbShowLink(); return; }
+    if (JB.isTransientErr && JB.isTransientErr(e)) {
+      jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">' + (JB.transientErrMessage ? JB.transientErrMessage() : 'O Google está instável agora.')
+        + '<br><br><button type="button" onclick="jbBootSheet()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit">Tentar de novo</button></div>');
+      return;
+    }
     jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">Erro ao carregar: ' + m + '<br><br><button onclick="jbUnlink()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit">Trocar planilha</button></div>');
   });
 }
@@ -210,7 +215,11 @@ function jbLoad(){
   });
 }
 var jbRecovered=false;
-function jbLoadAndBoot(){ jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando seus dados…</div>'); jbLoad().then(function(data){ jbRecovered=false; boot(data); }).catch(function(e){ var m=String((e&&e.message)||''); if ((m.indexOf('403')>-1 || m.indexOf('404')>-1 || m.indexOf('PERMISSION')>-1 || m.indexOf('not found')>-1) && !jbRecovered) { jbRecovered=true; try{ JB.clearSheetId('finance'); }catch(_){} jbBootSheet(); return; } jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">Erro ao carregar: ' + e.message + '<br><br><button onclick="jbUnlink()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit">Trocar planilha</button></div>'); }); }
+function jbLoadAndBoot(){ jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando seus dados…</div>'); jbLoad().then(function(data){ jbRecovered=false; boot(data); }).catch(function(e){ var m=String((e&&e.message)||''); if (JB.isTransientErr && JB.isTransientErr(e)) {
+      jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">' + (JB.transientErrMessage ? JB.transientErrMessage() : 'O Google está instável agora.')
+        + '<br><br><button type="button" onclick="jbLoadAndBoot()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit">Tentar de novo</button></div>');
+      return;
+    } if ((m.indexOf('403')>-1 || m.indexOf('404')>-1 || m.indexOf('PERMISSION')>-1 || m.indexOf('not found')>-1) && !jbRecovered) { jbRecovered=true; try{ JB.clearSheetId('finance'); }catch(_){} jbBootSheet(); return; } jbLoadingHtml('<div style="text-align:center;padding:30px;color:var(--expense)">Erro ao carregar: ' + e.message + '<br><br><button onclick="jbUnlink()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit">Trocar planilha</button></div>'); }); }
 function jbBool(v){ return FinMath.jbBool(v); }
 function jbNum(v){ return FinMath.jbNum(v); }
 function jbDate(v){ return FinMath.jbDate(v); }

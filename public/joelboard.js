@@ -653,6 +653,7 @@
     if (!navigator.onLine) return true;
     var st = (err && err.status) || 0;
     if (err && err.name === 'TypeError') return true;
+    if (err && err.code === 'JB_TRANSIENT') return true;
     return st === 429 || st === 503 || st === 502 || st === 504;
   }
   function isPermanentFlushErr(err){
@@ -725,21 +726,67 @@
   }
   function onOutboxChange(fn){ if (typeof fn === 'function') obListeners.push(fn); }
 
-  // core API call: Bearer auth + auto silent-refresh & retry once on 401
+  // core API call: Bearer auth + auto silent-refresh & retry once on 401; retry 429/5xx so a Google blip does not stick on “Procurando…”
+  var API_TIMEOUT_MS = 12000;
+  var API_RETRY_MAX = 3;
+  function jbTransientHttp(status){
+    status = Number(status) || 0;
+    return status === 429 || status === 502 || status === 503 || status === 504;
+  }
+  function jbRetryDelayMs(attempt){
+    return attempt <= 0 ? 500 : 1500;
+  }
+  function jbIsAbortErr(err){
+    if (!err) return false;
+    if (err.name === 'AbortError') return true;
+    return /aborted|AbortError/i.test(String(err.message || ''));
+  }
+  function jbTransientErrMessage(){
+    return 'O Google está instável agora. Tente de novo em instantes.';
+  }
+  function isTransientErr(err){
+    if (!err) return false;
+    if (err.code === 'JB_TRANSIENT') return true;
+    if (jbTransientHttp(err.status)) return true;
+    if (jbIsAbortErr(err)) return true;
+    var m = String(err.message || '');
+    return m.indexOf('503') > -1 || m.indexOf('UNAVAILABLE') > -1 || m.indexOf('502') > -1 || m.indexOf('429') > -1 || m.indexOf('instável') > -1;
+  }
+  function bootRetryHtml(retryCall){
+    return '<div class="gate"><div class="gs" style="color:var(--primary);margin-top:48px">' + String(jbTransientErrMessage()).replace(/</g, '&lt;')
+      + '</div><button type="button" class="btn-primary" style="margin-top:16px" onclick="' + String(retryCall || 'location.reload()').replace(/"/g, '') + '">Tentar de novo</button></div>';
+  }
+  function fetchWithTimeout(url, opts, ms){
+    ms = ms == null ? API_TIMEOUT_MS : ms;
+    if (typeof AbortController === 'undefined') return fetch(url, opts);
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { try { ctrl.abort(); } catch (_) {} }, ms);
+    var o = {};
+    if (opts) for (var k in opts) if (Object.prototype.hasOwnProperty.call(opts, k)) o[k] = opts[k];
+    o.signal = ctrl.signal;
+    return fetch(url, o).then(function (r) { clearTimeout(timer); return r; }, function (err) { clearTimeout(timer); throw err; });
+  }
   function executeApi(method, url, body){
     method = method || 'GET';
     function doFetch(t){
       var o = { method: method, headers: { Authorization: 'Bearer ' + t } };
       if (body) { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(body); }
-      return fetch(url, o);
+      return fetchWithTimeout(url, o, API_TIMEOUT_MS);
     }
-    function handle(r, allowRefresh){
+    function delay(ms){ return new Promise(function (res) { setTimeout(res, ms); }); }
+    function transientFail(status){
+      var e = new Error(jbTransientErrMessage());
+      e.status = status || 503;
+      e.code = 'JB_TRANSIENT';
+      return e;
+    }
+    function handle(r, allowRefresh, attempt, tok){
       if (r.status === 401 && allowRefresh) {
         return requestToken(false, { force: true }).then(function (nt) {
-          return doFetch(nt).then(function (r2) { return handle(r2, false); });
+          return doFetch(nt).then(function (r2) { return handle(r2, false, attempt, nt); });
         }).catch(function (err) {
           pullSharedToken();
-          if (isTokenValid()) return doFetch(readToken()).then(function (r2) { return handle(r2, false); });
+          if (isTokenValid()) return doFetch(readToken()).then(function (r2) { return handle(r2, false, attempt, readToken()); });
           promptReLogin('api_refresh');
           throw err;
         });
@@ -752,6 +799,9 @@
           throw e;
         });
       }
+      if (jbTransientHttp(r.status) && attempt < API_RETRY_MAX - 1) {
+        return delay(jbRetryDelayMs(attempt)).then(function () { return run(attempt + 1, false); });
+      }
       if (!r.ok) return r.text().then(function (tx) {
         if (r.status === 403 && /insufficient authentication scopes/i.test(tx)) {
           clearTokenStorage();
@@ -761,15 +811,28 @@
           scopeErr.code = 'JB_NEED_SCOPES';
           throw scopeErr;
         }
+        if (jbTransientHttp(r.status) || /UNAVAILABLE|backendError/i.test(tx)) throw transientFail(r.status);
         var e = new Error('HTTP ' + r.status + ' — ' + tx.slice(0, 200));
         e.status = r.status;
         throw e;
       });
       return (r.status === 204) ? {} : r.json();
     }
-    var tok = cachedToken();
-    if (!tok) return tokenForApi().then(function (t) { return doFetch(t).then(function (r) { return handle(r, true); }); });
-    return doFetch(tok).then(function (r) { return handle(r, true); });
+    function run(attempt, allowRefresh){
+      var start = cachedToken() ? Promise.resolve(cachedToken()) : tokenForApi();
+      return start.then(function (tok) {
+        return doFetch(tok).then(function (r) {
+          return handle(r, allowRefresh, attempt, tok);
+        }, function (err) {
+          if ((jbIsAbortErr(err) || (err && err.name === 'TypeError')) && attempt < API_RETRY_MAX - 1) {
+            return delay(jbRetryDelayMs(attempt)).then(function () { return run(attempt + 1, false); });
+          }
+          if (jbIsAbortErr(err)) throw transientFail(0);
+          throw err;
+        });
+      });
+    }
+    return run(0, true);
   }
   function api(method, url, body, opts){
     if (isGhost()) return Promise.resolve({ values: [], valueRanges: [], spreadsheetId: 'ghost', sheets: [] });
@@ -982,6 +1045,7 @@
     if (m === 'signed_out') return 'Você saiu. Entre de novo com Google.';
     if (m === 'auth_failed') return 'Não foi possível entrar. Tente de novo.';
     if (m === 'JB_WRITE_LOCK') return 'Outra aba está salvando. Tente em instantes.';
+    if (isTransientErr(err)) return jbTransientErrMessage();
     return m || 'falha ao salvar';
   }
   function tokenForApi(){
@@ -2273,6 +2337,7 @@
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, bootAuthIfExpired: bootAuthIfExpired, onSessionExpired: onSessionExpired, onAuthRestored: onAuthRestored, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail, isGhost: isGhost, ghostHostOk: jbGhostHostOk, GHOST_EMAIL: GHOST_EMAIL, ghostFixture: ghostFixture,
     requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
+    isTransientErr: isTransientErr, transientErrMessage: jbTransientErrMessage, bootRetryHtml: bootRetryHtml,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
     feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,

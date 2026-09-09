@@ -178,14 +178,17 @@ test('planner day rows expand a view-only peek instead of listing hours', functi
   var closed = cal.eventRowHtml(evs[1], { compact: true, showDate: true });
   assert.match(closed, /data-peek="1"/);
   assert.doesNotMatch(closed, /jb-cal-peek/);
+  assert.doesNotMatch(closed, /jb-cal-rowgo/);
   assert.doesNotMatch(closed, /Café/);
   var open = cal.eventRowHtml(evs[1], { compact: true, showDate: true, peekId: evs[1].id });
   assert.match(open, /jb-cal-peek/);
+  assert.match(open, /role="dialog"/);
   assert.match(open, /Café/);
   assert.match(open, /Jantar/);
   assert.match(open, /Reserva/);
   assert.match(open, /Abrir no Planner/);
   assert.match(open, /jb-cal-peektitle/);
+  assert.doesNotMatch(open, /jb-cal-rowgo/);
 });
 
 test('eventsFromNotas keeps completed due lists as done', function () {

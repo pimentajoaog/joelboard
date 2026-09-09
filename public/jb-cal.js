@@ -276,11 +276,9 @@
       });
       var ids = parseIds(d.listaIds);
       parseIds(p.listaIds).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); });
-      var n = items.length;
       var dayTitle = String(d.titulo || p.titulo || 'Dia do plano');
       var subBits = [];
       if (d.titulo && p.titulo) subBits.push(String(p.titulo));
-      if (n) subBits.push(n === 1 ? '1 horário' : n + ' horários');
       out.push(ev({
         app: 'planner', id: 'planner-day:' + d.id, rawId: String(p.id || d.planoId || ''),
         date: date, title: (d.icone ? String(d.icone) + ' ' : '') + dayTitle,
@@ -527,7 +525,8 @@
             + (it.nota ? '<div class="jb-cal-peekn">' + esc(it.nota) + '</div>' : '') + pill + '</div></div>';
         }).join('')
       : '<div class="jb-cal-peekempty">Nada neste dia</div>';
-    return '<div class="jb-cal-peek">'
+    return '<div class="jb-cal-peek" role="dialog" aria-label="' + esc(e.title || 'Dia do plano') + '">'
+      + '<span class="jb-cal-peeknub" aria-hidden="true"></span>'
       + '<div class="jb-cal-peekh">'
       + '<a class="jb-cal-peektitle" href="' + esc(href) + '">' + esc(e.title || 'Dia do plano') + '</a>'
       + '<a class="jb-cal-peekgo" href="' + esc(href) + '">Abrir no Planner</a>'
@@ -544,7 +543,6 @@
       ? ((e.time ? esc(e.time) : '') + (opts.showDate ? ((e.time ? ' · ' : '') + esc(shortDay(e.date))) : ''))
       : ((e.kind ? '<span class="jb-cal-kind">' + esc(e.kind) + '</span>' : '') + (time ? (' · ' + time) : '') + (opts.showDate ? (' · ' + esc(fmtBR(e.date))) : ''));
     if (!opts.compact && e.subtitle) meta += (meta ? ' · ' : '') + esc(e.subtitle);
-    else if (opts.compact && e.app === 'planner' && e.subtitle) meta += (meta ? ' · ' : '') + esc(e.subtitle);
     var href = e.href ? ' data-href="' + esc(e.href) + '"' : '';
     var raw = e.rawId ? ' data-raw="' + esc(e.rawId) + '"' : '';
     var chk = opts.toggle
@@ -554,12 +552,11 @@
     var barBg = (e.linkedNotes && window.JB && JB.link) ? JB.link.barCss(true) : ('background:' + esc(e.color));
     var peekable = e.app === 'planner' && e.items != null;
     var openPeek = peekable && opts.peekId && opts.peekId === e.id;
-    var go = (peekable && e.href) ? ('<a class="jb-cal-rowgo" href="' + esc(e.href) + '" title="Abrir no Planner" aria-label="Abrir no Planner">↗</a>') : '';
     var row = '<div class="jb-cal-row' + (e.done ? ' done' : '') + (e.linkedNotes ? ' linked' : '') + (openPeek ? ' open' : '') + '" data-id="' + esc(e.id) + '" data-app="' + esc(e.app) + '"' + href + raw
       + (peekable ? ' data-peek="1" aria-expanded="' + (openPeek ? 'true' : 'false') + '"' : '') + '>'
       + '<span class="jb-cal-bar" style="' + barBg + '"></span>'
       + '<div class="jb-cal-info"><div class="jb-cal-title">' + esc(e.title || '(sem título)') + '</div>'
-      + (meta ? '<div class="jb-cal-meta">' + meta + '</div>' : '') + '</div>' + flag + linkPill + go + chk + '</div>';
+      + (meta ? '<div class="jb-cal-meta">' + meta + '</div>' : '') + '</div>' + flag + linkPill + chk + '</div>';
     if (!peekable) return row;
     return '<div class="jb-cal-rowwrap' + (openPeek ? ' open' : '') + '">' + row + (openPeek ? plannerPeekHtml(e) : '') + '</div>';
   }
@@ -788,6 +785,17 @@
       document.removeEventListener('mousedown', el._jbCalDocClose);
       el._jbCalDocClose = null;
     }
+    if (el._jbCalPeekMove) {
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('scroll', el._jbCalPeekMove, true);
+        window.removeEventListener('resize', el._jbCalPeekMove);
+      }
+      el._jbCalPeekMove = null;
+    }
+    if (el._jbCalEsc) {
+      document.removeEventListener('keydown', el._jbCalEsc);
+      el._jbCalEsc = null;
+    }
     opts = opts || {};
     var state = {
       events: opts.events || [],
@@ -833,6 +841,42 @@
     function listOpts() {
       return { limit: state.appLimit, expanded: state.expandedApps, compact: state.compact, toggle: !!state.onToggle, peekId: state.peekId };
     }
+    function placePeek() {
+      var wrap = el.querySelector('.jb-cal-rowwrap.open');
+      var peek = wrap && wrap.querySelector('.jb-cal-peek');
+      var row = wrap && wrap.querySelector('.jb-cal-row');
+      if (!peek || !row) return;
+      peek.classList.remove('fly');
+      peek.style.left = '';
+      peek.style.top = '';
+      peek.style.width = '';
+      peek.setAttribute('data-side', 'right');
+      var r = row.getBoundingClientRect();
+      var w = 260;
+      var spaceRight = window.innerWidth - r.right - 16;
+      if (spaceRight >= w) return;
+      var h = peek.offsetHeight || 120;
+      var left = r.left - 10 - w;
+      var side = 'left';
+      if (left < 12) {
+        left = Math.max(12, window.innerWidth - 12 - w);
+        side = 'right';
+      }
+      var top = r.top;
+      if (top + h > window.innerHeight - 12) top = Math.max(12, window.innerHeight - 12 - h);
+      peek.classList.add('fly');
+      peek.style.width = w + 'px';
+      peek.style.left = left + 'px';
+      peek.style.top = top + 'px';
+      peek.setAttribute('data-side', side);
+    }
+    function bindPeekMove() {
+      if (el._jbCalPeekMove) return;
+      if (typeof window === 'undefined' || !window.addEventListener) return;
+      el._jbCalPeekMove = function () { if (state.peekId) placePeek(); };
+      window.addEventListener('scroll', el._jbCalPeekMove, true);
+      window.addEventListener('resize', el._jbCalPeekMove);
+    }
     function paintAgenda() {
       var range = rangeForView('month', state.date);
       var vis = eventsInRange(filtered(), range.start, range.end);
@@ -852,6 +896,8 @@
       html += '</div>';
       el.innerHTML = html;
       bind();
+      placePeek();
+      bindPeekMove();
     }
     function paint() {
       if (state.agendaFirst) { paintAgenda(); return; }
@@ -887,6 +933,8 @@
       html += '</div>';
       el.innerHTML = html;
       bind();
+      placePeek();
+      bindPeekMove();
     }
     function bind() {
       el.querySelectorAll('[data-view]').forEach(function (b) {
@@ -1004,12 +1052,28 @@
       });
       if (!el._jbCalDocClose) {
         el._jbCalDocClose = function (ev) {
-          if (!state.clusterOpen) return;
-          if (ev.target && ev.target.closest && ev.target.closest('.jb-cal-cluster-wrap')) return;
-          state.clusterOpen = false;
-          syncClusterDom();
+          var t = ev.target;
+          if (state.clusterOpen) {
+            if (!(t && t.closest && t.closest('.jb-cal-cluster-wrap'))) {
+              state.clusterOpen = false;
+              syncClusterDom();
+            }
+          }
+          if (state.peekId) {
+            if (t && t.closest && (t.closest('.jb-cal-rowwrap.open') || t.closest('.jb-cal-peek'))) return;
+            state.peekId = null;
+            paint();
+          }
         };
         document.addEventListener('mousedown', el._jbCalDocClose);
+      }
+      if (!el._jbCalEsc) {
+        el._jbCalEsc = function (ev) {
+          if (ev.key !== 'Escape' || !state.peekId) return;
+          state.peekId = null;
+          paint();
+        };
+        document.addEventListener('keydown', el._jbCalEsc);
       }
     }
 

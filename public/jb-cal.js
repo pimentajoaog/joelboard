@@ -145,7 +145,9 @@
       href: o.href || '',
       color: o.color || meta.color,
       kind: o.kind || meta.kind,
-      listaIds: (window.JB && JB.link) ? JB.link.parseIds(o.listaIds) : (o.listaIds || [])
+      listaIds: (window.JB && JB.link) ? JB.link.parseIds(o.listaIds) : (o.listaIds || []),
+      items: o.items || null,
+      icone: o.icone || ''
     };
   }
 
@@ -235,47 +237,56 @@
       });
     });
   }
+  function plannerHref(planId, dayId) {
+    var q = 'p=' + encodeURIComponent(planId || '');
+    if (dayId) q += '&d=' + encodeURIComponent(dayId);
+    return '/planner/?' + q;
+  }
   function eventsFromPlanner(planos, dias, eventos) {
-    var planBy = {}, dayBy = {};
+    var planBy = {}, byDay = {};
     (planos || []).forEach(function (p) { planBy[p.id] = p; });
-    (dias || []).forEach(function (d) { dayBy[d.id] = d; });
     var parseIds = function (ids) { return (window.JB && JB.link) ? JB.link.parseIds(ids) : (ids || []); };
-    var out = [];
-    (planos || []).forEach(function (p) {
-      var ids = parseIds(p.listaIds);
-      if (!ids.length) return;
-      var date = sheetsDate(p.inicio);
-      if (!date) return;
-      out.push(ev({
-        app: 'planner', id: 'planner-plan:' + p.id, rawId: String(p.id || ''),
-        date: date, title: String(p.titulo || 'Plano'), subtitle: p.subtitulo ? String(p.subtitulo) : '',
-        href: '/planner/?p=' + encodeURIComponent(p.id || ''), kind: 'plano',
-        listaIds: ids
-      }));
+    (eventos || []).forEach(function (e) {
+      var id = e && e.diaId;
+      if (!id) return;
+      if (!byDay[id]) byDay[id] = [];
+      byDay[id].push(e);
     });
+    var out = [];
     (dias || []).forEach(function (d) {
       var date = sheetsDate(d.data || d.date);
       if (!date) return;
       var p = planBy[d.planoId] || {};
+      var kids = (byDay[d.id] || []).slice().sort(function (a, b) {
+        var am = a.horaMin === '' || a.horaMin == null ? 1e9 : Number(a.horaMin);
+        var bm = b.horaMin === '' || b.horaMin == null ? 1e9 : Number(b.horaMin);
+        if (am !== bm) return am - bm;
+        return (Number(a.ordem) || 0) - (Number(b.ordem) || 0);
+      });
+      var items = kids.map(function (e) {
+        return {
+          time: e.hora || e.time || '',
+          timeMin: e.horaMin,
+          title: String(e.titulo || 'Evento'),
+          icone: e.icone || '',
+          nota: e.nota || '',
+          tag: e.tag || '',
+          tagCor: e.tagCor || ''
+        };
+      });
+      var ids = parseIds(d.listaIds);
+      parseIds(p.listaIds).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); });
+      var n = items.length;
+      var dayTitle = String(d.titulo || p.titulo || 'Dia do plano');
+      var subBits = [];
+      if (d.titulo && p.titulo) subBits.push(String(p.titulo));
+      if (n) subBits.push(n === 1 ? '1 horário' : n + ' horários');
       out.push(ev({
         app: 'planner', id: 'planner-day:' + d.id, rawId: String(p.id || d.planoId || ''),
-        date: date, title: String(d.titulo || p.titulo || 'Dia do plano'),
-        subtitle: p.titulo && d.titulo ? String(p.titulo) : '',
-        href: '/planner/?p=' + encodeURIComponent(p.id || d.planoId || ''), kind: 'plano',
-        listaIds: parseIds(d.listaIds)
-      }));
-    });
-    (eventos || []).forEach(function (e) {
-      var day = dayBy[e.diaId];
-      var date = day ? sheetsDate(day.data || day.date) : '';
-      if (!date) return;
-      var p = planBy[day.planoId] || {};
-      out.push(ev({
-        app: 'planner', id: 'planner-evt:' + e.id, rawId: String(p.id || day.planoId || ''),
-        date: date, time: e.hora || '', timeMin: e.horaMin, title: String(e.titulo || 'Evento'),
-        subtitle: e.nota ? String(e.nota) : (p.titulo || ''),
-        href: '/planner/?p=' + encodeURIComponent(p.id || day.planoId || ''), kind: 'plano',
-        listaIds: parseIds(day.listaIds)
+        date: date, title: (d.icone ? String(d.icone) + ' ' : '') + dayTitle,
+        subtitle: subBits.join(' · '),
+        href: plannerHref(p.id || d.planoId, d.id), kind: 'plano',
+        listaIds: ids, items: items, icone: d.icone || ''
       }));
     });
     return out;
@@ -504,6 +515,24 @@
     var d = parseYmd(iso); if (!d) return iso || '';
     return d.getDate() + ' ' + MO[d.getMonth()];
   }
+  function plannerPeekHtml(e) {
+    var items = e.items || [];
+    var href = e.href || '/planner/';
+    var rows = items.length
+      ? items.map(function (it) {
+          var pill = it.tag ? ('<span class="jb-cal-peekpill ' + esc(it.tagCor || 'warn') + '">' + esc(it.tag) + '</span>') : '';
+          return '<div class="jb-cal-peekrow">'
+            + '<div class="jb-cal-peektime">' + esc(it.time || '—') + '</div>'
+            + '<div><div class="jb-cal-peekt">' + (it.icone ? esc(it.icone) + ' ' : '') + esc(it.title || 'Evento') + '</div>'
+            + (it.nota ? '<div class="jb-cal-peekn">' + esc(it.nota) + '</div>' : '') + pill + '</div></div>';
+        }).join('')
+      : '<div class="jb-cal-peekempty">Nada neste dia</div>';
+    return '<div class="jb-cal-peek">'
+      + '<div class="jb-cal-peekh">'
+      + '<a class="jb-cal-peektitle" href="' + esc(href) + '">' + esc(e.title || 'Dia do plano') + '</a>'
+      + '<a class="jb-cal-peekgo" href="' + esc(href) + '">Abrir no Planner</a>'
+      + '</div>' + rows + '</div>';
+  }
   function eventRowHtml(e, opts) {
     opts = opts || {};
     var past = !!opts.past || (daysUntil(e.date) != null && daysUntil(e.date) < 0);
@@ -515,6 +544,7 @@
       ? ((e.time ? esc(e.time) : '') + (opts.showDate ? ((e.time ? ' · ' : '') + esc(shortDay(e.date))) : ''))
       : ((e.kind ? '<span class="jb-cal-kind">' + esc(e.kind) + '</span>' : '') + (time ? (' · ' + time) : '') + (opts.showDate ? (' · ' + esc(fmtBR(e.date))) : ''));
     if (!opts.compact && e.subtitle) meta += (meta ? ' · ' : '') + esc(e.subtitle);
+    else if (opts.compact && e.app === 'planner' && e.subtitle) meta += (meta ? ' · ' : '') + esc(e.subtitle);
     var href = e.href ? ' data-href="' + esc(e.href) + '"' : '';
     var raw = e.rawId ? ' data-raw="' + esc(e.rawId) + '"' : '';
     var chk = opts.toggle
@@ -522,10 +552,16 @@
       : '';
     var linkPill = (e.linkedNotes && e.linkPeek) ? ('<span class="jb-cal-flag jb-cal-linkpill">' + esc(e.linkPeek) + '</span>') : '';
     var barBg = (e.linkedNotes && window.JB && JB.link) ? JB.link.barCss(true) : ('background:' + esc(e.color));
-    return '<div class="jb-cal-row' + (e.done ? ' done' : '') + (e.linkedNotes ? ' linked' : '') + '" data-id="' + esc(e.id) + '" data-app="' + esc(e.app) + '"' + href + raw + '>'
+    var peekable = e.app === 'planner' && e.items != null;
+    var openPeek = peekable && opts.peekId && opts.peekId === e.id;
+    var go = (peekable && e.href) ? ('<a class="jb-cal-rowgo" href="' + esc(e.href) + '" title="Abrir no Planner" aria-label="Abrir no Planner">↗</a>') : '';
+    var row = '<div class="jb-cal-row' + (e.done ? ' done' : '') + (e.linkedNotes ? ' linked' : '') + (openPeek ? ' open' : '') + '" data-id="' + esc(e.id) + '" data-app="' + esc(e.app) + '"' + href + raw
+      + (peekable ? ' data-peek="1" aria-expanded="' + (openPeek ? 'true' : 'false') + '"' : '') + '>'
       + '<span class="jb-cal-bar" style="' + barBg + '"></span>'
       + '<div class="jb-cal-info"><div class="jb-cal-title">' + esc(e.title || '(sem título)') + '</div>'
-      + (meta ? '<div class="jb-cal-meta">' + meta + '</div>' : '') + '</div>' + flag + linkPill + chk + '</div>';
+      + (meta ? '<div class="jb-cal-meta">' + meta + '</div>' : '') + '</div>' + flag + linkPill + go + chk + '</div>';
+    if (!peekable) return row;
+    return '<div class="jb-cal-rowwrap' + (openPeek ? ' open' : '') + '">' + row + (openPeek ? plannerPeekHtml(e) : '') + '</div>';
   }
 
   function monthCellsHtml(events, date, sel) {
@@ -602,12 +638,13 @@
     }).join('') + '</div>';
   }
 
-  function upcomingHtml(events, toggle) {
+  function upcomingHtml(events, opts) {
+    opts = opts || {};
     var today = todayYmd();
     var up = sortEvents((events || []).filter(function (e) { return !e.done && e.date >= today; })).slice(0, 12);
     if (!up.length) return '';
     return '<div class="jb-cal-sec"><div class="jb-cal-sect">Próximos</div>'
-      + up.map(function (e) { return eventRowHtml(e, { showDate: true, toggle: !!toggle }); }).join('') + '</div>';
+      + up.map(function (e) { return eventRowHtml(e, { showDate: true, toggle: !!opts.toggle, peekId: opts.peekId }); }).join('') + '</div>';
   }
 
   function applyFilters(events, filters) {
@@ -672,7 +709,7 @@
     var meta = APP_META[app] || APP_META.study;
     var cap = capByApp(events, opts.limit || 0, opts.expanded, opts.scope);
     var rows = cap.events.map(function (e) {
-      return eventRowHtml(e, { showDate: !!opts.showDate, compact: !!opts.compact, toggle: !!opts.toggle, past: !!opts.past });
+      return eventRowHtml(e, { showDate: !!opts.showDate, compact: !!opts.compact, toggle: !!opts.toggle, past: !!opts.past, peekId: opts.peekId });
     }).join('');
     return '<div class="jb-cal-app' + (opts.past ? ' past' : '') + '" style="--ink:' + meta.ink + ';--bg:' + meta.bg + '">'
       + '<div class="jb-cal-appt"><span class="jb-cal-appt-ico">' + appGlyph(app) + '</span>' + esc(meta.label)
@@ -689,7 +726,7 @@
     if (!events.length) return emptyPeriodHtml(emptyHint);
     return appBlocksHtml(events, {
       limit: opts.limit, expanded: opts.expanded, compact: opts.compact,
-      toggle: opts.toggle, showDate: true
+      toggle: opts.toggle, showDate: true, peekId: opts.peekId
     });
   }
   function groupByDay(events) {
@@ -724,7 +761,7 @@
     var cap = capByApp(events, opts.limit || 0, opts.expanded, date);
     var extra = dayRelChip(date) + (opts.extra || '');
     var rows = cap.events.map(function (e) {
-      return eventRowHtml(e, { showDate: false, compact: false, toggle: !!opts.toggle, past: !!opts.past });
+      return eventRowHtml(e, { showDate: false, compact: false, toggle: !!opts.toggle, past: !!opts.past, peekId: opts.peekId });
     }).join('');
     if (!rows) rows = '<div class="rg">Nada nesse dia.</div>';
     return '<div class="jb-cal-dayblock">' + dayHeadHtml(date, extra) + rows + moreBarHtml(cap.extra, date) + '</div>';
@@ -773,7 +810,8 @@
       appLimit: opts.appLimit == null ? 0 : Number(opts.appLimit) || 0,
       expandedApps: opts.expandedApps ? Object.assign({}, opts.expandedApps) : {},
       picked: opts.picked === undefined ? (opts.view === 'month' && (opts.compact || opts.agendaFirst) ? null : (opts.date || null)) : opts.picked,
-      clusterOpen: false
+      clusterOpen: false,
+      peekId: opts.peekId || null
     };
 
     function toggleAppFilter(app) {
@@ -793,7 +831,7 @@
       return c;
     }
     function listOpts() {
-      return { limit: state.appLimit, expanded: state.expandedApps, compact: state.compact, toggle: !!state.onToggle };
+      return { limit: state.appLimit, expanded: state.expandedApps, compact: state.compact, toggle: !!state.onToggle, peekId: state.peekId };
     }
     function paintAgenda() {
       var range = rangeForView('month', state.date);
@@ -838,7 +876,7 @@
           html += '<div class="jb-cal-monthhint">Por app · toque num dia para filtrar</div>';
           html += groupedListHtml(vis, state.emptyHint, opts);
         }
-        if (state.showUpcoming) html += upcomingHtml(filtered(), state.onToggle);
+        if (state.showUpcoming) html += upcomingHtml(filtered(), listOpts());
       } else {
         html += '<div class="jb-cal-rangebar"><button type="button" class="jb-cal-nav" data-shift="-1">‹</button>'
           + '<div class="jb-cal-rangelbl">' + esc(fmtBR(range.start) + (range.start !== range.end ? ' – ' + fmtBR(range.end) : '')) + '</div>'
@@ -928,9 +966,15 @@
         };
       });
       el.querySelectorAll('.jb-cal-row').forEach(function (row) {
-        row.onclick = function () {
+        row.onclick = function (ev) {
+          if (ev.target && ev.target.closest && ev.target.closest('a')) return;
           var id = row.getAttribute('data-id');
           var evn = (state.events || []).find(function (e) { return e.id === id; });
+          if (row.getAttribute('data-peek') === '1') {
+            state.peekId = state.peekId === id ? null : id;
+            paint();
+            return;
+          }
           if (state.onOpen) state.onOpen(evn, row);
           else if (evn && evn.href) location.href = evn.href;
         };

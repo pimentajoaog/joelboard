@@ -1,6 +1,6 @@
 /* Joelboard Planner — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. */
-var DATA=null, plannerGrid={}, authDone=false, openPlanId=null, homeQuery='', _pbooted=false, _edMenuOpen=false;
+var DATA=null, plannerGrid={}, authDone=false, openPlanId=null, homeQuery='', _pbooted=false, _edMenuOpen=false, _focusDay='';
 var _linkOpen={}, _linkSnaps={}, _linkTarget=null;
 var _editPlanId=null, _editDayId=null, _editEvtId=null, _editEvtDayId=null, _plEvtMer='', newStart='', newEnd='', newIcon='✈️';
 var _rowCache={};
@@ -382,7 +382,11 @@ function show(){
   else if(JB.paintAcct) JB.paintAcct();
   else $('acctEmail').textContent='👤 '+(JB.email()||'');
   if(!_pbooted){
-    try{ var pid=new URLSearchParams(location.search).get('p'); if(pid && plan(pid)) openPlanId=pid; }catch(_){}
+    try{
+      var q=new URLSearchParams(location.search);
+      var pid=q.get('p'); if(pid && plan(pid)) openPlanId=pid;
+      var did=q.get('d'); if(did) _focusDay=did;
+    }catch(_){}
     if(JB.ensureProfile && !JB.profileReady()) JB.ensureProfile(function(){ if(typeof plPaintAcct==='function') plPaintAcct(); });
   }
   plBindLinkClicks();
@@ -424,6 +428,15 @@ function render(){
   var ed=!!(openPlanId&&plan(openPlanId));
   $('fab').style.display=ed?'none':'flex';
   if(ed) renderTimeline(); else renderHome();
+  plScrollFocusDay();
+}
+function plScrollFocusDay(){
+  if(!_focusDay) return;
+  var el=document.getElementById('pl-day-'+_focusDay);
+  if(!el) return;
+  el.classList.add('pl-day-focus');
+  try{ el.scrollIntoView({ block:'start', behavior:'smooth' }); }catch(_){ try{ el.scrollIntoView(); }catch(__){} }
+  _focusDay='';
 }
 function openPlan(id){
   openPlanId=id; _edMenuOpen=false;
@@ -492,7 +505,7 @@ function renderTimeline(){
 function dayBlock(d){
   var evs=eventsOf(d.id);
   var evHtml=evs.length?evs.map(eventRow).join(''):'<div class="pl-empty-day">Nada neste dia — toque + para um horário.</div>';
-  return '<div class="pl-day">'
+  return '<div class="pl-day" id="pl-day-'+esc(d.id)+'">'
     +'<div class="pl-rail"><div class="pl-dd">'+esc(plFmtDay(d.data))+'</div>'
     +'<button type="button" class="pl-dico" onclick="openDayEdit(\''+d.id+'\')" title="Editar dia">'+esc(d.icone||'📅')+'</button>'
     +'<div class="pl-wd">'+esc(plWeekday(d.data))+'</div></div>'

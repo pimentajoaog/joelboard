@@ -141,9 +141,16 @@ test('eventsFromPlanner copies list ids and the row wears the dual-hue pill', fu
   var evs = cal.eventsFromPlanner(
     [{ id: 'p1', titulo: 'Fim de semana', inicio: '2026-09-12', listaIds: ['n6'] }],
     [{ id: 'd1', planoId: 'p1', data: '2026-09-12', titulo: 'Chegada', listaIds: [] }],
-    []
+    [{ id: 'e1', diaId: 'd1', hora: '16h', horaMin: 960, titulo: 'Check-in', icone: '🏨' }]
   );
+  assert.equal(evs.length, 1);
+  assert.equal(evs[0].id, 'planner-day:d1');
+  assert.equal(evs[0].time, '');
   assert.equal(evs[0].listaIds.join(','), 'n6');
+  assert.equal(evs[0].items.length, 1);
+  assert.equal(evs[0].items[0].title, 'Check-in');
+  assert.match(evs[0].href, /\/planner\/\?p=p1/);
+  assert.match(evs[0].href, /[?&]d=d1/);
   var html = cal.eventRowHtml({
     date: '2026-09-12', title: 'Fim de semana', app: 'planner', color: '#2dd4bf',
     linkedNotes: true, linkPeek: '1/3'
@@ -151,6 +158,34 @@ test('eventsFromPlanner copies list ids and the row wears the dual-hue pill', fu
   assert.match(html, /jb-cal-row linked/);
   assert.match(html, /jb-cal-linkpill/);
   assert.match(html, /1\/3/);
+});
+
+test('planner day rows expand a view-only peek instead of listing hours', function () {
+  var evs = cal.eventsFromPlanner(
+    [{ id: 'p1', titulo: 'Fim de semana', inicio: '2026-09-12', listaIds: [] }],
+    [
+      { id: 'd1', planoId: 'p1', data: '2026-09-12', titulo: 'Chegada', icone: '🌅', listaIds: [] },
+      { id: 'd2', planoId: 'p1', data: '2026-09-13', titulo: 'Passeio', listaIds: [] }
+    ],
+    [
+      { id: 'e1', diaId: 'd1', hora: '16h', horaMin: 960, titulo: 'Check-in' },
+      { id: 'e2', diaId: 'd2', hora: '9h30', horaMin: 570, titulo: 'Café' },
+      { id: 'e3', diaId: 'd2', hora: '21h', horaMin: 1260, titulo: 'Jantar', nota: 'Reserva' }
+    ]
+  );
+  assert.equal(evs.map(function (e) { return e.id; }).join(','), 'planner-day:d1,planner-day:d2');
+  assert.equal(evs[1].items.map(function (it) { return it.title; }).join(','), 'Café,Jantar');
+  var closed = cal.eventRowHtml(evs[1], { compact: true, showDate: true });
+  assert.match(closed, /data-peek="1"/);
+  assert.doesNotMatch(closed, /jb-cal-peek/);
+  assert.doesNotMatch(closed, /Café/);
+  var open = cal.eventRowHtml(evs[1], { compact: true, showDate: true, peekId: evs[1].id });
+  assert.match(open, /jb-cal-peek/);
+  assert.match(open, /Café/);
+  assert.match(open, /Jantar/);
+  assert.match(open, /Reserva/);
+  assert.match(open, /Abrir no Planner/);
+  assert.match(open, /jb-cal-peektitle/);
 });
 
 test('eventsFromNotas keeps completed due lists as done', function () {

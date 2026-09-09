@@ -52,8 +52,9 @@ test('ghost session is wired for agents and stays off production', function () {
   assert.match(hub, /hubGhostTag/);
   assert.match(hub, /function switchHubSet/);
   const cal = readFileSync(new URL('../public/jb-cal.js', import.meta.url), 'utf8');
-  assert.match(cal, /planner-plan:/);
-  assert.doesNotMatch(cal, /mergeIds\(p\.listaIds/);
+  assert.match(cal, /planner-day:/);
+  assert.doesNotMatch(cal, /planner-plan:/);
+  assert.doesNotMatch(cal, /planner-evt:/);
   const notas = readFileSync(new URL('../public/notas.js', import.meta.url), 'utf8');
   const planner = readFileSync(new URL('../public/planner.js', import.meta.url), 'utf8');
   assert.match(notas, /JB\.ghostFixture\('notas'\)/);

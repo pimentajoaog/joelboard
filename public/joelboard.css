@@ -951,6 +951,36 @@ html.jb-ink-full .fab {
 .jb-cal-sec { margin-top: 18px; }
 .jb-cal-sect { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 800; margin-bottom: 8px; }
 .jb-cal-row { display: flex; align-items: center; gap: 12px; background: var(--surface, #191d2c); border: 1px solid var(--border, #2d3346); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.jb-cal-rowwrap { margin-bottom: 8px; }
+.jb-cal-rowwrap .jb-cal-row { margin-bottom: 0; }
+.jb-cal-rowwrap.open .jb-cal-row { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
+.jb-cal-rowgo {
+  flex: 0 0 auto; color: var(--planner, #2dd4bf); text-decoration: none; font-size: 15px; font-weight: 800;
+  padding: 4px 2px; line-height: 1; border-radius: 6px;
+}
+.jb-cal-rowgo:hover { background: color-mix(in srgb, var(--planner, #2dd4bf) 16%, transparent); }
+.jb-cal-peek {
+  background: var(--surface2, #252a40); border: 1px solid var(--border, #2d3346); border-top: 0;
+  border-radius: 0 0 14px 14px; padding: 4px 14px 12px; pointer-events: auto;
+}
+.jb-cal-peekh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 2px 0 8px; }
+.jb-cal-peektitle { font-size: 14px; font-weight: 800; color: var(--text, #e7eaf3); text-decoration: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jb-cal-peektitle:hover { color: var(--planner, #2dd4bf); }
+.jb-cal-peekgo { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: var(--planner, #2dd4bf); text-decoration: none; white-space: nowrap; }
+.jb-cal-peekgo:hover { text-decoration: underline; }
+.jb-cal-peekrow { display: grid; grid-template-columns: 52px 1fr; gap: 8px; padding: 7px 0; }
+.jb-cal-peekrow + .jb-cal-peekrow { border-top: 1px solid color-mix(in srgb, var(--border, #2d3346) 70%, transparent); }
+.jb-cal-peektime { color: var(--muted, #7b85a0); font-size: 12px; font-weight: 600; padding-top: 2px; }
+.jb-cal-peekt { font-weight: 750; font-size: 13.5px; letter-spacing: -.15px; }
+.jb-cal-peekn { color: var(--muted, #7b85a0); font-size: 12px; margin-top: 2px; line-height: 1.4; }
+.jb-cal-peekempty { color: var(--muted, #7b85a0); font-size: 12.5px; padding: 4px 0 2px; }
+.jb-cal-peekpill { display: inline-flex; margin-top: 5px; font-size: 10px; font-weight: 700; border-radius: 999px; padding: 2px 7px; }
+.jb-cal-peekpill.warn { background: rgba(251,146,60,.16); color: #fb923c; }
+.jb-cal-peekpill.ok { background: rgba(52,211,153,.16); color: #34d399; }
+.jb-cal-peekpill.mute { background: var(--surface, #191d2c); color: var(--muted, #7b85a0); }
+.jb-cal.compact .jb-cal-rowwrap { margin-bottom: 5px; }
+.jb-cal.compact .jb-cal-peek { border-radius: 0 0 10px 10px; padding: 2px 8px 8px; }
+.jb-cal.compact .jb-cal-peektitle { font-size: 13px; }
 .jb-cal-row:hover { border-color: var(--primary, #818cf8); }
 .jb-cal-row.done { opacity: .62; }
 .jb-cal-row.done .jb-cal-title,
@@ -992,6 +1022,8 @@ html.jb-ink-full .fab {
 .jb-cal.compact .jb-cal-dots { gap: 2px; }
 .jb-cal.compact .jb-cal-dot { width: 4px; height: 4px; }
 .jb-cal.compact .jb-cal-row { padding: 7px 8px; margin-bottom: 5px; border-radius: 10px; background: color-mix(in srgb, var(--surface, #191d2c) 70%, transparent); }
+.jb-cal.compact .jb-cal-rowwrap .jb-cal-row { margin-bottom: 0; }
+.jb-cal.compact .jb-cal-rowwrap.open .jb-cal-row { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .jb-cal.compact .jb-cal-app .jb-cal-bar { display: none; }
 .jb-cal.compact .jb-cal-title { font-size: 13px; }
 .jb-cal.compact .jb-cal-sect { font-size: 12px; }

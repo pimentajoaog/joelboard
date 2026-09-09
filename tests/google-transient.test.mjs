@@ -6,13 +6,13 @@ import vm from 'node:vm';
 
 const src = readFileSync(new URL('../public/joelboard.js', import.meta.url), 'utf8');
 const start = src.indexOf('function jbTransientHttp');
-const end = src.indexOf('function jbTransientErrMessage');
+const end = src.indexOf('function fetchWithTimeout');
 assert.ok(start > 0 && end > start, 'transient HTTP helpers in joelboard.js');
 const ctx = {};
 vm.createContext(ctx);
 vm.runInContext(
   src.slice(start, end)
-    + '\nthis.jbTransientHttp=jbTransientHttp;this.jbRetryDelayMs=jbRetryDelayMs;this.jbIsAbortErr=jbIsAbortErr;',
+    + '\nthis.jbTransientHttp=jbTransientHttp;this.jbRetryDelayMs=jbRetryDelayMs;this.jbIsAbortErr=jbIsAbortErr;this.bootRetryHtml=bootRetryHtml;',
   ctx
 );
 
@@ -43,5 +43,16 @@ test('API retries 503 and times out hung fetches', function () {
   assert.match(src, /bootRetryHtml/);
   const fin = readFileSync(new URL('../public/finance-sheets.js', import.meta.url), 'utf8');
   assert.match(fin, /JB\.isTransientErr/);
-  assert.match(fin, /Tentar de novo/);
+  assert.match(fin, /JB\.bootRetryHtml/);
+  assert.match(fin, /pasteCall: 'jbLink\(\)'/);
+});
+
+test('bootRetryHtml keeps retry and optional paste URL', function () {
+  const html = ctx.bootRetryHtml('bootSheet()', { inputId: 'notasUrl', pasteCall: 'linkSheet()', errId: 'notasErr' });
+  assert.match(html, /Tentar de novo/);
+  assert.match(html, /Cole o link da planilha/);
+  assert.match(html, /id="notasUrl"/);
+  assert.match(html, /onclick="linkSheet\(\)"/);
+  const noPaste = ctx.bootRetryHtml('bootSheet()');
+  assert.equal(/Cole o link da planilha/.test(noPaste), false);
 });

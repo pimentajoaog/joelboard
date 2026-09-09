@@ -38,7 +38,7 @@ function bootSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando seu treino…</div></div>');
   JB.resolveSheet({ app:'fit', namePart:'Joelboard', requiredTabs: FIT_TABS.map(function(t){return t[0];}) })
     .then(function(ctx){ fitGrid=ctx.grid; ensureTabs().then(loadData); })
-    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } if(JB.isTransientErr&&JB.isTransientErr(e)){ loadingHtml(JB.bootRetryHtml('bootSheet()')); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(m)+'</div></div>'); });
+    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml(JB.bootRetryHtml('bootSheet()', { inputId:'fitUrl', pasteCall:'linkSheet()', errId:'fitErr', msg:(JB.isTransientErr&&JB.isTransientErr(e))?undefined:('Erro: '+m) })); });
 }
 function ensureTabs(){
   var missing=FIT_TABS.filter(function(t){ return fitGrid[t[0]]==null; });

@@ -752,9 +752,20 @@
     var m = String(err.message || '');
     return m.indexOf('503') > -1 || m.indexOf('UNAVAILABLE') > -1 || m.indexOf('502') > -1 || m.indexOf('429') > -1 || m.indexOf('instável') > -1;
   }
-  function bootRetryHtml(retryCall){
-    return '<div class="gate"><div class="gs" style="color:var(--primary);margin-top:48px">' + String(jbTransientErrMessage()).replace(/</g, '&lt;')
-      + '</div><button type="button" class="btn-primary" style="margin-top:16px" onclick="' + String(retryCall || 'location.reload()').replace(/"/g, '') + '">Tentar de novo</button></div>';
+  function bootRetryHtml(retryCall, opts){
+    opts = opts || {};
+    function safe(s){ return String(s || '').replace(/[^a-zA-Z0-9_().#\-]/g, ''); }
+    var msg = opts.msg != null ? String(opts.msg) : jbTransientErrMessage();
+    var html = '<div class="gate" style="max-width:430px;margin:0 auto;padding:42px 20px;text-align:center">'
+      + '<div class="gs" style="color:var(--primary);line-height:1.5">' + msg.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</div>'
+      + '<button type="button" class="btn-primary" style="margin-top:16px" onclick="' + safe(retryCall || 'location.reload()') + '">Tentar de novo</button>';
+    if (opts.inputId && opts.pasteCall) {
+      html += '<div style="color:var(--muted);font-size:12px;margin:18px 0 10px">— ou cole o link da planilha —</div>'
+        + '<input class="field" id="' + safe(opts.inputId) + '" placeholder="Cole o link da planilha" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px;color:var(--text);font-size:14px;margin-bottom:10px;font-family:inherit">'
+        + '<button type="button" class="btn ghost" style="width:100%;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer;font-family:inherit" onclick="' + safe(opts.pasteCall) + '">Conectar planilha</button>'
+        + '<div id="' + safe(opts.errId || (opts.inputId + 'Err')) + '" style="color:var(--expense, var(--primary));font-size:12px;margin-top:10px"></div>';
+    }
+    return html + '</div>';
   }
   function fetchWithTimeout(url, opts, ms){
     ms = ms == null ? API_TIMEOUT_MS : ms;

@@ -53,7 +53,7 @@ function bootSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando seus estudos…</div></div>');
   JB.resolveSheet({ app:'study', namePart:'Joelboard', requiredTabs: ['Materias','Eventos'] })  /* distinctive tabs only — Config is shared by all apps */
     .then(function(ctx){ studyGrid=ctx.grid; ensureTabs().then(loadData); })
-    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } if(JB.isTransientErr&&JB.isTransientErr(e)){ loadingHtml(JB.bootRetryHtml('bootSheet()')); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(m)+'</div></div>'); });
+    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml(JB.bootRetryHtml('bootSheet()', { inputId:'studyUrl', pasteCall:'linkSheet()', errId:'studyErr', msg:(JB.isTransientErr&&JB.isTransientErr(e))?undefined:('Erro: '+m) })); });
 }
 function ensureTabs(){
   var missing=STUDY_TABS.filter(function(t){ return studyGrid[t[0]]==null; });

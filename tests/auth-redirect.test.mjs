@@ -16,6 +16,8 @@ vm.runInContext(
     + 'this.jbParseOAuthParams=jbParseOAuthParams;'
     + 'this.jbOAuthReturnPath=jbOAuthReturnPath;'
     + 'this.jbOAuthAuthUrl=jbOAuthAuthUrl;'
+    + 'this.jbOAuthRedirectPrompt=jbOAuthRedirectPrompt;'
+    + 'this.jbOAuthHasAppScopes=jbOAuthHasAppScopes;'
     + 'this.takeOAuthReturn=takeOAuthReturn;',
   ctx
 );
@@ -60,13 +62,27 @@ test('jbOAuthAuthUrl is implicit token to /oauth.html', function () {
   assert.match(url, /prompt=select_account/);
   assert.match(url, /login_hint=a%40b\.com/);
   assert.match(url, /state=jbstate/);
+  assert.match(url, /enable_granular_consent=false/);
+});
+
+test('jbOAuthRedirectPrompt always asks for Sheets/Drive consent', function () {
+  assert.equal(ctx.jbOAuthRedirectPrompt(''), 'consent');
+  assert.equal(ctx.jbOAuthRedirectPrompt('select_account'), 'select_account consent');
+  assert.equal(ctx.jbOAuthRedirectPrompt('consent'), 'consent');
+});
+
+test('jbOAuthHasAppScopes requires Sheets and Drive', function () {
+  assert.equal(ctx.jbOAuthHasAppScopes(''), null);
+  assert.equal(ctx.jbOAuthHasAppScopes('email profile openid'), false);
+  assert.equal(ctx.jbOAuthHasAppScopes('email https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file'), true);
 });
 
 test('takeOAuthReturn saves the token and rejects a bad state', function () {
-  var ok = ctx.takeOAuthReturn('#access_token=tok&expires_in=3599&state=jb1', '', 'jb1', '/notas/');
+  var ok = ctx.takeOAuthReturn('#access_token=tok&expires_in=3599&state=jb1&scope=email%20https://www.googleapis.com/auth/spreadsheets', '', 'jb1', '/notas/');
   assert.equal(ok.token, 'tok');
   assert.equal(ok.expiresIn, '3599');
   assert.equal(ok.next, '/notas/');
+  assert.match(ok.scope, /spreadsheets/);
   var bad = ctx.takeOAuthReturn('#access_token=tok&state=nope', '', 'jb1', '/');
   assert.equal(bad.error, 'state_mismatch');
   var denied = ctx.takeOAuthReturn('#error=access_denied&state=jb1', '', 'jb1', '/');
@@ -77,6 +93,8 @@ test('takeOAuthReturn saves the token and rejects a bad state', function () {
 test('phone login leaves the GIS popup path', function () {
   assert.match(src, /function startOAuthRedirect/);
   assert.match(src, /interactive && authPopupUnreliable\(\)/);
+  assert.match(src, /jbOAuthRedirectPrompt\(prompt\)/);
+  assert.match(src, /insufficient authentication scopes/);
   assert.match(src, /location\.origin \+ '\/oauth\.html'/);
   const html = readFileSync(new URL('../public/oauth.html', import.meta.url), 'utf8');
   assert.match(html, /joelboard\.js/);

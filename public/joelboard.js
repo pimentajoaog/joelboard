@@ -239,7 +239,7 @@
   function email(){ return isGhost() ? GHOST_EMAIL : (lg(EML) || ''); }
 
   // --- same-tab OAuth (phones / installed PWA): GIS popups become dead Google tabs ---
-  var AUTH_REDIR = 'jb_oauth', AUTH_REDIR_STATE = 'jb_oauth_state', AUTH_REDIR_ERR = 'jb_oauth_err';
+  var AUTH_REDIR = 'jb_oauth', AUTH_REDIR_STATE = 'jb_oauth_state', AUTH_REDIR_ERR = 'jb_oauth_err', AUTH_REDIR_UPGRADE = 'jb_oauth_upgrade';
   function jbAuthPopupUnreliable(ua, opts){
     opts = opts || {};
     if (opts.standalone) return true;
@@ -286,7 +286,20 @@
       + '&state=' + encodeURIComponent(opts.state || '');
     if (opts.prompt) url += '&prompt=' + encodeURIComponent(opts.prompt);
     if (opts.loginHint) url += '&login_hint=' + encodeURIComponent(opts.loginHint);
+    url += '&enable_granular_consent=false';
     return url;
+  }
+  function jbOAuthRedirectPrompt(gisPrompt){
+    var p = String(gisPrompt == null ? '' : gisPrompt);
+    if (p === 'none') return 'none';
+    if (p.indexOf('consent') > -1) return p;
+    if (p === 'select_account') return 'select_account consent';
+    return 'consent';
+  }
+  function jbOAuthHasAppScopes(granted){
+    granted = String(granted || '').replace(/\+/g, ' ');
+    if (!granted) return null;
+    return granted.indexOf('spreadsheets') > -1 && granted.indexOf('drive.file') > -1;
   }
   function authPopupUnreliable(){
     var standalone = false;
@@ -296,14 +309,15 @@
   function oauthRedirectUri(){ return location.origin + '/oauth.html'; }
   function startOAuthRedirect(prompt){
     var state = 'jb' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-    ss(AUTH_REDIR, location.pathname + location.search);
+    if (!/^\/oauth\.html/i.test(location.pathname)) ss(AUTH_REDIR, location.pathname + location.search);
+    else if (!sg(AUTH_REDIR)) ss(AUTH_REDIR, '/');
     ss(AUTH_REDIR_STATE, state);
     location.assign(jbOAuthAuthUrl({
       clientId: CLIENT_ID,
       redirectUri: oauthRedirectUri(),
       scope: SCOPES,
       state: state,
-      prompt: prompt || '',
+      prompt: jbOAuthRedirectPrompt(prompt),
       loginHint: email() || ''
     }));
   }
@@ -314,15 +328,28 @@
       return { error: 'state_mismatch', next: jbOAuthReturnPath(savedPath, '/') };
     }
     if (params.access_token) {
-      return { token: params.access_token, expiresIn: params.expires_in, next: jbOAuthReturnPath(savedPath, '/') };
+      return { token: params.access_token, expiresIn: params.expires_in, scope: params.scope || '', next: jbOAuthReturnPath(savedPath, '/') };
     }
     return { error: params.error || 'auth_failed', next: jbOAuthReturnPath(savedPath, '/') };
   }
   function consumeOAuthReturn(){
-    var got = takeOAuthReturn(location.hash, location.search, sg(AUTH_REDIR_STATE), sg(AUTH_REDIR));
+    var savedPath = sg(AUTH_REDIR);
+    var got = takeOAuthReturn(location.hash, location.search, sg(AUTH_REDIR_STATE), savedPath);
     if (!got) return null;
-    sr(AUTH_REDIR); sr(AUTH_REDIR_STATE);
     try { history.replaceState({}, '', location.pathname + location.search); } catch (_) {}
+    if (got.token && jbOAuthHasAppScopes(got.scope) === false) {
+      clearTokenStorage();
+      sr(AUTH_REDIR_STATE);
+      if (sg(AUTH_REDIR_UPGRADE) === '1') {
+        sr(AUTH_REDIR); sr(AUTH_REDIR_UPGRADE);
+        return { error: 'insufficient_scopes', next: got.next };
+      }
+      ss(AUTH_REDIR, savedPath || got.next);
+      ss(AUTH_REDIR_UPGRADE, '1');
+      startOAuthRedirect('consent');
+      return { upgrading: true };
+    }
+    sr(AUTH_REDIR); sr(AUTH_REDIR_STATE); sr(AUTH_REDIR_UPGRADE);
     if (got.token) saveToken(got.token, got.expiresIn);
     return got;
   }
@@ -331,8 +358,9 @@
     if (!err) return;
     sr(AUTH_REDIR_ERR);
     var cancelled = err === 'access_denied' || err === 'cancelled';
+    var scopes = err === 'insufficient_scopes';
     setTimeout(function () {
-      jbToast(cancelled ? 'Login cancelado.' : 'Não foi possível entrar. Tente de novo.');
+      jbToast(cancelled ? 'Login cancelado.' : scopes ? 'Falta permissão do Google Sheets/Drive. Entre de novo e aceite.' : 'Não foi possível entrar. Tente de novo.');
     }, 0);
   }
   // --- end same-tab OAuth helpers ---
@@ -725,6 +753,14 @@
         });
       }
       if (!r.ok) return r.text().then(function (tx) {
+        if (r.status === 403 && /insufficient authentication scopes/i.test(tx)) {
+          clearTokenStorage();
+          promptReLogin('scopes');
+          var scopeErr = new Error('Falta permissão do Google (planilhas). Toque em Entrar de novo e aceite Sheets e Drive.');
+          scopeErr.status = 403;
+          scopeErr.code = 'JB_NEED_SCOPES';
+          throw scopeErr;
+        }
         var e = new Error('HTTP ' + r.status + ' — ' + tx.slice(0, 200));
         e.status = r.status;
         throw e;
@@ -939,7 +975,7 @@
   }
   // opts {app, namePart, requiredTabs}. Resolves {id, grid}. Rejects Error('JB_NEED_SHEET') with .files (0 or >1) when the app must show its gate/picker.
   function isAuthErr(err){ var m = String((err && err.message) || ''); return m.indexOf('silent_timeout') > -1 || m.indexOf('silent_cooldown') > -1 || m.indexOf('signed_out') > -1 || m.indexOf('auth_failed') > -1 || m.indexOf('401') > -1 || m.indexOf('cancelled') > -1; }
-  function isSessionErr(err){ var m = String((err && err.message) || ''); return m === 'silent_cooldown' || m === 'silent_timeout' || m === 'signed_out' || m === 'auth_failed' || m.indexOf('401') > -1; }
+  function isSessionErr(err){ var m = String((err && err.message) || ''); return m === 'silent_cooldown' || m === 'silent_timeout' || m === 'signed_out' || m === 'auth_failed' || (err && err.code === 'JB_NEED_SCOPES') || m.indexOf('401') > -1; }
   function writeErrMessage(err){
     var m = String((err && err.message) || '');
     if (m === 'silent_cooldown' || m === 'silent_timeout') return 'Sessão expirou — entre de novo com Google.';
@@ -1008,6 +1044,7 @@
     initAuthBroadcast();
     if (!isGhost()) {
       var oauth = consumeOAuthReturn();
+      if (oauth && oauth.upgrading) return;
       if (oauth) {
         var dest = oauth.next || '/';
         var here = location.pathname + location.search;

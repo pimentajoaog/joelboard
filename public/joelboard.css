@@ -899,7 +899,7 @@ html.jb-ink-full .fab {
   to { opacity: 1; transform: none; }
 }
 
-/* Shared calendar kit (Hub agenda + Study) */
+/* Shared calendar kit (Hub Calendar + Study) */
 .jb-cal { min-width: 0; }
 .jb-cal-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: nowrap; }
 .jb-cal-views { display: flex; gap: 6px; flex-wrap: wrap; }

@@ -8,5 +8,5 @@ alwaysApply: true
 The **Staff** Chrome extension lives at `public/extensions/staff/` and is listed in `.gitignore`.
 
 - **Never commit or push** Staff source, zips, hub cards, or docs that ship it publicly.
-- **Never add Staff** to hub Novidades (`HUB_NEWS` in `public/hub.js`).
+- **Never add Staff** to hub Novidades (and never edit Novidades anyway — owner-only).
 - Privacy policy and public docs cover only Replace, Refresh, and Report unless Staff is explicitly released later.

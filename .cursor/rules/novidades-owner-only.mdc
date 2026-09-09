@@ -1,0 +1,11 @@
+---
+description: Hub Novidades is owner-only — never add or edit entries
+alwaysApply: true
+---
+
+# Novidades (owner only)
+
+Hub Novidades is locked to the owner. Agents must **not** add, edit, reorder, or delete `HUB_NEWS` / `HUB_NEWS_DEFAULT` in `public/hub.js`, and must **not** publish to the Novidades sheet.
+
+- Ship the feature. Leave the changelog to the owner.
+- Still never mention Staff or Julioelboard/Prateleira in Novidades if you are ever asked to touch it.

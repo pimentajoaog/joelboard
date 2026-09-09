@@ -655,7 +655,7 @@
   }
   function emptyPeriodHtml(emptyHint) {
     return (window.JB && JB.emptyState)
-      ? JB.emptyState({ icon: '📅', title: 'Nada neste período', hint: emptyHint || 'Abra um app e agende algo — a agenda junta tudo aqui.' })
+      ? JB.emptyState({ icon: '📅', title: 'Nada neste período', hint: emptyHint || 'Abra um app e agende algo — o Calendar junta tudo aqui.' })
       : '<div class="rg">Nada neste período.</div>';
   }
   function groupedListHtml(events, emptyHint, opts) {

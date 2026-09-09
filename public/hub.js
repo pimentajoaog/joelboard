@@ -310,7 +310,7 @@ function hubNewsEditSave(){
 function $(id){ return document.getElementById(id); }
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só — entre com Google para sincronizar dados no seu Drive.' },
-  { sel:'#hubAgenda', title:'Agenda', body:'Calendário compacto à esquerda. O grupo de ícones filtra os apps; a lista junta por app, com o que vem pela frente no topo.' },
+  { sel:'#hubAgenda', title:'Calendar', body:'Calendário compacto à esquerda. O grupo de ícones filtra os apps; a lista junta por app, com o que vem pela frente no topo.' },
   { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notes, Planner ou Mini (extensões Chrome).' },
   { sel:'#hubNews', title:'Novidades', body:'Fique por dentro das últimas mudanças nos apps — atualizado aqui no Hub.' },
   { sel:'.gear', title:'Ajustes', body:'Tema, login, tutorial, privacidade e aviso legal ficam aqui.' }
@@ -447,7 +447,7 @@ function paintAgendaHint(missed, loading){
   if(loading){ hint.innerHTML='Atualizando…'; return; }
   missed=missed||[];
   if(!missed.length){ hint.innerHTML=''; return; }
-  var names=missed[0]==='agenda'?'a agenda':missed.map(function(a){ return HUB_AGENDA_LABEL[a]||a; }).join(', ');
+  var names=missed[0]==='agenda'?'o Calendar':missed.map(function(a){ return HUB_AGENDA_LABEL[a]||a; }).join(', ');
   hint.innerHTML='não deu para ler '+esc(names)
     +' <button type="button" class="hub-agenda-retry" onclick="forceRefreshHubAgenda()">Tentar de novo</button>';
 }
@@ -457,7 +457,7 @@ function hubAgendaSignedOut(){
   paintAgendaHint([]);
   var host=$('hubAgendaCal');
   if(!host) return;
-  host.innerHTML=(JB.emptyState?JB.emptyState({ icon:'📅', title:'Entre para ver a agenda', hint:'Contas, provas, prazos, treinos e planos num só lugar.' }):'<div class="rg">Entre para ver a agenda.</div>');
+  host.innerHTML=(JB.emptyState?JB.emptyState({ icon:'📅', title:'Entre para ver o Calendar', hint:'Contas, provas, prazos, treinos e planos num só lugar.' }):'<div class="rg">Entre para ver o Calendar.</div>');
 }
 function bootHubAgenda(){
   applyHubAgendaWide();
@@ -482,7 +482,7 @@ function hubAgendaMountOpts(events){
     picked: _agendaView==='month' ? null : undefined,
     appLimit:hubAgendaLimit(),
     views: wide?['day','3day','week','month']:['day','week','month'],
-    emptyHint:'Abra um app e agende algo — a agenda junta tudo aqui.',
+    emptyHint:'Abra um app e agende algo — o Calendar junta tudo aqui.',
     onChange:function(st){
       var prevMonth=String(_agendaDate||'').slice(0,7);
       _agendaView=st.view; _agendaDate=st.date;
@@ -497,7 +497,7 @@ function refreshHubAgenda(force){
   var seq=++_agendaSeq;
   if(btn) btn.disabled=true;
   if(force || !_agendaApi) paintAgendaHint(_agendaMissed, true);
-  if(!_agendaApi) host.innerHTML='<div class="rg">Carregando agenda…</div>';
+    if(!_agendaApi) host.innerHTML='<div class="rg">Carregando Calendar…</div>';
   _agendaWait=JB.cal.loadHubEvents({ view:_agendaView, date:_agendaDate||undefined, force:!!force }).then(function(pack){
     if(seq!==_agendaSeq) return;
     _agendaDate=pack.range && pack.range.date ? pack.range.date : _agendaDate;
@@ -510,7 +510,7 @@ function refreshHubAgenda(force){
     if(seq!==_agendaSeq) return;
     _agendaMissed=['agenda'];
     paintAgendaHint(_agendaMissed);
-    if(!_agendaApi) host.innerHTML=(JB.emptyState?JB.emptyState({ icon:'📅', title:'Nada neste período', hint:'Abra um app e agende algo — a agenda junta tudo aqui.' }):'<div class="rg">Nada neste período.</div>');
+    if(!_agendaApi) host.innerHTML=(JB.emptyState?JB.emptyState({ icon:'📅', title:'Nada neste período', hint:'Abra um app e agende algo — o Calendar junta tudo aqui.' }):'<div class="rg">Nada neste período.</div>');
     if(btn) btn.disabled=false;
   }).then(function(){ if(seq===_agendaSeq) _agendaWait=null; });
   return _agendaWait;

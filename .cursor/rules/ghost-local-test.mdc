@@ -8,6 +8,7 @@ alwaysApply: true
 The Cursor browser cannot complete Google OAuth on localhost (`origin_mismatch`). Do not try to sign in with the user's Google account.
 
 - Open local Vite with `?ghost=1` (Hub, Notes, or Planner). That sets email `cursor-ghost@localhost` and a default `👻 Cursor` profile (skip with `&noprofile=1`).
+- `&fresh=1` wipes leftover `jb_profile` keys and seeds two sample names so the first-launch chooser appears (`?ghost=1&fresh=1`).
 - Ghost stays on until `?ghost=0` or **Sair**. It never activates on production hosts.
 - Notes and Planner load a canned fixture (lists, a weekend plan, hours). Edits stay in memory and do not hit Drive. Tours are skipped so they do not block clicks.
 - Finance, Fit, and Study still have no fixture — do not expect those workbooks to load.

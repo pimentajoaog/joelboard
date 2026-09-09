@@ -1791,11 +1791,29 @@
     var p = jbProfileFromJSON(lg(profileStoreKey()) || lg(PROFILE_KEY));
     return p;
   }
+  function ghostQueryFlag(name) {
+    try { return new URLSearchParams(location.search).get(name) === '1'; } catch (_) { return false; }
+  }
+  function clearGhostProfileStore() {
+    try {
+      var drop = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && (k === PROFILE_KEY || k.indexOf(PROFILE_KEY + ':') === 0 || k === FOUND_KEY || k.indexOf(FOUND_KEY + ':') === 0)) drop.push(k);
+      }
+      drop.forEach(function (k) { localStorage.removeItem(k); });
+    } catch (_) {}
+  }
   function seedGhostProfile() {
-    if (!isGhost() || profileReady()) return;
-    var skip = false;
-    try { skip = new URLSearchParams(location.search).get('noprofile') === '1'; } catch (_) {}
-    if (skip) return;
+    if (!isGhost()) return;
+    if (ghostQueryFlag('fresh')) {
+      clearGhostProfileStore();
+      rememberProfileCandidate('Joel', '🐻', 'Notes');
+      rememberProfileCandidate('Ana', '🦊', 'Planner');
+      return;
+    }
+    if (profileReady()) return;
+    if (ghostQueryFlag('noprofile')) return;
     writeProfile('Cursor', '👻');
   }
   function writeProfile(nome, icone) {

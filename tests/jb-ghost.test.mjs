@@ -35,6 +35,8 @@ test('ghost session is wired for agents and stays off production', function () {
   assert.match(src, /cursor-ghost@localhost/);
   assert.match(src, /function isGhost/);
   assert.match(src, /function seedGhostProfile/);
+  assert.match(src, /function clearGhostProfileStore/);
+  assert.match(src, /ghostQueryFlag\('fresh'\)/);
   assert.match(src, /if \(isGhost\(\)\) return Promise\.reject\(new Error\('ghost'\)\)/);
   const hub = readFileSync(new URL('../public/hub.js', import.meta.url), 'utf8');
   assert.match(hub, /hubGhostTag/);

@@ -22,7 +22,7 @@ vm.runInContext(
   ctx
 );
 
-const cctx = { console };
+const cctx = { console, JB: { onProfileChange: function () {} } };
 vm.createContext(cctx);
 vm.runInContext(
   collab

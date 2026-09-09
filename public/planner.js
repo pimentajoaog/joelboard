@@ -348,10 +348,13 @@ function loadData(){
 }
 function show(){
   $('loading').style.display='none'; $('app').style.display='block';
+  if(DATA&&DATA.config&&JB.adoptLegacyProfile) JB.adoptLegacyProfile(DATA.config.perfil_nome, DATA.config.perfil_icone, 'Planner');
   if(typeof plPaintAcct==='function') plPaintAcct();
+  else if(JB.paintAcct) JB.paintAcct();
   else $('acctEmail').textContent='👤 '+(JB.email()||'');
   if(!_pbooted){
     try{ var pid=new URLSearchParams(location.search).get('p'); if(pid && plan(pid)) openPlanId=pid; }catch(_){}
+    if(JB.ensureProfile && !JB.profileReady()) JB.ensureProfile(function(){ if(typeof plPaintAcct==='function') plPaintAcct(); });
   }
   render();
   if(!_pbooted){

@@ -150,11 +150,17 @@ function ncGrid() {
 function ncEmail() { return (JB.email() || '').toLowerCase(); }
 
 function ncProfileName() {
+  if (JB.profileName) {
+    var n = JB.profileName();
+    if (n) return n;
+  }
   return String((DATA && DATA.config && DATA.config.perfil_nome) || '').trim();
 }
 
 function ncProfileIcon() {
-  return String((DATA && DATA.config && DATA.config.perfil_icone) || '').trim().slice(0, 8) || '👤';
+  if (JB.profileIcon && ncProfileName()) return JB.profileIcon();
+  var legacy = String((DATA && DATA.config && DATA.config.perfil_icone) || '').trim();
+  return legacy || (JB.profileIcon ? JB.profileIcon() : '👤');
 }
 
 function ncDisplayLabel(em) {
@@ -639,6 +645,13 @@ function ncJoinCollab(sheetId) {
     if (me.status === 'pending') {
       return ncActivateMember(sheetId, em).then(function () {
         me.status = 'active';
+        me.nome = ncProfileName();
+        me.icone = ncProfileIcon();
+        return { pack: pack, metaRow: metaRow, members: members };
+      });
+    }
+    if (JB.writeCollabMemberProfile) {
+      return JB.writeCollabMemberProfile(sheetId).catch(function () {}).then(function () {
         return { pack: pack, metaRow: metaRow, members: members };
       });
     }
@@ -666,6 +679,7 @@ function ncJoinCollab(sheetId) {
 }
 
 function ncActivateMember(sid, em) {
+  if (JB.writeCollabMemberProfile) return JB.writeCollabMemberProfile(sid, { email: em, activate: true });
   return JB.api('GET', ncCollabUrl(sid, '/values/Membros?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
     var v = res.values || [];
     for (var i = 1; i < v.length; i++) {
@@ -693,7 +707,7 @@ function ncCheckJoinParam() {
   var sid = ncParseJoinSheetId(m[1]);
   if (!sid) { toast('Link de convite inválido'); return; }
   ncJoinCollab(sid).then(function () {
-    if (!ncProfileName()) ncOpenProfile();
+    if (!ncProfileName() && JB.ensureProfile) JB.ensureProfile();
   }).catch(function (e) {
     show();
     var msg = ncJoinErrMessage(e);
@@ -724,47 +738,29 @@ function ncLeaveOrDelete() {
   }, { yes: isOwner ? 'Excluir' : 'Sair', no: 'Cancelar', danger: isOwner });
 }
 
+function ncPaintAcct() {
+  if (JB.paintAcct) { JB.paintAcct(); return; }
+  if ($('acctEmail')) $('acctEmail').textContent = ncAcctLabel();
+}
+
+function ncSyncMyMemberOnAllLists() {
+  if (!JB.writeCollabMemberProfile || !DATA) return;
+  (DATA.notas || []).forEach(function (n) {
+    if (n && n.collabSheetId) JB.writeCollabMemberProfile(n.collabSheetId).catch(function () {});
+  });
+}
+
 function ncEnsureProfile(cb) {
-  if (ncProfileName()) { if (cb) cb(); return; }
-  ncOpenProfile(cb);
+  if (JB.ensureProfile) { JB.ensureProfile(cb); return; }
+  if (cb) cb();
 }
 
 function ncOpenProfile(cb) {
-  window._ncProfileCb = cb || null;
-  $('profileName').value = ncProfileName();
-  ncRenderProfileIcons();
-  $('profileOverlay').classList.add('open');
+  if (JB.openProfile) JB.openProfile(cb);
 }
 
 function ncCloseProfile() {
-  $('profileOverlay').classList.remove('open');
-  window._ncProfileCb = null;
-}
-
-function ncRenderProfileIcons() {
-  var el = $('profileIcons');
-  if (!el) return;
-  var cur = ncProfileIcon();
-  el.innerHTML = NC_PROFILE_ICONS.map(function (ic) {
-    return '<button type="button" class="nc-pick-ico' + (ic === cur ? ' on' : '') + '" onclick="ncPickProfileIcon(\'' + escAttr(ic) + '\')">' + ic + '</button>';
-  }).join('');
-}
-
-function ncPickProfileIcon(ic) {
-  saveConfig('perfil_icone', ic);
-  ncRenderProfileIcons();
-  var prev = $('profileIconPreview');
-  if (prev) prev.textContent = ic;
-}
-
-function ncSaveProfile() {
-  var nm = ($('profileName').value || '').trim();
-  if (!nm) { toast('Escolha um nome'); return; }
-  saveConfig('perfil_nome', nm);
-  ncCloseProfile();
-  toast('✓ Perfil salvo');
-  if ($('acctEmail')) $('acctEmail').textContent = '👤 ' + ncAcctLabel();
-  if (window._ncProfileCb) { var cb = window._ncProfileCb; window._ncProfileCb = null; cb(); }
+  if (JB.closeProfile) JB.closeProfile();
 }
 
 function ncInitProfileSettings() {
@@ -775,3 +771,11 @@ function ncInitProfileSettings() {
 }
 
 function ncOpenProfileFromSettings() { ncOpenProfile(); }
+
+if (JB.onProfileChange) {
+  JB.onProfileChange(function () {
+    ncPaintAcct();
+    ncInitProfileSettings();
+    ncSyncMyMemberOnAllLists();
+  });
+}

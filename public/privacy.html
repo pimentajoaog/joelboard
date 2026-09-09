@@ -135,7 +135,7 @@
     <h2>Site e apps Joelboard</h2>
     <ul>
       <li><strong>Login Google (obrigatório nos apps):</strong> Finance, Fit, Study, Notes e os demais apps web exigem entrar com Google para criar e ler planilhas na <em>sua</em> conta (Google Sheets e Drive). Sem login, esses apps não funcionam. O token fica no navegador; as chamadas vão direto às APIs do Google.</li>
-      <li><strong>Armazenamento local:</strong> preferências de interface, sessão OAuth e IDs de planilha ficam também no <code>localStorage</code> / <code>sessionStorage</code> do seu navegador neste dispositivo.</li>
+      <li><strong>Armazenamento local:</strong> preferências de interface, sessão OAuth, IDs de planilha e o <strong>perfil Joelboard</strong> (nome de exibição e ícone, por conta Google) ficam no <code>localStorage</code> / <code>sessionStorage</code> deste dispositivo.</li>
       <li><strong>Sem servidor Joelboard de dados:</strong> não enviamos o conteúdo das suas planilhas ou notas para servidores nossos.</li>
       <li><strong>Agenda do Hub:</strong> depois do login, o Hub lê no navegador as planilhas que você já vinculou (Finance, Fit, Study, Notes, Planner) só para montar o calendário. Nada novo é gravado em servidores do Joelboard.</li>
     </ul>
@@ -147,7 +147,7 @@
     <ul>
       <li><strong>Planilha separada no seu Drive:</strong> ao tornar uma lista compartilhada, o app cria outra planilha Google (abas Meta, Itens, Membros) no <em>seu</em> Google Drive. Listas privadas continuam na planilha pessoal — não misturamos os dois tipos.</li>
       <li><strong>Convites e acesso:</strong> você convida por e-mail Google. Colaboradores precisam de acesso <strong>Editor</strong> à planilha no Drive (link de convite ou compartilhamento manual). Um link Joelboard (<code>/notas/?join=…</code>) ajuda a abrir a lista no app; o ID da planilha aparece nesse URL.</li>
-      <li><strong>Perfil na lista:</strong> nome de exibição e ícone que você escolhe ficam na aba Membros e são visíveis aos outros membros da mesma lista (junto com o e-mail Google).</li>
+      <li><strong>Perfil na lista:</strong> o perfil Joelboard (nome e ícone, definidos no Hub ou no app) é copiado para a aba Membros e fica visível aos outros membros da mesma lista (junto com o e-mail Google).</li>
       <li><strong>Registro local:</strong> sua planilha pessoal guarda um índice das listas compartilhadas em que você participa (título, ID da planilha, papel). Isso não copia o conteúdo privado de outras listas.</li>
       <li><strong>Sincronização:</strong> leituras e gravações vão direto às APIs do Google Sheets a partir do seu navegador; não há backend Joelboard que armazene itens ou membros.</li>
     </ul>
@@ -159,7 +159,7 @@
     <ul>
       <li><strong>Planilha separada no seu Drive:</strong> ao tornar um plano compartilhado, o app cria outra planilha Google (abas Meta, Dias, Eventos, Membros) no <em>seu</em> Google Drive. Planos privados continuam na planilha pessoal — não misturamos os dois tipos.</li>
       <li><strong>Convites e acesso:</strong> você convida por e-mail Google. Colaboradores precisam de acesso <strong>Editor</strong> à planilha no Drive (link de convite ou compartilhamento manual). Um link Joelboard (<code>/planner/?join=…</code>) ajuda a abrir o plano no app; o ID da planilha aparece nesse URL.</li>
-      <li><strong>Perfil no plano:</strong> nome de exibição e ícone que você escolhe ficam na aba Membros e são visíveis aos outros membros do mesmo plano (junto com o e-mail Google).</li>
+      <li><strong>Perfil no plano:</strong> o perfil Joelboard (nome e ícone, definidos no Hub ou no app) é copiado para a aba Membros e fica visível aos outros membros do mesmo plano (junto com o e-mail Google).</li>
       <li><strong>Registro local:</strong> sua planilha pessoal guarda um índice dos planos compartilhados em que você participa (título, ID da planilha, papel). Isso não copia o conteúdo privado de outros planos.</li>
       <li><strong>Sincronização:</strong> leituras e gravações vão direto às APIs do Google Sheets a partir do seu navegador; não há backend Joelboard que armazene eventos ou membros.</li>
     </ul>

@@ -67,10 +67,10 @@
     </div>
     <div class="set-pane" data-pane="perfil" style="display:none">
       <div class="fg">
-        <label class="fl">Como você aparece em listas compartilhadas</label>
+        <label class="fl">Perfil Joelboard</label>
         <div class="nc-set-profile">
           <span class="nc-set-prev" id="setProfilePreview">👤</span>
-          <div><div class="nc-set-name" id="setProfileName">—</div><div class="rg">Nome e ícone visíveis para quem compartilha listas com você.</div></div>
+          <div><div class="nc-set-name" id="setProfileName">—</div><div class="rg">O mesmo nome e ícone em Notes, Planner e no Hub.</div></div>
         </div>
         <button class="btn ghost" style="width:100%;margin-top:10px" onclick="ncOpenProfileFromSettings()">✏ Editar perfil</button>
       </div>
@@ -125,16 +125,6 @@
       <button class="btn ghost" style="width:100%;margin-top:8px" type="button" onclick="ncOpenDriveShare()">↗ Abrir planilha no Drive</button>
     </div>
     <button class="btn-primary" onclick="ncCloseShare()">Pronto</button>
-  </div>
-</div>
-
-<!-- profile (collab display name) -->
-<div class="overlay" id="profileOverlay" onclick="if(event.target===this)ncCloseProfile()">
-  <div class="modal">
-    <div class="mh"><div class="mt">Seu perfil</div><button class="x" onclick="ncCloseProfile()">✕</button></div>
-    <div class="fg"><label class="fl">Ícone</label><div class="nc-pick-grid" id="profileIcons"></div></div>
-    <div class="fg"><label class="fl">Nome de exibição</label><input class="field" id="profileName" placeholder="Como quer aparecer"></div>
-    <button class="btn-primary" onclick="ncSaveProfile()">Salvar</button>
   </div>
 </div>
 

@@ -6,7 +6,7 @@ import vm from 'node:vm';
 
 const src = readFileSync(new URL('../public/notas-collab.js', import.meta.url), 'utf8');
 const notas = readFileSync(new URL('../public/notas.js', import.meta.url), 'utf8');
-const ctx = { console };
+const ctx = { console, JB: { onProfileChange: function () {} } };
 vm.createContext(ctx);
 vm.runInContext(src.replace(/^function /, 'function ') + '\nthis.ncParseJoinSheetId = ncParseJoinSheetId;\nthis.ncIsCollabSpreadsheetGrid = ncIsCollabSpreadsheetGrid;\nthis.ncJoinErrMessage = ncJoinErrMessage;', ctx);
 

@@ -87,11 +87,17 @@ function plCollabUrl(sid, p) {
 function plEmail() { return (JB.email() || '').toLowerCase(); }
 
 function plProfileName() {
+  if (JB.profileName) {
+    var n = JB.profileName();
+    if (n) return n;
+  }
   return String((DATA && DATA.config && DATA.config.perfil_nome) || '').trim();
 }
 
 function plProfileIcon() {
-  return String((DATA && DATA.config && DATA.config.perfil_icone) || '').trim().slice(0, 8) || '👤';
+  if (JB.profileIcon && plProfileName()) return JB.profileIcon();
+  var legacy = String((DATA && DATA.config && DATA.config.perfil_icone) || '').trim();
+  return legacy || (JB.profileIcon ? JB.profileIcon() : '👤');
 }
 
 function plDisplayLabel(em) {
@@ -122,6 +128,7 @@ function plAcctLabel() {
 }
 
 function plPaintAcct() {
+  if (JB.paintAcct) { JB.paintAcct(); return; }
   var el = $('acctEmail');
   if (el) el.textContent = plAcctLabel();
 }
@@ -697,7 +704,7 @@ function plCheckJoinParam() {
   var sid = plParseJoinSheetId(m[1]);
   if (!sid) { toast('Link de convite inválido'); return; }
   plJoinCollab(sid).then(function () {
-    if (!plProfileName()) plOpenProfile();
+    if (!plProfileName() && JB.ensureProfile) JB.ensureProfile();
   }).catch(function (e) {
     show();
     var msg = plJoinErrMessage(e);
@@ -731,47 +738,16 @@ function plLeaveOrDelete() {
 }
 
 function plEnsureProfile(cb) {
-  if (plProfileName()) { if (cb) cb(); return; }
-  plOpenProfile(cb);
+  if (JB.ensureProfile) { JB.ensureProfile(cb); return; }
+  if (cb) cb();
 }
 
 function plOpenProfile(cb) {
-  window._plProfileCb = cb || null;
-  $('profileName').value = plProfileName();
-  plRenderProfileIcons();
-  $('profileOverlay').classList.add('open');
+  if (JB.openProfile) JB.openProfile(cb);
 }
 
 function plCloseProfile() {
-  $('profileOverlay').classList.remove('open');
-  window._plProfileCb = null;
-}
-
-function plRenderProfileIcons() {
-  var el = $('profileIcons');
-  if (!el) return;
-  var cur = plProfileIcon();
-  el.innerHTML = PL_PROFILE_ICONS.map(function (ic) {
-    return '<button type="button" class="nc-pick-ico' + (ic === cur ? ' on' : '') + '" onclick="plPickProfileIcon(\'' + escAttr(ic) + '\')">' + ic + '</button>';
-  }).join('');
-}
-
-function plPickProfileIcon(ic) {
-  saveConfig('perfil_icone', ic);
-  plRenderProfileIcons();
-  plPaintAcct();
-  plSyncMyMemberOnAllPlans();
-}
-
-function plSaveProfile() {
-  var nm = ($('profileName').value || '').trim();
-  if (!nm) { toast('Escolha um nome'); return; }
-  saveConfig('perfil_nome', nm);
-  plCloseProfile();
-  toast('✓ Perfil salvo');
-  plPaintAcct();
-  plSyncMyMemberOnAllPlans();
-  if (window._plProfileCb) { var cb = window._plProfileCb; window._plProfileCb = null; cb(); }
+  if (JB.closeProfile) JB.closeProfile();
 }
 
 function plInitProfileSettings() {
@@ -782,3 +758,11 @@ function plInitProfileSettings() {
 }
 
 function plOpenProfileFromSettings() { plOpenProfile(); }
+
+if (JB.onProfileChange) {
+  JB.onProfileChange(function () {
+    plPaintAcct();
+    plInitProfileSettings();
+    plSyncMyMemberOnAllPlans();
+  });
+}

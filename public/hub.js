@@ -7,6 +7,7 @@ var HUB_NEWS_SHEET_ID=hubNewsCleanId((typeof window!=='undefined'&&window.JB_HUB
 var HUB_NEWS_SHEET_LOCAL='jb_hub_news_sheet_id';
 var HUB_NEWS_LIMIT=5;
 var HUB_NEWS_DEFAULT=[
+  { app:'hub', kind:'novo', text:'Perfil Joelboard — nome e ícone únicos; se já usou um no Notes ou Planner, pode manter.' },
   { app:'planner', kind:'novo', text:'Planner — cole qualquer emoji no ícone do plano, do dia ou do evento, como no Notes.' },
   { app:'hub', kind:'novo', text:'Agenda no Hub — contas, provas, prazos, treinos e planos no mesmo calendário (hoje, 3 dias, semana ou mês).' },
   { app:'planner', kind:'novo', text:'Planner — roteiros e encontros numa linha do tempo; compartilhe com um link Joelboard.' },
@@ -514,10 +515,36 @@ function refreshHubAgenda(force){
   }).then(function(){ if(seq===_agendaSeq) _agendaWait=null; });
   return _agendaWait;
 }
-function setGreet(){ var em=JB.email(); var on=JB.isSignedIn(); greetEl.textContent= on?("Olá, "+em.split("@")[0]+" 👋"):"Olá 👋"; btnEl.textContent= on?"Sair":"Entrar"; btnEl.onclick= on?doOut:doIn; showFbTile(); applyJulioelUI(false); if(on && !_hbooted){ _hbooted=true; bootHubTours(); } hubNewsInit(); bootHubAgenda(); }
+function setGreet(){
+  var em=JB.email();
+  var on=JB.isSignedIn();
+  var who=(JB.profileName&&JB.profileName())||(em?em.split("@")[0]:'');
+  greetEl.textContent= on?("Olá, "+who+" 👋"):"Olá 👋";
+  btnEl.textContent= on?"Sair":"Entrar";
+  btnEl.onclick= on?doOut:doIn;
+  showFbTile();
+  applyJulioelUI(false);
+  paintHubProfile();
+  if(on && JB.ensureProfile && !JB.profileReady()){
+    if(!_hbooted) _hbooted=true;
+    JB.ensureProfile(function(){ bootHubTours(); setGreet(); });
+  } else if(on && !_hbooted){
+    _hbooted=true;
+    bootHubTours();
+  }
+  hubNewsInit();
+  bootHubAgenda();
+}
+function paintHubProfile(){
+  var ico=document.getElementById('hubProfileIco');
+  var nm=document.getElementById('hubProfileName');
+  if(ico) ico.textContent=(JB.profileIcon&&JB.profileIcon())||'👤';
+  if(nm) nm.textContent=(JB.profileName&&JB.profileName())||JB.email()||'—';
+}
+if(JB.onProfileChange) JB.onProfileChange(function(){ paintHubProfile(); if(JB.isSignedIn()){ var em=JB.email(); var who=(JB.profileName&&JB.profileName())||(em?em.split("@")[0]:''); if(greetEl) greetEl.textContent='Olá, '+who+' 👋'; } });
 JB.onAuthRestored(setGreet);
 function doIn(){ JB.signIn({ onSuccess: function(){ setGreet(); } }); }
-function doOut(){ try{ localStorage.removeItem(JULIOEL_KEY); }catch(_){} JB.signOut(); setGreet(); }
+function doOut(){ _hbooted=false; try{ localStorage.removeItem(JULIOEL_KEY); }catch(_){} JB.signOut(); setGreet(); }
 /* ---- Feedback viewer (owner-only; reads the form-response sheet via Sheets API) ---- */
 var FB_SHEET='1vgpn1qRuKys8TYQD-Dx49cDjcOqJDZyqS0fZAvfxchs', FB_GID=749060366, FB_OWNER='joaogabrielpabarbosa@gmail.com';
 var FB_STATUS=['New','Acknowledged','Fixed',"Won't fix"];
@@ -634,7 +661,7 @@ function setHubAgendaLimit(raw){
   paintHubAgendaLimit();
   if(_agendaApi && _agendaApi.setAppLimit) _agendaApi.setAppLimit(n);
 }
-function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; JB.renderSkinPicker('hub', document.getElementById("hubSkins")); paintHubAgendaLimit(); document.getElementById("hubSet").classList.add("open"); }
+function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; paintHubProfile(); JB.renderSkinPicker('hub', document.getElementById("hubSkins")); paintHubAgendaLimit(); document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
 function hubAuth(){ var on=JB.isSignedIn(); closeHubSet(); if(on) doOut(); else doIn(); }
 function miniReplaceMsg(type, extra) {

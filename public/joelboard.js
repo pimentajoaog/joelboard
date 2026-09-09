@@ -1615,6 +1615,310 @@
   }
   function jbTodayYmd() { return jbYmd(new Date()); }
 
+  var PROFILE_KEY = 'jb_profile';
+  var PROFILE_ICONS = ['🧑', '👩', '🧑‍💻', '🌸', '🐱', '🦊', '🐻', '🦁', '🐼', '🦉', '🐸', '🦄', '⭐', '🔥', '💜', '✈️', '🍷', '📝', '☕', '🌴', '🛒', '🌈', '🐶', '🎯', '🎵'];
+  var profileListeners = [];
+  var profileRequired = false;
+  var profileCb = null;
+  var profileDraftIcon = '';
+  var profileCandidates = [];
+  var FOUND_KEY = 'jb_profile_found';
+
+  function jbNormProfileIcon(s) {
+    var p = Array.from(String(s == null ? '' : s).trim());
+    return p.length ? p.slice(0, 2).join('') : '';
+  }
+  function jbProfileFromJSON(raw) {
+    try {
+      var o = JSON.parse(raw || 'null');
+      if (!o || typeof o !== 'object') return { nome: '', icone: '' };
+      return { nome: String(o.nome || '').trim(), icone: jbNormProfileIcon(o.icone) };
+    } catch (_) {
+      return { nome: '', icone: '' };
+    }
+  }
+  function jbAdoptLegacyProfile(current, nome, icone) {
+    if (current && current.nome) return current;
+    nome = String(nome || '').trim();
+    icone = jbNormProfileIcon(icone);
+    if (!nome) return current || { nome: '', icone: '' };
+    return { nome: nome, icone: icone || (current && current.icone) || '' };
+  }
+  function jbMergeProfileCandidates(list) {
+    var seen = {}, out = [];
+    (list || []).forEach(function (p) {
+      var nome = String((p && p.nome) || '').trim();
+      var icone = jbNormProfileIcon(p && p.icone) || '👤';
+      if (!nome) return;
+      var k = nome.toLowerCase() + '\t' + icone;
+      if (seen[k]) {
+        if (p.source && seen[k].sources.indexOf(p.source) < 0) seen[k].sources.push(p.source);
+        return;
+      }
+      var item = { nome: nome, icone: icone, source: p.source || '', sources: p.source ? [p.source] : [] };
+      seen[k] = item;
+      out.push(item);
+    });
+    return out;
+  }
+  function profileStoreKey() {
+    var em = (email() || '').toLowerCase();
+    return em ? (PROFILE_KEY + ':' + em) : PROFILE_KEY;
+  }
+  function migrateLooseProfile() {
+    var em = (email() || '').toLowerCase();
+    if (!em || lg(PROFILE_KEY + ':' + em)) return;
+    var loose = lg(PROFILE_KEY);
+    if (!loose) return;
+    var p = jbProfileFromJSON(loose);
+    if (!p.nome) return;
+    try {
+      var o = JSON.parse(loose);
+      var oem = String((o && o.email) || '').toLowerCase();
+      if (!oem || oem === em) ls(PROFILE_KEY + ':' + em, loose);
+    } catch (_) {}
+  }
+  function readProfile() {
+    migrateLooseProfile();
+    var p = jbProfileFromJSON(lg(profileStoreKey()) || lg(PROFILE_KEY));
+    return p;
+  }
+  function writeProfile(nome, icone) {
+    var p = {
+      nome: String(nome || '').trim(),
+      icone: jbNormProfileIcon(icone) || '👤',
+      email: (email() || '').toLowerCase(),
+      at: Date.now()
+    };
+    var raw = JSON.stringify(p);
+    ls(profileStoreKey(), raw);
+    ls(PROFILE_KEY, raw);
+    profileListeners.forEach(function (fn) { try { fn(p); } catch (_) {} });
+    return p;
+  }
+  function profileName() { return readProfile().nome; }
+  function profileIcon() { return readProfile().icone || '👤'; }
+  function profileReady() { return !!profileName(); }
+  function acctLabel() { return (profileIcon() + ' ' + (profileName() || email() || '')).trim(); }
+  function onProfileChange(fn) { if (typeof fn === 'function') profileListeners.push(fn); }
+  function foundStoreKey() {
+    var em = (email() || '').toLowerCase();
+    return em ? (FOUND_KEY + ':' + em) : FOUND_KEY;
+  }
+  function readFoundProfiles() {
+    try { return JSON.parse(lg(foundStoreKey()) || '[]'); } catch (_) { return []; }
+  }
+  function rememberProfileCandidate(nome, icone, source) {
+    var list = jbMergeProfileCandidates(readFoundProfiles().concat([{ nome: nome, icone: icone, source: source || '' }]));
+    try { ls(foundStoreKey(), JSON.stringify(list)); } catch (_) {}
+    return list;
+  }
+  function adoptLegacyProfile(nome, icone, source) {
+    rememberProfileCandidate(nome, icone, source || '');
+    return readProfile();
+  }
+  function profileFromConfigRows(rows, source) {
+    var nome = '', icone = '';
+    (rows || []).forEach(function (r) {
+      if (String((r || [])[0]) === 'perfil_nome') nome = r[1];
+      if (String((r || [])[0]) === 'perfil_icone') icone = r[1];
+    });
+    if (!String(nome || '').trim()) return null;
+    return { nome: String(nome).trim(), icone: jbNormProfileIcon(icone) || '👤', source: source || '' };
+  }
+  function fetchSheetProfile(app, source) {
+    var sid = getSheetId(app);
+    if (!sid || !cachedToken()) return Promise.resolve(null);
+    return api('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' + sid + '/values/Config?valueRenderOption=UNFORMATTED_VALUE').then(function (res) {
+      var p = profileFromConfigRows(res.values, source);
+      if (p) rememberProfileCandidate(p.nome, p.icone, source);
+      return p;
+    }).catch(function () { return null; });
+  }
+  function gatherProfileCandidates() {
+    if (typeof window !== 'undefined' && window.DATA && window.DATA.config) {
+      var path = '';
+      try { path = String((location && location.pathname) || ''); } catch (_) {}
+      var src = /planner/i.test(path) ? 'Planner' : (/notas/i.test(path) ? 'Notes' : '');
+      rememberProfileCandidate(window.DATA.config.perfil_nome, window.DATA.config.perfil_icone, src);
+    }
+    return Promise.all([
+      fetchSheetProfile('notas', 'Notes'),
+      fetchSheetProfile('planner', 'Planner')
+    ]).then(function () {
+      return jbMergeProfileCandidates(readFoundProfiles());
+    });
+  }
+  function paintAcct(id) {
+    var el = document.getElementById(id || 'acctEmail');
+    if (el) el.textContent = acctLabel();
+  }
+  function profileOverlay() { return document.getElementById('jbProfileOverlay'); }
+  function ensureProfileOverlay() {
+    var ov = profileOverlay();
+    if (ov) return ov;
+    ov = document.createElement('div');
+    ov.id = 'jbProfileOverlay';
+    ov.className = 'overlay jb-profile-ov';
+    ov.onclick = function (e) { if (e.target === ov && !profileRequired) closeProfile(); };
+    ov.innerHTML = '<div class="modal jb-profile-modal">'
+      + '<div class="mh"><div class="mt" id="jbProfileTitle">Seu perfil no Joelboard</div><button type="button" class="x" id="jbProfileX" onclick="JB.closeProfile()">✕</button></div>'
+      + '<div class="jb-profile-hint" id="jbProfileHint">É assim que você aparece em listas e planos compartilhados.</div>'
+      + '<div id="jbProfilePick" class="jb-profile-pick" style="display:none">'
+      + '<div class="jb-profile-hint" id="jbProfilePickHint"></div>'
+      + '<div id="jbProfileChoices" class="jb-profile-choices"></div>'
+      + '<button type="button" class="btn ghost" onclick="JB.profileStartFresh()">Criar um perfil novo</button>'
+      + '</div>'
+      + '<div id="jbProfileForm">'
+      + '<div class="jb-profile-preview" id="jbProfilePreview">👤</div>'
+      + '<div class="jb-profile-label">Ícone</div><div class="jb-profile-grid" id="jbProfileIcons"></div>'
+      + '<label class="jb-profile-label" for="jbProfileCustom">Outro emoji</label>'
+      + '<input class="field" id="jbProfileCustom" maxlength="8" placeholder="Cole ou digite…" oninput="JB.pickProfileIcon(this.value, true)">'
+      + '<label class="jb-profile-label" for="jbProfileName">Nome de exibição</label>'
+      + '<input class="field" id="jbProfileName" placeholder="Como quer aparecer">'
+      + '<button type="button" class="btn-primary" onclick="JB.saveProfile()">Salvar</button>'
+      + '</div>'
+      + '</div>';
+    document.body.appendChild(ov);
+    return ov;
+  }
+  function renderProfileIcons() {
+    var el = document.getElementById('jbProfileIcons');
+    if (!el) return;
+    var cur = profileDraftIcon || profileIcon();
+    el.innerHTML = PROFILE_ICONS.map(function (ic) {
+      return '<button type="button" class="jb-profile-ico' + (ic === cur ? ' on' : '') + '" onclick="JB.pickProfileIcon(\'' + String(ic).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">' + ic + '</button>';
+    }).join('');
+    var prev = document.getElementById('jbProfilePreview');
+    if (prev) prev.textContent = cur || '👤';
+    var custom = document.getElementById('jbProfileCustom');
+    if (custom && document.activeElement !== custom) {
+      custom.value = PROFILE_ICONS.indexOf(cur) < 0 && cur && cur !== '👤' ? cur : '';
+    }
+  }
+  function pickProfileIcon(ic, fromInput) {
+    var next = jbNormProfileIcon(ic) || (fromInput ? '' : profileIcon());
+    if (!next && fromInput) return;
+    profileDraftIcon = next || profileDraftIcon;
+    renderProfileIcons();
+  }
+  function paintProfileChoices() {
+    var wrap = document.getElementById('jbProfileChoices');
+    if (!wrap) return;
+    wrap.innerHTML = profileCandidates.map(function (c, i) {
+      var where = (c.sources && c.sources.length) ? c.sources.join(' · ') : (c.source || '');
+      return '<button type="button" class="jb-profile-choice" onclick="JB.chooseProfile(' + i + ')">'
+        + '<span class="jb-profile-choice-ico">' + escHtml(c.icone || '👤') + '</span>'
+        + '<span class="jb-profile-choice-txt"><b>' + escHtml(c.nome) + '</b>'
+        + (where ? '<span>' + escHtml(where) + '</span>' : '') + '</span></button>';
+    }).join('');
+  }
+  function showProfilePick(on) {
+    var pick = document.getElementById('jbProfilePick');
+    var form = document.getElementById('jbProfileForm');
+    var hint = document.getElementById('jbProfileHint');
+    if (pick) pick.style.display = on ? 'block' : 'none';
+    if (form) form.style.display = on ? 'none' : 'block';
+    if (hint) hint.style.display = on ? 'none' : '';
+    if (on) {
+      var ph = document.getElementById('jbProfilePickHint');
+      if (ph) {
+        ph.textContent = profileCandidates.length === 1
+          ? 'Encontramos um perfil que você já usou. Quer manter esse?'
+          : 'Encontramos alguns perfis que você já usou. Quer definir o seu como um deles?';
+      }
+      paintProfileChoices();
+    }
+  }
+  function openProfile(cb, opts) {
+    opts = opts || {};
+    profileCb = typeof cb === 'function' ? cb : profileCb;
+    profileRequired = !!opts.required;
+    profileDraftIcon = profileIcon();
+    profileCandidates = jbMergeProfileCandidates(opts.candidates || []);
+    whenReady(function () {
+      var ov = ensureProfileOverlay();
+      var title = document.getElementById('jbProfileTitle');
+      var hint = document.getElementById('jbProfileHint');
+      var x = document.getElementById('jbProfileX');
+      var name = document.getElementById('jbProfileName');
+      if (title) title.textContent = profileRequired ? 'Como você aparece' : 'Seu perfil no Joelboard';
+      if (hint) hint.textContent = profileRequired
+        ? 'Uma vez só — nome e ícone valem em Notes, Planner e no que for compartilhado.'
+        : 'É assim que você aparece em listas e planos compartilhados.';
+      if (x) x.style.display = profileRequired ? 'none' : '';
+      if (name) name.value = profileName();
+      renderProfileIcons();
+      showProfilePick(profileRequired && profileCandidates.length > 0);
+      ov.classList.add('open');
+      setTimeout(function () { if (name && !(profileRequired && profileCandidates.length)) name.focus(); }, 60);
+    });
+  }
+  function chooseProfile(i) {
+    var c = profileCandidates[i];
+    if (!c || !c.nome) return;
+    profileDraftIcon = c.icone || '👤';
+    var name = document.getElementById('jbProfileName');
+    if (name) name.value = c.nome;
+    saveProfile();
+  }
+  function profileStartFresh() {
+    showProfilePick(false);
+    var name = document.getElementById('jbProfileName');
+    if (name) { name.value = profileName(); name.focus(); }
+    renderProfileIcons();
+  }
+  function closeProfile() {
+    if (profileRequired) return;
+    var ov = profileOverlay();
+    if (ov) ov.classList.remove('open');
+    profileCb = null;
+  }
+  function saveProfile() {
+    var nameEl = document.getElementById('jbProfileName');
+    var nm = String((nameEl && nameEl.value) || '').trim();
+    if (!nm) { jbToast('Escolha um nome'); return; }
+    writeProfile(nm, profileDraftIcon || profileIcon());
+    profileRequired = false;
+    var ov = profileOverlay();
+    if (ov) ov.classList.remove('open');
+    var cb = profileCb;
+    profileCb = null;
+    jbToast('✓ Perfil salvo');
+    if (cb) cb();
+  }
+  function ensureProfile(cb) {
+    if (profileReady()) { if (cb) cb(); return; }
+    gatherProfileCandidates().then(function (list) {
+      if (profileReady()) { if (cb) cb(); return; }
+      openProfile(cb, { required: true, candidates: list });
+    }).catch(function () {
+      openProfile(cb, { required: true });
+    });
+  }
+  function writeCollabMemberProfile(sid, opts) {
+    opts = opts || {};
+    var em = String(opts.email || email() || '').toLowerCase();
+    var nome = opts.nome != null ? String(opts.nome).trim() : profileName();
+    var icone = jbNormProfileIcon(opts.icone != null ? opts.icone : profileIcon()) || '👤';
+    if (!sid || !em) return Promise.resolve();
+    return api('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' + sid + '/values/Membros?valueRenderOption=UNFORMATTED_VALUE').then(function (res) {
+      var v = res.values || [];
+      for (var i = 1; i < v.length; i++) {
+        if (String((v[i] || [])[0]).toLowerCase() !== em) continue;
+        var r = v[i] || [];
+        var papel = String(r[3] || 'editor');
+        var status = String(r[4] || 'active');
+        if (status === 'pending' && opts.activate) status = 'active';
+        var entrou = String(r[5] || '') || new Date().toISOString();
+        if (String(r[1] || '') === nome && jbNormProfileIcon(r[2]) === icone && String(r[4] || '') === status) return;
+        return api('PUT', 'https://sheets.googleapis.com/v4/spreadsheets/' + sid + '/values/' + encodeURIComponent('Membros!B' + (i + 1) + ':F' + (i + 1)) + '?valueInputOption=RAW', {
+          values: [[nome, icone, papel, status, entrou]]
+        });
+      }
+    });
+  }
+
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
     cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, bootAuthIfExpired: bootAuthIfExpired, onSessionExpired: onSessionExpired, onAuthRestored: onAuthRestored, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
@@ -1624,6 +1928,10 @@
     feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,
     toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady, ensureEditor: ensureEditor, editor: null, wireEggFooter: wireEggFooter, refreshNumberSteppers: scanNumberSteppers,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
-    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, ymd: jbYmd, todayYmd: jbTodayYmd, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis
+    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, ymd: jbYmd, todayYmd: jbTodayYmd, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis,
+    PROFILE_ICONS: PROFILE_ICONS, normProfileIcon: jbNormProfileIcon, profileFromJSON: jbProfileFromJSON, adoptLegacyInto: jbAdoptLegacyProfile, mergeProfileCandidates: jbMergeProfileCandidates,
+    profileName: profileName, profileIcon: profileIcon, profileReady: profileReady, acctLabel: acctLabel, adoptLegacyProfile: adoptLegacyProfile, rememberProfileCandidate: rememberProfileCandidate,
+    onProfileChange: onProfileChange, paintAcct: paintAcct, pickProfileIcon: pickProfileIcon, openProfile: openProfile, closeProfile: closeProfile, saveProfile: saveProfile, ensureProfile: ensureProfile,
+    chooseProfile: chooseProfile, profileStartFresh: profileStartFresh, writeCollabMemberProfile: writeCollabMemberProfile
   };
 })();

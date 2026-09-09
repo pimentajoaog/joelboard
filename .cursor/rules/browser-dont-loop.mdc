@@ -1,5 +1,5 @@
 ---
-description: Stop after one failed Cursor browser pass — never loop on OAuth, SW, or hung CDP
+description: Stop after one failed Cursor browser pass — never loop on OAuth, SW, hung CDP, or “just one more measure”
 alwaysApply: true
 ---
 
@@ -9,16 +9,25 @@ Use the Cursor browser to click through UI you can actually exercise (`?ghost=1`
 
 **Do not start** a browser pass for Google login, OAuth redirects, `/oauth.html`, or anything that needs a real Google account. Ghost covers signed-in UI; localhost Google hits `origin_mismatch`. See `ghost-local-test`.
 
-**One failed pass = stop.** Do not retry with a different host, CDP, curl, unregistering the service worker, or a long wait. Report URL, what you saw, and ship from tests.
+**One pass max.** Navigate → lock → snapshot/click once (or one short CDP evaluate) → unlock. Then ship from unit tests.
 
-Stop on the first of:
+**One failed or hung pass = stop.** Do not retry with a different host, more CDP, curl, unregistering the service worker, or a long wait. Report URL, what you saw, and finish from tests.
+
+Also stop on the first of:
 
 - Hub (or another app shell) at a URL that should be a different page
 - `chrome-error://`, blank document, or Vite not reachable
 - Script tags getting HTML (`JB is undefined`, `Unexpected token '<'`) — stale service worker on `localhost`
 - Any Google accounts / OAuth tab
 - Browser, CDP, or curl that does not return quickly
+- A CDP/`Runtime.evaluate` call that hangs, errors, or is interrupted — **do not retry**; write the fix from what you already know
+- Enough evidence already (screenshot, measured shift, clear CSS cause) — **do not** open another measure/click loop “to confirm”
 
-Prefer `http://localhost:5173/?ghost=1`. Do not switch to `127.0.0.1` to dodge the service worker. Do not poll hung shells.
+Hard bans:
+
+- No chained “measure → tweak → measure again” browser sessions
+- No `AwaitShell` / long sleeps waiting on the browser
+- No second navigate to the same Hub URL after the first ghost load already worked
+- Prefer `http://localhost:5173/?ghost=1`. Do not switch to `127.0.0.1` to dodge the service worker. Do not poll hung shells.
 
 UI you could not click: say so in the wrap-up. Unit tests + a short note beat a second browser loop.

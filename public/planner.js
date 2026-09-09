@@ -215,6 +215,14 @@ function plRejectCollabAsPersonal(grid){
 }
 
 function startAuth(){
+  if (JB.isGhost && JB.isGhost()) {
+    authDone=true;
+    var fx=JB.ghostFixture&&JB.ghostFixture('planner');
+    plannerGrid=(fx&&fx.grid)||{ Planos:0, Dias:1, Eventos:2, Config:3, Compartilhadas:4 };
+    DATA=(fx&&fx.data)||{ planos:[], dias:[], eventos:[], config:{} };
+    show();
+    return;
+  }
   if (JB.cachedToken()){ afterAuth(); return; }
   if (JB.bootAuthIfExpired(function(){ authDone=false; showSignIn(true); }, function(){ authDone=true; afterAuth(); })) {
     loadingHtml('<div class="gate"><div class="gt">📅 Joelboard Planner</div><div class="gs">Carregando…</div></div>');
@@ -366,6 +374,7 @@ function show(){
   if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('planner', refreshData); }
 }
 function refreshData(){
+  if(JB.isGhost&&JB.isGhost()) return;
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   if(typeof plRefreshCollabOnly==='function' && openPlanId && plan(openPlanId) && plan(openPlanId).collabSheetId){
     plRefreshCollabOnly(true).then(function(res){ if(typeof plHandlePollResult==='function') plHandlePollResult(res); else if(res && res.changed) render(); }).catch(function(){});

@@ -104,6 +104,14 @@ function clearDue(){ var n=note(openNoteId); if(!n) return; n.vence=''; touchNot
 
 /* ---- auth (shared core) ---- */
 function startAuth(){
+  if (JB.isGhost && JB.isGhost()) {
+    authDone=true;
+    var fx=JB.ghostFixture&&JB.ghostFixture('notas');
+    notasGrid=(fx&&fx.grid)||{ Notas:0, Itens:1, Config:2, Compartilhadas:3 };
+    DATA=(fx&&fx.data)||{ notas:[], itens:[], config:{} };
+    show();
+    return;
+  }
   if (JB.cachedToken()){ afterAuth(); return; }
   if (JB.bootAuthIfExpired(function(){ authDone=false; showSignIn(true); }, function(){ authDone=true; afterAuth(); })) {
     loadingHtml('<div class="gate"><div class="gt">📝 Joelboard Notes</div><div class="gs">Carregando…</div></div>');
@@ -259,6 +267,7 @@ function buildNotas(t){
 }
 function show(){ $('loading').style.display='none'; $('app').style.display='block'; if(DATA&&DATA.config&&JB.adoptLegacyProfile) JB.adoptLegacyProfile(DATA.config.perfil_nome, DATA.config.perfil_icone, 'Notes'); if(typeof ncPaintAcct==='function') ncPaintAcct(); else if(JB.paintAcct) JB.paintAcct(); else $('acctEmail').textContent='👤 '+(JB.email()||''); if(!_nbooted){ try{ var lid=new URLSearchParams(location.search).get('lista'); if(lid && note(lid)) openNoteId=lid; }catch(_){ } if(JB.ensureProfile&&!JB.profileReady()) JB.ensureProfile(function(){ if(typeof ncPaintAcct==='function') ncPaintAcct(); }); } render(); if(!_nbooted){ _nbooted=true; if(typeof ncCheckJoinParam==='function') ncCheckJoinParam(); if(typeof ncStartCollabPoll==='function') ncStartCollabPoll(); if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('notas', refreshData); } }
 function refreshData(){
+  if(JB.isGhost&&JB.isGhost()) return;
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   if(typeof ncRefreshCollabOnly==='function' && openNoteId && note(openNoteId) && note(openNoteId).collabSheetId){ ncRefreshCollabOnly(true).then(function(res){ if(typeof ncHandlePollResult==='function') ncHandlePollResult(res); else if(res && res.changed) render(); }).catch(function(){}); return; }
   var want=NOTAS_TABS.map(function(t){return t[0];}).filter(function(t){return notasGrid[t]!=null;});

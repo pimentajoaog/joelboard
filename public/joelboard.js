@@ -32,6 +32,55 @@
     host = String(host || '').split(':')[0].toLowerCase();
     return host === 'localhost' || host === '127.0.0.1';
   }
+  function jbGhostYmdFrom(base, off) {
+    var p = String(base || '').split('-');
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]) || 1);
+    d.setDate(d.getDate() + (off || 0));
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function jbGhostFixture(app, today) {
+    today = today || '2026-09-08';
+    var iso = today + 'T12:00:00.000Z';
+    if (app === 'notas') {
+      return {
+        grid: { Notas: 0, Itens: 1, Config: 2, Compartilhadas: 3 },
+        data: {
+          notas: [
+            { id: 'ghost-n1', titulo: 'Compras da semana', tipo: 'compras', cor: '', fixado: true, criado: iso, atualizado: iso, vence: '' },
+            { id: 'ghost-n2', titulo: 'Viagem Chile', tipo: 'viagem', cor: '✈️', fixado: false, criado: iso, atualizado: iso, vence: jbGhostYmdFrom(today, 34) }
+          ],
+          itens: [
+            { id: 'ghost-i1', notaId: 'ghost-n1', ordem: 0, texto: 'Pão', marcavel: true, feito: false, tipo: '' },
+            { id: 'ghost-i2', notaId: 'ghost-n1', ordem: 1, texto: 'Leite', marcavel: true, feito: true, tipo: '' },
+            { id: 'ghost-i3', notaId: 'ghost-n2', ordem: 0, texto: 'Reservar hotel', marcavel: true, feito: false, tipo: '' }
+          ],
+          config: { perfil_nome: 'Cursor', perfil_icone: '👻' }
+        }
+      };
+    }
+    if (app === 'planner') {
+      var d0 = jbGhostYmdFrom(today, 4), d1 = jbGhostYmdFrom(today, 5), d2 = jbGhostYmdFrom(today, 6);
+      return {
+        grid: { Planos: 0, Dias: 1, Eventos: 2, Config: 3, Compartilhadas: 4 },
+        data: {
+          planos: [{ id: 'ghost-p1', titulo: 'Fim de semana em casa', subtitulo: '2 noites · fixture ghost', inicio: d0, fim: d2, icone: '🏠', criado: iso, atualizado: iso }],
+          dias: [
+            { id: 'ghost-d1', planoId: 'ghost-p1', data: d0, titulo: 'Chegada', icone: '🌅', ordem: 0 },
+            { id: 'ghost-d2', planoId: 'ghost-p1', data: d1, titulo: 'Passeio', icone: '🚶', ordem: 1 },
+            { id: 'ghost-d3', planoId: 'ghost-p1', data: d2, titulo: 'Volta', icone: '🏠', ordem: 2 }
+          ],
+          eventos: [
+            { id: 'ghost-e1', diaId: 'ghost-d1', hora: '16h', horaMin: 960, titulo: 'Check-in', nota: '', icone: '🏨', tag: '', tagCor: 'warn', ordem: 0 },
+            { id: 'ghost-e2', diaId: 'ghost-d2', hora: '9h30', horaMin: 570, titulo: 'Café', nota: '', icone: '☕', tag: '', tagCor: 'ok', ordem: 0 },
+            { id: 'ghost-e3', diaId: 'ghost-d2', hora: '21h', horaMin: 1260, titulo: 'Jantar', nota: '', icone: '🍽️', tag: '', tagCor: 'warn', ordem: 1 }
+          ],
+          config: { perfil_nome: 'Cursor', perfil_icone: '👻' }
+        }
+      };
+    }
+    return { grid: {}, data: null };
+  }
+  function ghostFixture(app) { return jbGhostFixture(app, jbTodayYmd()); }
   function ghostAllowed() {
     try { return jbGhostHostOk(location.hostname); } catch (_) { return false; }
   }
@@ -416,6 +465,7 @@
   }
 
   function fetchEmail(tok){
+    if (isGhost()) return Promise.resolve(GHOST_EMAIL);
     return fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + (tok || cachedToken()) } })
       .then(function (r) { return r.json(); }).then(function (u) { ls(EML, u.email || ''); return u.email || ''; })
       .catch(function () { return email(); });
@@ -553,6 +603,7 @@
     return doFetch(tok).then(function (r) { return handle(r, true); });
   }
   function api(method, url, body, opts){
+    if (isGhost()) return Promise.resolve({ values: [], valueRanges: [], spreadsheetId: 'ghost', sheets: [] });
     opts = opts || {};
     var m = (method || 'GET').toUpperCase();
     var canQueue = opts.queue !== false && MUTATING[m] && isGoogleApiUrl(url) && !needsResponse(m, url, body);
@@ -706,6 +757,7 @@
     triggerStale(w.fn);
   }
   function watchSheet(app, onStale){
+    if (isGhost()) return;
     var sid = getSheetId(app);
     if (!sid || typeof onStale !== 'function') return;
     sheetWatchers[sid] = { localGen: Number(lg(genKey(sid)) || 0), fn: onStale, app: app };
@@ -1431,7 +1483,7 @@
 
   // --- shared guided tour (coach-marks). Self-contained DOM. steps:[{sel,title,body,go}] (go runs before the step → switch tabs etc.; no sel = centered card). ---
   var _tSteps=null, _tI=0, _tApp='', _tDone=null;
-  function tourDone(app){ return lg('jb_tour_'+app)==='1'; }
+  function tourDone(app){ if (isGhost()) return true; return lg('jb_tour_'+app)==='1'; }
   function tour(app, steps, opts){
     opts=opts||{}; _tApp=app; _tSteps=steps||[]; _tI=0; _tDone=opts.onDone||null;
     if(!_tSteps.length) return;
@@ -2001,7 +2053,7 @@
 
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
-    cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, bootAuthIfExpired: bootAuthIfExpired, onSessionExpired: onSessionExpired, onAuthRestored: onAuthRestored, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail, isGhost: isGhost, ghostHostOk: jbGhostHostOk, GHOST_EMAIL: GHOST_EMAIL,
+    cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, bootAuthIfExpired: bootAuthIfExpired, onSessionExpired: onSessionExpired, onAuthRestored: onAuthRestored, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail, isGhost: isGhost, ghostHostOk: jbGhostHostOk, GHOST_EMAIL: GHOST_EMAIL, ghostFixture: ghostFixture,
     requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,

@@ -525,7 +525,7 @@
             + (it.nota ? '<div class="jb-cal-peekn">' + esc(it.nota) + '</div>' : '') + pill + '</div></div>';
         }).join('')
       : '<div class="jb-cal-peekempty">Nada neste dia</div>';
-    return '<div class="jb-cal-peek" role="dialog" aria-label="' + esc(e.title || 'Dia do plano') + '">'
+    return '<div class="jb-cal-peek" role="region" aria-label="' + esc(e.title || 'Dia do plano') + '" tabindex="-1">'
       + '<span class="jb-cal-peeknub" aria-hidden="true"></span>'
       + '<div class="jb-cal-peekh">'
       + '<a class="jb-cal-peektitle" href="' + esc(href) + '">' + esc(e.title || 'Dia do plano') + '</a>'
@@ -565,7 +565,7 @@
       + '<div class="jb-cal-info"><div class="jb-cal-title">' + esc(e.title || '(sem título)') + '</div>'
       + (meta ? '<div class="jb-cal-meta">' + meta + '</div>' : '') + '</div>' + flag + linkPill + chk + '</div>';
     if (!peekable) return row;
-    return '<div class="jb-cal-rowwrap' + (openPeek ? ' open' : '') + '">' + row + '</div>';
+    return '<div class="jb-cal-rowwrap">' + row + '</div>';
   }
 
   function monthCellsHtml(events, date, sel) {
@@ -856,15 +856,31 @@
       }
       return null;
     }
-    function clearPeekNode() {
-      if (el._jbCalPeekNode && el._jbCalPeekNode.parentNode) {
-        el._jbCalPeekNode.parentNode.removeChild(el._jbCalPeekNode);
-      }
-      el._jbCalPeekNode = null;
-      if (!el.id || typeof document === 'undefined' || !document.querySelectorAll) return;
-      var stray = document.querySelectorAll('.jb-cal-peek[data-jb-cal-host="' + el.id + '"]');
-      for (var i = 0; i < stray.length; i++) {
-        if (stray[i].parentNode) stray[i].parentNode.removeChild(stray[i]);
+    function hidePeek() {
+      var peek = el._jbCalPeekNode;
+      if (!peek) return;
+      peek.hidden = true;
+      peek.style.visibility = 'hidden';
+      peek.style.pointerEvents = 'none';
+      peek.style.left = '-9999px';
+      peek.style.top = '0px';
+    }
+    function withScrollLock(fn) {
+      if (typeof window === 'undefined' || !window.addEventListener) { fn(); return; }
+      var x = window.scrollX || window.pageXOffset || 0;
+      var y = window.scrollY || window.pageYOffset || 0;
+      var lock = function () {
+        if (window.scrollTo) window.scrollTo(x, y);
+      };
+      window.addEventListener('scroll', lock, true);
+      try { fn(); }
+      finally {
+        window.removeEventListener('scroll', lock, true);
+        lock();
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(lock);
+          requestAnimationFrame(function () { requestAnimationFrame(lock); });
+        }
       }
     }
     function peekPlaceForRow(row) {
@@ -881,10 +897,11 @@
           side = 'right';
         }
       }
-      return { left: left, top: r.top, width: w, side: side, rowTop: r.top, rowBottom: r.bottom };
+      return { left: left, top: r.top, width: w, side: side };
     }
     function applyPeekPlace(peek, place) {
       if (!peek || !place) return;
+      peek.hidden = false;
       peek.classList.add('fly');
       peek.style.position = 'fixed';
       peek.style.width = place.width + 'px';
@@ -899,47 +916,61 @@
       peek.style.visibility = 'visible';
       peek.style.pointerEvents = 'auto';
     }
-    function syncPeekDom() {
-      clearPeekNode();
-      var opens = el.querySelectorAll('.jb-cal-rowwrap.open, .jb-cal-row.open');
-      for (var j = 0; j < opens.length; j++) opens[j].classList.remove('open');
-      var rows = el.querySelectorAll('.jb-cal-row[data-peek="1"]');
-      for (var k = 0; k < rows.length; k++) rows[k].setAttribute('aria-expanded', 'false');
-      if (!state.peekId) return;
-      var row = peekRowById(state.peekId);
-      var wrap = row && row.parentNode;
-      if (!wrap || !wrap.classList || !wrap.classList.contains('jb-cal-rowwrap')) return;
-      var evn = (state.events || []).find(function (e) { return e.id === state.peekId; });
-      if (!evn) return;
-      wrap.classList.add('open');
-      row.classList.add('open');
-      row.setAttribute('aria-expanded', 'true');
-      if (typeof document === 'undefined' || !document.body || !document.createElement) return;
+    function ensurePeekNode() {
+      if (el._jbCalPeekNode && el._jbCalPeekNode.isConnected) return el._jbCalPeekNode;
+      if (typeof document === 'undefined' || !document.body || !document.createElement) return null;
       if (!el.id) el.id = 'jb-cal-' + Math.random().toString(36).slice(2, 9);
-      var scrollX = window.scrollX || window.pageXOffset || 0;
-      var scrollY = window.scrollY || window.pageYOffset || 0;
-      var place = peekPlaceForRow(row);
-      var host = document.createElement('div');
-      host.innerHTML = plannerPeekHtml(evn);
-      var peek = host.firstChild;
-      if (!peek) return;
-      peek.classList.add('fly');
+      var peek = document.createElement('div');
+      peek.className = 'jb-cal-peek fly';
       peek.setAttribute('data-jb-cal-host', el.id);
+      peek.setAttribute('tabindex', '-1');
+      peek.hidden = true;
       peek.style.position = 'fixed';
-      peek.style.left = place.left + 'px';
-      peek.style.top = place.top + 'px';
-      peek.style.width = place.width + 'px';
+      peek.style.left = '-9999px';
+      peek.style.top = '0px';
       peek.style.visibility = 'hidden';
       peek.style.pointerEvents = 'none';
       document.body.appendChild(peek);
       el._jbCalPeekNode = peek;
-      applyPeekPlace(peek, place);
-      if (window.scrollTo) window.scrollTo(scrollX, scrollY);
+      return peek;
+    }
+    function syncPeekDom() {
+      withScrollLock(function () {
+        var rows = el.querySelectorAll('.jb-cal-row[data-peek="1"]');
+        for (var k = 0; k < rows.length; k++) {
+          rows[k].classList.remove('open');
+          rows[k].setAttribute('aria-expanded', 'false');
+        }
+        if (!state.peekId) {
+          hidePeek();
+          return;
+        }
+        var row = peekRowById(state.peekId);
+        if (!row) { hidePeek(); return; }
+        var evn = (state.events || []).find(function (e) { return e.id === state.peekId; });
+        if (!evn) { hidePeek(); return; }
+        row.classList.add('open');
+        row.setAttribute('aria-expanded', 'true');
+        var peek = ensurePeekNode();
+        if (!peek) return;
+        var tmp = document.createElement('div');
+        tmp.innerHTML = plannerPeekHtml(evn);
+        var src = tmp.firstChild;
+        if (src) {
+          peek.setAttribute('role', src.getAttribute('role') || 'region');
+          peek.setAttribute('aria-label', src.getAttribute('aria-label') || '');
+          peek.innerHTML = src.innerHTML;
+        }
+        applyPeekPlace(peek, peekPlaceForRow(row));
+        if (document.activeElement && peek.contains(document.activeElement) && document.activeElement.blur) {
+          document.activeElement.blur();
+        }
+      });
     }
     function placePeek() {
       var peek = el._jbCalPeekNode;
       var row = peekRowById(state.peekId);
-      if (!peek || !row) return;
+      if (!peek || !row || peek.hidden) return;
       applyPeekPlace(peek, peekPlaceForRow(row));
     }
     function bindPeekMove() {
@@ -1132,7 +1163,7 @@
             }
           }
           if (state.peekId) {
-            if (t && t.closest && (t.closest('.jb-cal-rowwrap.open') || t.closest('.jb-cal-peek'))) return;
+            if (t && t.closest && (t.closest('.jb-cal-row.open') || t.closest('.jb-cal-peek'))) return;
             state.peekId = null;
             syncPeekDom();
           }

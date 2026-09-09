@@ -953,20 +953,44 @@ html.jb-ink-full .fab {
 .jb-cal-row { display: flex; align-items: center; gap: 12px; background: var(--surface, #191d2c); border: 1px solid var(--border, #2d3346); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .jb-cal-row[data-peek="1"] {
   border-radius: 999px;
-  padding: 10px 14px;
-  width: max-content;
-  max-width: min(100%, 420px);
-  flex: 0 1 auto;
+  padding: 8px 14px;
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+  max-height: 52px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
-.jb-cal-rowwrap { margin-bottom: 8px; position: relative; }
-.jb-cal-rowwrap.open { z-index: 9; display: flex; align-items: flex-start; gap: 12px; overflow: visible; }
+.jb-cal-rowwrap {
+  display: block;
+  margin-bottom: 8px;
+  position: relative;
+  width: min(100%, 420px);
+  overflow: visible;
+}
+.jb-cal-rowwrap.open { z-index: 9; display: block; }
 .jb-cal-rowwrap .jb-cal-row { margin-bottom: 0; }
 .jb-cal-row.open { border-color: var(--planner, #2dd4bf); box-shadow: 0 0 0 1px color-mix(in srgb, var(--planner, #2dd4bf) 55%, transparent); }
+.jb-cal-row[data-peek="1"] .jb-cal-bar { align-self: center; height: 18px; }
+.jb-cal-row[data-peek="1"] .jb-cal-meta {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jb-cal-row[data-peek="1"] .jb-cal-flag,
+.jb-cal-row[data-peek="1"] .jb-cal-linkpill {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  font-size: 10px;
+  line-height: 1.15;
+  max-height: 22px;
+}
 .jb-cal-peek {
-  position: relative;
-  z-index: 8;
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 0;
+  z-index: 40;
   width: 260px;
-  flex: 0 0 260px;
   max-width: calc(100vw - 24px);
   max-height: min(70vh, 420px);
   overflow: auto;
@@ -979,8 +1003,23 @@ html.jb-ink-full .fab {
   transform-origin: left 18px;
   animation: jbCalPeekIn .28s cubic-bezier(.22,1.12,.32,1);
 }
-.jb-cal-peek.fly { position: fixed; flex: none; z-index: 40; }
-.jb-cal-peek[data-side="left"] { transform-origin: right 18px; animation-name: jbCalPeekInLeft; }
+.jb-cal-peek.fly { position: fixed; left: auto; }
+.jb-cal-peek[data-side="left"]:not(.fly) {
+  left: auto;
+  right: calc(100% + 12px);
+  transform-origin: right 18px;
+  animation-name: jbCalPeekInLeft;
+}
+.jb-cal-peek[data-side="left"].fly { transform-origin: right 18px; animation-name: jbCalPeekInLeft; }
+.jb-cal-peeknub {
+  position: absolute;
+  top: 16px;
+  width: 12px;
+  height: 12px;
+  background: var(--surface, #191d2c);
+  border: 1px solid color-mix(in srgb, var(--planner, #2dd4bf) 42%, var(--border, #2d3346));
+  pointer-events: none;
+}
 .jb-cal-peek:not(.fly) .jb-cal-peeknub { display: none; }
 .jb-cal-peek[data-side="right"] .jb-cal-peeknub,
 .jb-cal-peek:not([data-side]) .jb-cal-peeknub {
@@ -1062,7 +1101,14 @@ html.jb-ink-full .fab {
 .jb-cal.compact .jb-cal-dots { gap: 2px; }
 .jb-cal.compact .jb-cal-dot { width: 4px; height: 4px; }
 .jb-cal.compact .jb-cal-row { padding: 7px 8px; margin-bottom: 5px; border-radius: 10px; background: color-mix(in srgb, var(--surface, #191d2c) 70%, transparent); }
-.jb-cal.compact .jb-cal-row[data-peek="1"] { border-radius: 999px; padding: 7px 12px; width: max-content; max-width: min(100%, 420px); }
+.jb-cal.compact .jb-cal-row[data-peek="1"] {
+  border-radius: 999px;
+  padding: 6px 12px;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  width: 100%;
+}
 .jb-cal.compact .jb-cal-rowwrap .jb-cal-row { margin-bottom: 0; }
 .jb-cal.compact .jb-cal-app .jb-cal-bar { display: none; }
 .jb-cal.compact .jb-cal-title { font-size: 13px; }

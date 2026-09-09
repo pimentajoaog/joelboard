@@ -846,29 +846,28 @@
       var peek = wrap && wrap.querySelector('.jb-cal-peek');
       var row = wrap && wrap.querySelector('.jb-cal-row');
       if (!peek || !row) return;
-      peek.classList.remove('fly');
-      peek.style.left = '';
-      peek.style.top = '';
-      peek.style.width = '';
-      peek.setAttribute('data-side', 'right');
       var r = row.getBoundingClientRect();
       var w = 260;
-      var spaceRight = window.innerWidth - r.right - 16;
-      if (spaceRight >= w) return;
-      var h = peek.offsetHeight || 120;
-      var left = r.left - 10 - w;
-      var side = 'left';
-      if (left < 12) {
-        left = Math.max(12, window.innerWidth - 12 - w);
-        side = 'right';
+      var gap = 12;
+      var left = r.right + gap;
+      var side = 'right';
+      if (window.innerWidth - r.right - 16 < w) {
+        left = r.left - gap - w;
+        side = 'left';
+        if (left < 12) {
+          left = Math.max(12, window.innerWidth - 12 - w);
+          side = 'right';
+        }
       }
-      var top = r.top;
-      if (top + h > window.innerHeight - 12) top = Math.max(12, window.innerHeight - 12 - h);
       peek.classList.add('fly');
       peek.style.width = w + 'px';
       peek.style.left = left + 'px';
-      peek.style.top = top + 'px';
+      peek.style.right = 'auto';
       peek.setAttribute('data-side', side);
+      var h = peek.offsetHeight || 120;
+      var top = r.top;
+      if (top + h > window.innerHeight - 12) top = Math.max(12, window.innerHeight - 12 - h);
+      peek.style.top = top + 'px';
     }
     function bindPeekMove() {
       if (el._jbCalPeekMove) return;

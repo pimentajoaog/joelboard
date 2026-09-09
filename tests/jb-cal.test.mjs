@@ -189,6 +189,16 @@ test('planner day rows expand a view-only peek instead of listing hours', functi
   assert.match(open, /Abrir no Planner/);
   assert.match(open, /jb-cal-peektitle/);
   assert.doesNotMatch(open, /jb-cal-rowgo/);
+  const css = readFileSync(new URL('../public/joelboard.css', import.meta.url), 'utf8');
+  assert.match(css, /\.jb-cal-peek \{[\s\S]*?position:\s*absolute/);
+  assert.match(css, /\.jb-cal-peek\.fly \{[^}]*position:\s*fixed/);
+  assert.match(css, /\.jb-cal-rowwrap \{[^}]*width:\s*min\(100%, 420px\)/);
+  assert.match(css, /\.jb-cal-row\[data-peek="1"\] \{[\s\S]*?height:\s*52px/);
+  assert.match(css, /\.jb-cal\.compact \.jb-cal-row\[data-peek="1"\] \{[\s\S]*?height:\s*44px/);
+  assert.doesNotMatch(css, /\.jb-cal-rowwrap\.open \{[^}]*display:\s*flex/);
+  const calSrc = readFileSync(new URL('../public/jb-cal.js', import.meta.url), 'utf8');
+  assert.match(calSrc, /peek\.classList\.add\('fly'\)/);
+  assert.doesNotMatch(calSrc, /if \(spaceRight >= w\) return/);
 });
 
 test('eventsFromNotas keeps completed due lists as done', function () {

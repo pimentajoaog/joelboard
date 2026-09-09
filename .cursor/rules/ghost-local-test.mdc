@@ -1,0 +1,13 @@
+---
+description: Use the localhost ghost session to test Joelboard without Google OAuth
+alwaysApply: true
+---
+
+# Localhost ghost session
+
+The Cursor browser cannot complete Google OAuth on localhost (`origin_mismatch`). Do not try to sign in with the user's Google account.
+
+- Open the local Vite Hub with `?ghost=1` (for example `http://localhost:5173/?ghost=1`). That sets a localhost-only session: email `cursor-ghost@localhost`, default profile `👻 Cursor` (skip with `&noprofile=1`).
+- Ghost stays on until `?ghost=0` or **Sair**. It never activates on production hosts.
+- Ghost has no Drive/Sheets token. Use it for Hub chrome, profile, header, and settings. Notes, Planner, Finance, Fit, and Study will not load real workbooks.
+- After `?ghost=1`, exercise the UI as a signed-in user. Do not inject fake `jb_profile` / greet text unless you are testing a failure path.

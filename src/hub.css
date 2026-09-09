@@ -31,6 +31,7 @@ body.hub-agenda-wide .hub-body{ grid-template-columns:minmax(0,1fr) 248px; grid-
 .acct{ @apply flex items-center gap-3 text-[13px] text-muted; }
 #greet{ max-width:min(46vw, 220px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 #greet.has-profile{ color:var(--text); font-weight:700; }
+.hub-ghost-tag{ font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--primary); border:1px solid var(--border); border-radius:999px; padding:2px 7px; }
 .authbtn{ @apply bg-surface2 border border-border text-primary font-bold text-xs rounded-full px-[13px] py-1.5 cursor-pointer; font-family:inherit; }
 .authbtn:hover{ @apply border-primary; }
 .sub{ @apply text-sm text-muted; margin:8px 2px 18px; }

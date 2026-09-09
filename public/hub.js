@@ -520,6 +520,8 @@ function setGreet(){
   var ready=JB.profileReady&&JB.profileReady();
   greetEl.textContent= (on && ready && JB.acctLabel)?JB.acctLabel():'Olá 👋';
   greetEl.classList.toggle('has-profile', !!(on && ready));
+  var ghostTag=document.getElementById('hubGhostTag');
+  if(ghostTag) ghostTag.hidden=!(JB.isGhost&&JB.isGhost());
   btnEl.textContent= on?"Sair":"Entrar";
   btnEl.onclick= on?doOut:doIn;
   showFbTile();
@@ -672,7 +674,7 @@ function setHubAgendaLimit(raw){
   paintHubAgendaLimit();
   if(_agendaApi && _agendaApi.setAppLimit) _agendaApi.setAppLimit(n);
 }
-function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; if(JB.prepareProfileEditor) JB.prepareProfileEditor(); else paintHubProfile(); JB.renderSkinPicker('hub', document.getElementById("hubSkins")); paintHubAgendaLimit(); document.getElementById("hubSet").classList.add("open"); }
+function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); var ghost=JB.isGhost&&JB.isGhost(); document.getElementById("hubAcct").textContent = ghost?("Ghost · "+em+" — sem Google, só neste computador."):(on?("Conectado: "+em):"Você não está conectado."); document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; if(JB.prepareProfileEditor) JB.prepareProfileEditor(); else paintHubProfile(); JB.renderSkinPicker('hub', document.getElementById("hubSkins")); paintHubAgendaLimit(); document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
 function hubAuth(){ var on=JB.isSignedIn(); closeHubSet(); if(on) doOut(); else doIn(); }
 function miniReplaceMsg(type, extra) {

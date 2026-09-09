@@ -25,12 +25,47 @@
   function ss(k, v){ try { sessionStorage.setItem(k, v); } catch (_) {} }
   function sr(k){ try { sessionStorage.removeItem(k); } catch (_) {} }
 
+  var GHOST_KEY = 'jb_ghost';
+  var GHOST_EMAIL = 'cursor-ghost@localhost';
+  var ghostOn = null;
+  function jbGhostHostOk(host) {
+    host = String(host || '').split(':')[0].toLowerCase();
+    return host === 'localhost' || host === '127.0.0.1';
+  }
+  function ghostAllowed() {
+    try { return jbGhostHostOk(location.hostname); } catch (_) { return false; }
+  }
+  function computeGhost() {
+    if (!ghostAllowed()) return false;
+    try {
+      var q = new URLSearchParams(location.search).get('ghost');
+      if (q === '0') { lr(GHOST_KEY); return false; }
+      if (q === '1') { ls(GHOST_KEY, '1'); return true; }
+    } catch (_) {}
+    return lg(GHOST_KEY) === '1';
+  }
+  function isGhost() {
+    if (ghostOn == null) ghostOn = computeGhost();
+    return !!ghostOn;
+  }
+  function bootGhost() {
+    ghostOn = computeGhost();
+    if (!ghostOn) return;
+    lr('jb_signedout');
+    ls(EML, GHOST_EMAIL);
+    whenReady(function () {
+      document.documentElement.classList.add('jb-ghost');
+      if (document.body) document.body.classList.add('jb-ghost');
+      seedGhostProfile();
+    });
+  }
+
   function readToken(){ pullSharedToken(); return memTok || sg(TOK) || lg(TOK) || ''; }
   function readExp(){ pullSharedToken(); return memExp || Number(sg(EXP) || lg(EXP) || 0); }
   function tokenExpiresAt(){ return readExp(); }
   function isTokenValid(){ var t = readToken(), e = readExp(); return !!(t && e && Date.now() < e); }
   function cachedToken(){ return isTokenValid() ? readToken() : ''; }
-  function hasSession(){ if (lg('jb_signedout')) return false; return !!(lg(EML) || readToken()); }
+  function hasSession(){ if (isGhost()) return true; if (lg('jb_signedout')) return false; return !!(lg(EML) || readToken()); }
   function clearTokenStorage(){
     memTok = ''; memExp = 0;
     sr(TOK); sr(EXP);
@@ -124,7 +159,7 @@
     scheduleTokenRefresh();
     if (wrote) broadcastTok(memTok, memExp);
   }
-  function email(){ return lg(EML) || ''; }
+  function email(){ return isGhost() ? GHOST_EMAIL : (lg(EML) || ''); }
 
   function migrateTokenStorage(){
     try {
@@ -168,8 +203,8 @@
     window.addEventListener('storage', onAuthStorageEvent);
   }
 
-  function isSignedIn(){ return isTokenValid() && !!email(); }
-  function needsReLogin(){ if (lg('jb_signedout')) return false; return !!email() && !isTokenValid(); }
+  function isSignedIn(){ return isGhost() || (isTokenValid() && !!email()); }
+  function needsReLogin(){ if (isGhost()) return false; if (lg('jb_signedout')) return false; return !!email() && !isTokenValid(); }
 
   var reloginListeners = [], reloginShown = false, reloginPromptAt = 0;
   var authRestoredListeners = [];
@@ -253,6 +288,7 @@
   function clearRefreshTimer(){ if (refreshTimer) { clearTimeout(refreshTimer); refreshTimer = null; } }
 
   function ensureToken(interactive){
+    if (isGhost()) return Promise.resolve('');
     if (isTokenValid()) return Promise.resolve(readToken());
     return requestToken(!!interactive);
   }
@@ -358,6 +394,7 @@
   }
   function requestToken(interactive, opts){
     opts = opts || {};
+    if (isGhost()) return Promise.reject(new Error('ghost'));
     pullSharedToken();
     if (!interactive && isTokenValid() && !opts.force) return Promise.resolve(readToken());
     if (!interactive && Date.now() < silentCooldownUntil) {
@@ -756,6 +793,8 @@
   }
 
   function signOut(){
+    ghostOn = false;
+    lr(GHOST_KEY);
     clearRefreshTimer();
     hideReLoginBar();
     var t = readToken();
@@ -763,10 +802,13 @@
     clearTokenStorage();
     lr(EML);
     ls('jb_signedout', '1');
+    document.documentElement.classList.remove('jb-ghost');
+    if (document.body) document.body.classList.remove('jb-ghost');
     if (AUTH_BC) try { AUTH_BC.postMessage({ t: 'out', from: TAB_ID }); } catch (_) {}
   }
 
   function onTabFocusAuth(){
+    if (isGhost()) return;
     if (document.visibilityState === 'hidden' || lg('jb_signedout')) return;
     pullSharedToken();
     if (!email() && !readToken()) return;
@@ -776,9 +818,18 @@
     });
   }
   function initAuthPersistence(){
+    bootGhost();
     migrateTokenStorage();
     initAuthBroadcast();
     clearStaleToken();
+    if (isGhost()) {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') onTabFocusAuth();
+      });
+      window.addEventListener('focus', onTabFocusAuth);
+      window.addEventListener('pageshow', onTabFocusAuth);
+      return;
+    }
     if (hasSession()) {
       if (isTokenValid()) scheduleTokenRefresh();
       else {
@@ -1688,6 +1739,13 @@
     var p = jbProfileFromJSON(lg(profileStoreKey()) || lg(PROFILE_KEY));
     return p;
   }
+  function seedGhostProfile() {
+    if (!isGhost() || profileReady()) return;
+    var skip = false;
+    try { skip = new URLSearchParams(location.search).get('noprofile') === '1'; } catch (_) {}
+    if (skip) return;
+    writeProfile('Cursor', '👻');
+  }
   function writeProfile(nome, icone) {
     var p = {
       nome: String(nome || '').trim(),
@@ -1943,7 +2001,7 @@
 
   window.JB = {
     CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
-    cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, bootAuthIfExpired: bootAuthIfExpired, onSessionExpired: onSessionExpired, onAuthRestored: onAuthRestored, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail,
+    cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, bootAuthIfExpired: bootAuthIfExpired, onSessionExpired: onSessionExpired, onAuthRestored: onAuthRestored, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail, isGhost: isGhost, ghostHostOk: jbGhostHostOk, GHOST_EMAIL: GHOST_EMAIL,
     requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet,
@@ -1956,4 +2014,6 @@
     onProfileChange: onProfileChange, paintAcct: paintAcct, pickProfileIcon: pickProfileIcon, prepareProfileEditor: prepareProfileEditor, saveProfileValues: saveProfileValues, openProfile: openProfile, closeProfile: closeProfile, saveProfile: saveProfile, ensureProfile: ensureProfile,
     chooseProfile: chooseProfile, profileStartFresh: profileStartFresh, writeCollabMemberProfile: writeCollabMemberProfile
   };
+  bootGhost();
+  seedGhostProfile();
 })();

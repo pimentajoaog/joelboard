@@ -856,13 +856,18 @@
       }
       return null;
     }
+    function setPeekOpenClass(on) {
+      if (typeof document === 'undefined' || !document.documentElement || !document.documentElement.classList) return;
+      document.documentElement.classList.toggle('jb-cal-peek-on', !!on);
+    }
     function hidePeek() {
       var peek = el._jbCalPeekNode;
+      setPeekOpenClass(false);
       if (!peek) return;
       peek.hidden = true;
       peek.style.visibility = 'hidden';
       peek.style.pointerEvents = 'none';
-      peek.style.left = '-9999px';
+      peek.style.left = '0px';
       peek.style.top = '0px';
     }
     function withScrollLock(fn) {
@@ -885,18 +890,20 @@
     }
     function peekPlaceForRow(row) {
       var r = row.getBoundingClientRect();
-      var w = 260;
+      var pad = 12;
+      var w = Math.min(260, Math.max(160, window.innerWidth - pad * 2));
       var gap = 12;
       var left = r.right + gap;
       var side = 'right';
-      if (window.innerWidth - r.right - 16 < w) {
+      if (left + w > window.innerWidth - pad) {
         left = r.left - gap - w;
         side = 'left';
-        if (left < 12) {
-          left = Math.max(12, window.innerWidth - 12 - w);
-          side = 'right';
-        }
       }
+      if (left < pad) {
+        left = pad;
+        side = 'right';
+      }
+      if (left + w > window.innerWidth - pad) left = Math.max(pad, window.innerWidth - pad - w);
       return { left: left, top: r.top, width: w, side: side };
     }
     function applyPeekPlace(peek, place) {
@@ -905,16 +912,21 @@
       peek.classList.add('fly');
       peek.style.position = 'fixed';
       peek.style.width = place.width + 'px';
-      peek.style.left = place.left + 'px';
       peek.style.right = 'auto';
       peek.style.bottom = 'auto';
       peek.setAttribute('data-side', place.side);
-      var h = peek.offsetHeight || 120;
+      var pad = 12;
+      var maxH = Math.max(80, window.innerHeight - pad * 2);
+      peek.style.maxHeight = maxH + 'px';
+      var h = Math.min(peek.offsetHeight || 120, maxH);
       var top = place.top;
-      if (top + h > window.innerHeight - 12) top = Math.max(12, window.innerHeight - 12 - h);
+      if (top + h > window.innerHeight - pad) top = Math.max(pad, window.innerHeight - pad - h);
+      if (top < pad) top = pad;
       peek.style.top = top + 'px';
+      peek.style.left = place.left + 'px';
       peek.style.visibility = 'visible';
       peek.style.pointerEvents = 'auto';
+      setPeekOpenClass(true);
     }
     function ensurePeekNode() {
       if (el._jbCalPeekNode && el._jbCalPeekNode.isConnected) return el._jbCalPeekNode;
@@ -926,7 +938,7 @@
       peek.setAttribute('tabindex', '-1');
       peek.hidden = true;
       peek.style.position = 'fixed';
-      peek.style.left = '-9999px';
+      peek.style.left = '0px';
       peek.style.top = '0px';
       peek.style.visibility = 'hidden';
       peek.style.pointerEvents = 'none';

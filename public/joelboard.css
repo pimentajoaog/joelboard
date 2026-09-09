@@ -3,9 +3,16 @@
    Uses CSS variables (--border, --muted) that each app defines in its own :root. */
 
 /* Scroll-lock behind any open modal (toggled by joelboard.js via .jb-noscroll) */
+html {
+  scrollbar-gutter: stable;
+  overflow-x: clip;
+}
 html.jb-noscroll,
 body { font-family: var(--font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif); }  /* baseline: apps' own body rule overrides; themes set --font-body */
 body.jb-noscroll { overflow: hidden; }
+html.jb-cal-peek-on {
+  overflow-x: clip;
+}
 
 .overlay,
 .modal { overscroll-behavior: contain; }
@@ -1027,6 +1034,7 @@ html.jb-ink-full .fab {
   max-width: calc(100vw - 24px);
   max-height: min(70vh, 420px);
   overflow: auto;
+  overscroll-behavior: contain;
   background: var(--surface, #191d2c);
   border: 1px solid color-mix(in srgb, var(--planner, #2dd4bf) 42%, var(--border, #2d3346));
   border-radius: 16px;
@@ -1036,6 +1044,7 @@ html.jb-ink-full .fab {
   transform: none;
   animation: jbCalPeekIn .2s ease-out;
   overflow-anchor: none;
+  contain: paint;
 }
 .jb-cal-peek.fly { position: fixed; left: auto; }
 .jb-cal-peek[data-side="left"] {

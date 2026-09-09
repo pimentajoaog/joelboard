@@ -202,6 +202,7 @@ test('planner day rows expand a view-only peek instead of listing hours', functi
   assert.match(css, /\.jb-cal-row\[data-peek="1"\] \{[\s\S]*?height:\s*52px/);
   assert.match(css, /\.jb-cal\.compact \.jb-cal-row\[data-peek="1"\] \{[\s\S]*?height:\s*44px/);
   assert.match(css, /\.jb-cal-row\[data-peek="1"\]\.open[\s\S]*?border-color:\s*var\(--planner/);
+  assert.match(css, /scrollbar-gutter:\s*stable/);
   assert.match(css, /overflow-anchor:\s*none/);
   assert.match(css, /\.jb-cal-linkslot/);
   assert.doesNotMatch(css, /\.jb-cal-row\[data-peek="1"\]\.open[\s\S]{0,120}outline:/);
@@ -210,7 +211,9 @@ test('planner day rows expand a view-only peek instead of listing hours', functi
   assert.match(calSrc, /function withScrollLock/);
   assert.match(calSrc, /function hidePeek/);
   assert.match(calSrc, /function ensurePeekNode/);
+  assert.match(calSrc, /jb-cal-peek-on/);
   assert.match(calSrc, /function syncPeekDom/);
+  assert.doesNotMatch(calSrc, /-9999px/);
   assert.doesNotMatch(calSrc, /if \(spaceRight >= w\) return/);
 });
 

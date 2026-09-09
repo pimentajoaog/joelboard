@@ -111,7 +111,7 @@ function startAuth(){
     var fx=JB.ghostFixture&&JB.ghostFixture('notas');
     notasGrid=(fx&&fx.grid)||{ Notas:0, Itens:1, Config:2, Compartilhadas:3 };
     DATA=(fx&&fx.data)||{ notas:[], itens:[], config:{} };
-    show();
+    setTimeout(show, 0);
     return;
   }
   if (JB.cachedToken()){ afterAuth(); return; }
@@ -518,9 +518,10 @@ function noteCard(n){
   }
   var frac=chk.length?'<span class="nc-frac">'+done+'/'+chk.length+'</span>':'';
   var pip=(!n.preset && n.sticker)?'<span class="nc-sticker-pip" title="No Planner"></span>':'';
+  var together=n.collabSheetId?'<span class="nc-together" title="Compartilhada" aria-label="Compartilhada"></span>':'';
   return '<div class="notec'+(n.collabSheetId?' notec-shared':'')+(n.fixado?' notec-pinned':'')+(n.sticker&&!n.preset?' notec-sticker':'')+'" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')">'
-    +'<div class="nc-top"><button type="button" class="nc-ico" onclick="startNoteIconEdit(event,\''+n.id+'\')" title="Alterar ícone" aria-label="Alterar ícone">'+noteIcon(n)+'</button><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div>'+pip
-    +(n.collabSheetId?'':('<button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button>'))+'</div>'
+    +'<div class="nc-top"><button type="button" class="nc-ico" onclick="startNoteIconEdit(event,\''+n.id+'\')" title="Alterar ícone" aria-label="Alterar ícone">'+noteIcon(n)+'</button><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div>'+together+pip
+    +'<button type="button" class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button></div>'
     +'<div class="nc-meta">'+frac+status+(avatars?('<span class="nc-members">'+avatars+'</span>'):'')+'</div>'+prog+'</div>';
 }
 function startNoteRename(ev,id){ ev.stopPropagation(); _renameNoteId=id; renderHomeList(); setTimeout(function(){ var inp=document.querySelector('[data-rename="'+id+'"]'); if(inp){ inp.focus(); inp.select(); } },30); }
@@ -529,7 +530,15 @@ function refreshAfterIconChange(ctx){ if(openNoteId===ctx) renderEditor(); else 
 function noteRenameKey(ev,id){ if(ev.key==='Enter'){ ev.preventDefault(); commitNoteRename(id,ev.target.value); } if(ev.key==='Escape'){ ev.preventDefault(); cancelNoteRename(); } }
 function commitNoteRename(id,val){ var n=note(id); if(n){ var v=(val||'').trim()||'(sem título)'; if(v!==n.titulo){ n.titulo=v; touchNote(n); } } _renameNoteId=null; renderHomeList(); }
 function cancelNoteRename(){ _renameNoteId=null; renderHomeList(); }
-function togglePin(ev,id){ ev.stopPropagation(); var n=note(id); if(!n) return; n.fixado=!n.fixado; renderHomeList(); saveNoteRow(n); }
+function collabPinKey(id){ return 'pin_'+id; }
+function togglePin(ev,id){
+  ev.stopPropagation();
+  var n=note(id); if(!n) return;
+  n.fixado=!n.fixado;
+  renderHomeList();
+  if(n.collabSheetId) saveConfig(collabPinKey(n.id), n.fixado?'1':'');
+  else saveNoteRow(n);
+}
 
 /* ---- new note ---- */
 var newKind='tarefas', newCustomIcon='', _iconPickCtx=null;
@@ -1095,7 +1104,7 @@ function notasPersistForNote(n, opts){
 }
 function notasPersist(opts){ return notasPersistForNote(note(openNoteId), opts); }
 function noteRowVals(n){
-  if(n&&n.collabSheetId) return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.criado,n.atualizado,n.id,n.vence||'',n.collabOwner||''];
+  if(n&&n.collabSheetId) return [n.titulo,n.tipo,n.cor||'','',n.criado,n.atualizado,n.id,n.vence||'',n.collabOwner||''];
   return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.criado,n.atualizado,n.id,n.vence||'',n.preset?'1':'',(!n.preset&&n.sticker)?'1':''];
 }
 function noteSaveLastCol(n){ return (n&&n.collabSheetId)?'I':'J'; }

@@ -267,7 +267,7 @@ function ncMergeRegistryRow(reg, pack) {
     titulo: String(metaRow[0] || reg[0] || ''),
     tipo: String(metaRow[1] || 'tarefas'),
     cor: String(metaRow[2] || ''),
-    fixado: false,
+    fixado: !!((DATA.config || {})['pin_' + String(metaRow[6])]),
     criado: String(metaRow[4] || ''),
     atualizado: String(reg[5] || metaRow[5] || ''),
     vence: String(metaRow[7] || ''),

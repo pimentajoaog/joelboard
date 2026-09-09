@@ -51,7 +51,11 @@
             { id: 'ghost-n3', titulo: 'Farmácia', tipo: 'compras', cor: '', fixado: false, criado: iso, atualizado: iso, vence: today, preset: false, sticker: false },
             { id: 'ghost-n4', titulo: 'Viagem nacional', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: true, sticker: false },
             { id: 'ghost-n5', titulo: 'Viagem internacional', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: true, sticker: false },
-            { id: 'ghost-n6', titulo: 'Mala — fim de semana', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: false, sticker: true }
+            { id: 'ghost-n6', titulo: 'Mala — fim de semana', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: false, sticker: true },
+            { id: 'ghost-n7', titulo: 'Casa', tipo: 'tarefas', cor: '🏠', fixado: true, criado: iso, atualizado: today + 'T13:00:00.000Z', vence: '', preset: false, sticker: false, collabSheetId: 'ghost-share', collabRole: 'owner', collabOwner: 'cursor-ghost@localhost', collabMembers: [
+              { email: 'cursor-ghost@localhost', nome: 'Cursor', icone: '👻', papel: 'owner', status: 'active', entrou: iso },
+              { email: 'gabi@localhost', nome: 'Gabi', icone: '✨', papel: 'editor', status: 'active', entrou: iso }
+            ] }
           ],
           itens: [
             { id: 'ghost-i1', notaId: 'ghost-n1', ordem: 0, texto: 'Pão', marcavel: true, feito: false, tipo: '' },
@@ -64,7 +68,9 @@
             { id: 'ghost-i8', notaId: 'ghost-n5', ordem: 0, texto: 'Passaporte', marcavel: true, feito: false, tipo: '' },
             { id: 'ghost-i9', notaId: 'ghost-n6', ordem: 0, texto: 'Carregador', marcavel: true, feito: true, tipo: '' },
             { id: 'ghost-i10', notaId: 'ghost-n6', ordem: 1, texto: 'Roupas', marcavel: true, feito: false, tipo: '' },
-            { id: 'ghost-i11', notaId: 'ghost-n6', ordem: 2, texto: 'Chaves', marcavel: true, feito: false, tipo: '' }
+            { id: 'ghost-i11', notaId: 'ghost-n6', ordem: 2, texto: 'Chaves', marcavel: true, feito: false, tipo: '' },
+            { id: 'ghost-i12', notaId: 'ghost-n7', ordem: 0, texto: 'Contas', marcavel: true, feito: false, tipo: '' },
+            { id: 'ghost-i13', notaId: 'ghost-n7', ordem: 1, texto: 'Mercado da semana', marcavel: true, feito: true, tipo: '' }
           ],
           config: { perfil_nome: 'Cursor', perfil_icone: '👻' }
         }

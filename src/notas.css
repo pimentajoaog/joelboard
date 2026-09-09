@@ -62,7 +62,30 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .notec{ @apply bg-surface border border-border rounded-[var(--radius)] p-3.5 cursor-pointer relative overflow-hidden; }
 .notec::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--kc,var(--primary)); }
 .notec-pinned{ border-color:color-mix(in srgb, var(--primary) 38%, var(--border)); background:color-mix(in srgb, var(--primary) 6%, var(--surface)); }
-.notec-shared{ border-color:color-mix(in srgb, #a78bfa 32%, var(--border)); }
+.notec-shared{
+  --share:#a78bfa;
+  border-color:color-mix(in srgb, var(--share) 48%, var(--border));
+  background:
+    radial-gradient(130% 90% at 100% -10%, color-mix(in srgb, var(--share) 18%, transparent), transparent 58%),
+    var(--surface);
+}
+.notec-shared::before{ width:3px; background:linear-gradient(180deg, var(--share), var(--kc, var(--primary))); }
+.notec-shared.notec-pinned{
+  border-color:color-mix(in srgb, var(--primary) 42%, var(--share));
+  background:
+    radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--primary) 12%, transparent), transparent 52%),
+    radial-gradient(130% 90% at 100% -10%, color-mix(in srgb, var(--share) 18%, transparent), transparent 58%),
+    var(--surface);
+}
+.nc-together{
+  position:relative; width:14px; height:10px; flex:0 0 auto; margin-top:1px;
+}
+.nc-together::before, .nc-together::after{
+  content:''; position:absolute; top:0; width:10px; height:10px; border-radius:99px;
+  border:1.6px solid color-mix(in srgb, var(--share, #a78bfa) 85%, #fff);
+}
+.nc-together::before{ left:0; }
+.nc-together::after{ left:4px; background:color-mix(in srgb, var(--share, #a78bfa) 22%, transparent); }
 .nc-top{ @apply flex items-center gap-2.5 mb-1; }
 .nc-ico{ @apply w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-[18px] flex-[0_0_auto]; background:color-mix(in srgb, var(--kc,var(--primary)) 16%, var(--surface2)); border:0; cursor:pointer; font-family:inherit; padding:0; transition:transform .1s ease, border-color .15s ease; border:1px solid transparent; }
 .nc-ico:hover{ border-color:color-mix(in srgb, var(--kc,var(--primary)) 45%, var(--border)); }
@@ -85,8 +108,14 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .nc-pbar span{ @apply block h-full rounded-full; background:var(--kc,var(--primary)); }
 .pin-sect{ @apply mb-2; }
 .nc-shared{ @apply inline-block text-[10px] font-bold uppercase tracking-wide mr-1.5 opacity-80; }
-.nc-members{ @apply inline-flex gap-1 items-center ml-auto; }
-.nc-av{ @apply w-6 h-6 rounded-full flex items-center justify-center text-[12px]; background:var(--surface2); border:1px solid var(--border); }
+.nc-members{ @apply inline-flex items-center ml-auto; }
+.nc-av{
+  @apply w-6 h-6 rounded-full flex items-center justify-center text-[12px];
+  background:var(--surface2); margin-left:-7px; position:relative;
+  box-shadow:0 0 0 2px var(--surface);
+}
+.nc-av:first-child{ margin-left:0; }
+.notec-shared .nc-av{ box-shadow:0 0 0 2px color-mix(in srgb, var(--share) 18%, var(--surface)); }
 
 .nc-kits-wrap{ margin-top:28px; padding-top:18px; border-top:1px dashed color-mix(in srgb, var(--primary) 28%, var(--border)); }
 .nc-kits-kicker{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:10px; }

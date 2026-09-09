@@ -21,14 +21,16 @@ test('jbGhostHostOk allows only loopback hosts', function () {
 
 test('jbGhostFixture gives Notes and Planner enough rows to click', function () {
   var notas = ctx.jbGhostFixture('notas', '2026-09-08');
-  assert.equal(notas.data.notas.length, 6);
-  assert.equal(notas.data.itens.length, 11);
+  assert.equal(notas.data.notas.length, 7);
+  assert.equal(notas.data.itens.length, 13);
   assert.equal(notas.data.notas[1].vence, '2026-10-12');
   assert.equal(notas.data.notas[2].titulo, 'Farmácia');
   assert.equal(notas.data.notas[2].vence, '2026-09-08');
   assert.equal(notas.data.notas[4].preset, true);
   assert.equal(notas.data.notas[5].sticker, true);
   assert.equal(notas.data.notas[0].sticker, false);
+  assert.equal(notas.data.notas[6].collabSheetId, 'ghost-share');
+  assert.equal(notas.data.notas[6].fixado, true);
   var planner = ctx.jbGhostFixture('planner', '2026-09-08');
   assert.equal(planner.data.planos[0].listaIds.join(','), 'ghost-n6');
   assert.equal(planner.data.dias[0].listaIds.join(','), 'ghost-n6');
@@ -51,6 +53,7 @@ test('ghost session is wired for agents and stays off production', function () {
   const planner = readFileSync(new URL('../public/planner.js', import.meta.url), 'utf8');
   assert.match(notas, /JB\.ghostFixture\('notas'\)/);
   assert.match(notas, /function kitsStripHtml/);
+  assert.match(notas, /function collabPinKey/);
   assert.match(notas, /function toggleNoteSticker/);
   assert.match(planner, /JB\.ghostFixture\('planner'\)/);
 });

@@ -767,7 +767,9 @@ function ncInitProfileSettings() {
   var prev = $('setProfilePreview');
   if (prev) prev.textContent = ncProfileIcon();
   var nm = $('setProfileName');
-  if (nm) nm.textContent = ncProfileName() || JB.email() || '';
+  if (nm) nm.textContent = ncProfileName() || '—';
+  var em = $('setAcctEmail');
+  if (em) em.textContent = JB.email() || '—';
 }
 
 function ncOpenProfileFromSettings() { ncOpenProfile(); }

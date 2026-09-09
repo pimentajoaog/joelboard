@@ -516,10 +516,10 @@ function refreshHubAgenda(force){
   return _agendaWait;
 }
 function setGreet(){
-  var em=JB.email();
   var on=JB.isSignedIn();
-  var who=(JB.profileName&&JB.profileName())||(em?em.split("@")[0]:'');
-  greetEl.textContent= on?("Olá, "+who+" 👋"):"Olá 👋";
+  var ready=JB.profileReady&&JB.profileReady();
+  greetEl.textContent= (on && ready && JB.acctLabel)?JB.acctLabel():'Olá 👋';
+  greetEl.classList.toggle('has-profile', !!(on && ready));
   btnEl.textContent= on?"Sair":"Entrar";
   btnEl.onclick= on?doOut:doIn;
   showFbTile();
@@ -536,12 +536,23 @@ function setGreet(){
   bootHubAgenda();
 }
 function paintHubProfile(){
-  var ico=document.getElementById('hubProfileIco');
-  var nm=document.getElementById('hubProfileName');
-  if(ico) ico.textContent=(JB.profileIcon&&JB.profileIcon())||'👤';
-  if(nm) nm.textContent=(JB.profileName&&JB.profileName())||JB.email()||'—';
+  var prev=document.getElementById('hubProfilePreview');
+  if(prev) prev.textContent=(JB.profileIcon&&JB.profileIcon())||'👤';
+  var nameIn=document.getElementById('hubProfileNameIn');
+  if(nameIn && document.activeElement!==nameIn) nameIn.value=(JB.profileName&&JB.profileName())||'';
 }
-if(JB.onProfileChange) JB.onProfileChange(function(){ paintHubProfile(); if(JB.isSignedIn()){ var em=JB.email(); var who=(JB.profileName&&JB.profileName())||(em?em.split("@")[0]:''); if(greetEl) greetEl.textContent='Olá, '+who+' 👋'; } });
+function hubSaveProfile(){
+  var nameIn=document.getElementById('hubProfileNameIn');
+  if(JB.saveProfileValues) JB.saveProfileValues(nameIn&&nameIn.value);
+}
+if(JB.onProfileChange) JB.onProfileChange(function(){
+  paintHubProfile();
+  if(!greetEl) return;
+  var on=JB.isSignedIn();
+  var ready=JB.profileReady&&JB.profileReady();
+  greetEl.textContent=(on && ready && JB.acctLabel)?JB.acctLabel():'Olá 👋';
+  greetEl.classList.toggle('has-profile', !!(on && ready));
+});
 JB.onAuthRestored(setGreet);
 function doIn(){ JB.signIn({ onSuccess: function(){ setGreet(); } }); }
 function doOut(){ _hbooted=false; try{ localStorage.removeItem(JULIOEL_KEY); }catch(_){} JB.signOut(); setGreet(); }
@@ -661,7 +672,7 @@ function setHubAgendaLimit(raw){
   paintHubAgendaLimit();
   if(_agendaApi && _agendaApi.setAppLimit) _agendaApi.setAppLimit(n);
 }
-function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; paintHubProfile(); JB.renderSkinPicker('hub', document.getElementById("hubSkins")); paintHubAgendaLimit(); document.getElementById("hubSet").classList.add("open"); }
+function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); document.getElementById("hubAcct").textContent = on?("Conectado: "+em):"Você não está conectado."; document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; if(JB.prepareProfileEditor) JB.prepareProfileEditor(); else paintHubProfile(); JB.renderSkinPicker('hub', document.getElementById("hubSkins")); paintHubAgendaLimit(); document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
 function hubAuth(){ var on=JB.isSignedIn(); closeHubSet(); if(on) doOut(); else doIn(); }
 function miniReplaceMsg(type, extra) {

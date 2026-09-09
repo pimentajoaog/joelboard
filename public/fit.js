@@ -24,6 +24,7 @@ function startAuth(){
 }
 JB.onSessionExpired(function(){ authDone=false; showSignIn(true); });
 JB.onAuthRestored(function(){ if(!JB.isSignedIn()||authDone) return; authDone=true; afterAuth(); });
+if(JB.onProfileChange) JB.onProfileChange(function(){ if(JB.paintAcct) JB.paintAcct(); var em=$('setAcctEmail'); if(em) em.textContent=JB.email()||'—'; });
 function showSignIn(expired){ loadingHtml('<div class="gate"><div class="gt">💪 Joelboard Fit</div><div class="gs">'+(expired?'Sua sessão expirou. Entre de novo com Google para continuar.':'Treinos e progressão de carga.')+'</div><button class="btn" onclick="doSignIn()">Entrar com Google</button></div>'); }
 function doSignIn(){ JB.signIn({ onSuccess: function(){ authDone=true; afterAuth(); } }); }
 function fitSignOut(){ JB.signOut(); location.reload(); }
@@ -109,7 +110,7 @@ function buildFit(t){
 }
 
 /* ---- render ---- */
-function render(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(document.getElementById('p-macros')) renderMacros(); if(!_fbooted){ _fbooted=true; if(!JB.tourDone('fit')) setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('fit', refreshData); } }
+function render(){ $('loading').style.display='none'; $('app').style.display='block'; if(JB.paintAcct) JB.paintAcct(); else $('acctEmail').textContent=JB.email()||''; renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(document.getElementById('p-macros')) renderMacros(); if(!_fbooted){ _fbooted=true; if(!JB.tourDone('fit')) setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('fit', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   var want=FIT_TABS.map(function(t){return t[0];}).filter(function(t){return fitGrid[t]!=null;});
@@ -522,7 +523,7 @@ function renderProgresso(){
   el.innerHTML=weightSecHtml()+volSec+exSec;
 }
 function fillGroupSelect(val){ var sel=$('exGroup'); var tags=(DATA.config&&DATA.config.tags)||DEFAULT_TAGS; var opts='<option value="">— sem grupo —</option>'; if(val && tags.indexOf(val)<0) opts+='<option value="'+esc(val)+'">'+esc(val)+'</option>'; opts+=tags.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join(''); sel.innerHTML=opts; sel.value=val||''; }
-function openSettings(tab){ renderSettings(); switchSet(tab||'geral'); $('setOverlay').classList.add('open'); }
+function openSettings(tab){ renderSettings(); switchSet(tab||'geral'); var em=$('setAcctEmail'); if(em) em.textContent=JB.email()||'—'; $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function renderSettings(){
   var u=unit();

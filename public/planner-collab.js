@@ -754,7 +754,9 @@ function plInitProfileSettings() {
   var prev = $('setProfilePreview');
   if (prev) prev.textContent = plProfileIcon();
   var nm = $('setProfileName');
-  if (nm) nm.textContent = plProfileName() || JB.email() || '';
+  if (nm) nm.textContent = plProfileName() || '—';
+  var em = $('setAcctEmail');
+  if (em) em.textContent = JB.email() || '—';
 }
 
 function plOpenProfileFromSettings() { plOpenProfile(); }

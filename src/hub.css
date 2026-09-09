@@ -29,6 +29,8 @@ body.hub-agenda-wide .hub-body{ grid-template-columns:minmax(0,1fr) 248px; grid-
 .brand img{ @apply w-10 h-10 rounded-[11px] block; }
 .wm{ @apply text-[25px] font-extrabold tracking-[-.6px]; }
 .acct{ @apply flex items-center gap-3 text-[13px] text-muted; }
+#greet{ max-width:min(46vw, 220px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#greet.has-profile{ color:var(--text); font-weight:700; }
 .authbtn{ @apply bg-surface2 border border-border text-primary font-bold text-xs rounded-full px-[13px] py-1.5 cursor-pointer; font-family:inherit; }
 .authbtn:hover{ @apply border-primary; }
 .sub{ @apply text-sm text-muted; margin:8px 2px 18px; }
@@ -102,6 +104,8 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 .gear{ @apply bg-surface2 border border-border text-muted text-sm rounded-full w-8 h-8 cursor-pointer; font-family:inherit; }
 .gear:hover{ @apply border-primary text-primary; }
 .acctline{ @apply text-[13px] text-muted mb-4 break-all; }
+#hubSet .jb-profile-hint{ margin-top:0; }
+#hubSet .jb-profile-preview{ margin-bottom:8px; }
 .mbtn{ @apply block w-full bg-surface2 border border-border text-ink rounded-[11px] p-3 text-sm font-bold cursor-pointer mb-2.5; font-family:inherit; }
 .mbtn:hover{ @apply border-primary; }
 .vrs{ @apply text-center text-[11px] text-muted opacity-60 mt-1.5; }

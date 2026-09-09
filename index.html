@@ -121,16 +121,17 @@
 <div class="overlay" id="hubSet" onclick="if(event.target===this)closeHubSet()">
   <div class="modal">
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeHubSet()">✕</button></div>
+    <div class="hub-set-label">Conta</div>
     <div id="hubAcct" class="acctline"></div>
     <div class="hub-set-label">Perfil</div>
-    <div class="jb-profile-set">
-      <span class="jb-profile-set-ico" id="hubProfileIco">👤</span>
-      <div>
-        <div class="jb-profile-set-name" id="hubProfileName">—</div>
-        <div class="jb-profile-set-hint">Nome e ícone em listas e planos compartilhados.</div>
-      </div>
-    </div>
-    <button class="mbtn" type="button" onclick="JB.openProfile()">✏ Editar perfil</button>
+    <div class="jb-profile-hint">Nome e ícone no topo e no que for compartilhado.</div>
+    <div class="jb-profile-preview" id="hubProfilePreview">👤</div>
+    <div class="jb-profile-grid" id="hubProfileIcons"></div>
+    <label class="jb-profile-label" for="hubProfileCustom">Outro emoji</label>
+    <input class="field" id="hubProfileCustom" maxlength="8" placeholder="Cole ou digite…" oninput="JB.pickProfileIcon(this.value, true)">
+    <label class="jb-profile-label" for="hubProfileNameIn">Nome de exibição</label>
+    <input class="field" id="hubProfileNameIn" placeholder="Como quer aparecer">
+    <button type="button" class="btn-primary" style="margin:12px 0 8px" onclick="hubSaveProfile()">Salvar perfil</button>
     <button class="mbtn" onclick="hubVerTutorial()">🧭 Ver tutorial</button>
     <button class="mbtn" onclick="JB.feedback('Joelboard Hub')">💬 Enviar feedback</button>
     <a class="mbtn hub-legal-btn" href="/privacy.html">🔒 Privacidade</a>

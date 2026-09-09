@@ -42,6 +42,7 @@ function startAuth(){
 }
 JB.onSessionExpired(function(){ authDone=false; showSignIn(true); });
 JB.onAuthRestored(function(){ if(!JB.isSignedIn()||authDone) return; authDone=true; afterAuth(); });
+if(JB.onProfileChange) JB.onProfileChange(function(){ if(JB.paintAcct) JB.paintAcct(); var em=$('setAcctEmail'); if(em) em.textContent=JB.email()||'—'; });
 function showSignIn(expired){ loadingHtml('<div class="gate"><div class="gt">📚 Joelboard Study</div><div class="gs">'+(expired?'Sua sessão expirou. Entre de novo com Google para continuar.':'Provas, trabalhos e matérias num lugar só.')+'</div><button class="btn" onclick="doSignIn()">Entrar com Google</button></div>'); }
 function doSignIn(){ JB.signIn({ onSuccess: function(){ authDone=true; afterAuth(); } }); }
 function studySignOut(){ JB.signOut(); location.reload(); }
@@ -145,7 +146,7 @@ function buildStudy(t){
     config: config
   };
 }
-function show(){ $('loading').style.display='none'; $('app').style.display='block'; $('acctEmail').textContent='👤 '+(JB.email()||''); render(); if(!_sbooted){ _sbooted=true; if(!JB.tourDone('study')) setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('study', refreshData); } }
+function show(){ $('loading').style.display='none'; $('app').style.display='block'; if(JB.paintAcct) JB.paintAcct(); else $('acctEmail').textContent=JB.email()||''; render(); if(!_sbooted){ _sbooted=true; if(!JB.tourDone('study')) setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('study', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   var want=STUDY_TABS.map(function(t){return t[0];}).filter(function(t){return studyGrid[t]!=null;});
@@ -482,7 +483,7 @@ function deleteMat(id){
 /* ---- helpers / settings ---- */
 function findRow(tab,idCol,id){ return JB.api('GET', ssUrl('/values/'+encodeURIComponent(tab)+'?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var v=res.values||[]; for(var i=1;i<v.length;i++){ if(String((v[i]||[])[idCol])===String(id)) return i+1; } return -1; }); }
 function fab(){ openEvt(null); }
-function openSettings(){ switchSet('tema'); JB.renderSkinPicker('study', $('setSkins')); var c=focCfg(); $('focoMin').value=c.foco; $('pausaMin').value=c.pausa; $('longMin').value=c.long; $('cycLong').value=c.cyc; if($('focoGoalDay')) $('focoGoalDay').value=c.goalDay||''; if($('focoGoalWeek')) $('focoGoalWeek').value=c.goalWeek||''; $('setOverlay').classList.add('open'); }
+function openSettings(){ switchSet('tema'); JB.renderSkinPicker('study', $('setSkins')); var c=focCfg(); $('focoMin').value=c.foco; $('pausaMin').value=c.pausa; $('longMin').value=c.long; $('cycLong').value=c.cyc; if($('focoGoalDay')) $('focoGoalDay').value=c.goalDay||''; if($('focoGoalWeek')) $('focoGoalWeek').value=c.goalWeek||''; var em=$('setAcctEmail'); if(em) em.textContent=JB.email()||'—'; $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++){ var on=ps[j].getAttribute('data-pane')===name; ps[j].style.display=on?'':'none'; ps[j].classList.toggle('active', on); } }
 

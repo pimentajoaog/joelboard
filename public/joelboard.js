@@ -1644,6 +1644,11 @@
     if (!nome) return current || { nome: '', icone: '' };
     return { nome: nome, icone: icone || (current && current.icone) || '' };
   }
+  function jbAcctLabel(nome, icone, em) {
+    nome = String(nome || '').trim();
+    if (nome) return ((jbNormProfileIcon(icone) || '👤') + ' ' + nome).trim();
+    return String(em || '').trim();
+  }
   function jbMergeProfileCandidates(list) {
     var seen = {}, out = [];
     (list || []).forEach(function (p) {
@@ -1699,7 +1704,7 @@
   function profileName() { return readProfile().nome; }
   function profileIcon() { return readProfile().icone || '👤'; }
   function profileReady() { return !!profileName(); }
-  function acctLabel() { return (profileIcon() + ' ' + (profileName() || email() || '')).trim(); }
+  function acctLabel() { return jbAcctLabel(profileName(), profileIcon(), email()); }
   function onProfileChange(fn) { if (typeof fn === 'function') profileListeners.push(fn); }
   function foundStoreKey() {
     var em = (email() || '').toLowerCase();
@@ -1783,18 +1788,37 @@
     return ov;
   }
   function renderProfileIcons() {
-    var el = document.getElementById('jbProfileIcons');
-    if (!el) return;
     var cur = profileDraftIcon || profileIcon();
-    el.innerHTML = PROFILE_ICONS.map(function (ic) {
+    var html = PROFILE_ICONS.map(function (ic) {
       return '<button type="button" class="jb-profile-ico' + (ic === cur ? ' on' : '') + '" onclick="JB.pickProfileIcon(\'' + String(ic).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">' + ic + '</button>';
     }).join('');
-    var prev = document.getElementById('jbProfilePreview');
-    if (prev) prev.textContent = cur || '👤';
-    var custom = document.getElementById('jbProfileCustom');
-    if (custom && document.activeElement !== custom) {
-      custom.value = PROFILE_ICONS.indexOf(cur) < 0 && cur && cur !== '👤' ? cur : '';
-    }
+    ['jbProfileIcons', 'hubProfileIcons'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    });
+    ['jbProfilePreview', 'hubProfilePreview'].forEach(function (id) {
+      var prev = document.getElementById(id);
+      if (prev) prev.textContent = cur || '👤';
+    });
+    ['jbProfileCustom', 'hubProfileCustom'].forEach(function (id) {
+      var custom = document.getElementById(id);
+      if (custom && document.activeElement !== custom) {
+        custom.value = PROFILE_ICONS.indexOf(cur) < 0 && cur && cur !== '👤' ? cur : '';
+      }
+    });
+  }
+  function prepareProfileEditor() {
+    profileDraftIcon = profileIcon();
+    var hubName = document.getElementById('hubProfileNameIn');
+    if (hubName && document.activeElement !== hubName) hubName.value = profileName();
+    renderProfileIcons();
+  }
+  function saveProfileValues(nome, icone) {
+    nome = String(nome || '').trim();
+    if (!nome) { jbToast('Escolha um nome'); return null; }
+    var p = writeProfile(nome, icone || profileDraftIcon || profileIcon());
+    jbToast('✓ Perfil salvo');
+    return p;
   }
   function pickProfileIcon(ic, fromInput) {
     var next = jbNormProfileIcon(ic) || (fromInput ? '' : profileIcon());
@@ -1876,15 +1900,13 @@
   }
   function saveProfile() {
     var nameEl = document.getElementById('jbProfileName');
-    var nm = String((nameEl && nameEl.value) || '').trim();
-    if (!nm) { jbToast('Escolha um nome'); return; }
-    writeProfile(nm, profileDraftIcon || profileIcon());
+    var p = saveProfileValues(nameEl && nameEl.value, profileDraftIcon || profileIcon());
+    if (!p) return;
     profileRequired = false;
     var ov = profileOverlay();
     if (ov) ov.classList.remove('open');
     var cb = profileCb;
     profileCb = null;
-    jbToast('✓ Perfil salvo');
     if (cb) cb();
   }
   function ensureProfile(cb) {
@@ -1929,9 +1951,9 @@
     toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady, ensureEditor: ensureEditor, editor: null, wireEggFooter: wireEggFooter, refreshNumberSteppers: scanNumberSteppers,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
     SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, ymd: jbYmd, todayYmd: jbTodayYmd, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis,
-    PROFILE_ICONS: PROFILE_ICONS, normProfileIcon: jbNormProfileIcon, profileFromJSON: jbProfileFromJSON, adoptLegacyInto: jbAdoptLegacyProfile, mergeProfileCandidates: jbMergeProfileCandidates,
+    PROFILE_ICONS: PROFILE_ICONS, normProfileIcon: jbNormProfileIcon, profileFromJSON: jbProfileFromJSON, adoptLegacyInto: jbAdoptLegacyProfile, mergeProfileCandidates: jbMergeProfileCandidates, acctText: jbAcctLabel,
     profileName: profileName, profileIcon: profileIcon, profileReady: profileReady, acctLabel: acctLabel, adoptLegacyProfile: adoptLegacyProfile, rememberProfileCandidate: rememberProfileCandidate,
-    onProfileChange: onProfileChange, paintAcct: paintAcct, pickProfileIcon: pickProfileIcon, openProfile: openProfile, closeProfile: closeProfile, saveProfile: saveProfile, ensureProfile: ensureProfile,
+    onProfileChange: onProfileChange, paintAcct: paintAcct, pickProfileIcon: pickProfileIcon, prepareProfileEditor: prepareProfileEditor, saveProfileValues: saveProfileValues, openProfile: openProfile, closeProfile: closeProfile, saveProfile: saveProfile, ensureProfile: ensureProfile,
     chooseProfile: chooseProfile, profileStartFresh: profileStartFresh, writeCollabMemberProfile: writeCollabMemberProfile
   };
 })();

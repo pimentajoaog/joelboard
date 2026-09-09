@@ -46,12 +46,12 @@
         grid: { Notas: 0, Itens: 1, Config: 2, Compartilhadas: 3 },
         data: {
           notas: [
-            { id: 'ghost-n1', titulo: 'Compras da semana', tipo: 'compras', cor: '', fixado: true, criado: iso, atualizado: iso, vence: '', preset: false },
-            { id: 'ghost-n2', titulo: 'Viagem Chile', tipo: 'viagem', cor: '✈️', fixado: false, criado: iso, atualizado: iso, vence: jbGhostYmdFrom(today, 34), preset: false },
-            { id: 'ghost-n3', titulo: 'Farmácia', tipo: 'compras', cor: '', fixado: false, criado: iso, atualizado: iso, vence: today, preset: false },
-            { id: 'ghost-n4', titulo: 'Viagem nacional', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: true },
-            { id: 'ghost-n5', titulo: 'Viagem internacional', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: true },
-            { id: 'ghost-n6', titulo: 'Mala — fim de semana', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: false }
+            { id: 'ghost-n1', titulo: 'Compras da semana', tipo: 'compras', cor: '', fixado: true, criado: iso, atualizado: iso, vence: '', preset: false, sticker: false },
+            { id: 'ghost-n2', titulo: 'Viagem Chile', tipo: 'viagem', cor: '✈️', fixado: false, criado: iso, atualizado: iso, vence: jbGhostYmdFrom(today, 34), preset: false, sticker: false },
+            { id: 'ghost-n3', titulo: 'Farmácia', tipo: 'compras', cor: '', fixado: false, criado: iso, atualizado: iso, vence: today, preset: false, sticker: false },
+            { id: 'ghost-n4', titulo: 'Viagem nacional', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: true, sticker: false },
+            { id: 'ghost-n5', titulo: 'Viagem internacional', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: true, sticker: false },
+            { id: 'ghost-n6', titulo: 'Mala — fim de semana', tipo: 'viagem', cor: '', fixado: false, criado: iso, atualizado: iso, vence: '', preset: false, sticker: true }
           ],
           itens: [
             { id: 'ghost-i1', notaId: 'ghost-n1', ordem: 0, texto: 'Pão', marcavel: true, feito: false, tipo: '' },

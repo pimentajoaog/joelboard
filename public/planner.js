@@ -605,7 +605,7 @@ function openLinkPicker(kind, id){
   var paint=function(snaps){
     snaps=snaps||[];
     var presets=snaps.filter(function(s){ return s.preset && !attached[s.id]; });
-    var lists=snaps.filter(function(s){ return !s.preset && !attached[s.id]; });
+    var lists=snaps.filter(function(s){ return !s.preset && s.sticker && !attached[s.id]; });
     var html='';
     if(presets.length){
       html+='<div class="sect" style="margin:4px 0 8px">✦ Presets</div>';
@@ -614,13 +614,13 @@ function openLinkPicker(kind, id){
       }).join('');
     }
     if(lists.length){
-      html+='<div class="sect" style="margin:12px 0 8px">Suas listas</div>';
+      html+='<div class="sect" style="margin:12px 0 8px">Liberadas no Planner</div>';
       html+=lists.map(function(s){
         var prog=s.total?(s.done+'/'+s.total):'';
         return '<button type="button" class="pl-pick-row" onclick="pickLinkedList(\''+escAttr(s.id)+'\',false)"><span>'+esc(s.icon||'✅')+' '+esc(s.titulo)+'</span><span class="rg">'+esc(prog)+'</span></button>';
       }).join('');
     }
-    if(!html) html='<div class="rg">Nenhuma lista livre. Crie uma no Notes ou use um preset.</div>';
+    if(!html) html='<div class="rg">Nenhuma lista liberada. No Notes, no menu ⋯ da lista, toque em Liberar no Planner — ou use um preset.</div>';
     box.innerHTML=html+hint;
   };
   if(window.JB&&JB.link&&JB.link.loadCatalog) JB.link.loadCatalog().then(paint).catch(function(){ paint([]); });
@@ -651,7 +651,7 @@ function pickLinkedList(noteId, fromPreset){
   };
   if(!fromPreset){ attach(noteId); return; }
   if(!window.JB||!JB.link||!JB.link.clonePreset){ toast('Não deu para clonar o preset'); return; }
-  JB.link.clonePreset(noteId).then(function(snap){
+  JB.link.clonePreset(noteId, { sticker: true }).then(function(snap){
     if(!snap||!snap.id){ toast('Não deu para clonar o preset'); return; }
     attach(snap.id);
   }).catch(function(){ toast('Abra o Notes uma vez para criar a planilha, depois cole o preset.'); });

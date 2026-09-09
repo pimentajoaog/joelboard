@@ -141,5 +141,6 @@ test('collab sheets are not treated as the personal Planner workbook', function 
   assert.doesNotMatch(planner, /acctEmail'\)\.textContent='👤 '\+.*plAcctLabel/);
   assert.match(planner, /\['Planos',\[.*'Listas'\]/);
   assert.match(planner, /Colar lista do Notes/);
+  assert.match(planner, /s\.sticker/);
   assert.match(collab, /OwnerEmail', 'Listas'/);
 });

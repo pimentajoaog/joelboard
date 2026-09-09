@@ -41,6 +41,7 @@
       tipo: String(note.tipo || ''),
       icon: note.cor || (note.tipo === 'viagem' ? '🧳' : '✅'),
       preset: !!note.preset,
+      sticker: !!note.sticker && !note.preset,
       items: rows,
       done: done,
       total: chk.length,
@@ -81,7 +82,7 @@
   }
   function parseNotesPack(by) {
     var notas = (by.Notas || []).slice(1).filter(function (r) { return r[6]; }).map(function (r) {
-      return { id: String(r[6]), titulo: String(r[0] || ''), tipo: String(r[1] || ''), cor: String(r[2] || ''), preset: r[8] === true || r[8] === '1' || r[8] === 1 };
+      return { id: String(r[6]), titulo: String(r[0] || ''), tipo: String(r[1] || ''), cor: String(r[2] || ''), preset: r[8] === true || r[8] === '1' || r[8] === 1, sticker: r[9] === true || r[9] === '1' || r[9] === 1 };
     });
     var itens = (by.Itens || []).slice(1).filter(function (r) { return r[5]; }).map(function (r) {
       return { id: String(r[5]), notaId: String(r[0] || ''), ordem: Number(r[1]) || 0, texto: String(r[2] || ''), marcavel: !!r[3], feito: !!r[4], tipo: String(r[6] || '') };
@@ -116,14 +117,15 @@
       return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
     });
   }
-  function clonePreset(srcId) {
+  function clonePreset(srcId, opts) {
+    opts = opts || {};
     return loadCatalog().then(function (snaps) {
       var src = null;
       (snaps || []).forEach(function (s) { if (s.id === srcId) src = s; });
       if (!src) return null;
       var now = new Date().toISOString();
       var nid = uid();
-      var note = { id: nid, titulo: src.titulo, tipo: src.tipo || 'viagem', cor: src.icon || '', preset: false, criado: now, atualizado: now, vence: '' };
+      var note = { id: nid, titulo: src.titulo, tipo: src.tipo || 'viagem', cor: src.icon || '', preset: false, sticker: !!opts.sticker, criado: now, atualizado: now, vence: '' };
       var itens = (src.items || []).map(function (s, i) {
         return { id: uid(), notaId: nid, ordem: i + 1, texto: s.texto, marcavel: s.marcavel, feito: false, tipo: s.tipo || '' };
       });
@@ -133,7 +135,7 @@
       }
       var sid = window.JB && JB.getSheetId && JB.getSheetId('notas');
       if (!sid || !JB.api) return Promise.reject(new Error('no-notas'));
-      var nvals = [note.titulo, note.tipo, note.cor || '', '', note.criado, note.atualizado, note.id, '', ''];
+      var nvals = [note.titulo, note.tipo, note.cor || '', '', note.criado, note.atualizado, note.id, '', '', note.sticker ? '1' : ''];
       return JB.api('POST', sheetUrl(sid, '/values/Notas:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [nvals] }).then(function () {
         if (!itens.length) return packSnapshot(note, itens);
         return JB.api('POST', sheetUrl(sid, '/values/Itens:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {

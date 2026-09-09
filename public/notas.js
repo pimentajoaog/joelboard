@@ -41,8 +41,9 @@ function findRowInSid(sid, tab, idCol, id){
 }
 function _ncSsId(){ return (typeof ncSsId==='function')?ncSsId():JB.getSheetId('notas'); }
 function _ncGrid(){ return (typeof ncGrid==='function')?ncGrid():notasGrid; }
-var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence','Preset']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']],['Compartilhadas',['Titulo','SheetID','Papel','Owner','ListaID','Atualizado']]];
-var newPreset=false;
+var NOTAS_TABS=[['Notas',['Titulo','Tipo','Cor','Fixado','Criado','Atualizado','ID','Vence','Preset','Sticker']],['Itens',['NotaID','Ordem','Texto','Marcavel','Feito','ID','Tipo']],['Config',['Chave','Valor']],['Compartilhadas',['Titulo','SheetID','Papel','Owner','ListaID','Atualizado']]];
+var newPreset=false, newSticker=false;
+function ncFlag(v){ return v===true||v==='1'||v===1; }
 var KINDS=[
   {k:'compras', label:'Compras', icon:'🛒', color:'#34d399', defCheck:true},
   {k:'tarefas', label:'Tarefas', icon:'✅', color:'#60a5fa', defCheck:true},
@@ -175,7 +176,7 @@ function bootSheet(){
         return;
       }
       notasGrid=ctx.grid;
-      return ensureTabs().then(ensureVenceHeader).then(ensurePresetHeader).then(ensureTipoHeader).then(loadData);
+      return ensureTabs().then(ensureVenceHeader).then(ensurePresetHeader).then(ensureStickerHeader).then(ensureTipoHeader).then(loadData);
     })
     .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(m)+'</div></div>'); });
 }
@@ -191,6 +192,7 @@ function ensureGrid(tab, minCols){ var sid=notasGrid[tab]; if(sid==null) return 
 function ensureTipoHeader(){ if(notasGrid['Itens']==null) return Promise.resolve(); return ensureGrid('Itens',7).then(function(){ return JB.api('GET', personalSsUrl('/values/'+encodeURIComponent('Itens!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[6]==='Tipo') return; return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Itens!G1')+'?valueInputOption=RAW'), { values:[['Tipo']] }); }).catch(function(){}); }
 function ensureVenceHeader(){ if(notasGrid['Notas']==null) return Promise.resolve(); return ensureGrid('Notas',8).then(function(){ return JB.api('GET', personalSsUrl('/values/'+encodeURIComponent('Notas!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[7]==='Vence') return; return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Notas!H1')+'?valueInputOption=RAW'), { values:[['Vence']] }); }).catch(function(){}); }
 function ensurePresetHeader(){ if(notasGrid['Notas']==null) return Promise.resolve(); return ensureGrid('Notas',9).then(function(){ return JB.api('GET', personalSsUrl('/values/'+encodeURIComponent('Notas!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[8]==='Preset') return; return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Notas!I1')+'?valueInputOption=RAW'), { values:[['Preset']] }); }).catch(function(){}); }
+function ensureStickerHeader(){ if(notasGrid['Notas']==null) return Promise.resolve(); return ensureGrid('Notas',10).then(function(){ return JB.api('GET', personalSsUrl('/values/'+encodeURIComponent('Notas!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[9]==='Sticker') return; return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Notas!J1')+'?valueInputOption=RAW'), { values:[['Sticker']] }); }).catch(function(){}); }
 function gate(){ notasPersonalGate('Crie sua planilha de notas — ela fica no seu Google Drive, separada das listas compartilhadas.'); }
 function offerLink(f){ loadingHtml('<div class="gate"><div class="gt">Encontramos suas notas 🎉</div><div class="gs">'+esc(f.name)+'</div><button class="btn-primary" onclick="pick(\''+f.id+'\')">Vincular e abrir</button><button class="del" onclick="gate()">usar outro / criar novo</button></div>'); }
 function pick(id){ JB.setSheetId('notas',id); bootSheet(); }
@@ -262,7 +264,7 @@ function scrubItemDupes(scopeNotaId){
 function buildNotas(t){
   var config={}; body(t.Config).forEach(function(r){ if(r[0]) config[r[0]]=r[1]; });
   return {
-    notas: body(t.Notas).filter(function(r){return r[6];}).map(function(r){ return { id:r[6], titulo:String(r[0]||''), tipo:String(r[1]||'tarefas'), cor:String(r[2]||''), fixado:!!r[3], criado:String(r[4]||''), atualizado:String(r[5]||''), vence:String(r[7]||''), preset:r[8]===true||r[8]==='1'||r[8]===1 }; }),
+    notas: body(t.Notas).filter(function(r){return r[6];}).map(function(r){ return { id:r[6], titulo:String(r[0]||''), tipo:String(r[1]||'tarefas'), cor:String(r[2]||''), fixado:!!r[3], criado:String(r[4]||''), atualizado:String(r[5]||''), vence:String(r[7]||''), preset:ncFlag(r[8]), sticker:ncFlag(r[9]) }; }),
     itens: parsePersonalItemRows(t.Itens),
     config: config
   };
@@ -497,9 +499,10 @@ function noteCard(n){
   var avatars = (typeof ncMemberAvatarsHtml==='function')?ncMemberAvatarsHtml(n):'';
   var sharedBadge = n.collabSheetId ? '<span class="nc-shared">Compartilhada</span>' : '';
   var presetBadge = n.preset ? '<span class="nc-preset-badge">Preset</span>' : '';
-  return '<div class="notec'+(n.collabSheetId?' notec-shared':'')+(n.preset?' notec-preset':'')+'" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')">'
+  var stickerBadge = (!n.preset && n.sticker) ? '<span class="nc-sticker-badge">Planner</span>' : '';
+  return '<div class="notec'+(n.collabSheetId?' notec-shared':'')+(n.preset?' notec-preset':'')+(n.sticker&&!n.preset?' notec-sticker':'')+'" style="--kc:'+kd.color+'" onclick="openNote(\''+n.id+'\')">'
     +'<div class="nc-top"><button type="button" class="nc-ico" onclick="startNoteIconEdit(event,\''+n.id+'\')" title="Alterar ícone" aria-label="Alterar ícone">'+noteIcon(n)+'</button><div class="nc-title">'+esc(n.titulo||'(sem título)')+'</div><button class="nc-edit" onclick="openNoteEditor(\''+n.id+'\',event)" title="Editar lista" aria-label="Editar lista">✎</button>'+(n.collabSheetId?'':('<button class="nc-pin'+(n.fixado?' on':'')+'" onclick="togglePin(event,\''+n.id+'\')" title="Fixar">'+(n.fixado?'★':'☆')+'</button>'))+'</div>'
-    +'<div class="nc-kind">'+presetBadge+sharedBadge+esc(kd.label)+'</div>'
+    +'<div class="nc-kind">'+presetBadge+stickerBadge+sharedBadge+esc(kd.label)+'</div>'
     +'<div class="nc-meta">'+metaCount+' · '+esc(relTime(n.atualizado||n.criado))+dueBadge(n)+'</div>'+(avatars?('<div class="nc-members">'+avatars+'</div>'):'')+prog+'</div>';
 }
 function startNoteRename(ev,id){ ev.stopPropagation(); _renameNoteId=id; renderHomeList(); setTimeout(function(){ var inp=document.querySelector('[data-rename="'+id+'"]'); if(inp){ inp.focus(); inp.select(); } },30); }
@@ -518,16 +521,24 @@ function paintNoteEditorModal(){
   if(titleEl) titleEl.textContent=editing?'Editar lista':'Nova lista';
   if(saveEl) saveEl.textContent=editing?'Salvar':'Criar';
   if(titleIn) titleIn.value=editing?((note(_editNoteId)||{}).titulo||''):'';
-  renderNewIconPicker(); renderNewKind(); renderNewDate(); renderNewPreset();
+  renderNewIconPicker(); renderNewKind(); renderNewDate(); renderNewPreset(); renderNewSticker();
 }
 function renderNewPreset(){
   var b=$('newPresetBtn'); if(!b) return;
   b.classList.toggle('on', !!newPreset);
   b.textContent=newPreset?'✦ Preset (modelo)':'Preset (modelo)';
 }
-function toggleNewPreset(){ newPreset=!newPreset; if(newPreset) newDue=''; renderNewDate(); renderNewPreset(); }
+function renderNewSticker(){
+  var b=$('newStickerBtn'); if(!b) return;
+  var wrap=b.closest('.fg');
+  if(wrap) wrap.style.display=newPreset?'none':'';
+  b.classList.toggle('on', !!newSticker && !newPreset);
+  b.textContent=(newSticker&&!newPreset)?'📌 Liberada no Planner':'Liberar no Planner';
+}
+function toggleNewPreset(){ newPreset=!newPreset; if(newPreset){ newDue=''; newSticker=false; } renderNewDate(); renderNewPreset(); renderNewSticker(); }
+function toggleNewSticker(){ newSticker=!newSticker; if(newSticker) newPreset=false; renderNewPreset(); renderNewSticker(); }
 function openNew(){
-  _editNoteId=null; newKind='tarefas'; newCustomIcon=''; newDue=''; newPreset=false;
+  _editNoteId=null; newKind='tarefas'; newCustomIcon=''; newDue=''; newPreset=false; newSticker=false;
   paintNoteEditorModal();
   $('newOverlay').classList.add('open');
   setTimeout(function(){ $('newTitle').focus(); },60);
@@ -541,6 +552,7 @@ function openNoteEditor(id, ev){
   newCustomIcon=isCustomIcon(n.cor)?n.cor:'';
   newDue=n.vence||'';
   newPreset=!!n.preset;
+  newSticker=!!n.sticker && !n.preset;
   paintNoteEditorModal();
   $('newOverlay').classList.add('open');
   setTimeout(function(){ var t=$('newTitle'); if(t){ t.focus(); t.select(); } },60);
@@ -607,7 +619,7 @@ function createNote(){
   if(_editNoteId){
     var cur=note(_editNoteId);
     if(cur){
-      cur.titulo=t; cur.tipo=newKind; cur.cor=newCustomIcon||''; cur.vence=newPreset?'':(newDue||''); cur.preset=!!newPreset;
+      cur.titulo=t; cur.tipo=newKind; cur.cor=newCustomIcon||''; cur.vence=newPreset?'':(newDue||''); cur.preset=!!newPreset; cur.sticker=!!newPreset?false:(!!newSticker);
       touchNote(cur);
     }
     var stay=openNoteId===_editNoteId;
@@ -616,7 +628,7 @@ function createNote(){
     return;
   }
   var now=new Date().toISOString();
-  var n={ id:uuid(), titulo:t, tipo:newKind, cor:newCustomIcon||'', fixado:false, criado:now, atualizado:now, vence:newPreset?'':newDue, preset:!!newPreset };
+  var n={ id:uuid(), titulo:t, tipo:newKind, cor:newCustomIcon||'', fixado:false, criado:now, atualizado:now, vence:newPreset?'':newDue, preset:!!newPreset, sticker:!!newPreset?false:(!!newSticker) };
   DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); closeNew(); openNote(n.id);
 }
 
@@ -644,13 +656,14 @@ function renderEdMenu(n, doneN){
   var shareBtn=n.collabSheetId?'<button type="button" class="ed-menu-item" onclick="closeEdMenu();ncOpenShare()">👥 Compartilhar</button>':'<button type="button" class="ed-menu-item" onclick="closeEdMenu();ncShareFromPrivate()">👥 Tornar compartilhada</button>';
   var dueBtn=n.preset?'':'<button type="button" class="ed-menu-item" onclick="closeEdMenu();pickDue()">'+(n.vence?'📅 Alterar prazo':'📅 Definir prazo')+'</button>'+(n.vence?'<button type="button" class="ed-menu-item danger" onclick="closeEdMenu();clearDue()">Remover prazo</button>':'');
   var presetBtn='<button type="button" class="ed-menu-item" onclick="closeEdMenu();toggleNotePreset(\''+n.id+'\')">'+(n.preset?'📌 Tirar dos presets':'✦ Tornar preset')+'</button>';
+  var stickerBtn=(n.preset||n.collabSheetId)?'':'<button type="button" class="ed-menu-item" onclick="closeEdMenu();toggleNoteSticker(\''+n.id+'\')">'+(n.sticker?'📌 Tirar do Planner':'📌 Liberar no Planner')+'</button>';
   var useBtn=n.preset?'<button type="button" class="ed-menu-item" onclick="closeEdMenu();clonePresetToList(\''+n.id+'\')">✦ Usar preset</button>':'';
   var delChecked='<button type="button" class="ed-menu-item danger" id="edMenuDelChecked" onclick="edMenuDelChecked()" style="display:'+(doneN?'':'none')+'">🗑 Excluir marcados ('+doneN+')</button>';
   var hideDoneBtn=doneN>0?('<button type="button" class="ed-menu-item" onclick="closeEdMenu();toggleDoneCollapsed()">'+(_doneCollapsed?'👁 Mostrar concluídos ('+doneN+')':'📦 Ocultar concluídos ('+doneN+')')+'</button>'):'';
   var dedupeBtn='<button type="button" class="ed-menu-item" onclick="closeEdMenu();dedupeItems(\''+n.id+'\')">🧹 Remover duplicatas</button>';
   var leaveLabel=n.collabSheetId?(n.collabRole==='owner'?'Excluir lista compartilhada':'Sair da lista'):'Excluir lista';
   var leaveFn=n.collabSheetId?'ncLeaveOrDelete()':'deleteNote()';
-  return '<div class="ed-menu-wrap"><button type="button" class="ed-menu-btn" onclick="toggleEdMenu(event)" aria-label="Mais opções">⋯</button><div class="ed-menu" id="edMenu" onclick="event.stopPropagation()"><button type="button" class="ed-menu-item" onclick="openNoteEditor(\''+n.id+'\')">✎ Editar lista</button><button type="button" class="ed-menu-item" onclick="closeEdMenu();exportCurrentList()">📤 Exportar</button>'+shareBtn+useBtn+presetBtn+dueBtn+hideDoneBtn+delChecked+dedupeBtn+'<div class="ed-menu-div"></div><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();'+leaveFn+'">'+esc(leaveLabel)+'</button></div></div>';
+  return '<div class="ed-menu-wrap"><button type="button" class="ed-menu-btn" onclick="toggleEdMenu(event)" aria-label="Mais opções">⋯</button><div class="ed-menu" id="edMenu" onclick="event.stopPropagation()"><button type="button" class="ed-menu-item" onclick="openNoteEditor(\''+n.id+'\')">✎ Editar lista</button><button type="button" class="ed-menu-item" onclick="closeEdMenu();exportCurrentList()">📤 Exportar</button>'+shareBtn+useBtn+presetBtn+stickerBtn+dueBtn+hideDoneBtn+delChecked+dedupeBtn+'<div class="ed-menu-div"></div><button type="button" class="ed-menu-item danger" onclick="closeEdMenu();'+leaveFn+'">'+esc(leaveLabel)+'</button></div></div>';
 }
 
 /* ---- editor ---- */
@@ -972,14 +985,20 @@ function lastNoteOfKind(kind,ex){ var arr=(DATA.notas||[]).filter(function(n){re
 function toggleNotePreset(id){
   var n=note(id); if(!n) return;
   n.preset=!n.preset;
-  if(n.preset) n.vence='';
+  if(n.preset){ n.vence=''; n.sticker=false; }
   touchNote(n); render();
   toast(n.preset?'✦ Virou preset':'Lista comum de novo');
+}
+function toggleNoteSticker(id){
+  var n=note(id); if(!n || n.preset || n.collabSheetId) return;
+  n.sticker=!n.sticker;
+  touchNote(n); render();
+  toast(n.sticker?'📌 Liberada no Planner — cole no plano quando quiser':'Saiu do picker do Planner');
 }
 function clonePresetToList(srcId){
   var src=note(srcId); if(!src) return;
   var now=new Date().toISOString();
-  var n={ id:uuid(), titulo:src.titulo, tipo:src.tipo||'viagem', cor:src.cor||'', fixado:false, criado:now, atualizado:now, vence:'', preset:false };
+  var n={ id:uuid(), titulo:src.titulo, tipo:src.tipo||'viagem', cor:src.cor||'', fixado:false, criado:now, atualizado:now, vence:'', preset:false, sticker:false };
   DATA.notas=DATA.notas||[]; DATA.notas.push(n);
   var add=[];
   itemsOf(src.id).slice().sort(function(a,b){return (a.ordem||0)-(b.ordem||0);}).forEach(function(s,i){
@@ -998,7 +1017,7 @@ function seedTravelPresets(){
   if(!packs.length) return;
   var now=new Date().toISOString();
   packs.forEach(function(pack){
-    var n={ id:uuid(), titulo:pack.titulo, tipo:pack.tipo||'viagem', cor:'', fixado:false, criado:now, atualizado:now, vence:'', preset:true };
+    var n={ id:uuid(), titulo:pack.titulo, tipo:pack.tipo||'viagem', cor:'', fixado:false, criado:now, atualizado:now, vence:'', preset:true, sticker:false };
     DATA.notas.push(n); appendNote(n);
     var ord=1, add=[];
     (pack.groups||[]).forEach(function(g){
@@ -1043,7 +1062,7 @@ function checkRecurrence(){
   var html='Há '+relSpan(best.since)+' você fez <strong>'+esc(n.titulo)+'</strong>'+(cnt?(' com '+cnt+' '+(cnt>1?'itens':'item')):'')+'. Quer recriar?';
   showNudge(html, 'Recriar', function(){ var d=new Date(); createNoteFromKind(kd2.k, kd2.label+' — '+MOFULL[d.getMonth()], true); }, 'nudgeDis_'+kd2.k); return true;
 }
-function createNoteFromKind(kind,titulo,fill){ var now=new Date().toISOString(); var n={ id:uuid(), titulo:titulo, tipo:kind, cor:'', fixado:false, criado:now, atualizado:now, vence:'' }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); openNoteId=n.id; if(fill){ var src=lastNoteOfKind(kind,n.id); if(src){ var ord=1, add=[]; (DATA.itens||[]).filter(function(x){return x.notaId===src.id && !isGroup(x) && (x.texto||'').trim();}).sort(function(a,b){return a.ordem-b.ordem;}).forEach(function(s){ var it={id:uuid(),notaId:n.id,ordem:ord++,texto:s.texto,marcavel:s.marcavel,feito:false,tipo:''}; DATA.itens.push(it); add.push(it); }); appendItems(add); } } render(); window.scrollTo(0,0); }
+function createNoteFromKind(kind,titulo,fill){ var now=new Date().toISOString(); var n={ id:uuid(), titulo:titulo, tipo:kind, cor:'', fixado:false, criado:now, atualizado:now, vence:'', preset:false, sticker:false }; DATA.notas=DATA.notas||[]; DATA.notas.push(n); appendNote(n); openNoteId=n.id; if(fill){ var src=lastNoteOfKind(kind,n.id); if(src){ var ord=1, add=[]; (DATA.itens||[]).filter(function(x){return x.notaId===src.id && !isGroup(x) && (x.texto||'').trim();}).sort(function(a,b){return a.ordem-b.ordem;}).forEach(function(s){ var it={id:uuid(),notaId:n.id,ordem:ord++,texto:s.texto,marcavel:s.marcavel,feito:false,tipo:''}; DATA.itens.push(it); add.push(it); }); appendItems(add); } } render(); window.scrollTo(0,0); }
 
 /* ---- persistence ---- */
 function notasCollabOpenFor(n){ return !!(n&&n.collabSheetId); }
@@ -1057,7 +1076,11 @@ function notasPersistForNote(n, opts){
   return JB.persist(opts);
 }
 function notasPersist(opts){ return notasPersistForNote(note(openNoteId), opts); }
-function noteRowVals(n){ return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.criado,n.atualizado,n.id,n.vence||'',n.preset?'1':'']; }
+function noteRowVals(n){
+  if(n&&n.collabSheetId) return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.criado,n.atualizado,n.id,n.vence||'',n.collabOwner||''];
+  return [n.titulo,n.tipo,n.cor||'',n.fixado?'1':'',n.criado,n.atualizado,n.id,n.vence||'',n.preset?'1':'',(!n.preset&&n.sticker)?'1':''];
+}
+function noteSaveLastCol(n){ return (n&&n.collabSheetId)?'I':'J'; }
 function mdToHtml(t){ var s=esc(t); s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>'); s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>'); s=s.replace(/__([^_\n]+)__/g,'<u>$1</u>'); s=s.replace(/~~([^~\n]+)~~/g,'<s>$1</s>'); return s; }
 function startEdit(id){ if(_marqueeDidDrag) return; _editId=id; renderItems(); var bar=$('fmtBar'); if(bar) bar.classList.add('show'); positionFmtBar(); updateSelBar(); }
 function exitEdit(){ if(_editId==null) return; _editId=null; var bar=$('fmtBar'); if(bar) bar.classList.remove('show'); renderItems(); updateSelBar(); if(typeof ncFlushPollStale==='function') ncFlushPollStale(); }
@@ -1093,7 +1116,7 @@ function saveNoteRow(n){
     run: function(){
       return findRowInSid(sid, tab, 6, n.id).then(function(row){
         if(row<0) throw notasRowErr(tab);
-        return JB.api('PUT', notasSheetUrl(sid, '/values/'+encodeURIComponent(tab+'!A'+row+':I'+row)+'?valueInputOption=RAW'), { values:[noteRowVals(n)] });
+        return JB.api('PUT', notasSheetUrl(sid, '/values/'+encodeURIComponent(tab+'!A'+row+':'+noteSaveLastCol(n)+row)+'?valueInputOption=RAW'), { values:[noteRowVals(n)] });
       });
     },
     onError: notasWriteErr

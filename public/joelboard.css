@@ -1095,6 +1095,7 @@ html.jb-ink-full .fab {
 .jb-link-wrap.compact { margin-top: 8px; }
 .jb-link-sticker.compact { padding: 6px 8px; border-radius: 10px; }
 .nc-preset-badge { font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: #f59e0b; background: rgba(245,158,11,.14); border-radius: 999px; padding: 2px 8px; }
+.nc-sticker-badge { font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: #2dd4bf; background: rgba(45,212,191,.14); border-radius: 999px; padding: 2px 8px; }
 @media (prefers-reduced-motion: reduce) {
   .jb-ed-bar, .jb-ed-btn, .jb-ed-ink-tools, .jb-ed-fs-menu, .jb-ed-hl-menu, .jb-ed-ink-chip, .jb-ed-hl-chip {
     animation: none !important; transition: none !important; transform: none !important;

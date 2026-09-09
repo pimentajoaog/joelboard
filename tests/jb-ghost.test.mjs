@@ -27,6 +27,8 @@ test('jbGhostFixture gives Notes and Planner enough rows to click', function () 
   assert.equal(notas.data.notas[2].titulo, 'Farmácia');
   assert.equal(notas.data.notas[2].vence, '2026-09-08');
   assert.equal(notas.data.notas[4].preset, true);
+  assert.equal(notas.data.notas[5].sticker, true);
+  assert.equal(notas.data.notas[0].sticker, false);
   var planner = ctx.jbGhostFixture('planner', '2026-09-08');
   assert.equal(planner.data.planos[0].listaIds.join(','), 'ghost-n6');
   assert.equal(planner.data.dias[0].listaIds.join(','), 'ghost-n6');
@@ -48,5 +50,6 @@ test('ghost session is wired for agents and stays off production', function () {
   const notas = readFileSync(new URL('../public/notas.js', import.meta.url), 'utf8');
   const planner = readFileSync(new URL('../public/planner.js', import.meta.url), 'utf8');
   assert.match(notas, /JB\.ghostFixture\('notas'\)/);
+  assert.match(notas, /function toggleNoteSticker/);
   assert.match(planner, /JB\.ghostFixture\('planner'\)/);
 });

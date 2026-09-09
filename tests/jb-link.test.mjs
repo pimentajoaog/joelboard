@@ -30,6 +30,10 @@ test('packSnapshot counts checkable items and peekHtml lists open ones', functio
   assert.equal(snap.done, 1);
   assert.equal(snap.total, 3);
   assert.equal(snap.open, 2);
+  var sticky = link.packSnapshot({ id: 'n2', titulo: 'Mala', sticker: true }, []);
+  assert.equal(sticky.sticker, true);
+  var preset = link.packSnapshot({ id: 'n3', titulo: 'Kit', preset: true, sticker: true }, []);
+  assert.equal(preset.sticker, false);
   var html = link.peekHtml(snap, { open: true, shareHint: 'só sua' });
   assert.match(html, /1\/3/);
   assert.match(html, /Roupas/);

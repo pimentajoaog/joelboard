@@ -1,0 +1,24 @@
+---
+description: Stop after one failed Cursor browser pass — never loop on OAuth, SW, or hung CDP
+alwaysApply: true
+---
+
+# Cursor browser — one pass, then stop
+
+Use the Cursor browser to click through UI you can actually exercise (`?ghost=1` on Hub, Notes, Planner). It is **not** a ship gate.
+
+**Do not start** a browser pass for Google login, OAuth redirects, `/oauth.html`, or anything that needs a real Google account. Ghost covers signed-in UI; localhost Google hits `origin_mismatch`. See `ghost-local-test`.
+
+**One failed pass = stop.** Do not retry with a different host, CDP, curl, unregistering the service worker, or a long wait. Report URL, what you saw, and ship from tests.
+
+Stop on the first of:
+
+- Hub (or another app shell) at a URL that should be a different page
+- `chrome-error://`, blank document, or Vite not reachable
+- Script tags getting HTML (`JB is undefined`, `Unexpected token '<'`) — stale service worker on `localhost`
+- Any Google accounts / OAuth tab
+- Browser, CDP, or curl that does not return quickly
+
+Prefer `http://localhost:5173/?ghost=1`. Do not switch to `127.0.0.1` to dodge the service worker. Do not poll hung shells.
+
+UI you could not click: say so in the wrap-up. Unit tests + a short note beat a second browser loop.

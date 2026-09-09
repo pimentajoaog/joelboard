@@ -1,6 +1,7 @@
 /* Joelboard — shared core (auth + Google API). © 2026 Joel Soluções LTDA. */
 (function () {
   var CLIENT_ID = '49262188240-l70ka2666t315gb2gmsvu357f2h7769i.apps.googleusercontent.com';
+  // Phones use implicit redirect to /oauth.html — add that URI on this OAuth client.
   var SCOPES = 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
   var TOK = 'jb_tok', EXP = 'jb_tok_exp', EML = 'jb_email';
   var tokenClient = null, pendingRes = null, pendingRej = null, inflightToken = null, refreshTimer = null;
@@ -237,6 +238,105 @@
   }
   function email(){ return isGhost() ? GHOST_EMAIL : (lg(EML) || ''); }
 
+  // --- same-tab OAuth (phones / installed PWA): GIS popups become dead Google tabs ---
+  var AUTH_REDIR = 'jb_oauth', AUTH_REDIR_STATE = 'jb_oauth_state', AUTH_REDIR_ERR = 'jb_oauth_err';
+  function jbAuthPopupUnreliable(ua, opts){
+    opts = opts || {};
+    if (opts.standalone) return true;
+    ua = String(ua == null ? '' : ua);
+    if (/Android/i.test(ua)) return true;
+    if (/iPhone|iPad|iPod/i.test(ua)) return true;
+    if (/Macintosh/i.test(ua) && Number(opts.touchPoints || 0) > 1) return true;
+    return false;
+  }
+  function jbParseOAuthParams(hash, search){
+    function parse(s){
+      var out = {};
+      String(s || '').replace(/^[#?]/, '').split('&').forEach(function (part) {
+        if (!part) return;
+        var i = part.indexOf('=');
+        var rawK = i < 0 ? part : part.slice(0, i);
+        var rawV = i < 0 ? '' : part.slice(i + 1);
+        var k = decodeURIComponent(rawK.replace(/\+/g, ' '));
+        var v = decodeURIComponent(rawV.replace(/\+/g, ' '));
+        if (k) out[k] = v;
+      });
+      return out;
+    }
+    var q = parse(search);
+    var h = parse(hash);
+    for (var k in h) if (Object.prototype.hasOwnProperty.call(h, k)) q[k] = h[k];
+    return q;
+  }
+  function jbOAuthReturnPath(saved, fallback){
+    saved = String(saved || '');
+    fallback = fallback || '/';
+    if (saved.charAt(0) !== '/' || saved.charAt(1) === '/') return fallback;
+    if (/^\/oauth\.html(?:[?#]|$)/i.test(saved)) return fallback;
+    return saved;
+  }
+  function jbOAuthAuthUrl(opts){
+    opts = opts || {};
+    var url = 'https://accounts.google.com/o/oauth2/v2/auth'
+      + '?client_id=' + encodeURIComponent(opts.clientId || '')
+      + '&redirect_uri=' + encodeURIComponent(opts.redirectUri || '')
+      + '&response_type=token'
+      + '&scope=' + encodeURIComponent(opts.scope || '')
+      + '&include_granted_scopes=true'
+      + '&state=' + encodeURIComponent(opts.state || '');
+    if (opts.prompt) url += '&prompt=' + encodeURIComponent(opts.prompt);
+    if (opts.loginHint) url += '&login_hint=' + encodeURIComponent(opts.loginHint);
+    return url;
+  }
+  function authPopupUnreliable(){
+    var standalone = false;
+    try { standalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || !!navigator.standalone; } catch (_) {}
+    return jbAuthPopupUnreliable(navigator.userAgent || '', { standalone: standalone, touchPoints: navigator.maxTouchPoints });
+  }
+  function oauthRedirectUri(){ return location.origin + '/oauth.html'; }
+  function startOAuthRedirect(prompt){
+    var state = 'jb' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    ss(AUTH_REDIR, location.pathname + location.search);
+    ss(AUTH_REDIR_STATE, state);
+    location.assign(jbOAuthAuthUrl({
+      clientId: CLIENT_ID,
+      redirectUri: oauthRedirectUri(),
+      scope: SCOPES,
+      state: state,
+      prompt: prompt || '',
+      loginHint: email() || ''
+    }));
+  }
+  function takeOAuthReturn(hash, search, expectedState, savedPath){
+    var params = jbParseOAuthParams(hash, search);
+    if (!params.access_token && !params.error) return null;
+    if (expectedState && params.state && params.state !== expectedState) {
+      return { error: 'state_mismatch', next: jbOAuthReturnPath(savedPath, '/') };
+    }
+    if (params.access_token) {
+      return { token: params.access_token, expiresIn: params.expires_in, next: jbOAuthReturnPath(savedPath, '/') };
+    }
+    return { error: params.error || 'auth_failed', next: jbOAuthReturnPath(savedPath, '/') };
+  }
+  function consumeOAuthReturn(){
+    var got = takeOAuthReturn(location.hash, location.search, sg(AUTH_REDIR_STATE), sg(AUTH_REDIR));
+    if (!got) return null;
+    sr(AUTH_REDIR); sr(AUTH_REDIR_STATE);
+    try { history.replaceState({}, '', location.pathname + location.search); } catch (_) {}
+    if (got.token) saveToken(got.token, got.expiresIn);
+    return got;
+  }
+  function toastOAuthReturnError(){
+    var err = sg(AUTH_REDIR_ERR);
+    if (!err) return;
+    sr(AUTH_REDIR_ERR);
+    var cancelled = err === 'access_denied' || err === 'cancelled';
+    setTimeout(function () {
+      jbToast(cancelled ? 'Login cancelado.' : 'Não foi possível entrar. Tente de novo.');
+    }, 0);
+  }
+  // --- end same-tab OAuth helpers ---
+
   function migrateTokenStorage(){
     try {
       var locTok = localStorage.getItem(TOK), locExp = Number(localStorage.getItem(EXP) || 0);
@@ -450,6 +550,14 @@
     var gen = ++authGen;
     return new Promise(function (res, rej) {
       function go(){
+        var pmt = 'none';
+        if (interactive) pmt = opts.prompt != null ? opts.prompt : (email() ? '' : 'select_account');
+        if (interactive && authPopupUnreliable()) {
+          if (gen !== authGen) { rej(new Error('auth_cancelled')); return; }
+          try { startOAuthRedirect(pmt); }
+          catch (e) { rej(e); }
+          return;
+        }
         ensureClient(function () {
           if (gen !== authGen) { rej(new Error('auth_cancelled')); return; }
           pendingRes = res; pendingRej = rej; pendingInteractive = !!interactive;
@@ -458,8 +566,6 @@
               if (pendingRej === rej) finishPending(new Error('silent_timeout'));
             }, SILENT_TIMEOUT_MS);
           }
-          var pmt = 'none';
-          if (interactive) pmt = opts.prompt != null ? opts.prompt : (email() ? '' : 'select_account');
           try { tokenClient.requestAccessToken({ prompt: pmt }); }
           catch (e) { finishPending(e); }
         });
@@ -900,6 +1006,24 @@
     bootGhost();
     migrateTokenStorage();
     initAuthBroadcast();
+    if (!isGhost()) {
+      var oauth = consumeOAuthReturn();
+      if (oauth) {
+        var dest = oauth.next || '/';
+        var here = location.pathname + location.search;
+        if (oauth.token) {
+          if (here !== dest) {
+            fetchEmail(oauth.token).then(function () { location.replace(dest); }, function () { location.replace(dest); });
+            return;
+          }
+          fetchEmail(oauth.token).catch(function () {});
+        } else {
+          ss(AUTH_REDIR_ERR, oauth.error || 'auth_failed');
+          if (here !== dest) { location.replace(dest); return; }
+        }
+      }
+      toastOAuthReturnError();
+    }
     clearStaleToken();
     if (isGhost()) {
       document.addEventListener('visibilitychange', function () {

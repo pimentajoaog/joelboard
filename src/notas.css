@@ -58,10 +58,12 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .searchbar{ @apply mb-4; }
 .searchbar input{ width:100%; }
 
-.notes-grid{ @apply grid gap-3; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); }
-.notec{ @apply bg-surface border border-border rounded-[var(--radius)] p-4 cursor-pointer relative overflow-hidden; }
-.notec::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--kc,var(--primary)); }
-.nc-top{ @apply flex items-center gap-2.5 mb-1.5; }
+.notes-grid{ @apply grid gap-3; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); }
+.notec{ @apply bg-surface border border-border rounded-[var(--radius)] p-3.5 cursor-pointer relative overflow-hidden; }
+.notec::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--kc,var(--primary)); }
+.notec-pinned{ border-color:color-mix(in srgb, var(--primary) 38%, var(--border)); background:color-mix(in srgb, var(--primary) 6%, var(--surface)); }
+.notec-shared{ border-color:color-mix(in srgb, #a78bfa 32%, var(--border)); }
+.nc-top{ @apply flex items-center gap-2.5 mb-1; }
 .nc-ico{ @apply w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-[18px] flex-[0_0_auto]; background:color-mix(in srgb, var(--kc,var(--primary)) 16%, var(--surface2)); border:0; cursor:pointer; font-family:inherit; padding:0; transition:transform .1s ease, border-color .15s ease; border:1px solid transparent; }
 .nc-ico:hover{ border-color:color-mix(in srgb, var(--kc,var(--primary)) 45%, var(--border)); }
 .nc-ico:active{ transform:scale(.94); }
@@ -72,15 +74,42 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .nc-rename-inp{ @apply w-full text-[15px] font-bold; font-family:var(--font-display); }
 .nc-pin{ @apply bg-transparent border-0 text-muted cursor-pointer text-[15px] leading-none p-0 flex-[0_0_auto]; }
 .nc-pin.on{ color:var(--primary); }
+.nc-sticker-pip{
+  width:8px; height:8px; border-radius:99px; flex:0 0 auto;
+  background:linear-gradient(135deg, var(--planner, #2dd4bf), var(--notas, #f59e0b));
+}
 .nc-kind{ @apply text-[11px] font-bold uppercase tracking-[.5px]; color:var(--kc,var(--primary)); }
-.nc-meta{ @apply text-xs text-muted mt-1.5 flex items-center gap-1.5 flex-wrap; }
-.nc-pbar{ @apply mt-2 h-1.5 rounded-full bg-surface2 overflow-hidden; }
+.nc-meta{ @apply text-xs text-muted mt-1 flex items-center gap-2 flex-wrap; }
+.nc-frac{ font-weight:800; color:var(--text); letter-spacing:-.2px; }
+.nc-pbar{ @apply mt-2.5 h-1 rounded-full bg-surface2 overflow-hidden; }
 .nc-pbar span{ @apply block h-full rounded-full; background:var(--kc,var(--primary)); }
 .pin-sect{ @apply mb-2; }
 .nc-shared{ @apply inline-block text-[10px] font-bold uppercase tracking-wide mr-1.5 opacity-80; }
-.notec-shared{ border-color:color-mix(in srgb, var(--primary) 28%, var(--border)); }
-.nc-members{ @apply flex gap-1 mt-2; }
-.nc-av{ @apply w-7 h-7 rounded-full flex items-center justify-center text-sm; background:var(--surface2); border:1px solid var(--border); }
+.nc-members{ @apply inline-flex gap-1 items-center ml-auto; }
+.nc-av{ @apply w-6 h-6 rounded-full flex items-center justify-center text-[12px]; background:var(--surface2); border:1px solid var(--border); }
+
+.nc-kits-wrap{ margin-top:28px; padding-top:18px; border-top:1px dashed color-mix(in srgb, var(--primary) 28%, var(--border)); }
+.nc-kits-kicker{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.nc-kits-hint{ font-size:11px; color:var(--muted); }
+.nc-kits{ display:flex; gap:8px; overflow-x:auto; padding:2px 0 6px; scrollbar-width:thin; }
+.nc-kit{
+  display:flex; align-items:stretch; flex:0 0 auto;
+  background:color-mix(in srgb, var(--primary) 8%, var(--surface));
+  border:1px dashed color-mix(in srgb, var(--primary) 40%, var(--border));
+  border-radius:999px; overflow:hidden;
+}
+.nc-kit-main{
+  display:flex; align-items:center; gap:8px; background:transparent; border:0; color:var(--text);
+  padding:8px 4px 8px 10px; cursor:pointer; font:inherit; font-weight:700; font-size:13px;
+}
+.nc-kit-ico{ font-size:15px; line-height:1; }
+.nc-kit-name{ max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nc-kit-use{
+  background:transparent; border:0; border-left:1px dashed color-mix(in srgb, var(--primary) 35%, var(--border));
+  color:var(--primary); font:inherit; font-size:11px; font-weight:800; letter-spacing:.3px; text-transform:uppercase;
+  padding:0 12px; cursor:pointer;
+}
+.nc-kit-use:hover{ background:color-mix(in srgb, var(--primary) 14%, transparent); }
 .nc-ed-members{ @apply flex flex-wrap items-center gap-2 mb-3 mt-1; }
 .nc-ed-members .dl{ @apply text-xs text-muted font-semibold; }
 .nc-mchips{ @apply flex flex-wrap gap-1.5; }

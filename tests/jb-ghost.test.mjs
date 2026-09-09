@@ -50,6 +50,7 @@ test('ghost session is wired for agents and stays off production', function () {
   const notas = readFileSync(new URL('../public/notas.js', import.meta.url), 'utf8');
   const planner = readFileSync(new URL('../public/planner.js', import.meta.url), 'utf8');
   assert.match(notas, /JB\.ghostFixture\('notas'\)/);
+  assert.match(notas, /function kitsStripHtml/);
   assert.match(notas, /function toggleNoteSticker/);
   assert.match(planner, /JB\.ghostFixture\('planner'\)/);
 });

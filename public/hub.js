@@ -310,7 +310,7 @@ function hubNewsEditSave(){
 function $(id){ return document.getElementById(id); }
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só — entre com Google para sincronizar dados no seu Drive.' },
-  { sel:'#hubAgenda', title:'Calendar', body:'Calendário compacto à esquerda. O grupo de ícones filtra os apps; a lista junta por app, com o que vem pela frente no topo.' },
+  { sel:'#hubAgenda', title:'Calendar', body:'Os próximos dias ficam no Calendar. Toque em Mês para o calendário; os chips filtram por app.' },
   { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notes, Planner ou Mini (extensões Chrome).' },
   { sel:'#hubNews', title:'Novidades', body:'Fique por dentro das últimas mudanças nos apps — atualizado aqui no Hub.' },
   { sel:'.gear', title:'Ajustes', body:'Tema, login, tutorial, privacidade e aviso legal ficam aqui.' }
@@ -418,19 +418,50 @@ function bootHubTours(){
   }
   maybeJulioelHint();
 }
-var _agendaApi=null, _agendaView='month', _agendaDate='', _agendaSeq=0, _agendaTimer=0, _agendaMissed=[], _agendaWide=false;
+var _agendaApi=null, _agendaView='month', _agendaDate='', _agendaSeq=0, _agendaTimer=0, _agendaMissed=[], _agendaWide=false, _agendaMode='', _agendaPicked=null;
 var HUB_AGENDA_WIDE='jb_hub_agenda_wide';
+var HUB_AGENDA_MONTH='jb_hub_agenda_month';
 var HUB_AGENDA_LIMIT='jb_hub_agenda_limit';
 var HUB_AGENDA_LIMIT_DEFAULT=5;
 var HUB_AGENDA_LABEL={ finance:'Finance', fit:'Fit', study:'Study', notas:'Notes', planner:'Planner' };
 function hubAgendaWide(){
   try{ return localStorage.getItem(HUB_AGENDA_WIDE)==='1'; }catch(_){ return false; }
 }
+function hubAgendaNarrow(){
+  try{ return !!(window.matchMedia && window.matchMedia('(max-width:900px)').matches); }catch(_){ return false; }
+}
+function hubAgendaMode(){
+  if(hubAgendaNarrow()) return 'agenda';
+  return hubAgendaWide()?'wide':'agenda';
+}
+function hubAgendaMonthOpen(){
+  try{ return localStorage.getItem(HUB_AGENDA_MONTH)==='1'; }catch(_){ return false; }
+}
+function setHubAgendaMonthOpen(on){
+  try{ if(on) localStorage.setItem(HUB_AGENDA_MONTH,'1'); else localStorage.removeItem(HUB_AGENDA_MONTH); }catch(_){}
+}
 function applyHubAgendaWide(){
   _agendaWide=hubAgendaWide();
-  document.body.classList.toggle('hub-agenda-wide', _agendaWide);
+  document.body.classList.toggle('hub-agenda-wide', _agendaWide && !hubAgendaNarrow());
   var btn=$('hubAgendaWideBtn');
   if(btn) btn.textContent=_agendaWide?'Compacta':'Ampla';
+}
+function bindHubAgendaResize(){
+  if(window._hubAgendaMq || !window.matchMedia) return;
+  try{
+    var mq=window.matchMedia('(max-width:900px)');
+    var on=function(){
+      var next=hubAgendaMode();
+      applyHubAgendaWide();
+      if(next===_agendaMode) return;
+      _agendaMode=next;
+      _agendaApi=null;
+      if(JB.isSignedIn()) refreshHubAgenda();
+    };
+    if(mq.addEventListener) mq.addEventListener('change', on);
+    else if(mq.addListener) mq.addListener(on);
+    window._hubAgendaMq=mq;
+  }catch(_){}
 }
 function toggleHubAgendaWide(){
   _agendaWide=!hubAgendaWide();
@@ -438,6 +469,7 @@ function toggleHubAgendaWide(){
   applyHubAgendaWide();
   if(_agendaView==='3day' && !_agendaWide) _agendaView='week';
   if(!_agendaWide && (_agendaView!=='day' && _agendaView!=='week' && _agendaView!=='month')) _agendaView='month';
+  _agendaMode=hubAgendaMode();
   _agendaApi=null;
   if(JB.isSignedIn()) refreshHubAgenda();
 }
@@ -461,6 +493,8 @@ function hubAgendaSignedOut(){
 }
 function bootHubAgenda(){
   applyHubAgendaWide();
+  bindHubAgendaResize();
+  _agendaMode=hubAgendaMode();
   if(!JB.isSignedIn()){ hubAgendaSignedOut(); return; }
   clearTimeout(_agendaTimer);
   _agendaTimer=setTimeout(refreshHubAgenda, 60);
@@ -472,20 +506,27 @@ function forceRefreshHubAgenda(){
   refreshHubAgenda(true);
 }
 function hubAgendaMountOpts(events){
-  var wide=hubAgendaWide();
+  var mode=hubAgendaMode();
+  _agendaMode=mode;
+  var agenda=mode==='agenda';
   return {
     events:events||[],
-    view:_agendaView,
+    view: agenda?'month':_agendaView,
     date:_agendaDate,
-    compact:!wide,
-    showFilters:wide,
-    picked: _agendaView==='month' ? null : undefined,
+    compact:false,
+    agendaFirst:agenda,
+    monthOpen: agenda && hubAgendaMonthOpen(),
+    showFilters:true,
+    picked: agenda ? (_agendaPicked||null) : (_agendaView==='month' ? null : undefined),
     appLimit:hubAgendaLimit(),
-    views: wide?['day','3day','week','month']:['day','week','month'],
+    views: agenda?[]:['day','3day','week','month'],
     emptyHint:'Abra um app e agende algo — o Calendar junta tudo aqui.',
     onChange:function(st){
       var prevMonth=String(_agendaDate||'').slice(0,7);
-      _agendaView=st.view; _agendaDate=st.date;
+      if(!agenda) _agendaView=st.view;
+      _agendaDate=st.date;
+      _agendaPicked=st.picked||null;
+      if(agenda) setHubAgendaMonthOpen(!!st.monthOpen);
       if(String(st.date||'').slice(0,7)!==prevMonth) refreshHubAgenda();
     }
   };

@@ -21,6 +21,7 @@ body{ @apply min-h-screen text-ink; background:var(--bg); font-family:var(--font
 @media (max-width:900px){
   .hub-body{ grid-template-columns:1fr; grid-template-areas:"cal" "apps" "news"; }
   .hub-agenda,.novidades{ position:static; }
+  #hubAgendaWideBtn{ display:none; }
 }
 body.hub-agenda-wide .hub-body{ grid-template-columns:minmax(0,1fr) 248px; grid-template-areas:"cal cal" "apps news"; }
 @media (max-width:900px){ body.hub-agenda-wide .hub-body{ grid-template-columns:1fr; grid-template-areas:"cal" "apps" "news"; } }

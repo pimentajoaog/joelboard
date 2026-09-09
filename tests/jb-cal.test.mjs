@@ -7,6 +7,7 @@ import vm from 'node:vm';
 const src = readFileSync(new URL('../public/jb-cal.js', import.meta.url), 'utf8');
 const linkSrc = readFileSync(new URL('../public/jb-link.js', import.meta.url), 'utf8');
 const ctx = { console, Date, Math, Number, String, Object, Array, Promise, Boolean };
+ctx.document = { addEventListener: function () {}, removeEventListener: function () {} };
 ctx.window = ctx;
 vm.createContext(ctx);
 vm.runInContext(linkSrc, ctx);
@@ -138,7 +139,7 @@ test('eventsFromNotas skips presets even with a due date', function () {
 
 test('eventsFromPlanner copies list ids and the row wears the dual-hue pill', function () {
   var evs = cal.eventsFromPlanner(
-    [{ id: 'p1', titulo: 'Fim de semana', listaIds: ['n6'] }],
+    [{ id: 'p1', titulo: 'Fim de semana', inicio: '2026-09-12', listaIds: ['n6'] }],
     [{ id: 'd1', planoId: 'p1', data: '2026-09-12', titulo: 'Chegada', listaIds: [] }],
     []
   );
@@ -170,6 +171,58 @@ test('eventsFromStudy keeps concluded events as done in the row', function () {
   ], []);
   assert.equal(evs[0].done, true);
   assert.match(cal.eventRowHtml(evs[0], { compact: true }), /jb-cal-row done/);
+});
+
+test('groupByDay skips empty dates and keeps day order', function () {
+  var groups = cal.groupByDay([
+    { date: '2026-09-10', title: 'B', timeMin: 600 },
+    { date: '', title: 'skip' },
+    { date: '2026-09-09', title: 'A' },
+    { date: '2026-09-10', title: 'C', timeMin: 480 }
+  ]);
+  assert.equal(groups.map(function (g) { return g.date; }).join(','), '2026-09-09,2026-09-10');
+  assert.equal(groups[1].events.map(function (e) { return e.title; }).join(','), 'C,B');
+  var ag = cal.groupByDayAgenda([
+    { date: '2026-09-07', title: 'Old' },
+    { date: '2026-09-09', title: 'Today' },
+    { date: '2026-09-10', title: 'Tom' }
+  ], '2026-09-09');
+  assert.equal(ag.map(function (g) { return g.date; }).join(','), '2026-09-09,2026-09-10,2026-09-07');
+  var html = cal.dayBlocksHtml([
+    { date: '2026-09-09', title: 'Luz', app: 'finance', color: '#34d399' }
+  ], 'hint', { today: '2026-09-09' });
+  assert.match(html, /jb-cal-dayblock/);
+  assert.match(html, /Luz/);
+  assert.doesNotMatch(html, /2026-09-08/);
+  assert.match(cal.dayBlocksHtml([], 'hint'), /Nada neste per[ií]odo/);
+});
+
+test('agendaFirst paints day blocks and hides the month until opened', function () {
+  var store = { html: '' };
+  var el = {
+    get innerHTML() { return store.html; },
+    set innerHTML(v) { store.html = String(v || ''); },
+    querySelectorAll: function () { return []; },
+    querySelector: function () { return null; }
+  };
+  var evs = [
+    { app: 'finance', id: 'f1', date: '2026-09-09', title: 'Luz', color: '#34d399' },
+    { app: 'planner', id: 'p1', date: '2026-09-12', title: 'Chegada', color: '#2dd4bf' }
+  ];
+  var api = cal.mount(el, {
+    events: evs, view: 'month', date: '2026-09-09',
+    agendaFirst: true, monthOpen: false, showFilters: true, views: [], compact: false
+  });
+  assert.match(store.html, /jb-cal agenda/);
+  assert.doesNotMatch(store.html, / compact/);
+  assert.match(store.html, /jb-cal-dayblock/);
+  assert.match(store.html, /Luz/);
+  assert.match(store.html, />Mês</);
+  assert.doesNotMatch(store.html, /id="calCells"/);
+  api.setMonthOpen(true);
+  assert.match(store.html, /month-open/);
+  assert.match(store.html, /id="calCells"/);
+  assert.match(store.html, /Ocultar/);
 });
 
 test('rangeForView covers day, 3-day, week and month', function () {

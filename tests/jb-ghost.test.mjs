@@ -54,6 +54,7 @@ test('ghost session is wired for agents and stays off production', function () {
   assert.match(notas, /JB\.ghostFixture\('notas'\)/);
   assert.match(notas, /function kitsStripHtml/);
   assert.match(notas, /function collabPinKey/);
+  assert.match(notas, /function homeNoteSort/);
   assert.match(notas, /function toggleNoteSticker/);
   assert.match(planner, /JB\.ghostFixture\('planner'\)/);
 });

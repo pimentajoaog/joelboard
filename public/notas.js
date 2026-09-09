@@ -472,10 +472,8 @@ function renderHomeList(){
   if(q) ns=ns.filter(function(n){ if(normText(n.titulo).indexOf(q)>-1) return true; return (DATA.itens||[]).some(function(it){return it.notaId===n.id && normText(it.texto).indexOf(q)>-1;}); });
   if(!ns.length){ el.innerHTML = (DATA.notas&&DATA.notas.length)? JB.emptyState({ icon:'🔎', title:'Nada encontrado', hint:'Tente outro termo na busca.' }) : JB.emptyState({ icon:'📝', title:'Nenhuma lista ainda', hint:'Crie listas de compras, tarefas, viagens e notas.', action:'+ Nova lista', onclick:'openNew()' }); return; }
   var presets=ns.filter(function(n){return n.preset;});
-  var live=ns.filter(function(n){return !n.preset;}).sort(function(a,b){
-    if(!!a.fixado!==!!b.fixado) return a.fixado?-1:1;
-    return String(b.atualizado||b.criado||'').localeCompare(String(a.atualizado||a.criado||''));
-  });
+  var live=ns.filter(function(n){return !n.preset;}).sort(homeNoteSort);
+
   var html=(q?'':dueStripHtml());
   if(live.length) html+='<div class="notes-grid">'+live.map(noteCard).join('')+'</div>';
   if(presets.length) html+=kitsStripHtml(presets);
@@ -493,6 +491,11 @@ function kitChip(n){
     +'<span class="nc-kit-name">'+esc(n.titulo||'Kit')+'</span></button>'
     +'<button type="button" class="nc-kit-use" onclick="clonePresetToList(\''+n.id+'\')">Usar</button>'
     +'</div>';
+}
+function homeNoteSort(a,b){
+  if(!!a.fixado!==!!b.fixado) return a.fixado?-1:1;
+  if(a.fixado && b.fixado && !!a.collabSheetId!==!!b.collabSheetId) return a.collabSheetId?-1:1;
+  return String(b.atualizado||b.criado||'').localeCompare(String(a.atualizado||a.criado||''));
 }
 function kitsStripHtml(presets){
   return '<div class="nc-kits-wrap">'

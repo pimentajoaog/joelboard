@@ -960,6 +960,8 @@ html.jb-ink-full .fab {
   max-height: 52px;
   box-sizing: border-box;
   overflow: hidden;
+  flex: 0 0 auto;
+  contain: layout style;
 }
 .jb-cal-rowwrap {
   display: block;
@@ -967,6 +969,7 @@ html.jb-ink-full .fab {
   position: relative;
   width: min(100%, 420px);
   overflow: visible;
+  contain: layout;
 }
 .jb-cal-rowwrap.open { display: block; }
 .jb-cal-rowwrap .jb-cal-row { margin-bottom: 0; }
@@ -974,25 +977,46 @@ html.jb-ink-full .fab {
 .jb-cal-row[data-peek="1"].open:hover {
   border-color: var(--planner, #2dd4bf);
 }
+.jb-cal-row[data-peek="1"]:hover {
+  border-color: var(--primary, #818cf8);
+}
+.jb-cal-row[data-peek="1"].open:hover {
+  border-color: var(--planner, #2dd4bf);
+}
 .jb-cal-row[data-peek="1"] .jb-cal-bar { align-self: center; height: 18px; }
-.jb-cal-row[data-peek="1"] .jb-cal-info { display: flex; flex-direction: column; justify-content: center; }
+.jb-cal-row[data-peek="1"] .jb-cal-info { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.jb-cal-row[data-peek="1"] .jb-cal-title {
+  line-height: 1.15;
+}
 .jb-cal-row[data-peek="1"] .jb-cal-meta {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 0;
+  line-height: 1.15;
 }
 .jb-cal-row[data-peek="1"] .jb-cal-flag,
-.jb-cal-row[data-peek="1"] .jb-cal-linkpill {
+.jb-cal-row[data-peek="1"] .jb-cal-linkpill,
+.jb-cal-row[data-peek="1"] .jb-cal-linkslot {
   flex: 0 0 auto;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   height: 20px;
+  min-height: 20px;
   max-height: 20px;
+  min-width: 28px;
   padding: 0 7px;
   font-size: 10px;
   line-height: 1;
+}
+.jb-cal-row[data-peek="1"] .jb-cal-linkslot {
+  width: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  visibility: hidden;
 }
 .jb-cal-peek {
   position: fixed;
@@ -1009,6 +1033,7 @@ html.jb-ink-full .fab {
   pointer-events: auto;
   transform-origin: left 18px;
   animation: jbCalPeekIn .28s cubic-bezier(.22,1.12,.32,1);
+  contain: layout style;
 }
 .jb-cal-peek.fly { position: fixed; left: auto; }
 .jb-cal-peek[data-side="left"] {

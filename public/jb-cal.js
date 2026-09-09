@@ -548,7 +548,14 @@
     var chk = opts.toggle
       ? ('<button type="button" class="jb-cal-chk' + (e.done ? ' on' : '') + '" data-toggle="' + esc(e.id) + '" title="Concluir">' + (e.done ? '✓' : '') + '</button>')
       : '';
-    var linkPill = (e.linkedNotes && e.linkPeek) ? ('<span class="jb-cal-flag jb-cal-linkpill">' + esc(e.linkPeek) + '</span>') : '';
+    var linkPill = '';
+    if (e.app === 'planner' && e.items != null) {
+      linkPill = (e.linkedNotes && e.linkPeek)
+        ? ('<span class="jb-cal-flag jb-cal-linkpill">' + esc(e.linkPeek) + '</span>')
+        : '<span class="jb-cal-linkslot" aria-hidden="true"></span>';
+    } else if (e.linkedNotes && e.linkPeek) {
+      linkPill = '<span class="jb-cal-flag jb-cal-linkpill">' + esc(e.linkPeek) + '</span>';
+    }
     var barBg = (e.linkedNotes && window.JB && JB.link) ? JB.link.barCss(true) : ('background:' + esc(e.color));
     var peekable = e.app === 'planner' && e.items != null;
     var openPeek = peekable && opts.peekId && opts.peekId === e.id;
@@ -860,6 +867,38 @@
         if (stray[i].parentNode) stray[i].parentNode.removeChild(stray[i]);
       }
     }
+    function peekPlaceForRow(row) {
+      var r = row.getBoundingClientRect();
+      var w = 260;
+      var gap = 12;
+      var left = r.right + gap;
+      var side = 'right';
+      if (window.innerWidth - r.right - 16 < w) {
+        left = r.left - gap - w;
+        side = 'left';
+        if (left < 12) {
+          left = Math.max(12, window.innerWidth - 12 - w);
+          side = 'right';
+        }
+      }
+      return { left: left, top: r.top, width: w, side: side, rowTop: r.top, rowBottom: r.bottom };
+    }
+    function applyPeekPlace(peek, place) {
+      if (!peek || !place) return;
+      peek.classList.add('fly');
+      peek.style.position = 'fixed';
+      peek.style.width = place.width + 'px';
+      peek.style.left = place.left + 'px';
+      peek.style.right = 'auto';
+      peek.style.bottom = 'auto';
+      peek.setAttribute('data-side', place.side);
+      var h = peek.offsetHeight || 120;
+      var top = place.top;
+      if (top + h > window.innerHeight - 12) top = Math.max(12, window.innerHeight - 12 - h);
+      peek.style.top = top + 'px';
+      peek.style.visibility = 'visible';
+      peek.style.pointerEvents = 'auto';
+    }
     function syncPeekDom() {
       clearPeekNode();
       var opens = el.querySelectorAll('.jb-cal-rowwrap.open, .jb-cal-row.open');
@@ -877,42 +916,31 @@
       row.setAttribute('aria-expanded', 'true');
       if (typeof document === 'undefined' || !document.body || !document.createElement) return;
       if (!el.id) el.id = 'jb-cal-' + Math.random().toString(36).slice(2, 9);
+      var scrollX = window.scrollX || window.pageXOffset || 0;
+      var scrollY = window.scrollY || window.pageYOffset || 0;
+      var place = peekPlaceForRow(row);
       var host = document.createElement('div');
       host.innerHTML = plannerPeekHtml(evn);
       var peek = host.firstChild;
       if (!peek) return;
       peek.classList.add('fly');
       peek.setAttribute('data-jb-cal-host', el.id);
+      peek.style.position = 'fixed';
+      peek.style.left = place.left + 'px';
+      peek.style.top = place.top + 'px';
+      peek.style.width = place.width + 'px';
+      peek.style.visibility = 'hidden';
+      peek.style.pointerEvents = 'none';
       document.body.appendChild(peek);
       el._jbCalPeekNode = peek;
-      placePeek();
+      applyPeekPlace(peek, place);
+      if (window.scrollTo) window.scrollTo(scrollX, scrollY);
     }
     function placePeek() {
       var peek = el._jbCalPeekNode;
       var row = peekRowById(state.peekId);
       if (!peek || !row) return;
-      var r = row.getBoundingClientRect();
-      var w = 260;
-      var gap = 12;
-      var left = r.right + gap;
-      var side = 'right';
-      if (window.innerWidth - r.right - 16 < w) {
-        left = r.left - gap - w;
-        side = 'left';
-        if (left < 12) {
-          left = Math.max(12, window.innerWidth - 12 - w);
-          side = 'right';
-        }
-      }
-      peek.classList.add('fly');
-      peek.style.width = w + 'px';
-      peek.style.left = left + 'px';
-      peek.style.right = 'auto';
-      peek.setAttribute('data-side', side);
-      var h = peek.offsetHeight || 120;
-      var top = r.top;
-      if (top + h > window.innerHeight - 12) top = Math.max(12, window.innerHeight - 12 - h);
-      peek.style.top = top + 'px';
+      applyPeekPlace(peek, peekPlaceForRow(row));
     }
     function bindPeekMove() {
       if (el._jbCalPeekMove) return;

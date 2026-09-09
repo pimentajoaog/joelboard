@@ -177,6 +177,7 @@ test('planner day rows expand a view-only peek instead of listing hours', functi
   assert.equal(evs[1].items.map(function (it) { return it.title; }).join(','), 'Café,Jantar');
   var closed = cal.eventRowHtml(evs[1], { compact: true, showDate: true });
   assert.match(closed, /data-peek="1"/);
+  assert.match(closed, /jb-cal-linkslot/);
   assert.doesNotMatch(closed, /jb-cal-peek/);
   assert.doesNotMatch(closed, /jb-cal-rowgo/);
   assert.doesNotMatch(closed, /Café/);
@@ -200,10 +201,13 @@ test('planner day rows expand a view-only peek instead of listing hours', functi
   assert.match(css, /\.jb-cal-row\[data-peek="1"\] \{[\s\S]*?height:\s*52px/);
   assert.match(css, /\.jb-cal\.compact \.jb-cal-row\[data-peek="1"\] \{[\s\S]*?height:\s*44px/);
   assert.match(css, /\.jb-cal-row\[data-peek="1"\]\.open[\s\S]*?border-color:\s*var\(--planner/);
+  assert.match(css, /\.jb-cal-linkslot/);
   assert.doesNotMatch(css, /\.jb-cal-row\[data-peek="1"\]\.open[\s\S]{0,120}outline:/);
   assert.doesNotMatch(css, /\.jb-cal-rowwrap\.open \{[^}]*display:\s*flex/);
   const calSrc = readFileSync(new URL('../public/jb-cal.js', import.meta.url), 'utf8');
   assert.match(calSrc, /document\.body\.appendChild\(peek\)/);
+  assert.match(calSrc, /visibility = 'hidden'/);
+  assert.match(calSrc, /window\.scrollTo/);
   assert.match(calSrc, /function syncPeekDom/);
   assert.doesNotMatch(calSrc, /if \(spaceRight >= w\) return/);
 });

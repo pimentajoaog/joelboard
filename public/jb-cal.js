@@ -558,7 +558,7 @@
       + '<div class="jb-cal-info"><div class="jb-cal-title">' + esc(e.title || '(sem título)') + '</div>'
       + (meta ? '<div class="jb-cal-meta">' + meta + '</div>' : '') + '</div>' + flag + linkPill + chk + '</div>';
     if (!peekable) return row;
-    return '<div class="jb-cal-rowwrap' + (openPeek ? ' open' : '') + '">' + row + (openPeek ? plannerPeekHtml(e) : '') + '</div>';
+    return '<div class="jb-cal-rowwrap' + (openPeek ? ' open' : '') + '">' + row + '</div>';
   }
 
   function monthCellsHtml(events, date, sel) {
@@ -841,10 +841,55 @@
     function listOpts() {
       return { limit: state.appLimit, expanded: state.expandedApps, compact: state.compact, toggle: !!state.onToggle, peekId: state.peekId };
     }
+    function peekRowById(id) {
+      if (!id) return null;
+      var nodes = el.querySelectorAll('.jb-cal-row[data-peek="1"]');
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i].getAttribute('data-id') === id) return nodes[i];
+      }
+      return null;
+    }
+    function clearPeekNode() {
+      if (el._jbCalPeekNode && el._jbCalPeekNode.parentNode) {
+        el._jbCalPeekNode.parentNode.removeChild(el._jbCalPeekNode);
+      }
+      el._jbCalPeekNode = null;
+      if (!el.id || typeof document === 'undefined' || !document.querySelectorAll) return;
+      var stray = document.querySelectorAll('.jb-cal-peek[data-jb-cal-host="' + el.id + '"]');
+      for (var i = 0; i < stray.length; i++) {
+        if (stray[i].parentNode) stray[i].parentNode.removeChild(stray[i]);
+      }
+    }
+    function syncPeekDom() {
+      clearPeekNode();
+      var opens = el.querySelectorAll('.jb-cal-rowwrap.open, .jb-cal-row.open');
+      for (var j = 0; j < opens.length; j++) opens[j].classList.remove('open');
+      var rows = el.querySelectorAll('.jb-cal-row[data-peek="1"]');
+      for (var k = 0; k < rows.length; k++) rows[k].setAttribute('aria-expanded', 'false');
+      if (!state.peekId) return;
+      var row = peekRowById(state.peekId);
+      var wrap = row && row.parentNode;
+      if (!wrap || !wrap.classList || !wrap.classList.contains('jb-cal-rowwrap')) return;
+      var evn = (state.events || []).find(function (e) { return e.id === state.peekId; });
+      if (!evn) return;
+      wrap.classList.add('open');
+      row.classList.add('open');
+      row.setAttribute('aria-expanded', 'true');
+      if (typeof document === 'undefined' || !document.body || !document.createElement) return;
+      if (!el.id) el.id = 'jb-cal-' + Math.random().toString(36).slice(2, 9);
+      var host = document.createElement('div');
+      host.innerHTML = plannerPeekHtml(evn);
+      var peek = host.firstChild;
+      if (!peek) return;
+      peek.classList.add('fly');
+      peek.setAttribute('data-jb-cal-host', el.id);
+      document.body.appendChild(peek);
+      el._jbCalPeekNode = peek;
+      placePeek();
+    }
     function placePeek() {
-      var wrap = el.querySelector('.jb-cal-rowwrap.open');
-      var peek = wrap && wrap.querySelector('.jb-cal-peek');
-      var row = wrap && wrap.querySelector('.jb-cal-row');
+      var peek = el._jbCalPeekNode;
+      var row = peekRowById(state.peekId);
       if (!peek || !row) return;
       var r = row.getBoundingClientRect();
       var w = 260;
@@ -895,7 +940,7 @@
       html += '</div>';
       el.innerHTML = html;
       bind();
-      placePeek();
+      syncPeekDom();
       bindPeekMove();
     }
     function paint() {
@@ -932,7 +977,7 @@
       html += '</div>';
       el.innerHTML = html;
       bind();
-      placePeek();
+      syncPeekDom();
       bindPeekMove();
     }
     function bind() {
@@ -1019,7 +1064,7 @@
           var evn = (state.events || []).find(function (e) { return e.id === id; });
           if (row.getAttribute('data-peek') === '1') {
             state.peekId = state.peekId === id ? null : id;
-            paint();
+            syncPeekDom();
             return;
           }
           if (state.onOpen) state.onOpen(evn, row);
@@ -1061,7 +1106,7 @@
           if (state.peekId) {
             if (t && t.closest && (t.closest('.jb-cal-rowwrap.open') || t.closest('.jb-cal-peek'))) return;
             state.peekId = null;
-            paint();
+            syncPeekDom();
           }
         };
         document.addEventListener('mousedown', el._jbCalDocClose);
@@ -1070,7 +1115,7 @@
         el._jbCalEsc = function (ev) {
           if (ev.key !== 'Escape' || !state.peekId) return;
           state.peekId = null;
-          paint();
+          syncPeekDom();
         };
         document.addEventListener('keydown', el._jbCalEsc);
       }
@@ -1101,7 +1146,7 @@
     eventsFromFit: eventsFromFit, eventsFromStudy: eventsFromStudy,
     eventsFromNotas: eventsFromNotas, eventsFromPlanner: eventsFromPlanner,
     isCollabPlannerGrid: isCollabPlannerGrid, isCollabNotasGrid: isCollabNotasGrid,
-    eventRowHtml: eventRowHtml, relLabel: relLabel, nearClass: nearClass, daysUntil: daysUntil, fmtBR: fmtBR,
+    eventRowHtml: eventRowHtml, plannerPeekHtml: plannerPeekHtml, relLabel: relLabel, nearClass: nearClass, daysUntil: daysUntil, fmtBR: fmtBR,
     loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp, clearHubCache: clearHubCache, appsInDay: appsInDay, splitByWhen: splitByWhen, orderWithinApp: orderWithinApp,
     groupByDay: groupByDay, groupByDayAgenda: groupByDayAgenda, dayBlocksHtml: dayBlocksHtml
   };

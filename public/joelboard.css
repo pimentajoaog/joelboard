@@ -968,28 +968,35 @@ html.jb-ink-full .fab {
   width: min(100%, 420px);
   overflow: visible;
 }
-.jb-cal-rowwrap.open { z-index: 9; display: block; }
+.jb-cal-rowwrap.open { display: block; }
 .jb-cal-rowwrap .jb-cal-row { margin-bottom: 0; }
-.jb-cal-row.open { border-color: var(--planner, #2dd4bf); box-shadow: 0 0 0 1px color-mix(in srgb, var(--planner, #2dd4bf) 55%, transparent); }
+.jb-cal-row[data-peek="1"].open,
+.jb-cal-row[data-peek="1"].open:hover {
+  border-color: var(--planner, #2dd4bf);
+}
 .jb-cal-row[data-peek="1"] .jb-cal-bar { align-self: center; height: 18px; }
+.jb-cal-row[data-peek="1"] .jb-cal-info { display: flex; flex-direction: column; justify-content: center; }
 .jb-cal-row[data-peek="1"] .jb-cal-meta {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 0;
 }
 .jb-cal-row[data-peek="1"] .jb-cal-flag,
 .jb-cal-row[data-peek="1"] .jb-cal-linkpill {
   flex: 0 0 auto;
-  padding: 2px 7px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  max-height: 20px;
+  padding: 0 7px;
   font-size: 10px;
-  line-height: 1.15;
-  max-height: 22px;
+  line-height: 1;
 }
 .jb-cal-peek {
-  position: absolute;
-  left: calc(100% + 12px);
-  top: 0;
-  z-index: 40;
+  position: fixed;
+  z-index: 240;
   width: 260px;
   max-width: calc(100vw - 24px);
   max-height: min(70vh, 420px);
@@ -1004,13 +1011,10 @@ html.jb-ink-full .fab {
   animation: jbCalPeekIn .28s cubic-bezier(.22,1.12,.32,1);
 }
 .jb-cal-peek.fly { position: fixed; left: auto; }
-.jb-cal-peek[data-side="left"]:not(.fly) {
-  left: auto;
-  right: calc(100% + 12px);
+.jb-cal-peek[data-side="left"] {
   transform-origin: right 18px;
   animation-name: jbCalPeekInLeft;
 }
-.jb-cal-peek[data-side="left"].fly { transform-origin: right 18px; animation-name: jbCalPeekInLeft; }
 .jb-cal-peeknub {
   position: absolute;
   top: 16px;
@@ -1020,7 +1024,6 @@ html.jb-ink-full .fab {
   border: 1px solid color-mix(in srgb, var(--planner, #2dd4bf) 42%, var(--border, #2d3346));
   pointer-events: none;
 }
-.jb-cal-peek:not(.fly) .jb-cal-peeknub { display: none; }
 .jb-cal-peek[data-side="right"] .jb-cal-peeknub,
 .jb-cal-peek:not([data-side]) .jb-cal-peeknub {
   left: -6px;

@@ -1,7 +1,7 @@
 /* Notes ↔ Planner list links. © 2026 Joel Soluções LTDA.
    Classic global; loads after /joelboard.js. Exposes JB.link / JB_LINK. */
 (function () {
-  var PEEK = 7;
+  var PEEK = 10;
   var NOTAS = '#f59e0b';
   var PLANNER = '#2dd4bf';
 
@@ -162,6 +162,12 @@
       });
     });
   }
+  function groupDepthTipo(t) {
+    if (!isGroupTipo(t)) return -1;
+    if (String(t) === 'g') return 0;
+    var m = String(t).match(/^g(\d+)$/);
+    return m ? parseInt(m[1], 10) : 0;
+  }
   function peekItems(snap) {
     return (snap.items || []).filter(function (it) {
       return it.marcavel && !isGroupTipo(it.tipo) && String(it.texto || '').trim();
@@ -172,13 +178,50 @@
       return it.marcavel && !isGroupTipo(it.tipo) && !it.feito && String(it.texto || '').trim();
     }).slice(0, PEEK);
   }
+  function peekRows(snap) {
+    var raw = [];
+    var nest = 0;
+    (snap.items || []).forEach(function (it) {
+      var text = String(it.texto || '').trim();
+      var d = groupDepthTipo(it.tipo);
+      if (d >= 0) {
+        if (text) raw.push({ group: true, texto: text, depth: d, feito: false });
+        nest = d + 1;
+        return;
+      }
+      if (!text || !it.marcavel) return;
+      raw.push({ group: false, texto: text, depth: nest, feito: !!it.feito });
+    });
+    var nChk = 0, cut = [];
+    raw.forEach(function (row) {
+      if (row.group) { cut.push(row); return; }
+      if (nChk >= PEEK) return;
+      nChk++;
+      cut.push(row);
+    });
+    while (cut.length && cut[cut.length - 1].group) cut.pop();
+    var keep = [];
+    for (var i = 0; i < cut.length; i++) {
+      var row = cut[i];
+      if (!row.group) { keep.push(row); continue; }
+      var has = false;
+      for (var j = i + 1; j < cut.length; j++) {
+        if (cut[j].group && cut[j].depth <= row.depth) break;
+        if (!cut[j].group) { has = true; break; }
+      }
+      if (has) keep.push(row);
+    }
+    return keep;
+  }
   function peekHtml(snap, opts) {
     opts = opts || {};
     if (!snap) return '';
     var open = !!opts.open;
     var key = opts.key || snap.id;
     var compact = !!opts.compact;
-    var shown = peekItems(snap);
+    var shown = peekRows(snap);
+    var nChk = 0;
+    shown.forEach(function (row) { if (!row.group) nChk++; });
     var prog = snap.total ? (snap.done + '/' + snap.total) : '—';
     var head = '<button type="button" class="jb-link-sticker' + (open ? ' open' : '') + (compact ? ' compact' : '') + '" data-link-toggle="' + esc(key) + '">'
       + '<span class="jb-link-hue" aria-hidden="true"></span>'
@@ -187,11 +230,15 @@
       + '<span class="jb-link-prog">' + esc(prog) + '</span>'
       + '<span class="jb-link-chev">' + (open ? '▴' : '▾') + '</span></button>';
     if (!open) return '<div class="jb-link-wrap' + (compact ? ' compact' : '') + '">' + head + '</div>';
-    var rows = shown.map(function (it) {
-      return '<div class="jb-link-item' + (it.feito ? ' done' : '') + '">' + esc(it.texto) + '</div>';
+    var rows = shown.map(function (row) {
+      var d = Math.max(0, Math.min(row.depth | 0, 3));
+      if (row.group) {
+        return '<div class="jb-link-g d' + d + '" style="--gdepth:' + d + '">' + esc(row.texto) + '</div>';
+      }
+      return '<div class="jb-link-item' + (row.feito ? ' done' : '') + '" style="--gdepth:' + d + '">' + esc(row.texto) + '</div>';
     }).join('');
     if (!rows) rows = '<div class="jb-link-item mute">Lista vazia</div>';
-    var extra = snap.total > shown.length ? ('<div class="jb-link-more">+' + (snap.total - shown.length) + ' no Notes</div>') : '';
+    var extra = snap.total > nChk ? ('<div class="jb-link-more">+' + (snap.total - nChk) + ' no Notes</div>') : '';
     var hint = opts.shareHint ? ('<div class="jb-link-hint">' + esc(opts.shareHint) + '</div>') : '';
     var notesHref = '/notas/?lista=' + encodeURIComponent(snap.id);
     if (window.JB && JB.isGhost && JB.isGhost()) notesHref = '/notas/?ghost=1&lista=' + encodeURIComponent(snap.id);
@@ -273,7 +320,7 @@
     packSnapshot: packSnapshot, snapshotsFromLists: snapshotsFromLists,
     snapshotsFromGhost: snapshotsFromGhost, loadSnapshots: loadSnapshots,
     loadCatalog: loadCatalog, clonePreset: clonePreset, bornListTitle: bornListTitle,
-    peekPending: peekPending, peekItems: peekItems, peekHtml: peekHtml,
+    peekPending: peekPending, peekItems: peekItems, peekRows: peekRows, peekHtml: peekHtml,
     mergeCalEvents: mergeCalEvents, decorateCalEvents: decorateCalEvents,
     defaultPresets: defaultPresets, barCss: barCss, dotCss: dotCss
   };

@@ -22,7 +22,7 @@ test('jbGhostHostOk allows only loopback hosts', function () {
 test('jbGhostFixture gives Notes and Planner enough rows to click', function () {
   var notas = ctx.jbGhostFixture('notas', '2026-09-08');
   assert.equal(notas.data.notas.length, 7);
-  assert.equal(notas.data.itens.length, 13);
+  assert.equal(notas.data.itens.length, 22);
   assert.equal(notas.data.notas[1].vence, '2026-10-12');
   assert.equal(notas.data.notas[2].titulo, 'Farmácia');
   assert.equal(notas.data.notas[2].vence, '2026-09-08');

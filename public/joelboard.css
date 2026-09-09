@@ -1095,8 +1095,21 @@ html.jb-ink-full .fab {
   border: 1px solid var(--border, #2d3346); border-top: 0;
   border-radius: 0 0 12px 12px; padding: 8px 12px 10px;
 }
-.jb-link-item { font-size: 13px; padding: 5px 0; color: var(--text, #e7eaf3); }
+.jb-link-item { font-size: 13px; padding: 5px 0; padding-left: calc(var(--gdepth, 0) * 10px); color: var(--text, #e7eaf3); }
 .jb-link-item.done { text-decoration: line-through; color: var(--muted, #7b85a0); }
+.jb-link-g {
+  font-size: 10px; font-weight: 800; letter-spacing: .45px; text-transform: uppercase;
+  color: var(--muted, #7b85a0);
+  padding: 8px 0 2px; padding-left: calc(var(--gdepth, 0) * 10px);
+  margin-top: 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border, #2d3346) 80%, transparent);
+}
+.jb-link-g:first-child { margin-top: 0; padding-top: 1px; }
+.jb-link-g.d1 { letter-spacing: .3px; }
+.jb-link-g.d2, .jb-link-g.d3 {
+  font-size: 10px; font-weight: 700; letter-spacing: .15px; text-transform: none;
+  border-bottom-style: dashed;
+}
 .jb-link-item.mute, .jb-link-more, .jb-link-hint { color: var(--muted, #7b85a0); font-size: 12px; }
 .jb-link-open { display: inline-block; margin-top: 8px; color: var(--planner, #2dd4bf); font-size: 12px; font-weight: 800; text-decoration: none; }
 .jb-link-unlink {

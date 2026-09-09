@@ -40,8 +40,31 @@ test('packSnapshot counts checkable items and peekHtml strikes done ones', funct
   assert.match(html, /Chaves/);
   assert.match(html, /jb-link-item done/);
   assert.match(html, /Carregador/);
+  assert.match(html, /jb-link-g/);
+  assert.match(html, /Docs/);
   assert.match(html, /s[oó] sua/i);
   assert.match(html, /\/notas\/\?lista=n1/);
+});
+
+test('peekHtml keeps nested subgroups in order', function () {
+  var snap = link.packSnapshot({ id: 'n4', titulo: 'Kit' }, [
+    { notaId: 'n4', ordem: 0, texto: 'Mala', marcavel: false, feito: false, tipo: 'g' },
+    { notaId: 'n4', ordem: 1, texto: 'Tech', marcavel: false, feito: false, tipo: 'g1' },
+    { notaId: 'n4', ordem: 2, texto: 'Carregador', marcavel: true, feito: true, tipo: '' },
+    { notaId: 'n4', ordem: 3, texto: 'Roupas', marcavel: true, feito: false, tipo: '' }
+  ]);
+  var html = link.peekHtml(snap, { open: true });
+  var mala = html.indexOf('Mala');
+  var tech = html.indexOf('Tech');
+  var carg = html.indexOf('Carregador');
+  var ropa = html.indexOf('Roupas');
+  assert.ok(mala >= 0 && mala < tech && tech < carg && carg < ropa);
+  assert.match(html, /jb-link-g d0/);
+  assert.match(html, /jb-link-g d1/);
+  var rows = link.peekRows(snap);
+  assert.equal(rows[0].group, true);
+  assert.equal(rows[1].depth, 1);
+  assert.equal(rows[2].depth, 2);
 });
 
 test('bornListTitle nests kit under plan and day', function () {

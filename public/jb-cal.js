@@ -225,12 +225,12 @@
     });
   }
   function eventsFromNotas(lists) {
-    return (lists || []).filter(function (n) { return n.vence && !n.done; }).map(function (n) {
+    return (lists || []).filter(function (n) { return n.vence; }).map(function (n) {
       var date = sheetsDate(n.vence);
       return ev({
         app: 'notas', id: 'notas:' + n.id, rawId: String(n.id || ''),
         date: date, title: String(n.titulo || 'Lista'), subtitle: n.tipo ? String(n.tipo) : '',
-        done: false, href: '/notas/?lista=' + encodeURIComponent(n.id), kind: 'prazo'
+        done: !!n.done, href: '/notas/?lista=' + encodeURIComponent(n.id), kind: 'prazo'
       });
     });
   }
@@ -325,7 +325,29 @@
     if (_tabCache[sid]) return Promise.resolve(_tabCache[sid]);
     return JB.sheetTabs(sid).then(function (grid) { _tabCache[sid] = grid; return grid; });
   }
+  function listsFromGhostNotas(data) {
+    return (data.notas || []).map(function (n) {
+      var items = (data.itens || []).filter(function (it) {
+        return String(it.notaId) === String(n.id) && it.marcavel;
+      });
+      var done = items.length > 0 && items.every(function (it) { return !!it.feito; });
+      return { id: n.id, titulo: n.titulo, tipo: n.tipo, vence: n.vence, done: done };
+    });
+  }
+  function ghostAppEvents(app, start, end) {
+    if (!window.JB || !JB.isGhost || !JB.isGhost() || typeof JB.ghostFixture !== 'function') return null;
+    var fx = JB.ghostFixture(app);
+    var data = fx && fx.data;
+    if (!data) return [];
+    var evs = [];
+    if (app === 'notas') evs = eventsFromNotas(listsFromGhostNotas(data));
+    else if (app === 'planner') evs = eventsFromPlanner(data.planos, data.dias, data.eventos);
+    else return [];
+    return evs.filter(function (e) { return e.date >= start && e.date <= end; });
+  }
   function loadAppEvents(app, start, end) {
+    var ghost = ghostAppEvents(app, start, end);
+    if (ghost) return Promise.resolve(ghost);
     var sid = JB.getSheetId && JB.getSheetId(app);
     if (!sid) return Promise.resolve([]);
     return cachedSheetTabs(sid).then(function (grid) {
@@ -375,10 +397,14 @@
         var regs = body(by.Compartilhadas || []).filter(function (r) { return r[1]; });
         if (!regs.length) return evs;
         return mapSeq(regs, function (reg) {
-          return batchGet(String(reg[1]), ['Meta']).then(function (pack) {
+          return batchGet(String(reg[1]), ['Meta', 'Itens']).then(function (pack) {
             var meta = body(pack.Meta)[0];
             if (!meta || !meta[7]) return [];
-            return eventsFromNotas([{ id: String(meta[6] || reg[4] || ''), titulo: String(meta[0] || reg[0] || ''), tipo: String(meta[1] || ''), vence: meta[7], done: false }]);
+            var id = String(meta[6] || reg[4] || '');
+            return eventsFromNotas([{
+              id: id, titulo: String(meta[0] || reg[0] || ''), tipo: String(meta[1] || ''),
+              vence: meta[7], done: notaItemsDone(pack.Itens, id)
+            }]);
           }).catch(function () { return []; });
         }).then(function (extra) {
           extra.forEach(function (arr) { evs = evs.concat(arr); });

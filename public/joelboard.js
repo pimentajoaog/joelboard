@@ -47,12 +47,15 @@
         data: {
           notas: [
             { id: 'ghost-n1', titulo: 'Compras da semana', tipo: 'compras', cor: '', fixado: true, criado: iso, atualizado: iso, vence: '' },
-            { id: 'ghost-n2', titulo: 'Viagem Chile', tipo: 'viagem', cor: '✈️', fixado: false, criado: iso, atualizado: iso, vence: jbGhostYmdFrom(today, 34) }
+            { id: 'ghost-n2', titulo: 'Viagem Chile', tipo: 'viagem', cor: '✈️', fixado: false, criado: iso, atualizado: iso, vence: jbGhostYmdFrom(today, 34) },
+            { id: 'ghost-n3', titulo: 'Farmácia', tipo: 'compras', cor: '', fixado: false, criado: iso, atualizado: iso, vence: today }
           ],
           itens: [
             { id: 'ghost-i1', notaId: 'ghost-n1', ordem: 0, texto: 'Pão', marcavel: true, feito: false, tipo: '' },
             { id: 'ghost-i2', notaId: 'ghost-n1', ordem: 1, texto: 'Leite', marcavel: true, feito: true, tipo: '' },
-            { id: 'ghost-i3', notaId: 'ghost-n2', ordem: 0, texto: 'Reservar hotel', marcavel: true, feito: false, tipo: '' }
+            { id: 'ghost-i3', notaId: 'ghost-n2', ordem: 0, texto: 'Reservar hotel', marcavel: true, feito: false, tipo: '' },
+            { id: 'ghost-i4', notaId: 'ghost-n3', ordem: 0, texto: 'Dipirona', marcavel: true, feito: true, tipo: '' },
+            { id: 'ghost-i5', notaId: 'ghost-n3', ordem: 1, texto: 'Protetor', marcavel: true, feito: true, tipo: '' }
           ],
           config: { perfil_nome: 'Cursor', perfil_icone: '👻' }
         }

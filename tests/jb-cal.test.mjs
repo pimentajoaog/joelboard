@@ -125,6 +125,26 @@ test('compact row puts the calendar day in meta and the relative time in the fla
   assert.equal((html.match(/em \d+ dias/g) || []).length, 1);
 });
 
+test('eventsFromNotas keeps completed due lists as done', function () {
+  var evs = cal.eventsFromNotas([
+    { id: 'open', titulo: 'Chile', tipo: 'viagem', vence: '2026-10-12', done: false },
+    { id: 'done', titulo: 'Farmácia', tipo: 'compras', vence: '2026-09-08', done: true },
+    { id: 'nodue', titulo: 'Compras', tipo: 'compras', vence: '', done: false }
+  ]);
+  assert.equal(evs.map(function (e) { return e.rawId + ':' + e.done; }).join(','), 'open:false,done:true');
+  var row = cal.eventRowHtml(evs[1], { compact: true, showDate: true });
+  assert.match(row, /jb-cal-row done/);
+  assert.match(row, /Farmácia/);
+});
+
+test('eventsFromStudy keeps concluded events as done in the row', function () {
+  var evs = cal.eventsFromStudy([
+    { id: 'p1', titulo: 'Prova', tipo: 'Prova', data: '2026-09-20', concluido: true }
+  ], []);
+  assert.equal(evs[0].done, true);
+  assert.match(cal.eventRowHtml(evs[0], { compact: true }), /jb-cal-row done/);
+});
+
 test('rangeForView covers day, 3-day, week and month', function () {
   var day = cal.rangeForView('day', '2026-03-04');
   assert.equal(day.start, '2026-03-04');

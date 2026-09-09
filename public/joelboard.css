@@ -941,8 +941,13 @@ html.jb-ink-full .fab {
 .jb-cal-sect { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 800; margin-bottom: 8px; }
 .jb-cal-row { display: flex; align-items: center; gap: 12px; background: var(--surface, #191d2c); border: 1px solid var(--border, #2d3346); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .jb-cal-row:hover { border-color: var(--primary, #818cf8); }
-.jb-cal-row.done { opacity: .55; }
-.jb-cal-row.done .jb-cal-title { text-decoration: line-through; }
+.jb-cal-row.done { opacity: .62; }
+.jb-cal-row.done .jb-cal-title,
+.jb-cal.compact .jb-cal-row.done .jb-cal-title {
+  color: var(--muted, #7b85a0);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
 .jb-cal-bar { width: 4px; align-self: stretch; border-radius: 3px; flex: 0 0 auto; }
 .jb-cal-info { flex: 1; min-width: 0; }
 .jb-cal-title { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -193,7 +193,7 @@ Each app: gate → create/link sheet → `loadData` → `show`.
 2. **Head:** `/joelboard.css`, `/themes.css`, GIS script, `/joelboard.js`; `../src/newapp.css`.
 3. **Script:** `public/newapp.js` at end of `<body>` — **no** large inline scripts.
 4. **Tokens:** `:root` in `src/newapp.css`; copy reset from `src/fit.css`.
-5. **Shell:** Hub door `location.href='/'`; `#setOverlay` settings; **Ajustes → feedback + tutorial**.
+5. **Shell:** Hub door `location.href='/'`; `#setOverlay` settings with **`.set-tabs` / `.set-pane`** (Tema first); **Ajustes → feedback + tutorial**.
 6. **Data:** `JB.resolveSheet({ app:'newapp', namePart:'Joelboard', requiredTabs:[...] })` → `JB.api`.
 7. **Hub tile** in `index.html` + optional `HUB_NEWS` entry.
 8. **Tour:** `JB.tour('newapp', STEPS)` on first boot; replay from settings.

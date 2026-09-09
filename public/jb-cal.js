@@ -239,18 +239,30 @@
     var planBy = {}, dayBy = {};
     (planos || []).forEach(function (p) { planBy[p.id] = p; });
     (dias || []).forEach(function (d) { dayBy[d.id] = d; });
+    var parseIds = function (ids) { return (window.JB && JB.link) ? JB.link.parseIds(ids) : (ids || []); };
     var out = [];
+    (planos || []).forEach(function (p) {
+      var ids = parseIds(p.listaIds);
+      if (!ids.length) return;
+      var date = sheetsDate(p.inicio);
+      if (!date) return;
+      out.push(ev({
+        app: 'planner', id: 'planner-plan:' + p.id, rawId: String(p.id || ''),
+        date: date, title: String(p.titulo || 'Plano'), subtitle: p.subtitulo ? String(p.subtitulo) : '',
+        href: '/planner/?p=' + encodeURIComponent(p.id || ''), kind: 'plano',
+        listaIds: ids
+      }));
+    });
     (dias || []).forEach(function (d) {
       var date = sheetsDate(d.data || d.date);
       if (!date) return;
       var p = planBy[d.planoId] || {};
-      var dayIds = (window.JB && JB.link) ? JB.link.mergeIds(p.listaIds, d.listaIds) : [];
       out.push(ev({
         app: 'planner', id: 'planner-day:' + d.id, rawId: String(p.id || d.planoId || ''),
         date: date, title: String(d.titulo || p.titulo || 'Dia do plano'),
         subtitle: p.titulo && d.titulo ? String(p.titulo) : '',
         href: '/planner/?p=' + encodeURIComponent(p.id || d.planoId || ''), kind: 'plano',
-        listaIds: dayIds
+        listaIds: parseIds(d.listaIds)
       }));
     });
     (eventos || []).forEach(function (e) {
@@ -258,13 +270,12 @@
       var date = day ? sheetsDate(day.data || day.date) : '';
       if (!date) return;
       var p = planBy[day.planoId] || {};
-      var evtIds = (window.JB && JB.link) ? JB.link.mergeIds(p.listaIds, day.listaIds) : [];
       out.push(ev({
         app: 'planner', id: 'planner-evt:' + e.id, rawId: String(p.id || day.planoId || ''),
         date: date, time: e.hora || '', timeMin: e.horaMin, title: String(e.titulo || 'Evento'),
         subtitle: e.nota ? String(e.nota) : (p.titulo || ''),
         href: '/planner/?p=' + encodeURIComponent(p.id || day.planoId || ''), kind: 'plano',
-        listaIds: evtIds
+        listaIds: parseIds(day.listaIds)
       }));
     });
     return out;
@@ -423,7 +434,7 @@
       return batchGet(sid, pt).then(function (by) {
         var linkParse = (window.JB && JB.link) ? JB.link.parseIds : function (s) { return String(s || '') ? [String(s)] : []; };
         var planos = body(by.Planos).filter(function (r) { return r[7]; }).map(function (r) {
-          return { id: String(r[7]), titulo: String(r[0] || ''), listaIds: linkParse(r[8]) };
+          return { id: String(r[7]), titulo: String(r[0] || ''), inicio: r[2], listaIds: linkParse(r[8]) };
         });
         var dias = body(by.Dias).filter(function (r) { return r[5]; }).map(function (r) {
           return { id: String(r[5]), planoId: String(r[0] || ''), data: r[1], titulo: String(r[2] || ''), listaIds: linkParse(r[6]) };
@@ -437,7 +448,7 @@
         return mapSeq(regs, function (reg) {
           return batchGet(String(reg[1]), ['Meta', 'Dias', 'Eventos']).then(function (pack) {
             var meta = body(pack.Meta)[0];
-            var p = meta && meta[7] ? [{ id: String(meta[7]), titulo: String(meta[0] || ''), listaIds: linkParse(meta[9]) }] : [];
+            var p = meta && meta[7] ? [{ id: String(meta[7]), titulo: String(meta[0] || ''), inicio: meta[2], listaIds: linkParse(meta[9]) }] : [];
             var ds = body(pack.Dias).filter(function (r) { return r[5]; }).map(function (r) {
               return { id: String(r[5]), planoId: String(r[0] || (p[0] && p[0].id) || ''), data: r[1], titulo: String(r[2] || ''), listaIds: linkParse(r[6]) };
             });

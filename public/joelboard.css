@@ -250,6 +250,17 @@ html.jb-syncing .header { animation: jb-sync-pulse 1.1s ease-in-out infinite; }
 .page.on,
 .tab-page.active,
 .set-pane.active { animation: jb-fade 0.18s ease both; }
+.set-tabs {
+  display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border, #2b3147);
+  flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; scrollbar-width: none;
+}
+.set-tabs::-webkit-scrollbar { display: none; }
+.set-tab {
+  background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--muted, #7b85a0);
+  font-size: 13px; font-weight: 700; padding: 8px 12px; cursor: pointer; margin-bottom: -1px;
+  white-space: nowrap; flex: 0 0 auto; font-family: inherit;
+}
+.set-tab.active { color: var(--primary, #818cf8); border-bottom-color: var(--primary, #818cf8); }
 /* Sliding tab pill (JB tab pill sync on .tabbar) */
 .tabbar { position: relative; }
 .jb-tab-pill {

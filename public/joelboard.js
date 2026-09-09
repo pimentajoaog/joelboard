@@ -1664,6 +1664,18 @@
     return '<div class="jb-empty"><div class="jb-empty-ico">' + (o.icon || '·') + '</div>'
       + '<div class="jb-empty-title">' + escHtml(o.title || 'Nada por aqui') + '</div>' + hint + btn + '</div>';
   }
+  function switchSet(name, root) {
+    root = root || document.getElementById('setOverlay');
+    if (!root) return;
+    var tabs = root.querySelectorAll('.set-tab');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', tabs[i].getAttribute('data-st') === name);
+    var panes = root.querySelectorAll('.set-pane');
+    for (var j = 0; j < panes.length; j++) {
+      var on = panes[j].getAttribute('data-pane') === name;
+      panes[j].style.display = on ? '' : 'none';
+      panes[j].classList.toggle('active', on);
+    }
+  }
 
   function syncTabPill(bar) {
     if (!bar) return;
@@ -2096,7 +2108,7 @@
     feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,
     toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady, ensureEditor: ensureEditor, editor: null, wireEggFooter: wireEggFooter, refreshNumberSteppers: scanNumberSteppers,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,
-    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, ymd: jbYmd, todayYmd: jbTodayYmd, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis,
+    SKINS: SKINS, getSkin: getSkin, setSkin: setSkin, applySkin: applySkin, renderSkinPicker: renderSkinPicker, ddToggle: ddToggle, ddClose: ddClose, tour: tour, tourDone: tourDone, datePicker: datePicker, getMode: getMode, setMode: setMode, toggleMode: toggleMode, applyMode: applyMode, dpOpen: dpOpen, dpSet: dpSet, dpGet: dpGet, fmtDate: dpFmt, ymd: jbYmd, todayYmd: jbTodayYmd, skeletonHtml: skeletonHtml, staggerChildren: staggerChildren, syncWrap: syncWrap, emptyState: emptyState, switchSet: switchSet, syncTabPill: syncTabPill, searchFocus: searchFocus, searchBlur: searchBlur, searchClearVis: searchClearVis,
     PROFILE_ICONS: PROFILE_ICONS, normProfileIcon: jbNormProfileIcon, profileFromJSON: jbProfileFromJSON, adoptLegacyInto: jbAdoptLegacyProfile, mergeProfileCandidates: jbMergeProfileCandidates, acctText: jbAcctLabel,
     profileName: profileName, profileIcon: profileIcon, profileReady: profileReady, acctLabel: acctLabel, adoptLegacyProfile: adoptLegacyProfile, rememberProfileCandidate: rememberProfileCandidate,
     onProfileChange: onProfileChange, paintAcct: paintAcct, pickProfileIcon: pickProfileIcon, prepareProfileEditor: prepareProfileEditor, saveProfileValues: saveProfileValues, openProfile: openProfile, closeProfile: closeProfile, saveProfile: saveProfile, ensureProfile: ensureProfile,

@@ -105,6 +105,7 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 .gear{ @apply bg-surface2 border border-border text-muted text-sm rounded-full w-8 h-8 cursor-pointer; font-family:inherit; }
 .gear:hover{ @apply border-primary text-primary; }
 .acctline{ @apply text-[13px] text-muted mb-4 break-all; }
+#hubSet .set-pane{ min-height: 40px; }
 #hubSet .jb-profile-hint{ margin-top:0; }
 #hubSet .jb-profile-preview{ margin-bottom:8px; }
 .mbtn{ @apply block w-full bg-surface2 border border-border text-ink rounded-[11px] p-3 text-sm font-bold cursor-pointer mb-2.5; font-family:inherit; }

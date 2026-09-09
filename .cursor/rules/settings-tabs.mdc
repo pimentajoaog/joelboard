@@ -1,0 +1,13 @@
+---
+description: Settings overlays use tabs — never one long scroll
+alwaysApply: true
+---
+
+# Settings tabs
+
+Joelboard Ajustes are **tabbed**. Do not flatten Hub or app settings into a single scrolling list.
+
+- Markup: `.set-tabs` / `.set-tab` / `.set-pane` (core styles in `public/joelboard.css`; `JB.switchSet(name, root)`).
+- Default first tab is **Tema**. Extra app stuff gets its own tab (Perfil, Calendar, Sobre, …).
+- Hub uses `#hubSet` and `switchHubSet`. Apps use `#setOverlay`.
+- New apps: copy Notes — tabs in the overlay, panes hidden until selected.

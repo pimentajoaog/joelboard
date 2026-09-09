@@ -225,6 +225,31 @@ test('agendaFirst paints day blocks and hides the month until opened', function 
   assert.match(store.html, /Ocultar/);
 });
 
+test('compact mount keeps app icons and the filter cluster', function () {
+  var store = { html: '' };
+  var el = {
+    get innerHTML() { return store.html; },
+    set innerHTML(v) { store.html = String(v || ''); },
+    querySelectorAll: function () { return []; },
+    querySelector: function () { return null; }
+  };
+  cal.mount(el, {
+    events: [{ app: 'finance', id: 'f1', date: '2026-09-09', title: 'Luz', color: '#34d399' }],
+    view: 'month', date: '2026-09-09', compact: true, views: ['day', 'week', 'month']
+  });
+  assert.match(store.html, /jb-cal compact/);
+  assert.match(store.html, /jb-cal-cluster/);
+  assert.match(store.html, /jb-cal-appt-ico/);
+  assert.match(store.html, /Luz/);
+});
+
+test('Hub desktop compact is not the phone agenda', function () {
+  const hub = readFileSync(new URL('../public/hub.js', import.meta.url), 'utf8');
+  assert.match(hub, /return hubAgendaWide\(\)\?'wide':'compact'/);
+  assert.match(hub, /var compact=mode==='compact'/);
+  assert.match(src, /Promise\.all\(apps\.map/);
+});
+
 test('rangeForView covers day, 3-day, week and month', function () {
   var day = cal.rangeForView('day', '2026-03-04');
   assert.equal(day.start, '2026-03-04');

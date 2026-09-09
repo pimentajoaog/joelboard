@@ -478,15 +478,16 @@
     }
     var apps = opts.apps || ['finance', 'fit', 'study', 'notas', 'planner'];
     var missed = [];
-    var chain = Promise.resolve([]);
-    apps.forEach(function (app) {
-      chain = chain.then(function (all) {
-        return loadAppEvents(app, win.start, win.end)
-          .catch(function () { missed.push(app); return []; })
-          .then(function (part) { return all.concat(part); });
+    return Promise.all(apps.map(function (app) {
+      return loadAppEvents(app, win.start, win.end).then(function (part) {
+        return { app: app, events: part || [] };
+      }, function () {
+        missed.push(app);
+        return { app: app, events: [] };
       });
-    });
-    return chain.then(function (all) {
+    })).then(function (parts) {
+      var all = [];
+      parts.forEach(function (p) { all = all.concat(p.events); });
       if (window.JB && JB.link && JB.link.mergeCalEvents) all = JB.link.mergeCalEvents(all);
       var finish = function (events) {
         var pack = { events: sortEvents(events), missed: missed, range: focus, window: win };

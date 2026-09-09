@@ -18,7 +18,7 @@ test('parseIds and mergeIds keep unique note ids', function () {
   assert.equal(link.formatIds(['n2', 'n2', 'n1']), 'n2,n1');
 });
 
-test('packSnapshot counts checkable items and peekHtml lists open ones', function () {
+test('packSnapshot counts checkable items and peekHtml strikes done ones', function () {
   var note = { id: 'n1', titulo: 'Mala', tipo: 'viagem', cor: '🧳' };
   var itens = [
     { notaId: 'n1', ordem: 0, texto: 'Docs', marcavel: false, feito: false, tipo: 'g' },
@@ -38,9 +38,23 @@ test('packSnapshot counts checkable items and peekHtml lists open ones', functio
   assert.match(html, /1\/3/);
   assert.match(html, /Roupas/);
   assert.match(html, /Chaves/);
-  assert.doesNotMatch(html, /Carregador/);
+  assert.match(html, /jb-link-item done/);
+  assert.match(html, /Carregador/);
   assert.match(html, /s[oó] sua/i);
   assert.match(html, /\/notas\/\?lista=n1/);
+});
+
+test('bornListTitle nests kit under plan and day', function () {
+  assert.equal(link.bornListTitle('Viagem nacional', {
+    planTitle: 'Julioel SP',
+    inicio: '2026-07-12',
+    dayTitle: 'Rolê a noite'
+  }), 'Viagem nacional · Julioel SP · 2026 {Rolê a noite}');
+  assert.equal(link.bornListTitle('Viagem nacional', {
+    planTitle: 'Julioel SP - 2026',
+    inicio: '2026-07-12'
+  }), 'Viagem nacional · Julioel SP - 2026');
+  assert.equal(link.bornListTitle('Mala', {}), 'Mala');
 });
 
 test('mergeCalEvents hides a Notes due that is already stuck on a plan', function () {

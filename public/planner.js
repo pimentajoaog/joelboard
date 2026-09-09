@@ -651,7 +651,17 @@ function pickLinkedList(noteId, fromPreset){
   };
   if(!fromPreset){ attach(noteId); return; }
   if(!window.JB||!JB.link||!JB.link.clonePreset){ toast('Não deu para clonar o preset'); return; }
-  JB.link.clonePreset(noteId, { sticker: true }).then(function(snap){
+  var p=tgt.kind==='plan'?plan(tgt.id):plan(openPlanId);
+  var cloneOpts={ sticker:true, planTitle:p&&p.titulo||'', inicio:p&&p.inicio||'' };
+  if(tgt.kind==='day'){
+    var day=(DATA.dias||[]).find(function(x){ return x.id===tgt.id; });
+    if(day){
+      var dayTitle=(day.titulo||'').trim();
+      if(!dayTitle) dayTitle=((plWeekday(day.data)||'')+' '+plFmtDay(day.data)).trim();
+      cloneOpts.dayTitle=dayTitle;
+    }
+  }
+  JB.link.clonePreset(noteId, cloneOpts).then(function(snap){
     if(!snap||!snap.id){ toast('Não deu para clonar o preset'); return; }
     attach(snap.id);
   }).catch(function(){ toast('Abra o Notes uma vez para criar a planilha, depois cole o preset.'); });

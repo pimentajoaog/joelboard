@@ -117,6 +117,23 @@
       return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
     });
   }
+  function yearFromYmd(ymd) {
+    var m = String(ymd || '').match(/^(\d{4})/);
+    return m ? m[1] : '';
+  }
+  function bornListTitle(kitTitle, ctx) {
+    ctx = ctx || {};
+    var kit = String(kitTitle == null ? '' : kitTitle).trim() || 'Lista';
+    var plan = String(ctx.planTitle || '').trim();
+    var year = String(ctx.year || yearFromYmd(ctx.inicio) || '').trim();
+    if (year && plan && plan.indexOf(year) === -1) plan = plan + ' · ' + year;
+    else if (year && !plan) plan = year;
+    var day = String(ctx.dayTitle || '').trim();
+    if (plan && day) return kit + ' · ' + plan + ' {' + day + '}';
+    if (plan) return kit + ' · ' + plan;
+    if (day) return kit + ' {' + day + '}';
+    return kit;
+  }
   function clonePreset(srcId, opts) {
     opts = opts || {};
     return loadCatalog().then(function (snaps) {
@@ -125,7 +142,8 @@
       if (!src) return null;
       var now = new Date().toISOString();
       var nid = uid();
-      var note = { id: nid, titulo: src.titulo, tipo: src.tipo || 'viagem', cor: src.icon || '', preset: false, sticker: !!opts.sticker, criado: now, atualizado: now, vence: '' };
+      var titulo = String(opts.titulo || '').trim() || bornListTitle(src.titulo, opts);
+      var note = { id: nid, titulo: titulo, tipo: src.tipo || 'viagem', cor: src.icon || '', preset: false, sticker: !!opts.sticker, criado: now, atualizado: now, vence: '' };
       var itens = (src.items || []).map(function (s, i) {
         return { id: uid(), notaId: nid, ordem: i + 1, texto: s.texto, marcavel: s.marcavel, feito: false, tipo: s.tipo || '' };
       });
@@ -144,6 +162,11 @@
       });
     });
   }
+  function peekItems(snap) {
+    return (snap.items || []).filter(function (it) {
+      return it.marcavel && !isGroupTipo(it.tipo) && String(it.texto || '').trim();
+    }).slice(0, PEEK);
+  }
   function peekPending(snap) {
     return (snap.items || []).filter(function (it) {
       return it.marcavel && !isGroupTipo(it.tipo) && !it.feito && String(it.texto || '').trim();
@@ -155,7 +178,7 @@
     var open = !!opts.open;
     var key = opts.key || snap.id;
     var compact = !!opts.compact;
-    var pending = peekPending(snap);
+    var shown = peekItems(snap);
     var prog = snap.total ? (snap.done + '/' + snap.total) : '—';
     var head = '<button type="button" class="jb-link-sticker' + (open ? ' open' : '') + (compact ? ' compact' : '') + '" data-link-toggle="' + esc(key) + '">'
       + '<span class="jb-link-hue" aria-hidden="true"></span>'
@@ -164,11 +187,11 @@
       + '<span class="jb-link-prog">' + esc(prog) + '</span>'
       + '<span class="jb-link-chev">' + (open ? '▴' : '▾') + '</span></button>';
     if (!open) return '<div class="jb-link-wrap' + (compact ? ' compact' : '') + '">' + head + '</div>';
-    var rows = pending.map(function (it) {
-      return '<div class="jb-link-item">' + esc(it.texto) + '</div>';
+    var rows = shown.map(function (it) {
+      return '<div class="jb-link-item' + (it.feito ? ' done' : '') + '">' + esc(it.texto) + '</div>';
     }).join('');
-    if (!rows) rows = '<div class="jb-link-item mute">Nada pendente</div>';
-    var extra = snap.open > pending.length ? ('<div class="jb-link-more">+' + (snap.open - pending.length) + ' no Notes</div>') : '';
+    if (!rows) rows = '<div class="jb-link-item mute">Lista vazia</div>';
+    var extra = snap.total > shown.length ? ('<div class="jb-link-more">+' + (snap.total - shown.length) + ' no Notes</div>') : '';
     var hint = opts.shareHint ? ('<div class="jb-link-hint">' + esc(opts.shareHint) + '</div>') : '';
     var notesHref = '/notas/?lista=' + encodeURIComponent(snap.id);
     if (window.JB && JB.isGhost && JB.isGhost()) notesHref = '/notas/?ghost=1&lista=' + encodeURIComponent(snap.id);
@@ -249,8 +272,8 @@
     parseIds: parseIds, formatIds: formatIds, mergeIds: mergeIds, uniq: uniq,
     packSnapshot: packSnapshot, snapshotsFromLists: snapshotsFromLists,
     snapshotsFromGhost: snapshotsFromGhost, loadSnapshots: loadSnapshots,
-    loadCatalog: loadCatalog, clonePreset: clonePreset,
-    peekPending: peekPending, peekHtml: peekHtml,
+    loadCatalog: loadCatalog, clonePreset: clonePreset, bornListTitle: bornListTitle,
+    peekPending: peekPending, peekItems: peekItems, peekHtml: peekHtml,
     mergeCalEvents: mergeCalEvents, decorateCalEvents: decorateCalEvents,
     defaultPresets: defaultPresets, barCss: barCss, dotCss: dotCss
   };

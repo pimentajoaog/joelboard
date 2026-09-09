@@ -1096,6 +1096,7 @@ html.jb-ink-full .fab {
   border-radius: 0 0 12px 12px; padding: 8px 12px 10px;
 }
 .jb-link-item { font-size: 13px; padding: 5px 0; color: var(--text, #e7eaf3); }
+.jb-link-item.done { text-decoration: line-through; color: var(--muted, #7b85a0); }
 .jb-link-item.mute, .jb-link-more, .jb-link-hint { color: var(--muted, #7b85a0); font-size: 12px; }
 .jb-link-open { display: inline-block; margin-top: 8px; color: var(--planner, #2dd4bf); font-size: 12px; font-weight: 800; text-decoration: none; }
 .jb-link-unlink {

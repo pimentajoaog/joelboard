@@ -39,9 +39,10 @@ body.hub-agenda-wide .hub-body{ grid-template-columns:minmax(0,1fr) 248px; grid-
 .hub-agenda{
   background:var(--surface); border:1px solid var(--border); border-radius:18px;
   padding:14px 12px 12px; margin:0; position:sticky; top:24px;
-  max-height:calc(100dvh - 48px); overflow-x:hidden; overflow-y:auto;
-  overflow-anchor:none; overscroll-behavior:contain;
+  overflow:visible; overflow-anchor:none;
 }
+/* Peek open: freeze any accidental agenda scroll so the clicked pill cannot slide. */
+html.jb-cal-peek-on .hub-agenda{ overflow:hidden; }
 #hubAgendaCal{ overflow:visible; overflow-anchor:none; }
 .hub-agenda-h{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
 .hub-agenda-title{ font-size:14px; font-weight:800; letter-spacing:-.2px; }

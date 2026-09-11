@@ -880,15 +880,17 @@
         if (window.scrollTo) window.scrollTo(x, y);
         if (agenda) agenda.scrollTop = agY;
       };
-      window.addEventListener('scroll', lock, true);
+      // Block scroll during open/close so the clicked pill cannot be shoved in-view.
+      var block = function (ev) {
+        if (ev && ev.cancelable && ev.preventDefault) ev.preventDefault();
+        lock();
+      };
+      window.addEventListener('scroll', block, true);
       try { fn(); }
       finally {
-        window.removeEventListener('scroll', lock, true);
+        window.removeEventListener('scroll', block, true);
         lock();
-        if (typeof requestAnimationFrame === 'function') {
-          requestAnimationFrame(lock);
-          requestAnimationFrame(function () { requestAnimationFrame(lock); });
-        }
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(lock);
       }
     }
     function peekPlaceForRow(row) {

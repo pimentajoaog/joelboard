@@ -986,20 +986,12 @@ html.jb-ink-full .fab {
 .jb-cal-row[data-peek="1"][aria-expanded="true"],
 .jb-cal-row[data-peek="1"].open:hover,
 .jb-cal-row[data-peek="1"][aria-expanded="true"]:hover {
+  /* Keep the same border box; draw the open ring with inset shadow only. */
   border-color: var(--border, #2d3346);
+  box-shadow: inset 0 0 0 1px var(--planner, #2dd4bf);
 }
 .jb-cal-row[data-peek="1"]:hover {
   border-color: var(--primary, #818cf8);
-}
-.jb-cal-row[data-peek="1"].open::after,
-.jb-cal-row[data-peek="1"][aria-expanded="true"]::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 1px solid var(--planner, #2dd4bf);
-  border-radius: inherit;
-  pointer-events: none;
-  box-sizing: border-box;
 }
 .jb-cal-row[data-peek="1"] .jb-cal-bar { align-self: center; height: 18px; }
 .jb-cal-row[data-peek="1"] .jb-cal-info { display: flex; flex-direction: column; justify-content: center; min-width: 0; }

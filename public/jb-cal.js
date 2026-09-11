@@ -874,8 +874,11 @@
       if (typeof window === 'undefined' || !window.addEventListener) { fn(); return; }
       var x = window.scrollX || window.pageXOffset || 0;
       var y = window.scrollY || window.pageYOffset || 0;
+      var agenda = el.closest ? el.closest('.hub-agenda') : null;
+      var agY = agenda ? agenda.scrollTop : 0;
       var lock = function () {
         if (window.scrollTo) window.scrollTo(x, y);
+        if (agenda) agenda.scrollTop = agY;
       };
       window.addEventListener('scroll', lock, true);
       try { fn(); }
@@ -1134,6 +1137,7 @@
           var id = row.getAttribute('data-id');
           var evn = (state.events || []).find(function (e) { return e.id === id; });
           if (row.getAttribute('data-peek') === '1') {
+            if (ev && ev.preventDefault) ev.preventDefault();
             state.peekId = state.peekId === id ? null : id;
             syncPeekDom();
             return;

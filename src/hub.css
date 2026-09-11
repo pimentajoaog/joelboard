@@ -36,7 +36,12 @@ body.hub-agenda-wide .hub-body{ grid-template-columns:minmax(0,1fr) 248px; grid-
 .authbtn{ @apply bg-surface2 border border-border text-primary font-bold text-xs rounded-full px-[13px] py-1.5 cursor-pointer; font-family:inherit; }
 .authbtn:hover{ @apply border-primary; }
 .sub{ @apply text-sm text-muted; margin:8px 2px 18px; }
-.hub-agenda{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:14px 12px 12px; margin:0; position:sticky; top:24px; overflow:visible; overflow-anchor:none; }
+.hub-agenda{
+  background:var(--surface); border:1px solid var(--border); border-radius:18px;
+  padding:14px 12px 12px; margin:0; position:sticky; top:24px;
+  max-height:calc(100dvh - 48px); overflow-x:hidden; overflow-y:auto;
+  overflow-anchor:none; overscroll-behavior:contain;
+}
 #hubAgendaCal{ overflow:visible; overflow-anchor:none; }
 .hub-agenda-h{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
 .hub-agenda-title{ font-size:14px; font-weight:800; letter-spacing:-.2px; }

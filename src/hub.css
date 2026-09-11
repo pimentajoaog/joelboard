@@ -65,7 +65,7 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; transform:translateY
 .suite{ @apply text-[11px] font-bold tracking-[.5px] uppercase text-muted; }
 .name{ @apply text-[19px] font-extrabold tracking-[-.4px] mt-[-2px]; }
 .desc{ @apply text-[12.5px] text-muted mt-[5px]; line-height:1.45; }
-.open{ @apply mt-[13px] text-xs font-bold text-primary; }
+.tile .open{ @apply mt-[13px] text-xs font-bold text-primary; }
 .tile.ghost{ @apply opacity-[0.62]; }
 .soon{ @apply mt-[13px] text-[10px] font-bold uppercase tracking-[1px] text-muted bg-surface2 border border-border rounded-full px-[11px] py-1; }
 .foot{ @apply mt-10 text-[11px] text-muted opacity-60 text-center; }

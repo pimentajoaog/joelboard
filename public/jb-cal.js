@@ -559,7 +559,7 @@
     var barBg = (e.linkedNotes && window.JB && JB.link) ? JB.link.barCss(true) : ('background:' + esc(e.color));
     var peekable = e.app === 'planner' && e.items != null;
     var openPeek = peekable && opts.peekId && opts.peekId === e.id;
-    var row = '<div class="jb-cal-row' + (e.done ? ' done' : '') + (e.linkedNotes ? ' linked' : '') + (openPeek ? ' open' : '') + '" data-id="' + esc(e.id) + '" data-app="' + esc(e.app) + '"' + href + raw
+    var row = '<div class="jb-cal-row' + (e.done ? ' done' : '') + (e.linkedNotes ? ' linked' : '') + (openPeek ? ' jb-peek-open' : '') + '" data-id="' + esc(e.id) + '" data-app="' + esc(e.app) + '"' + href + raw
       + (peekable ? ' data-peek="1" aria-expanded="' + (openPeek ? 'true' : 'false') + '"' : '') + '>'
       + '<span class="jb-cal-bar" style="' + barBg + '"></span>'
       + '<div class="jb-cal-info"><div class="jb-cal-title">' + esc(e.title || '(sem título)') + '</div>'
@@ -955,7 +955,7 @@
       withScrollLock(function () {
         var rows = el.querySelectorAll('.jb-cal-row[data-peek="1"]');
         for (var k = 0; k < rows.length; k++) {
-          rows[k].classList.remove('open');
+          rows[k].classList.remove('jb-peek-open');
           rows[k].setAttribute('aria-expanded', 'false');
         }
         if (!state.peekId) {
@@ -966,7 +966,7 @@
         if (!row) { hidePeek(); return; }
         var evn = (state.events || []).find(function (e) { return e.id === state.peekId; });
         if (!evn) { hidePeek(); return; }
-        row.classList.add('open');
+        row.classList.add('jb-peek-open');
         row.setAttribute('aria-expanded', 'true');
         var peek = ensurePeekNode();
         if (!peek) return;
@@ -1181,7 +1181,7 @@
             }
           }
           if (state.peekId) {
-            if (t && t.closest && (t.closest('.jb-cal-row.open') || t.closest('.jb-cal-peek'))) return;
+            if (t && t.closest && (t.closest('.jb-cal-row.jb-peek-open') || t.closest('.jb-cal-peek'))) return;
             state.peekId = null;
             syncPeekDom();
           }

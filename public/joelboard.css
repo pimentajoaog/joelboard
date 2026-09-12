@@ -572,6 +572,16 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 /* Shared live editor (JB.editor) */
 .jb-ed { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .jb-ed-chrome { position: relative; z-index: 20; overflow: visible; }
+/* Full notes: keep the formatting bar reachable while scrolling long text. */
+.jb-ed:not(.jb-ed-compact) .jb-ed-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--bg, #0d0f18);
+  padding: 6px 0 8px;
+  margin-top: -6px;
+  box-shadow: 0 10px 18px color-mix(in srgb, var(--bg, #0d0f18) 92%, transparent);
+}
 .jb-ed-bar {
   display: flex; flex-wrap: wrap; gap: 6px 2px; align-items: center;
   position: relative; z-index: 20;
@@ -851,9 +861,19 @@ html.jb-ink-full .tabbar,
 html.jb-ink-full .jb-ed-chrome,
 html.jb-ink-full .jb-ed-bar,
 html.jb-ink-full .jb-ed-foot {
-  position: relative;
   z-index: 40;
   background: var(--bg);
+}
+html.jb-ink-full .header,
+html.jb-ink-full .tabbar,
+html.jb-ink-full .jb-ed-bar,
+html.jb-ink-full .jb-ed-foot {
+  position: relative;
+}
+html.jb-ink-full .jb-ed-chrome,
+.jb-ed.ink-on:not(.jb-ed-compact) .jb-ed-chrome {
+  position: sticky;
+  top: 0;
 }
 /* Keep title / back link above the canvas, but below the toolbar + ink palette. */
 html.jb-ink-full .lnk,
@@ -979,6 +999,7 @@ html.jb-ink-full .fab {
   }
   .jb-ed:not(.jb-ed-compact) .jb-ed-chrome {
     margin-bottom: 8px;
+    margin-top: -6px;
   }
   .jb-ed:not(.jb-ed-compact) .jb-ed-scroll {
     border-bottom-left-radius: 0;

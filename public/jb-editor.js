@@ -1679,18 +1679,7 @@
     function tidyCol(col) {
       if (!col || !surface.contains(col)) return;
       ensureColBody(col);
-      while (col.children.length > 1) {
-        var last = col.lastElementChild;
-        if (!last || last.tagName !== 'P') break;
-        if (!blockIsVisuallyEmpty(last)) break;
-        var sel = window.getSelection();
-        var caretInLast = false;
-        try {
-          caretInLast = !!(sel && sel.rangeCount && last.contains(sel.getRangeAt(0).commonAncestorContainer));
-        } catch (_) {}
-        if (caretInLast) break;
-        col.removeChild(last);
-      }
+      stripTrailingEmptyColBlocks(col, true);
       syncColEmptyState(col);
     }
     function syncAllCols() {
@@ -1702,9 +1691,11 @@
     }
     function placeCaretNear(node, after) {
       if (!node || !node.parentNode) {
-        surface.focus();
+        try { surface.focus(); } catch (_) {}
         return;
       }
+      var host = editableHostFor(node);
+      focusEditable(host);
       var sel = window.getSelection();
       if (!sel) return;
       try {
@@ -1714,11 +1705,47 @@
         range.collapse(true);
         sel.removeAllRanges();
         sel.addRange(range);
+        savedRange = range.cloneRange();
       } catch (_) {
         var fallback = after ? node.nextElementSibling : node.previousElementSibling;
         if (fallback) placeCaretInEl(fallback, !after);
       }
-      surface.focus();
+    }
+    function colChildBlock(range, col) {
+      if (!range || !col) return null;
+      var node = range.startContainer;
+      if (node && node.nodeType === 3) node = node.parentElement;
+      while (node && node !== col && node.parentElement !== col) node = node.parentElement;
+      if (!node || node === col) return null;
+      return node;
+    }
+    function placeCaretAfterColChild(node, col) {
+      if (!node || !col) return;
+      focusEditable(col);
+      var next = node.nextElementSibling;
+      if (next && next.tagName === 'P') {
+        placeCaretInEl(next, true);
+        return;
+      }
+      placeCaretNear(node, true);
+    }
+    function stripTrailingEmptyColBlocks(col, keepLastIfCaret) {
+      if (!col) return;
+      var sel = window.getSelection();
+      var caretBlock = null;
+      try {
+        if (sel && sel.rangeCount && col.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+          caretBlock = colChildBlock(sel.getRangeAt(0), col);
+        }
+      } catch (_) {}
+      while (col.children.length > 1) {
+        var last = col.lastElementChild;
+        if (!last || last.tagName !== 'P') break;
+        if (!blockIsVisuallyEmpty(last)) break;
+        if (keepLastIfCaret && caretBlock && last === caretBlock) break;
+        if (last.querySelector && last.querySelector('img[data-jb-file]')) break;
+        col.removeChild(last);
+      }
     }
     function removeColsRow(row) {
       if (!row || !row.parentNode || !surface.contains(row)) return;
@@ -1819,57 +1846,84 @@
         return true;
       }
 
-      if (ev.key === 'Backspace') {
-        var col = closestEdCol(range.commonAncestorContainer);
-        if (col) {
-          var cols = closestEdCols(col);
-          if (!cols || !rangeAtStartOf(col, range)) return false;
-          var colList = cols.querySelectorAll('.jb-ed-col');
-          var first = colList[0];
-          var allEmpty = true;
-          var i;
-          for (i = 0; i < colList.length; i++) {
-            if (colHasContent(colList[i])) { allEmpty = false; break; }
-          }
+      if (ev.key === 'Delete') {
+        /* Only selection removes a columns block — not Delete from the previous paragraph. */
+        return false;
+      }
+
+      var col = closestEdCol(range.commonAncestorContainer);
+      if (col) {
+        var cols = closestEdCols(col);
+        if (!cols) return false;
+        var colList = cols.querySelectorAll('.jb-ed-col');
+        var first = colList[0];
+
+        if (rangeAtStartOf(col, range)) {
           ev.preventDefault();
           histBeforeChange();
-          if (allEmpty && col === first) {
-            removeColsRow(cols);
+          if (col === first) {
+            var allEmpty = true;
+            var i;
+            for (i = 0; i < colList.length; i++) {
+              if (colHasContent(colList[i])) { allEmpty = false; break; }
+            }
+            if (allEmpty) {
+              removeColsRow(cols);
+              return true;
+            }
+            ensureColBody(col);
+            syncColEmptyState(col);
+            placeCaretInEl(colLastBlock(col) || col, true);
             return true;
           }
-          ensureColBody(col);
-          syncColEmptyState(col);
-          placeCaretInEl(colLastBlock(col) || col, true);
+          /* Second (or later) column: jump back to the previous column. */
+          var prevCol = col.previousElementSibling;
+          while (prevCol && !(prevCol.classList && prevCol.classList.contains('jb-ed-col'))) {
+            prevCol = prevCol.previousElementSibling;
+          }
+          if (!prevCol) prevCol = first;
+          ensureColBody(prevCol);
+          placeCaretInEl(colLastBlock(prevCol) || prevCol, false);
           return true;
         }
-        var block = range.commonAncestorContainer;
-        if (block && block.nodeType === 3) block = block.parentElement;
-        while (block && block !== surface && block.parentElement !== surface) block = block.parentElement;
-        if (block && block.classList && block.classList.contains('jb-ed-after-cols') && rangeAtStartOf(block, range)) {
-          var prev = block.previousElementSibling;
-          if (prev && prev.classList && prev.classList.contains('jb-ed-cols')) {
+
+        /* Eat empty trailing gaps (e.g. under an image) without leaving the column. */
+        var block = colChildBlock(range, col);
+        if (block && blockIsVisuallyEmpty(block)) {
+          var prevBlock = block.previousElementSibling;
+          if (prevBlock) {
             ev.preventDefault();
             histBeforeChange();
-            removeColsRow(prev);
+            col.removeChild(block);
+            placeCaretAfterColChild(prevBlock, col);
+            stripTrailingEmptyColBlocks(col, true);
+            syncColEmptyState(col);
+            markDirty();
             return true;
           }
         }
         return false;
       }
 
-      /* Delete: remove the next columns block when caret is at the end of the previous block. */
-      var cur = range.commonAncestorContainer;
-      if (cur && cur.nodeType === 3) cur = cur.parentElement;
-      while (cur && cur !== surface && cur.parentElement !== surface) cur = cur.parentElement;
-      if (!cur || cur === surface) return false;
-      if (closestEdCol(range.commonAncestorContainer)) return false;
-      if (!rangeAtEndOf(cur, range)) return false;
-      var next = cur.nextElementSibling;
-      if (next && next.classList && next.classList.contains('jb-ed-cols')) {
-        ev.preventDefault();
-        histBeforeChange();
-        removeColsRow(next);
-        return true;
+      /* Backspace under a columns block: move into the last column — never delete the layout. */
+      var afterBlock = range.commonAncestorContainer;
+      if (afterBlock && afterBlock.nodeType === 3) afterBlock = afterBlock.parentElement;
+      while (afterBlock && afterBlock !== surface && afterBlock.parentElement !== surface) {
+        afterBlock = afterBlock.parentElement;
+      }
+      if (afterBlock && afterBlock.classList && afterBlock.classList.contains('jb-ed-after-cols') && rangeAtStartOf(afterBlock, range)) {
+        var row = afterBlock.previousElementSibling;
+        if (row && row.classList && row.classList.contains('jb-ed-cols')) {
+          ev.preventDefault();
+          var lastCol = null;
+          var kids = row.querySelectorAll('.jb-ed-col');
+          if (kids.length) lastCol = kids[kids.length - 1];
+          if (lastCol) {
+            ensureColBody(lastCol);
+            placeCaretInEl(colLastBlock(lastCol) || lastCol, false);
+          }
+          return true;
+        }
       }
       return false;
     }
@@ -2578,6 +2632,53 @@
         });
       });
     }
+    function finishInsertNoteImg(img) {
+      if (!img || !img.parentNode) return;
+      var col = closestEdCol(img);
+      if (col) {
+        /* Unwrap a lonely image stuck inside a paragraph so trailing gaps are real siblings. */
+        var wrap = img.parentElement;
+        if (wrap && wrap !== col && wrap.tagName === 'P' && wrap.parentElement === col) {
+          var onlyImg = true;
+          Array.prototype.forEach.call(wrap.childNodes, function (ch) {
+            if (ch === img) return;
+            if (ch.nodeType === 1 && ch.tagName === 'BR') return;
+            if (ch.nodeType === 3 && !String(ch.nodeValue || '').replace(/\u200b/g, '').trim()) return;
+            onlyImg = false;
+          });
+          if (onlyImg) {
+            col.insertBefore(img, wrap);
+            if (!String(wrap.textContent || '').replace(/\u200b/g, '').trim() && !wrap.querySelector('img')) {
+              col.removeChild(wrap);
+            }
+          }
+        }
+        /* Keep a single caret paragraph after the image; drop stacked empty gaps. */
+        var caretP = img.nextElementSibling;
+        if (!caretP || caretP.tagName !== 'P' || !blockIsVisuallyEmpty(caretP)) {
+          caretP = document.createElement('p');
+          caretP.appendChild(document.createElement('br'));
+          if (img.nextSibling) col.insertBefore(caretP, img.nextSibling);
+          else col.appendChild(caretP);
+        }
+        while (caretP.nextElementSibling && blockIsVisuallyEmpty(caretP.nextElementSibling)
+          && !(caretP.nextElementSibling.querySelector && caretP.nextElementSibling.querySelector('img[data-jb-file]'))) {
+          col.removeChild(caretP.nextElementSibling);
+        }
+        /* Drop empty paragraphs that ended up before the image from the paste split. */
+        while (img.previousElementSibling && blockIsVisuallyEmpty(img.previousElementSibling)
+          && !(img.previousElementSibling.querySelector && img.previousElementSibling.querySelector('img[data-jb-file]'))) {
+          col.removeChild(img.previousElementSibling);
+        }
+        placeCaretInEl(caretP, true);
+        stripTrailingEmptyColBlocks(col, true);
+        syncColEmptyState(col);
+        return;
+      }
+      var br = document.createElement('p');
+      br.appendChild(document.createElement('br'));
+      insertNode(br);
+    }
     function insertUploadedImage(info) {
       var id = safeDriveFileId(info && info.id);
       if (!id) return;
@@ -2588,9 +2689,7 @@
       img.contentEditable = 'false';
       if (info.name) img.setAttribute('alt', String(info.name).slice(0, 200));
       insertNode(img);
-      var br = document.createElement('p');
-      br.appendChild(document.createElement('br'));
-      insertNode(br);
+      finishInsertNoteImg(img);
       hydrateImages();
       markDirty();
     }
@@ -2618,12 +2717,7 @@
         restoreSelection();
         insertNode(img);
       }
-      var br = document.createElement('p');
-      br.appendChild(document.createElement('br'));
-      var gap = document.createRange();
-      gap.setStartAfter(img);
-      gap.collapse(true);
-      try { gap.insertNode(br); } catch (_) {}
+      finishInsertNoteImg(img);
       hydrateImages();
       markDirty();
       if (inkCanvas) scheduleInkSize();

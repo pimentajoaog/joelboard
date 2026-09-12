@@ -232,6 +232,10 @@ test('editor exposes two-column toolbar insert', function () {
   assert.match(src, /function removeColsRow/);
   assert.match(src, /function selectColsRow/);
   assert.match(src, /function colsNeedRepair/);
+  assert.match(src, /function stripTrailingEmptyColBlocks/);
+  assert.match(src, /function finishInsertNoteImg/);
+  assert.match(src, /move into the last column/);
+  assert.match(src, /jump back to the previous column/);
   assert.match(src, /function syncColEmptyState/);
   assert.match(css, /:not\(:focus-within\) > p:last-child:has\(> br:only-child\)/);
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.jb-ed-surface \.jb-ed-col/);

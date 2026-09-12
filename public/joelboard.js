@@ -2574,6 +2574,47 @@
     if (isGhost() || !isSignedIn()) { go(); return; }
     pullAccountPrefs().then(go, go);
   }
+  /* ---- app URL sync (deep links + browser Back) ---- */
+  function qsGet(name) {
+    try { return new URLSearchParams(location.search).get(name) || ''; } catch (_) { return ''; }
+  }
+  function qsPatch(patch, opts) {
+    opts = opts || {};
+    var sp;
+    try { sp = new URLSearchParams(location.search); } catch (_) { sp = new URLSearchParams(); }
+    Object.keys(patch || {}).forEach(function (k) {
+      var v = patch[k];
+      if (v == null || v === '') sp.delete(k);
+      else sp.set(k, String(v));
+    });
+    var q = sp.toString();
+    var url = location.pathname + (q ? ('?' + q) : '') + (location.hash || '');
+    var st = opts.state != null ? opts.state : { jb: 1 };
+    try {
+      if (opts.replace) history.replaceState(st, '', url);
+      else history.pushState(st, '', url);
+    } catch (_) {}
+  }
+  function qsClearJoin() {
+    qsPatch({ join: null }, { replace: true });
+  }
+  function onRoute(fn) {
+    if (typeof fn !== 'function') return;
+    window.addEventListener('popstate', function (ev) {
+      try { fn(ev); } catch (_) {}
+    });
+  }
+  /** Prefer history.back when we pushed; otherwise apply clearPatch via replaceState. */
+  function routeBack(clearPatch) {
+    var st = null;
+    try { st = history.state; } catch (_) {}
+    if (st && st.jb) {
+      try { history.back(); return true; } catch (_) {}
+    }
+    if (clearPatch) qsPatch(clearPatch, { replace: true });
+    return false;
+  }
+
   function writeCollabMemberProfile(sid, opts) {
     opts = opts || {};
     var em = String(opts.email || email() || '').toLowerCase();
@@ -2612,7 +2653,8 @@
     profileName: profileName, profileIcon: profileIcon, profileReady: profileReady, acctLabel: acctLabel, adoptLegacyProfile: adoptLegacyProfile, rememberProfileCandidate: rememberProfileCandidate,
     onProfileChange: onProfileChange, paintAcct: paintAcct, pickProfileIcon: pickProfileIcon, prepareProfileEditor: prepareProfileEditor, saveProfileValues: saveProfileValues, openProfile: openProfile, closeProfile: closeProfile, saveProfile: saveProfile, ensureProfile: ensureProfile,
     chooseProfile: chooseProfile, profileStartFresh: profileStartFresh, writeCollabMemberProfile: writeCollabMemberProfile,
-    pullAccountPrefs: pullAccountPrefs, pushAccountPrefs: pushAccountPrefs, schedulePrefsPush: schedulePrefsPush, markTourDone: markTourDone
+    pullAccountPrefs: pullAccountPrefs, pushAccountPrefs: pushAccountPrefs, schedulePrefsPush: schedulePrefsPush, markTourDone: markTourDone,
+    qsGet: qsGet, qsPatch: qsPatch, qsClearJoin: qsClearJoin, onRoute: onRoute, routeBack: routeBack
   };
   onAuthRestored(function () {
     if (isGhost() || !isSignedIn()) return;

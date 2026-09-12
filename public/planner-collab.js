@@ -684,7 +684,8 @@ function plJoinCollab(sheetId) {
       });
     }).then(function () { return ctx; });
   }).then(function (ctx) {
-    history.replaceState(null, '', location.pathname);
+    if (typeof JB !== 'undefined' && JB.qsClearJoin) JB.qsClearJoin();
+    else try { history.replaceState(null, '', location.pathname); } catch (_) {}
     return plLoadCollabPlans().then(function () {
       show();
       openPlan(String(ctx.metaRow[7]));

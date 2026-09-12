@@ -805,7 +805,13 @@ function ncJoinCollab(sheetId) {
       });
     }).then(function () { return ctx; });
   }).then(function (ctx) {
-    history.replaceState(null, '', location.pathname);
+    if (typeof JB !== 'undefined' && JB.qsClearJoin) JB.qsClearJoin();
+    else try { history.replaceState(null, '', location.pathname + (function () {
+      try {
+        var sp = new URLSearchParams(location.search); sp.delete('join');
+        var q = sp.toString(); return q ? ('?' + q) : '';
+      } catch (_) { return ''; }
+    })()); } catch (_) {}
     return ncLoadCollabLists().then(function () {
       show();
       openNote(String(ctx.metaRow[6]));

@@ -110,7 +110,7 @@ function buildFit(t){
 }
 
 /* ---- render ---- */
-function render(){ $('loading').style.display='none'; $('app').style.display='block'; if(JB.paintAcct) JB.paintAcct(); else $('acctEmail').textContent=JB.email()||''; renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(document.getElementById('p-macros')) renderMacros(); if(!_fbooted){ _fbooted=true; if(!JB.tourDone('fit')) setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('fit', refreshData); } }
+function render(){ $('loading').style.display='none'; $('app').style.display='block'; if(JB.paintAcct) JB.paintAcct(); else $('acctEmail').textContent=JB.email()||''; if(!_fbooted){ try{ fitApplyRoute(); }catch(_){ renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(document.getElementById('p-macros')) renderMacros(); } } else { renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(document.getElementById('p-macros')) renderMacros(); } if(!_fbooted){ _fbooted=true; if(JB.onRoute) JB.onRoute(fitApplyRoute); if(!JB.tourDone('fit')) setTimeout(function(){ JB.tour('fit', FIT_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('fit', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   var want=FIT_TABS.map(function(t){return t[0];}).filter(function(t){return fitGrid[t]!=null;});
@@ -120,11 +120,18 @@ function refreshData(){
     DATA=buildFit(by); renderExercicios(); renderTreinos(); renderHoje(); renderProgresso(); if(document.querySelector('#p-macros.on')) renderMacros();
   })).catch(function(){});
 }
-function tab(name){
+function tab(name, opts){
+  opts=opts||{};
   ['hoje','treinos','exercicios','progresso','macros'].forEach(function(n){ $('p-'+n).classList.toggle('on', n===name); });
   document.querySelectorAll('.tabb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===name); });
   $('fab').style.display = (name==='exercicios'||name==='treinos') ? 'flex' : 'none';
   if(name==='hoje') renderHoje(); else if(name==='treinos') renderTreinos(); else if(name==='exercicios') renderExercicios(); else if(name==='progresso'){ progEx=null; renderProgresso(); } else if(name==='macros') renderMacros();
+  if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ tab: name==='hoje'?null:name }, { replace:true });
+}
+function fitApplyRoute(){
+  var t=JB.qsGet?JB.qsGet('tab'):'';
+  if(t && ['hoje','treinos','exercicios','progresso','macros'].indexOf(t)>-1) tab(t, { fromRoute:true });
+  else tab('hoje', { fromRoute:true });
 }
 function renderExercicios(){
   var el=$('exList'); var ex=(DATA.exercicios||[]);

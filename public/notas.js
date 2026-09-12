@@ -300,7 +300,7 @@ function buildNotas(t){
     config: config
   };
 }
-function show(){ $('loading').style.display='none'; $('app').style.display='block'; seedTravelPresets(); if(DATA&&DATA.config&&JB.adoptLegacyProfile) JB.adoptLegacyProfile(DATA.config.perfil_nome, DATA.config.perfil_icone, 'Notes'); if(typeof ncPaintAcct==='function') ncPaintAcct(); else if(JB.paintAcct) JB.paintAcct(); else $('acctEmail').textContent='👤 '+(JB.email()||''); if(!_nbooted){ try{ var lid=new URLSearchParams(location.search).get('lista'); if(lid && note(lid)) openNoteId=lid; }catch(_){ } if(JB.ensureProfile&&!JB.profileReady()) JB.ensureProfile(function(){ if(typeof ncPaintAcct==='function') ncPaintAcct(); }); } render(); if(!_nbooted){ _nbooted=true; if(typeof ncCheckJoinParam==='function') ncCheckJoinParam(); if(typeof ncStartCollabPoll==='function') ncStartCollabPoll(); if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('notas', refreshData); } }
+function show(){ $('loading').style.display='none'; $('app').style.display='block'; seedTravelPresets(); if(DATA&&DATA.config&&JB.adoptLegacyProfile) JB.adoptLegacyProfile(DATA.config.perfil_nome, DATA.config.perfil_icone, 'Notes'); if(typeof ncPaintAcct==='function') ncPaintAcct(); else if(JB.paintAcct) JB.paintAcct(); else $('acctEmail').textContent='👤 '+(JB.email()||''); if(!_nbooted){ try{ var lid=(JB.qsGet?JB.qsGet('lista'):new URLSearchParams(location.search).get('lista')); if(lid && note(lid)) openNoteId=lid; }catch(_){ } if(JB.ensureProfile&&!JB.profileReady()) JB.ensureProfile(function(){ if(typeof ncPaintAcct==='function') ncPaintAcct(); }); } render(); if(!_nbooted){ _nbooted=true; if(typeof ncCheckJoinParam==='function') ncCheckJoinParam(); if(typeof ncStartCollabPoll==='function') ncStartCollabPoll(); if(JB.onRoute) JB.onRoute(notasApplyRoute); if(!JB.tourDone('notas')) setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 600); else setTimeout(checkNudges, 400); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('notas', refreshData); } }
 function refreshData(){
   if(JB.isGhost&&JB.isGhost()) return;
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
@@ -318,8 +318,37 @@ function refreshData(){
 /* ---- routing / render ---- */
 function note(id){ return (DATA.notas||[]).find(function(n){return n.id===id;}); }
 function render(){ var ed=!!(openNoteId&&note(openNoteId)); $('fab').style.display=ed?'none':'flex'; if(ed) renderEditor(); else renderHomeShell(); updateSelBar(); }
-function openNote(id){ openNoteId=id; _lastTick=null; _editId=null; _renameNoteId=null; _edMenuOpen=false; if(typeof ncSetCollabWatch==='function'){ var nn=note(id); ncSetCollabWatch(nn&&nn.collabSheetId?nn.collabSheetId:null); } render(); window.scrollTo(0,0); }
-function backHome(){ openNoteId=null; _edMenuOpen=false; if(typeof ncSetCollabWatch==='function') ncSetCollabWatch(null); render(); }
+function openNote(id, opts){
+  opts=opts||{};
+  openNoteId=id; _lastTick=null; _editId=null; _renameNoteId=null; _edMenuOpen=false;
+  if(typeof ncSetCollabWatch==='function'){ var nn=note(id); ncSetCollabWatch(nn&&nn.collabSheetId?nn.collabSheetId:null); }
+  if(!opts.fromRoute && JB.qsPatch){
+    var cur=JB.qsGet('lista');
+    JB.qsPatch({ lista:id }, { replace: cur===id });
+  }
+  render(); window.scrollTo(0,0);
+}
+function backHome(opts){
+  opts=opts||{};
+  function go(){
+    openNoteId=null; _edMenuOpen=false;
+    if(typeof ncSetCollabWatch==='function') ncSetCollabWatch(null);
+    if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ lista:null }, { replace:true });
+    render();
+  }
+  if(!opts.fromRoute && JB.routeBack && openNoteId && JB.qsGet('lista')){
+    if(JB.routeBack({ lista:null })) return;
+  }
+  go();
+}
+function notasApplyRoute(){
+  var lid=JB.qsGet?JB.qsGet('lista'):'';
+  if(lid && note(lid)){
+    if(openNoteId!==lid) openNote(lid, { fromRoute:true });
+    return;
+  }
+  if(openNoteId) backHome({ fromRoute:true });
+}
 
 /* ---- home ---- */
 function renderHomeShell(){

@@ -146,7 +146,7 @@ function buildStudy(t){
     config: config
   };
 }
-function show(){ $('loading').style.display='none'; $('app').style.display='block'; if(JB.paintAcct) JB.paintAcct(); else $('acctEmail').textContent=JB.email()||''; render(); if(!_sbooted){ _sbooted=true; if(!JB.tourDone('study')) setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('study', refreshData); } }
+function show(){ $('loading').style.display='none'; $('app').style.display='block'; if(JB.paintAcct) JB.paintAcct(); else $('acctEmail').textContent=JB.email()||''; if(!_sbooted){ try{ studyApplyRoute(); }catch(_){ } } render(); if(!_sbooted){ _sbooted=true; if(JB.onRoute) JB.onRoute(studyApplyRoute); if(!JB.tourDone('study')) setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('study', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
   var want=STUDY_TABS.map(function(t){return t[0];}).filter(function(t){return studyGrid[t]!=null;});
@@ -157,7 +157,56 @@ function refreshData(){
   })).catch(function(){});
 }
 function render(){ renderCal(); renderMaterias(); }
-function tab(name){ destroyModEd(); matDetail=null; matNote=null; ['calendario','materias'].forEach(function(t){ var p=$('p-'+t); if(p) p.classList.toggle('on',t===name); }); var bs=document.querySelectorAll('.tabb'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on',bs[i].getAttribute('data-tab')===name); $('fab').style.display = (name==='calendario')?'flex':'none'; }
+function studyActiveTab(){
+  var on=document.querySelector('.tabb.on');
+  return (on && on.getAttribute('data-tab')) || 'calendario';
+}
+function studySyncRoute(opts){
+  opts=opts||{};
+  if(!JB.qsPatch) return;
+  var t=studyActiveTab();
+  var patch={ tab: t==='calendario'?null:t, date: t==='calendario'?selDate:null, mat:null, mod:null };
+  if(t==='materias'){
+    if(matNote){ patch.mod=matNote; patch.mat=matDetail||(modulo(matNote)&&modulo(matNote).materiaId)||null; }
+    else if(matDetail) patch.mat=matDetail;
+  }
+  JB.qsPatch(patch, { replace: !!opts.replace });
+}
+function studyApplyRoute(){
+  var t=JB.qsGet?JB.qsGet('tab'):'';
+  var date=JB.qsGet?JB.qsGet('date'):'';
+  var mid=JB.qsGet?JB.qsGet('mat'):'';
+  var modId=JB.qsGet?JB.qsGet('mod'):'';
+  if(modId && modulo(modId)){
+    tab('materias', { fromRoute:true, keepStack:true });
+    openModNote(modId, { fromRoute:true });
+    return;
+  }
+  if(mid && mat(mid)){
+    tab('materias', { fromRoute:true, keepStack:true });
+    openMatDetail(mid, { fromRoute:true });
+    return;
+  }
+  if(t==='materias'){
+    tab('materias', { fromRoute:true });
+    return;
+  }
+  if(date && /^\d{4}-\d{2}-\d{2}$/.test(date)){
+    selDate=date;
+    var d=parseISO(date); calY=d.getFullYear(); calM=d.getMonth();
+  }
+  tab('calendario', { fromRoute:true });
+  renderCal();
+}
+function tab(name, opts){
+  opts=opts||{};
+  destroyModEd();
+  if(!opts.keepStack){ matDetail=null; matNote=null; }
+  ['calendario','materias'].forEach(function(t){ var p=$('p-'+t); if(p) p.classList.toggle('on',t===name); });
+  var bs=document.querySelectorAll('.tabb'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on',bs[i].getAttribute('data-tab')===name);
+  $('fab').style.display = (name==='calendario')?'flex':'none';
+  if(!opts.fromRoute) studySyncRoute({ replace:true });
+}
 function mat(id){ return (DATA.materias||[]).find(function(m){return m.id===id;}); }
 function matColor(id){ var m=mat(id); return m?m.cor:'var(--muted)'; }
 
@@ -169,9 +218,9 @@ function studyDateFromQuery(){
 var calNow=new Date(), selDate=studyDateFromQuery()||todayISO();
 var calY=(function(){ var d=parseISO(selDate); return d.getFullYear(); })();
 var calM=(function(){ var d=parseISO(selDate); return d.getMonth(); })();
-function calNav(d){ calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} selDate=isoDate(new Date(calY,calM,Math.min(parseISO(selDate).getDate(), new Date(calY,calM+1,0).getDate()))); renderCal(); }
-function calToday(){ calY=calNow.getFullYear(); calM=calNow.getMonth(); selDate=todayISO(); renderCal(); }
-function selectDay(iso){ selDate=iso; var d=parseISO(iso); calY=d.getFullYear(); calM=d.getMonth(); renderCal(); }
+function selectDay(iso){ selDate=iso; var d=parseISO(iso); calY=d.getFullYear(); calM=d.getMonth(); renderCal(); if(JB.qsPatch) JB.qsPatch({ date:iso, tab:null, mat:null, mod:null }, { replace:true }); }
+function calNav(d){ calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} selDate=isoDate(new Date(calY,calM,Math.min(parseISO(selDate).getDate(), new Date(calY,calM+1,0).getDate()))); renderCal(); if(JB.qsPatch) JB.qsPatch({ date:selDate, tab:null, mat:null, mod:null }, { replace:true }); }
+function calToday(){ calY=calNow.getFullYear(); calM=calNow.getMonth(); selDate=todayISO(); renderCal(); if(JB.qsPatch) JB.qsPatch({ date:selDate, tab:null, mat:null, mod:null }, { replace:true }); }
 function evtsOn(iso){ return (DATA.eventos||[]).filter(function(e){return e.data===iso;}).sort(function(a,b){return (a.hora||'').localeCompare(b.hora||'');}); }
 function renderCal(){
   var el=$('cal'); if(!el) return;
@@ -187,7 +236,7 @@ function renderCal(){
       showUpcoming:true,
       dayActionsHtml:'<button type="button" class="btn" onclick="openEvt(null)">+ Adicionar</button>',
       footerHtml:focoTrackHtml(),
-      onSelect:function(ymd){ selDate=ymd; var d=parseISO(ymd); calY=d.getFullYear(); calM=d.getMonth(); },
+      onSelect:function(ymd){ selDate=ymd; var d=parseISO(ymd); calY=d.getFullYear(); calM=d.getMonth(); if(JB.qsPatch) JB.qsPatch({ date:ymd, tab:null, mat:null, mod:null }, { replace:true }); },
       onOpen:function(ev){ if(ev && ev.rawId) openEvt(ev.rawId); },
       onToggle:function(ev){ if(ev && ev.rawId) toggleDone(ev.rawId); }
     });
@@ -331,10 +380,48 @@ function toggleMatDoneBucket(){ _matDoneBucketExpanded=!_matDoneBucketExpanded; 
 function modulo(id){ return (DATA.modulos||[]).find(function(x){return x.id===id;}); }
 function modulos(matId){ return (DATA.modulos||[]).filter(function(x){return x.materiaId===matId;}); }
 function modProgress(matId){ var mods=modulos(matId); var d=mods.filter(function(x){return x.feito;}).length; return { done:d, total:mods.length, pct:mods.length?Math.round(d/mods.length*100):0, mod:true }; }
-function openMatDetail(id){ destroyModEd(); matNote=null; matDetail=id; renderMaterias(); window.scrollTo(0,0); }
-function backMat(){ destroyModEd(); matNote=null; matDetail=null; renderMaterias(); }
-function openModNote(id){ matNote=id; var x=modulo(id); if(x) matDetail=x.materiaId; renderMaterias(); window.scrollTo(0,0); }
-function backModNote(){ destroyModEd(); matNote=null; renderMaterias(); window.scrollTo(0,0); }
+function openMatDetail(id, opts){
+  opts=opts||{};
+  destroyModEd(); matNote=null; matDetail=id;
+  if(!opts.fromRoute){
+    tab('materias', { fromRoute:true, keepStack:true });
+    if(JB.qsPatch) JB.qsPatch({ tab:'materias', mat:id, mod:null, date:null }, { replace:false });
+  }
+  renderMaterias(); window.scrollTo(0,0);
+}
+function backMat(opts){
+  opts=opts||{};
+  function go(){
+    destroyModEd(); matNote=null; matDetail=null;
+    if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ tab:'materias', mat:null, mod:null, date:null }, { replace:true });
+    renderMaterias();
+  }
+  if(!opts.fromRoute && JB.routeBack && (matDetail||matNote)){
+    if(JB.routeBack({ tab:'materias', mat:null, mod:null, date:null })) return;
+  }
+  go();
+}
+function openModNote(id, opts){
+  opts=opts||{};
+  matNote=id; var x=modulo(id); if(x) matDetail=x.materiaId;
+  if(!opts.fromRoute){
+    tab('materias', { fromRoute:true, keepStack:true });
+    if(JB.qsPatch) JB.qsPatch({ tab:'materias', mat:matDetail||null, mod:id, date:null }, { replace:false });
+  }
+  renderMaterias(); window.scrollTo(0,0);
+}
+function backModNote(opts){
+  opts=opts||{};
+  function go(){
+    destroyModEd(); matNote=null;
+    if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ tab:'materias', mat:matDetail||null, mod:null, date:null }, { replace:true });
+    renderMaterias(); window.scrollTo(0,0);
+  }
+  if(!opts.fromRoute && JB.routeBack && matNote){
+    if(JB.routeBack({ tab:'materias', mat:matDetail||null, mod:null, date:null })) return;
+  }
+  go();
+}
 function modRowVals(m){ return [m.materiaId, m.nome, m.feito?'1':'', m.id, m.notas||'']; }
 function modSave(m){ findRow('Modulos',3,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Modulos!A'+row+':E'+row)+'?valueInputOption=RAW'), { values:[modRowVals(m)] }); }).catch(studyWriteErr); }
 function addModulo(matId){ var inp=$('detModInput'); if(!inp) return; var nome=(inp.value||'').trim(); if(!nome) return; var mod={ id:uuid(), materiaId:matId, nome:nome, feito:false, notas:'' }; DATA.modulos=DATA.modulos||[]; DATA.modulos.push(mod); inp.value=''; renderMaterias(); JB.api('POST', ssUrl('/values/Modulos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[modRowVals(mod)] }).catch(studyWriteErr); setTimeout(function(){ var i=$('detModInput'); if(i) i.focus(); },30); }

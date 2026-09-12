@@ -396,6 +396,7 @@ function show(){
     _pbooted=true;
     if(typeof plCheckJoinParam==='function') plCheckJoinParam();
     if(typeof plStartCollabPoll==='function') plStartCollabPoll();
+    if(JB.onRoute) JB.onRoute(plannerApplyRoute);
     if(!JB.tourDone('planner')) setTimeout(function(){ JB.tour('planner', PL_TOUR); }, 600);
   }
   if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('planner', refreshData); }
@@ -439,12 +440,43 @@ function plScrollFocusDay(){
   try{ el.scrollIntoView({ block:'start', behavior:'smooth' }); }catch(_){ try{ el.scrollIntoView(); }catch(__){} }
   _focusDay='';
 }
-function openPlan(id){
+function openPlan(id, opts){
+  opts=opts||{};
   openPlanId=id; _edMenuOpen=false;
   if(typeof plSetCollabWatch==='function'){ var p=plan(id); plSetCollabWatch(p&&p.collabSheetId?p.collabSheetId:null); }
+  if(!opts.fromRoute && JB.qsPatch){
+    var cur=JB.qsGet('p');
+    var patch={ p:id };
+    if(!_focusDay) patch.d=null;
+    else patch.d=_focusDay;
+    JB.qsPatch(patch, { replace: cur===id });
+  }
   plRefreshLinks(); window.scrollTo(0,0);
 }
-function backHome(){ openPlanId=null; _edMenuOpen=false; if(typeof plSetCollabWatch==='function') plSetCollabWatch(null); render(); }
+function backHome(opts){
+  opts=opts||{};
+  function go(){
+    openPlanId=null; _edMenuOpen=false;
+    if(typeof plSetCollabWatch==='function') plSetCollabWatch(null);
+    if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ p:null, d:null }, { replace:true });
+    render();
+  }
+  if(!opts.fromRoute && JB.routeBack && openPlanId && JB.qsGet('p')){
+    if(JB.routeBack({ p:null, d:null })) return;
+  }
+  go();
+}
+function plannerApplyRoute(){
+  var pid=JB.qsGet?JB.qsGet('p'):'';
+  var did=JB.qsGet?JB.qsGet('d'):'';
+  if(did) _focusDay=did;
+  if(pid && plan(pid)){
+    if(openPlanId!==pid) openPlan(pid, { fromRoute:true });
+    else if(_focusDay) plScrollFocusDay();
+    return;
+  }
+  if(openPlanId) backHome({ fromRoute:true });
+}
 
 function renderHome(){
   var list=(DATA.planos||[]).slice().sort(function(a,b){ return String(b.atualizado||b.criado||'').localeCompare(String(a.atualizado||a.criado||'')); });

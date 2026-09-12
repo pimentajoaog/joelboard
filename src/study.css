@@ -180,7 +180,25 @@ textarea.field{ resize:vertical; min-height:64px; }
 .modrow.done .modname{ text-decoration:line-through; color:var(--muted); }
 .modname{ flex:1; min-width:0; font-size:14px; font-weight:600; text-align:left; background:transparent; border:0; color:inherit; cursor:pointer; font-family:inherit; padding:0; }
 .modname:hover{ color:var(--primary); }
-.modnote-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--primary); margin-left:6px; vertical-align:middle; }
+.modnote-mark{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:1.05em;
+  height:1.05em;
+  margin:-1px 0 0;
+  font-family:Georgia,'Times New Roman',Times,serif;
+  font-style:italic;
+  font-weight:700;
+  font-size:15px;
+  line-height:1;
+  color:var(--primary);
+  letter-spacing:-0.02em;
+  user-select:none;
+  pointer-events:none;
+}
+.modrow.done .modnote-mark{ color:var(--muted); opacity:0.85; }
 .modnote-head{ display:flex; align-items:center; gap:10px; margin:14px 0 8px; }
 .modnote-name{ font-size:18px; font-weight:800; }
 .modnote-head.done .modnote-name{ text-decoration:line-through; color:var(--muted); }

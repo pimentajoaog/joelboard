@@ -2589,8 +2589,14 @@
     });
     var q = sp.toString();
     var url = location.pathname + (q ? ('?' + q) : '') + (location.hash || '');
+    var cur = location.pathname + (location.search || '') + (location.hash || '');
     var st = opts.state != null ? opts.state : { jb: 1 };
     try {
+      if (url === cur) {
+        /* Keep jb marker on the current entry without stacking duplicates. */
+        if (!opts.replace) history.replaceState(st, '', url);
+        return;
+      }
       if (opts.replace) history.replaceState(st, '', url);
       else history.pushState(st, '', url);
     } catch (_) {}

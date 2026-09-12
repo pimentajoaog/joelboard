@@ -205,7 +205,7 @@ function tab(name, opts){
   ['calendario','materias'].forEach(function(t){ var p=$('p-'+t); if(p) p.classList.toggle('on',t===name); });
   var bs=document.querySelectorAll('.tabb'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on',bs[i].getAttribute('data-tab')===name);
   $('fab').style.display = (name==='calendario')?'flex':'none';
-  if(!opts.fromRoute) studySyncRoute({ replace:true });
+  if(!opts.fromRoute) studySyncRoute({ replace:false });
 }
 function mat(id){ return (DATA.materias||[]).find(function(m){return m.id===id;}); }
 function matColor(id){ var m=mat(id); return m?m.cor:'var(--muted)'; }
@@ -218,9 +218,9 @@ function studyDateFromQuery(){
 var calNow=new Date(), selDate=studyDateFromQuery()||todayISO();
 var calY=(function(){ var d=parseISO(selDate); return d.getFullYear(); })();
 var calM=(function(){ var d=parseISO(selDate); return d.getMonth(); })();
-function selectDay(iso){ selDate=iso; var d=parseISO(iso); calY=d.getFullYear(); calM=d.getMonth(); renderCal(); if(JB.qsPatch) JB.qsPatch({ date:iso, tab:null, mat:null, mod:null }, { replace:true }); }
-function calNav(d){ calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} selDate=isoDate(new Date(calY,calM,Math.min(parseISO(selDate).getDate(), new Date(calY,calM+1,0).getDate()))); renderCal(); if(JB.qsPatch) JB.qsPatch({ date:selDate, tab:null, mat:null, mod:null }, { replace:true }); }
-function calToday(){ calY=calNow.getFullYear(); calM=calNow.getMonth(); selDate=todayISO(); renderCal(); if(JB.qsPatch) JB.qsPatch({ date:selDate, tab:null, mat:null, mod:null }, { replace:true }); }
+function selectDay(iso){ selDate=iso; var d=parseISO(iso); calY=d.getFullYear(); calM=d.getMonth(); renderCal(); if(JB.qsPatch) JB.qsPatch({ date:iso, tab:null, mat:null, mod:null }, { replace:false }); }
+function calNav(d){ calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} selDate=isoDate(new Date(calY,calM,Math.min(parseISO(selDate).getDate(), new Date(calY,calM+1,0).getDate()))); renderCal(); if(JB.qsPatch) JB.qsPatch({ date:selDate, tab:null, mat:null, mod:null }, { replace:false }); }
+function calToday(){ calY=calNow.getFullYear(); calM=calNow.getMonth(); selDate=todayISO(); renderCal(); if(JB.qsPatch) JB.qsPatch({ date:selDate, tab:null, mat:null, mod:null }, { replace:false }); }
 function evtsOn(iso){ return (DATA.eventos||[]).filter(function(e){return e.data===iso;}).sort(function(a,b){return (a.hora||'').localeCompare(b.hora||'');}); }
 function renderCal(){
   var el=$('cal'); if(!el) return;
@@ -236,7 +236,7 @@ function renderCal(){
       showUpcoming:true,
       dayActionsHtml:'<button type="button" class="btn" onclick="openEvt(null)">+ Adicionar</button>',
       footerHtml:focoTrackHtml(),
-      onSelect:function(ymd){ selDate=ymd; var d=parseISO(ymd); calY=d.getFullYear(); calM=d.getMonth(); if(JB.qsPatch) JB.qsPatch({ date:ymd, tab:null, mat:null, mod:null }, { replace:true }); },
+      onSelect:function(ymd){ selDate=ymd; var d=parseISO(ymd); calY=d.getFullYear(); calM=d.getMonth(); if(JB.qsPatch) JB.qsPatch({ date:ymd, tab:null, mat:null, mod:null }, { replace:false }); },
       onOpen:function(ev){ if(ev && ev.rawId) openEvt(ev.rawId); },
       onToggle:function(ev){ if(ev && ev.rawId) toggleDone(ev.rawId); }
     });

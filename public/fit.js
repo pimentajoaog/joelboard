@@ -126,7 +126,7 @@ function tab(name, opts){
   document.querySelectorAll('.tabb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab')===name); });
   $('fab').style.display = (name==='exercicios'||name==='treinos') ? 'flex' : 'none';
   if(name==='hoje') renderHoje(); else if(name==='treinos') renderTreinos(); else if(name==='exercicios') renderExercicios(); else if(name==='progresso'){ progEx=null; renderProgresso(); } else if(name==='macros') renderMacros();
-  if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ tab: name==='hoje'?null:name }, { replace:true });
+  if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ tab: name==='hoje'?null:name }, { replace:false });
 }
 function fitApplyRoute(){
   var t=JB.qsGet?JB.qsGet('tab'):'';

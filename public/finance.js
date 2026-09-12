@@ -913,7 +913,7 @@ function unpaidExtra() {
 }
 
 function setDefaultDate() { JB.dpSet('txDate', isFuture() ? ymStr(selY,selM)+'-01' : todayStr()); }
-function navigate(d) { selM += d; if (selM > 11) { selM = 0; selY++; } if (selM < 0) { selM = 11; selY--; } editingHoursDate=null; setDefaultDate(); renderAll(); financeSyncRoute(true); }
+function navigate(d) { selM += d; if (selM > 11) { selM = 0; selY++; } if (selM < 0) { selM = 11; selY--; } editingHoursDate=null; setDefaultDate(); renderAll(); financeSyncRoute(false); }
 function updateMonthDisplay() {
   document.getElementById('monthDisplay').textContent = new Date(selY, selM, 1).toLocaleString(L(), {month:'long', year:'numeric'});
   const f = isForecast();
@@ -944,8 +944,8 @@ function renderMonthPicker() {
   }).join('');
 }
 function pickYearNav(d) { pickYear+=d; renderMonthPicker(); }
-function pickMonth(i) { selY=pickYear; selM=i; editingHoursDate=null; setDefaultDate(); closeMonthPicker(); renderAll(); financeSyncRoute(true); }
-function goToday() { selY=now.getFullYear(); selM=now.getMonth(); editingHoursDate=null; setDefaultDate(); closeMonthPicker(); renderAll(); financeSyncRoute(true); }
+function pickMonth(i) { selY=pickYear; selM=i; editingHoursDate=null; setDefaultDate(); closeMonthPicker(); renderAll(); financeSyncRoute(false); }
+function goToday() { selY=now.getFullYear(); selM=now.getMonth(); editingHoursDate=null; setDefaultDate(); closeMonthPicker(); renderAll(); financeSyncRoute(false); }
 function financeYm(){ return ymStr(selY, selM); }
 function financeSyncRoute(replace){
   if(!JB.qsPatch) return;
@@ -1879,7 +1879,7 @@ function switchTab(name, opts) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
   document.querySelectorAll('.tab-page').forEach(p=>p.classList.toggle('active', p.id==='tab-'+name));
   if (name==='overview') renderBreakdown();
-  if (!opts.fromRoute) financeSyncRoute(true);
+  if (!opts.fromRoute) financeSyncRoute(false);
 }
 const FINANCE_VAULT_SKIN = [{ id:'vault', name:'Vault', bg:'#14140f', card:'#222218', accent:'#cba86a', text:'#e9e4d6' }];
 function financeSkinLabel(id) {

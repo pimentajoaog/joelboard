@@ -68,7 +68,7 @@ html.jb-cal-peek-on {
 @keyframes confetti-fall { 0%{ transform: translateY(0) rotate(0deg); } 100%{ transform: translateY(112vh) rotate(720deg); } }
 
 /* respect reduced-motion: no zoom/slide/page-fade for users who ask */
-@media (prefers-reduced-motion: reduce) { .overlay, .modal { transition: none; } .modal { transform: none; } .page.on, .tab-page.active, .tile, .set-pane, .set-pane.active, .jb-dd.open .jb-dd-menu, .mring-arc, .jb-stagger > *, .jb-skel, html.jb-syncing .header, .jb-sync-bar, .jb-tab-pill, .egg-shake, .egg-card, .confetti-pc { animation: none; transition: none; } .row:active, .notec:active, .erow:active, .matc:active, .mline:active { transform: none; opacity: 1; } .fab.jb-fab-hide { transform: none; opacity: 1; pointer-events: auto; } .jb-search.focus .jb-search-input { transform: none; } #toast, .jb-toast { transition: opacity 0.12s ease; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .overlay, .modal { transition: none; } .modal { transform: none; } .page.on, .tab-page.active, .tile, .set-pane, .set-pane.active, .jb-dd.open .jb-dd-menu, .mring-arc, .jb-stagger > *, .jb-skel, .jb-empty, html.jb-syncing .header, .jb-sync-bar, .jb-tab-pill, .egg-shake, .egg-card, .confetti-pc, .jb-cal-cluster-pop { animation: none; transition: none; } .row:active, .notec:active, .erow:active, .matc:active, .mline:active { transform: none; opacity: 1; } .fab.jb-fab-hide { transform: none; opacity: 1; pointer-events: auto; } .jb-search.focus .jb-search-input { transform: none; } #toast, .jb-toast { transition: opacity 0.12s ease; transform: translate(-50%, 0); } html.jb-theme-flash body, html.jb-theme-flash body .header, html.jb-theme-flash body .wrap, html.jb-theme-flash body .hub-agenda, html.jb-theme-flash body .novidades, html.jb-theme-flash body .tile, html.jb-theme-flash body .modal, html.jb-theme-flash body .surface { transition: none !important; } }
 @keyframes jb-modal-in { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .mh { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .mt { font-size: 17px; font-weight: 800; }
@@ -243,8 +243,22 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 @keyframes jb-sync-slide { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
 html.jb-syncing .header { animation: jb-sync-pulse 1.1s ease-in-out infinite; }
 @keyframes jb-sync-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.78; } }
+/* Soft crossfade when switching skin / day-night in Ajustes */
+html.jb-theme-flash body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+html.jb-theme-flash body,
+html.jb-theme-flash body .header,
+html.jb-theme-flash body .wrap,
+html.jb-theme-flash body .hub-agenda,
+html.jb-theme-flash body .novidades,
+html.jb-theme-flash body .tile,
+html.jb-theme-flash body .modal,
+html.jb-theme-flash body .surface {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
 /* Shared empty states (JB.emptyState) */
-.jb-empty { text-align: center; padding: 36px 20px; max-width: 320px; margin: 0 auto; }
+.jb-empty { text-align: center; padding: 36px 20px; max-width: 320px; margin: 0 auto; animation: jb-rise 0.34s cubic-bezier(.2,.7,.3,1) both; }
 .jb-empty-ico { font-size: 36px; line-height: 1; margin-bottom: 12px; opacity: 0.92; }
 .jb-empty-title { font-size: 15px; font-weight: 800; color: var(--text, #e7eaf3); margin-bottom: 6px; }
 .jb-empty-hint { font-size: 13px; color: var(--muted, #7b85a0); line-height: 1.45; margin-bottom: 14px; }
@@ -266,6 +280,7 @@ html.jb-syncing .header { animation: jb-sync-pulse 1.1s ease-in-out infinite; }
   background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--muted, #7b85a0);
   font-size: 13px; font-weight: 700; padding: 8px 12px; cursor: pointer; margin-bottom: -1px;
   white-space: nowrap; flex: 0 0 auto; font-family: inherit;
+  transition: color 0.16s ease, border-bottom-color 0.2s ease;
 }
 .set-tab.active { color: var(--primary, #818cf8); border-bottom-color: var(--primary, #818cf8); }
 /* Sliding tab pill (JB tab pill sync on .tabbar) */
@@ -1053,6 +1068,13 @@ html.jb-ink-full .fab {
 .jb-cal-peek[data-side="left"] {
   animation-name: jbCalPeekInLeft;
 }
+.jb-cal-peek.out {
+  animation: jbCalPeekOut .18s ease-in forwards;
+  pointer-events: none;
+}
+.jb-cal-peek.out[data-side="left"] {
+  animation-name: jbCalPeekOutLeft;
+}
 .jb-cal-peek[hidden] { display: none !important; }
 .jb-cal-peeknub {
   position: absolute;
@@ -1075,15 +1097,23 @@ html.jb-ink-full .fab {
   transform: rotate(-45deg);
 }
 @keyframes jbCalPeekIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes jbCalPeekInLeft {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: translateX(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes jbCalPeekOut {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateX(-4px); }
+}
+@keyframes jbCalPeekOutLeft {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateX(4px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .jb-cal-peek, .jb-cal-peek[data-side="left"] { animation: none; }
+  .jb-cal-peek, .jb-cal-peek[data-side="left"], .jb-cal-peek.out, .jb-cal-peek.out[data-side="left"] { animation: none; }
 }
 .jb-cal-peekh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 8px; }
 .jb-cal-peektitle { font-size: 14px; font-weight: 800; color: var(--text, #e7eaf3); text-decoration: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1182,6 +1212,7 @@ html.jb-ink-full .fab {
   display: flex; gap: 6px; padding: 7px;
   background: var(--surface, #191d2c); border: 1px solid var(--border, #2d3346);
   border-radius: 999px; box-shadow: 0 12px 28px rgba(0,0,0,.45);
+  animation: jb-pop 0.16s ease both;
 }
 .jb-cal-cluster-pop[hidden] { display: none; }
 .jb-cal-orb-btn {

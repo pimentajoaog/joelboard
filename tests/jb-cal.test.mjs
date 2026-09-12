@@ -218,7 +218,11 @@ test('planner day rows expand a view-only peek instead of listing hours', functi
   assert.match(calSrc, /closest\('\.hub-agenda'\)/);
   assert.match(calSrc, /function maybeStaggerFirstPaint/);
   assert.match(calSrc, /JB\.staggerChildren/);
+  assert.match(css, /@keyframes jbCalPeekOut/);
+  assert.match(css, /\.jb-cal-peek\.out/);
   assert.match(calSrc, /function hidePeek/);
+  assert.match(calSrc, /classList\.add\('out'\)/);
+  assert.match(calSrc, /function restartPeekIn/);
   assert.match(calSrc, /function ensurePeekNode/);
   assert.match(calSrc, /jb-cal-peek-on/);
   assert.match(calSrc, /function syncPeekDom/);

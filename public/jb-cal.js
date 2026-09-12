@@ -860,15 +860,67 @@
       if (typeof document === 'undefined' || !document.documentElement || !document.documentElement.classList) return;
       document.documentElement.classList.toggle('jb-cal-peek-on', !!on);
     }
-    function hidePeek() {
+    function preferReducedMotion() {
+      try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+      catch (_) { return false; }
+    }
+    function cancelPeekHide() {
       var peek = el._jbCalPeekNode;
-      setPeekOpenClass(false);
+      if (el._jbCalPeekHideTimer) {
+        clearTimeout(el._jbCalPeekHideTimer);
+        el._jbCalPeekHideTimer = null;
+      }
+      if (peek && el._jbCalPeekHideOnEnd) {
+        peek.removeEventListener('animationend', el._jbCalPeekHideOnEnd);
+        el._jbCalPeekHideOnEnd = null;
+      }
+      if (peek) peek.classList.remove('out');
+    }
+    function finishHidePeek(peek) {
       if (!peek) return;
+      peek.classList.remove('out');
       peek.hidden = true;
       peek.style.visibility = 'hidden';
       peek.style.pointerEvents = 'none';
       peek.style.left = '0px';
       peek.style.top = '0px';
+    }
+    function hidePeek(opts) {
+      var peek = el._jbCalPeekNode;
+      setPeekOpenClass(false);
+      if (!peek) return;
+      cancelPeekHide();
+      var immediate = !!(opts && opts.immediate) || preferReducedMotion() || peek.hidden || peek.style.visibility === 'hidden';
+      if (immediate) {
+        finishHidePeek(peek);
+        return;
+      }
+      peek.style.pointerEvents = 'none';
+      peek.classList.add('out');
+      var done = false;
+      var finish = function () {
+        if (done) return;
+        done = true;
+        if (el._jbCalPeekHideOnEnd) {
+          peek.removeEventListener('animationend', el._jbCalPeekHideOnEnd);
+          el._jbCalPeekHideOnEnd = null;
+        }
+        if (el._jbCalPeekHideTimer) {
+          clearTimeout(el._jbCalPeekHideTimer);
+          el._jbCalPeekHideTimer = null;
+        }
+        finishHidePeek(peek);
+      };
+      el._jbCalPeekHideOnEnd = finish;
+      peek.addEventListener('animationend', finish);
+      el._jbCalPeekHideTimer = setTimeout(finish, 220);
+    }
+    function restartPeekIn(peek) {
+      if (!peek || preferReducedMotion()) return;
+      peek.classList.remove('out');
+      peek.style.animation = 'none';
+      try { void peek.offsetWidth; } catch (_) {}
+      peek.style.animation = '';
     }
     function withScrollLock(fn) {
       if (typeof window === 'undefined' || !window.addEventListener) { fn(); return; }
@@ -913,8 +965,10 @@
     }
     function applyPeekPlace(peek, place) {
       if (!peek || !place) return;
+      cancelPeekHide();
       peek.hidden = false;
       peek.classList.add('fly');
+      peek.classList.remove('out');
       peek.style.position = 'fixed';
       peek.style.width = place.width + 'px';
       peek.style.right = 'auto';
@@ -931,6 +985,7 @@
       peek.style.left = place.left + 'px';
       peek.style.visibility = 'visible';
       peek.style.pointerEvents = 'auto';
+      restartPeekIn(peek);
       setPeekOpenClass(true);
     }
     function ensurePeekNode() {

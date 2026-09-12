@@ -1655,6 +1655,16 @@
   ];
   function skinKey(app){ return 'jb_skin_' + app; }
   function getSkin(app){ return lg(skinKey(app)) || 'default'; }
+  function themeFlash() {
+    try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (_) {}
+    var root = document.documentElement;
+    if (!root || !root.classList) return;
+    root.classList.remove('jb-theme-flash');
+    try { void root.offsetWidth; } catch (_) {}
+    root.classList.add('jb-theme-flash');
+    if (themeFlash._t) clearTimeout(themeFlash._t);
+    themeFlash._t = setTimeout(function () { root.classList.remove('jb-theme-flash'); }, 340);
+  }
   function applySkinAttr(id){
     var root = document.documentElement;
     var skin = (id && id !== 'default') ? id : null;
@@ -1670,7 +1680,7 @@
     }
   }
   function applySkin(app){ applySkinAttr(getSkin(app)); applyModeAttr(getMode(app)); }
-  function setSkin(app, id){ if (id && id !== 'default') ls(skinKey(app), id); else lr(skinKey(app)); applySkinAttr(id); applyModeAttr(getMode(app)); return id; }
+  function setSkin(app, id){ if (id && id !== 'default') ls(skinKey(app), id); else lr(skinKey(app)); themeFlash(); applySkinAttr(id); applyModeAttr(getMode(app)); return id; }
   // --- day / night mode (orthogonal to skin; each skin has a native mode, user can flip) ---
   var SKIN_MODE = { vault:'dark', arcade:'dark', garden:'light', aperture:'light', sorbet:'light', press:'light', mint:'light' };
   function nativeMode(app){ return SKIN_MODE[getSkin(app)] || 'dark'; }
@@ -1683,7 +1693,7 @@
     else whenReady(function(){ applyModeAttr(m); });
   }
   function applyMode(app){ applyModeAttr(getMode(app)); }
-  function setMode(app, m){ m=(m==='light'?'light':'dark'); ls(modeKey(app), m); applyModeAttr(m); return m; }
+  function setMode(app, m){ m=(m==='light'?'light':'dark'); ls(modeKey(app), m); themeFlash(); applyModeAttr(m); return m; }
   function toggleMode(app){ return setMode(app, getMode(app)==='light'?'dark':'light'); }
   function renderSkinPicker(app, el, onChange, opts){
     if (!el) return;

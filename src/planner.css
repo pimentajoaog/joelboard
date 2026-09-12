@@ -87,7 +87,8 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .pl-tag-sw{ width:32px; height:32px; border-radius:999px; border:2px solid transparent; cursor:pointer; }
 .pl-tag-sw.on{ border-color:var(--text); }
 
-.planc{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px 16px 14px; margin-bottom:12px; cursor:pointer; }
+.planc{ background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px 16px 14px; margin-bottom:12px; cursor:pointer; transition:transform .15s ease, border-color .15s ease; }
+.planc:hover{ border-color:var(--primary); transform:translateY(-2px); }
 .planc-shared{ border-color:color-mix(in srgb, var(--primary) 28%, var(--border)); }
 .planc .pc-top{ display:flex; align-items:flex-start; gap:10px; }
 .pc-ico{ width:40px; height:40px; border-radius:12px; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
@@ -139,7 +140,8 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
   border-radius:12px; padding:10px 12px; margin-bottom:8px; font:inherit; font-weight:700; cursor:pointer; text-align:left;
 }
 
-.pl-evt{ display:grid; grid-template-columns:52px 1fr; gap:8px; padding:8px 0; cursor:pointer; border-radius:8px; }
+.pl-evt{ display:grid; grid-template-columns:52px 1fr; gap:8px; padding:8px 0; cursor:pointer; border-radius:8px; transition:background .12s ease; }
+.pl-evt:hover{ background:color-mix(in srgb, var(--planner, #2dd4bf) 8%, transparent); }
 .pl-evt + .pl-evt{ border-top:1px solid color-mix(in srgb, var(--border) 70%, transparent); }
 .pl-time{ color:var(--muted); font-size:12px; font-weight:600; padding-top:2px; }
 .pl-et{ font-weight:750; font-size:14px; letter-spacing:-.15px; }

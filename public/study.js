@@ -149,11 +149,22 @@ function buildStudy(t){
 function show(){ $('loading').style.display='none'; $('app').style.display='block'; if(JB.paintAcct) JB.paintAcct(); else $('acctEmail').textContent=JB.email()||''; if(!_sbooted){ try{ studyApplyRoute(); }catch(_){ } } render(); if(!_sbooted){ _sbooted=true; if(JB.onRoute) JB.onRoute(studyApplyRoute); if(!JB.tourDone('study')) setTimeout(function(){ JB.tour('study', STUDY_TOUR); }, 600); } if(!window._jbTabSync){ window._jbTabSync=1; JB.onTabVisible(refreshData); JB.watchSheet('study', refreshData); } }
 function refreshData(){
   if(!$('app') || $('app').style.display==='none' || !DATA) return;
+  var openId=matNote;
+  var liveHtml=null;
+  if(_modEd){
+    try{ if(typeof _modEd.save==='function') _modEd.save(); }catch(_){}
+    try{ liveHtml=_modEd.getValue(); }catch(_){ liveHtml=null; }
+  }
   var want=STUDY_TABS.map(function(t){return t[0];}).filter(function(t){return studyGrid[t]!=null;});
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.syncWrap(JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
-    DATA=buildStudy(by); render();
+    DATA=buildStudy(by);
+    if(openId && liveHtml!=null){
+      var mod=(DATA.modulos||[]).find(function(x){ return x.id===openId; });
+      if(mod) mod.notas=liveHtml;
+    }
+    render();
   })).catch(function(){});
 }
 function render(){ renderCal(); renderMaterias(); }
@@ -462,7 +473,7 @@ function modNoteHtml(modId){
     +'<button type="button" class="echk modnote-chk'+(x.feito?' on':'')+'" onclick="toggleModulo(\''+x.id+'\')" title="Concluir">'+(x.feito?'✓':'')+'</button>'
     +'<input class="field modnote-name" id="modNoteName" value="'+esc(x.nome)+'" onblur="renameModulo(\''+x.id+'\')" onkeydown="if(event.key===\'Enter\'){this.blur();}">'
     +'</div>'
-    +'<p class="rg modnote-hint">Cole um print (Ctrl+V). Selecione o texto para formatar. Salva sozinho a cada 20s, ou toque em Salvar.</p>'
+    +'<p class="rg modnote-hint">Cole um print (Ctrl+V). Selecione o texto para formatar. Salva ao sair da aba, a cada 20s, ou toque em Salvar.</p>'
     +'<div id="modNoteEd"></div>';
 }
 function mountModEd(){

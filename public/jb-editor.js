@@ -1461,6 +1461,13 @@
       }
       write();
     }
+    function flushOnLeave() {
+      if (destroyed) return;
+      if (dirty || inkDirty) persist(false);
+    }
+    function onVisibilityFlush() {
+      if (document.visibilityState === 'hidden') flushOnLeave();
+    }
     function cmd(name, val) {
       histBeforeChange();
       surface.focus();
@@ -4104,6 +4111,9 @@
       markDirty();
     });
 
+    document.addEventListener('visibilitychange', onVisibilityFlush);
+    window.addEventListener('pagehide', flushOnLeave);
+
     if (interval > 0) {
       autoTimer = setInterval(function () {
         remain -= 1;
@@ -4144,7 +4154,10 @@
       save: function () { persist(true); },
       destroy: function () {
         if (destroyed) return;
+        try { flushOnLeave(); } catch (_) {}
         if (typingHistTimer) { clearTimeout(typingHistTimer); typingHistTimer = 0; }
+        document.removeEventListener('visibilitychange', onVisibilityFlush);
+        window.removeEventListener('pagehide', flushOnLeave);
         document.removeEventListener('mousedown', onDocFsDown);
         document.removeEventListener('selectionchange', onSelChange);
         document.removeEventListener('keydown', onEditorKey, true);

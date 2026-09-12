@@ -440,6 +440,13 @@ test('editor undo history covers images and ink', function () {
   assert.match(src, /inkCurrent = \{ color: inkColor/);
 });
 
+test('editor flushes dirty notes when the tab is hidden', function () {
+  assert.match(src, /function flushOnLeave/);
+  assert.match(src, /visibilitychange/);
+  assert.match(src, /pagehide/);
+  assert.match(src, /document\.visibilityState === 'hidden'/);
+});
+
 test('cssImgWidthPx keeps a sane pixel width', function () {
   assert.equal(ED.cssImgWidthPx('width: 320px', ''), 320);
   assert.equal(ED.cssImgWidthPx('', '240'), 240);

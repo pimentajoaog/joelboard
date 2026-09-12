@@ -2357,6 +2357,7 @@
         inkErasing = false;
         if (root) root.classList.remove('ink-erase');
         document.documentElement.classList.remove('jb-ink-full');
+        if (inkCanvas) inkCanvas.style.cursor = '';
         scheduleInkSize();
       }
       paintInkTools();
@@ -2503,6 +2504,16 @@
       }
       return null;
     }
+    function syncInkCursor(ev) {
+      if (!inkCanvas || !inkOpen) return;
+      var chrome = ev && inkChromeTarget(ev);
+      if (chrome) {
+        var tag = (chrome.tagName || '').toLowerCase();
+        inkCanvas.style.cursor = (tag === 'input' || tag === 'textarea') ? 'text' : 'pointer';
+        return;
+      }
+      inkCanvas.style.cursor = '';
+    }
     function inkViewScale() {
       var vv = window.visualViewport;
       return (vv && vv.scale) || 1;
@@ -2639,6 +2650,7 @@
       startInkStroke(ev);
     }
     function onInkPointerMove(ev) {
+      syncInkCursor(ev);
       if (inkPinch || inkPointerCount() > 1) {
         inkBeginPinch();
         return;

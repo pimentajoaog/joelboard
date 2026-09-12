@@ -733,6 +733,7 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
   padding: 4px;
   border-radius: 10px;
   border: 1px dashed color-mix(in srgb, var(--border, #2d3346) 80%, transparent);
+  outline: none;
 }
 .jb-ed-surface .jb-ed-col.jb-ed-col-empty {
   min-height: 88px;

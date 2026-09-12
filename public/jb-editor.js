@@ -925,7 +925,9 @@
         }
         Array.prototype.slice.call(child.attributes || []).forEach(function (attr) {
           var n = attr.name.toLowerCase();
-          var keep = n === 'class' || n === 'href' || n === 'rel' || n === 'target' || n === 'style';
+          var cls = String(child.getAttribute('class') || '');
+          var keep = n === 'class' || n === 'href' || n === 'rel' || n === 'target' || n === 'style'
+            || (n === 'contenteditable' && (/\bjb-ed-cols\b/.test(cls) || /\bjb-ed-col\b/.test(cls)));
           if (n === 'href') {
             var url = safeHref(child.getAttribute('href'));
             if (url) child.setAttribute('href', url);
@@ -978,7 +980,7 @@
   function colsHtml(leftHtml, rightHtml) {
     var left = String(leftHtml || '').trim() || '<p><br></p>';
     var right = String(rightHtml || '').trim() || '<p><br></p>';
-    return '<div class="jb-ed-cols"><div class="jb-ed-col">' + left + '</div><div class="jb-ed-col">' + right + '</div></div><p class="jb-ed-after-cols"><br></p>';
+    return '<div class="jb-ed-cols" contenteditable="false"><div class="jb-ed-col" contenteditable="true">' + left + '</div><div class="jb-ed-col" contenteditable="true">' + right + '</div></div><p class="jb-ed-after-cols"><br></p>';
   }
   function ensureColBody(col) {
     if (!col) return;
@@ -1014,8 +1016,50 @@
     else row.parentNode.appendChild(p);
     return p;
   }
+  function parentEdCols(node, stop) {
+    node = node && node.parentNode;
+    while (node && node !== stop) {
+      if (node.nodeType === 1 && node.classList && node.classList.contains('jb-ed-cols')) return node;
+      node = node.parentNode;
+    }
+    return null;
+  }
+  function markColsEditable(row) {
+    if (!row) return;
+    try { row.contentEditable = 'false'; } catch (_) {}
+    Array.prototype.forEach.call(row.querySelectorAll ? row.querySelectorAll('.jb-ed-col') : [], function (c) {
+      try { c.contentEditable = 'true'; } catch (_) {}
+    });
+  }
+  function colsNeedRepair(root) {
+    if (!root || !root.querySelectorAll) return false;
+    var orphans = root.querySelectorAll('.jb-ed-col');
+    var i, j, n, ch, row;
+    for (i = 0; i < orphans.length; i++) {
+      if (!parentEdCols(orphans[i], root)) return true;
+    }
+    var rows = root.querySelectorAll('.jb-ed-cols');
+    for (i = 0; i < rows.length; i++) {
+      row = rows[i];
+      n = 0;
+      ch = row.children || [];
+      for (j = 0; j < ch.length; j++) {
+        if (ch[j].classList && ch[j].classList.contains('jb-ed-col')) n++;
+      }
+      if (n !== 2) return true;
+    }
+    return false;
+  }
   function normalizeCols(root) {
     if (!root || !root.querySelectorAll) return;
+    Array.prototype.slice.call(root.querySelectorAll('.jb-ed-col')).forEach(function (col) {
+      if (parentEdCols(col, root)) return;
+      if (!col.parentNode) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'jb-ed-cols';
+      col.parentNode.insertBefore(wrap, col);
+      wrap.appendChild(col);
+    });
     Array.prototype.forEach.call(root.querySelectorAll('.jb-ed-cols'), function (row) {
       row.className = 'jb-ed-cols';
       var cols = [];
@@ -1044,6 +1088,11 @@
         cols.push(wrap);
       });
       while (row.firstChild) row.removeChild(row.firstChild);
+      while (cols.length > 2) {
+        var extra = cols.pop();
+        ensureColBody(cols[1]);
+        while (extra.firstChild) cols[1].appendChild(extra.firstChild);
+      }
       while (cols.length < 2) {
         var empty = document.createElement('div');
         empty.className = 'jb-ed-col';
@@ -1051,6 +1100,7 @@
         cols.push(empty);
       }
       cols.forEach(function (c) { row.appendChild(c); syncColEmptyState(c); });
+      markColsEditable(row);
       ensureExitAfterCols(row);
     });
   }
@@ -1644,7 +1694,201 @@
       syncColEmptyState(col);
     }
     function syncAllCols() {
-      Array.prototype.forEach.call(surface.querySelectorAll('.jb-ed-col'), tidyCol);
+      if (colsNeedRepair(surface)) normalizeCols(surface);
+      else {
+        Array.prototype.forEach.call(surface.querySelectorAll('.jb-ed-cols'), markColsEditable);
+        Array.prototype.forEach.call(surface.querySelectorAll('.jb-ed-col'), tidyCol);
+      }
+    }
+    function placeCaretNear(node, after) {
+      if (!node || !node.parentNode) {
+        surface.focus();
+        return;
+      }
+      var sel = window.getSelection();
+      if (!sel) return;
+      try {
+        var range = document.createRange();
+        if (after) range.setStartAfter(node);
+        else range.setStartBefore(node);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch (_) {
+        var fallback = after ? node.nextElementSibling : node.previousElementSibling;
+        if (fallback) placeCaretInEl(fallback, !after);
+      }
+      surface.focus();
+    }
+    function removeColsRow(row) {
+      if (!row || !row.parentNode || !surface.contains(row)) return;
+      var parent = row.parentNode;
+      var after = row.nextElementSibling;
+      var prev = row.previousElementSibling;
+      var caretAt = null;
+      if (after && after.classList && after.classList.contains('jb-ed-after-cols')) {
+        caretAt = after.nextElementSibling;
+        parent.removeChild(row);
+        if (after.parentNode) parent.removeChild(after);
+      } else {
+        caretAt = after;
+        parent.removeChild(row);
+      }
+      if (caretAt && parent.contains(caretAt)) {
+        placeCaretInEl(caretAt, true);
+      } else if (prev && parent.contains(prev)) {
+        placeCaretInEl(prev, false);
+      } else {
+        var p = document.createElement('p');
+        p.appendChild(document.createElement('br'));
+        parent.appendChild(p);
+        placeCaretInEl(p, true);
+      }
+      markDirty();
+    }
+    function selectColsRow(row) {
+      if (!row || !surface.contains(row)) return;
+      clearImgSelect();
+      surface.focus();
+      var sel = window.getSelection();
+      if (!sel) return;
+      try {
+        var range = document.createRange();
+        range.selectNode(row);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch (_) {
+        try {
+          var r2 = document.createRange();
+          r2.selectNodeContents(row);
+          sel.removeAllRanges();
+          sel.addRange(r2);
+        } catch (__) {}
+      }
+    }
+    function nodeContainedInRange(range, node) {
+      if (!range || !node) return false;
+      try {
+        var nr = document.createRange();
+        nr.selectNode(node);
+        return range.compareBoundaryPoints(Range.START_TO_START, nr) <= 0
+          && range.compareBoundaryPoints(Range.END_TO_END, nr) >= 0;
+      } catch (_) {
+        return false;
+      }
+    }
+    function rangeIntersectsNode(range, node) {
+      if (!range || !node) return false;
+      try {
+        var nr = document.createRange();
+        nr.selectNode(node);
+        return range.compareBoundaryPoints(Range.END_TO_START, nr) < 0
+          && range.compareBoundaryPoints(Range.START_TO_END, nr) > 0;
+      } catch (_) {
+        return false;
+      }
+    }
+    function colsRowsForDelete(range) {
+      var out = [];
+      if (!range) return out;
+      Array.prototype.forEach.call(surface.querySelectorAll('.jb-ed-cols'), function (row) {
+        if (!rangeIntersectsNode(range, row)) return;
+        var startCol = closestEdCol(range.startContainer);
+        var endCol = closestEdCol(range.endContainer);
+        if (startCol && endCol && startCol === endCol && closestEdCols(startCol) === row && !nodeContainedInRange(range, row)) {
+          return;
+        }
+        out.push(row);
+      });
+      return out;
+    }
+    function tryColsDelete(ev) {
+      if (!ev || (ev.key !== 'Backspace' && ev.key !== 'Delete')) return false;
+      if (ev.altKey || ev.ctrlKey || ev.metaKey) return false;
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return false;
+      var range = sel.getRangeAt(0);
+      if (!rangeInSurface(range)) return false;
+
+      if (!sel.isCollapsed) {
+        var rows = colsRowsForDelete(range);
+        if (!rows.length) return false;
+        ev.preventDefault();
+        histBeforeChange();
+        rows.forEach(removeColsRow);
+        return true;
+      }
+
+      if (ev.key === 'Backspace') {
+        var col = closestEdCol(range.commonAncestorContainer);
+        if (col) {
+          var cols = closestEdCols(col);
+          if (!cols || !rangeAtStartOf(col, range)) return false;
+          var colList = cols.querySelectorAll('.jb-ed-col');
+          var first = colList[0];
+          var allEmpty = true;
+          var i;
+          for (i = 0; i < colList.length; i++) {
+            if (colHasContent(colList[i])) { allEmpty = false; break; }
+          }
+          ev.preventDefault();
+          histBeforeChange();
+          if (allEmpty && col === first) {
+            removeColsRow(cols);
+            return true;
+          }
+          ensureColBody(col);
+          syncColEmptyState(col);
+          placeCaretInEl(colLastBlock(col) || col, true);
+          return true;
+        }
+        var block = range.commonAncestorContainer;
+        if (block && block.nodeType === 3) block = block.parentElement;
+        while (block && block !== surface && block.parentElement !== surface) block = block.parentElement;
+        if (block && block.classList && block.classList.contains('jb-ed-after-cols') && rangeAtStartOf(block, range)) {
+          var prev = block.previousElementSibling;
+          if (prev && prev.classList && prev.classList.contains('jb-ed-cols')) {
+            ev.preventDefault();
+            histBeforeChange();
+            removeColsRow(prev);
+            return true;
+          }
+        }
+        return false;
+      }
+
+      /* Delete: remove the next columns block when caret is at the end of the previous block. */
+      var cur = range.commonAncestorContainer;
+      if (cur && cur.nodeType === 3) cur = cur.parentElement;
+      while (cur && cur !== surface && cur.parentElement !== surface) cur = cur.parentElement;
+      if (!cur || cur === surface) return false;
+      if (closestEdCol(range.commonAncestorContainer)) return false;
+      if (!rangeAtEndOf(cur, range)) return false;
+      var next = cur.nextElementSibling;
+      if (next && next.classList && next.classList.contains('jb-ed-cols')) {
+        ev.preventDefault();
+        histBeforeChange();
+        removeColsRow(next);
+        return true;
+      }
+      return false;
+    }
+    function tryColsBackspace(ev) {
+      return tryColsDelete(ev);
+    }
+    function onColsSelectPointer(ev) {
+      if (inkOpen || !ev || ev.button) return;
+      var t = ev.target;
+      if (!t || !surface.contains(t)) return;
+      if (t === surface) return;
+      var cols = closestEdCols(t);
+      if (!cols) return;
+      /* Click the row chrome / gap between columns — select the whole block. */
+      if (t === cols) {
+        ev.preventDefault();
+        selectColsRow(cols);
+        return;
+      }
     }
     function repairColsCaret() {
       var sel = window.getSelection();
@@ -1656,30 +1900,20 @@
         return;
       }
       var cols = closestEdCols(node);
-      if (cols && !closestEdCol(node)) {
+      if (cols && !closestEdCol(node) && !(cols === node || (node.nodeType === 1 && cols.contains(node) && node.classList && node.classList.contains('jb-ed-cols')))) {
+        /* Selection of the whole cols row is intentional — leave it. */
+        if (sel.rangeCount && !sel.isCollapsed) {
+          try {
+            var r = sel.getRangeAt(0);
+            if (nodeContainedInRange(r, cols) || (r.startContainer === cols || r.endContainer === cols)) return;
+          } catch (_) {}
+        }
         var first = cols.querySelector('.jb-ed-col');
         if (first) {
           ensureColBody(first);
           placeCaretInEl(colLastBlock(first) || first, true);
         } else exitColsToAfter(cols);
       }
-    }
-    function tryColsBackspace(ev) {
-      if (!ev || ev.key !== 'Backspace' || ev.altKey || ev.ctrlKey || ev.metaKey) return false;
-      var sel = window.getSelection();
-      if (!sel || !sel.rangeCount || !sel.isCollapsed) return false;
-      var range = sel.getRangeAt(0);
-      if (!rangeInSurface(range)) return false;
-      var col = closestEdCol(range.commonAncestorContainer);
-      if (!col) return false;
-      if (!closestEdCols(col)) return false;
-      if (!rangeAtStartOf(col, range)) return false;
-      ev.preventDefault();
-      histBeforeChange();
-      ensureColBody(col);
-      syncColEmptyState(col);
-      placeCaretInEl(colLastBlock(col) || col, true);
-      return true;
     }
     function tryColsEnter(ev) {
       if (!ev || (ev.key !== 'Enter' && ev.key !== 'NumpadEnter')) return false;
@@ -3913,7 +4147,7 @@
         else ev.stopPropagation();
         return;
       }
-      if (editorHasFocus() && tryColsBackspace(ev)) {
+      if (editorHasFocus() && tryColsDelete(ev)) {
         if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
         else ev.stopPropagation();
         return;
@@ -4071,6 +4305,7 @@
       linkMouse = (a && surface.contains(a)) ? { x: ev.clientX, y: ev.clientY } : null;
     });
     surface.addEventListener('pointerdown', onColsExitPointer);
+    surface.addEventListener('pointerdown', onColsSelectPointer);
     surface.addEventListener('keydown', function (ev) {
       var key = (ev.key || '').toLowerCase();
       if ((ev.ctrlKey || ev.metaKey) && key === 's') {
@@ -4079,7 +4314,7 @@
         return;
       }
       if (tryColsEnter(ev)) return;
-      if (tryColsBackspace(ev)) return;
+      if (tryColsDelete(ev)) return;
       if (selectedImg && !inkOpen && (key === 'delete' || key === 'backspace') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
         ev.preventDefault();
         removeNoteImg(selectedImg);

@@ -194,11 +194,22 @@ test('isEmptyHtml treats ink overlay as content', function () {
 test('colsHtml builds a two-column layout', function () {
   var html = ED.colsHtml('<p>esq</p>', '<p>dir</p>');
   assert.match(html, /class="jb-ed-cols"/);
-  assert.match(html, /class="jb-ed-col"><p>esq<\/p>/);
-  assert.match(html, /class="jb-ed-col"><p>dir<\/p>/);
+  assert.match(html, /class="jb-ed-col"[^>]*>\s*<p>esq<\/p>/);
+  assert.match(html, /class="jb-ed-col"[^>]*>\s*<p>dir<\/p>/);
   assert.match(html, /<\/div><p class="jb-ed-after-cols"><br><\/p>$/);
   assert.equal(ED.isEmptyHtml(ED.colsHtml()), false);
   assert.match(ED.colsHtml(), /<p><br><\/p>.*<p><br><\/p>/);
+  assert.match(ED.colsHtml(), /contenteditable="false"/);
+  assert.match(ED.colsHtml(), /contenteditable="true"/);
+});
+
+test('normalizeCols restores a missing second column and wraps orphans', function () {
+  assert.match(src, /function colsNeedRepair/);
+  assert.match(src, /function parentEdCols/);
+  assert.match(src, /while \(cols\.length < 2\)/);
+  assert.match(src, /while \(cols\.length > 2\)/);
+  assert.match(src, /wrap\.className = 'jb-ed-cols'/);
+  assert.match(src, /if \(parentEdCols\(col, root\)\) return/);
 });
 
 test('editor exposes two-column toolbar insert', function () {
@@ -217,6 +228,10 @@ test('editor exposes two-column toolbar insert', function () {
   assert.match(css, /jb-ed-col-empty/);
   assert.match(css, /\.jb-ed-after-cols/);
   assert.match(src, /function tryColsBackspace/);
+  assert.match(src, /function tryColsDelete/);
+  assert.match(src, /function removeColsRow/);
+  assert.match(src, /function selectColsRow/);
+  assert.match(src, /function colsNeedRepair/);
   assert.match(src, /function syncColEmptyState/);
   assert.match(css, /:not\(:focus-within\) > p:last-child:has\(> br:only-child\)/);
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.jb-ed-surface \.jb-ed-col/);

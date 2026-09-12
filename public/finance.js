@@ -2995,9 +2995,15 @@ function doneSplit(){
   flushSplitSave(true);
 }
 function fmtDebtDate(ms){ if (!ms) return ''; try { return new Date(Number(ms)).toLocaleDateString(L(), { day:'2-digit', month:'short' }); } catch(e){ return ''; } }
+function debtInSelectedMonth(d){
+  const t = Number(d && d.created) || 0;
+  if (!t) return false;
+  const dt = new Date(t);
+  return dt.getFullYear() === selY && dt.getMonth() === selM;
+}
 function renderDebts(){
   const list = document.getElementById('debtsList'); if (!list) return;
-  const debts = (DATA && DATA.debts) || [];
+  const debts = ((DATA && DATA.debts) || []).filter(debtInSelectedMonth);
   const sumEl = document.getElementById('debtsSummary'), totEl = document.getElementById('debtsTotal');
   if (!debts.length) { list.innerHTML = '<div class="empty">'+t('debts.empty')+'</div>'; if (sumEl) sumEl.style.display = 'none'; return; }
   const groups = {}, order = [];

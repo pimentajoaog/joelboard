@@ -2901,9 +2901,10 @@
     paintHlBtn();
 
     if (uploadImage) {
-      inkBtn = btn('✎', 'Sharpie');
+      inkBtn = btn('✎', 'Sharpie (Esc para sair)');
       inkBtn.className += ' jb-ed-ink-toggle';
       inkBtn.setAttribute('aria-label', 'Sharpie');
+      inkBtn.title = 'Sharpie (Esc para sair)';
       inkBtn.addEventListener('click', toggleInk);
       cPaint.appendChild(inkBtn);
 
@@ -3042,8 +3043,19 @@
     qBtn.addEventListener('click', function () { block('blockquote'); });
     cBlocks.appendChild(qBtn);
     var linkBtn = btn('🔗', 'Link');
-    linkBtn.addEventListener('click', addLink);
+    linkBtn.addEventListener('click', function () { addLink(); });
     cBlocks.appendChild(linkBtn);
+    var hrBtn = btn('―', 'Linha horizontal');
+    hrBtn.setAttribute('aria-label', 'Inserir linha horizontal');
+    hrBtn.addEventListener('click', function () {
+      histBeforeChange();
+      surface.focus();
+      try { document.execCommand('insertHorizontalRule'); } catch (_) {
+        try { document.execCommand('insertHTML', false, '<hr>'); } catch (__) {}
+      }
+      markDirty();
+    });
+    cBlocks.appendChild(hrBtn);
 
     var chrome = document.createElement('div');
     chrome.className = 'jb-ed-chrome';
@@ -3095,6 +3107,13 @@
       if (clipboardField(ev)) return;
       var key = (ev.key || '').toLowerCase();
       var mod = ev.ctrlKey || ev.metaKey;
+      if (key === 'escape' && inkOpen) {
+        ev.preventDefault();
+        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        else ev.stopPropagation();
+        setInkMode(false);
+        return;
+      }
       if (mod && key === 's') {
         ev.preventDefault();
         if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();

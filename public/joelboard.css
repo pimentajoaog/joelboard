@@ -748,9 +748,28 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 }
 .jb-ed-compact .jb-ed-cluster { padding: 0 6px 0 0; margin-right: 0; }
 .jb-ed-ink-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; position: relative; z-index: 20; }
-.jb-ed:not(.jb-ed-compact) .jb-ed-ink-tools {
-  position: absolute; left: 0; right: auto; bottom: 100%; margin-bottom: 8px;
-  z-index: 31; width: max-content; max-width: min(100%, calc(100vw - 24px));
+/* Float above the page (not inside chrome) so Study’s módulo title can’t cover it. */
+.jb-ed-ink-tools.jb-ed-ink-float {
+  position: fixed;
+  left: 8px;
+  top: 0;
+  bottom: auto;
+  right: auto;
+  margin: 0;
+  z-index: 60;
+  width: max-content;
+  max-width: min(100vw - 16px, 560px);
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--border, #2d3346) 86%, transparent);
+  border-radius: 16px;
+  background: var(--bg);
+  box-shadow: 0 10px 28px color-mix(in srgb, #000 16%, transparent);
+  animation: jb-ed-ink-in 0.22s cubic-bezier(.2,.85,.3,1) both;
+  overflow: visible;
+}
+.jb-ed:not(.jb-ed-compact) .jb-ed-ink-tools:not(.jb-ed-ink-float) {
+  position: absolute; left: 0; right: auto; top: 100%; bottom: auto; margin-top: 8px;
+  z-index: 45; width: max-content; max-width: min(100%, calc(100vw - 24px));
   padding: 6px 8px;
   border: 1px solid color-mix(in srgb, var(--border, #2d3346) 86%, transparent);
   border-radius: 16px;
@@ -843,16 +862,14 @@ html.jb-ink-full .modnote-head {
   z-index: 25;
   background: var(--bg);
 }
-html.jb-ink-full .jb-ed:not(.jb-ed-compact) .jb-ed-ink-tools {
-  position: absolute;
-  z-index: 45;
-  background: var(--bg);
-}
 .jb-ed.ink-on .jb-ed-chrome {
   z-index: 40;
 }
-.jb-ed.ink-on .jb-ed-ink-tools {
-  z-index: 45;
+html.jb-ink-full .jb-ed:not(.jb-ed-compact) .jb-ed-ink-tools,
+.jb-ed.ink-on .jb-ed-ink-tools.jb-ed-ink-float,
+.jb-ed-ink-tools.jb-ed-ink-float {
+  z-index: 60;
+  background: var(--bg);
 }
 /* Toolbar stays clickable while the full-page ink layer is active. */
 .jb-ed.ink-on .jb-ed-chrome,
@@ -944,10 +961,14 @@ html.jb-ink-full .fab {
     width: 28px;
     height: 28px;
   }
-  .jb-ed:not(.jb-ed-compact) .jb-ed-ink-tools {
+  .jb-ed:not(.jb-ed-compact) .jb-ed-ink-tools:not(.jb-ed-ink-float) {
     max-width: calc(100vw - 24px);
     flex-wrap: wrap;
     overflow: visible;
+  }
+  .jb-ed-ink-tools.jb-ed-ink-float {
+    max-width: calc(100vw - 16px);
+    flex-wrap: wrap;
   }
   .jb-ed:not(.jb-ed-compact) .jb-ed-save {
     min-width: 88px;
@@ -977,7 +998,7 @@ html.jb-ink-full .fab {
   to { opacity: 1; transform: none; }
 }
 @keyframes jb-ed-ink-in {
-  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
   to { opacity: 1; transform: none; }
 }
 @keyframes jb-ed-menu-in {

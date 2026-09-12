@@ -2340,6 +2340,40 @@
         return blobToUploadFile(blob, 'sharpie-overlay.png');
       } catch (_) { return null; }
     }
+    function placeInkTools() {
+      if (!inkTools || !inkOpen || compact) return;
+      var barEl = (inkBtn && inkBtn.closest) ? inkBtn.closest('.jb-ed-bar') : null;
+      var anchor = barEl || chrome || inkBtn;
+      if (!anchor || !anchor.getBoundingClientRect) return;
+      var br = anchor.getBoundingClientRect();
+      var pad = 8;
+      var maxW = Math.max(160, Math.min(window.innerWidth - pad * 2, 560));
+      var left = Math.max(pad, Math.min(br.left, window.innerWidth - maxW - pad));
+      var top = br.bottom + pad;
+      var estH = inkTools.offsetHeight || 52;
+      if (top + estH > window.innerHeight - pad && br.top - pad - estH > pad) {
+        top = Math.max(pad, br.top - pad - estH);
+      }
+      if (inkTools.parentNode !== document.body) document.body.appendChild(inkTools);
+      inkTools.classList.add('jb-ed-ink-float');
+      inkTools.style.left = Math.round(left) + 'px';
+      inkTools.style.top = Math.round(top) + 'px';
+      inkTools.style.right = 'auto';
+      inkTools.style.bottom = 'auto';
+    }
+    function shelveInkTools() {
+      if (!inkTools) return;
+      inkTools.classList.remove('jb-ed-ink-float');
+      inkTools.style.left = '';
+      inkTools.style.top = '';
+      inkTools.style.right = '';
+      inkTools.style.bottom = '';
+      if (chrome && inkTools.parentNode !== chrome) {
+        var barEl = chrome.querySelector('.jb-ed-bar');
+        if (barEl) chrome.insertBefore(inkTools, barEl.nextSibling);
+        else chrome.appendChild(inkTools);
+      }
+    }
     function setInkMode(on) {
       if (!uploadImage || !inkCanvas) return;
       inkOpen = !!on;
@@ -2352,12 +2386,14 @@
         setFsMenuOpen(false);
         clearImgSelect();
         sizeInkCanvas();
+        placeInkTools();
       } else {
         inkErase = false;
         inkErasing = false;
         if (root) root.classList.remove('ink-erase');
         document.documentElement.classList.remove('jb-ink-full');
         if (inkCanvas) inkCanvas.style.cursor = '';
+        shelveInkTools();
         scheduleInkSize();
       }
       paintInkTools();
@@ -3087,6 +3123,7 @@
     resetEditorHistory();
     function onWinResize() {
       paintImgFrame();
+      if (inkOpen) placeInkTools();
       if (inkStickyCanvas()) {
         var scale = inkViewScale();
         if (scale > 1.02 || scale < 0.98) return;
@@ -3094,6 +3131,7 @@
       scheduleInkSize();
     }
     function onInkViewChange() {
+      if (inkOpen) placeInkTools();
       if (inkViewportOverlay()) {
         syncInkCanvasBox();
         scheduleInkBoard();
@@ -3357,6 +3395,10 @@
         setSheetViewport(false);
         clearInkBoard();
         clearImgSelect();
+        if (inkTools) {
+          shelveInkTools();
+          inkTools.hidden = true;
+        }
         if (inkSizeRaf) { cancelAnimationFrame(inkSizeRaf); inkSizeRaf = 0; }
         if (inkViewRaf) { cancelAnimationFrame(inkViewRaf); inkViewRaf = 0; }
         if (inkBoardRaf) { cancelAnimationFrame(inkBoardRaf); inkBoardRaf = 0; }

@@ -708,6 +708,31 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-surface code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
 .jb-ed-surface a { color: var(--primary, #818cf8); cursor: pointer; }
 .jb-ed-surface hr { border: 0; border-top: 2px solid color-mix(in srgb, var(--muted, #7b85a0) 55%, var(--border, #2d3346)); margin: 18px 0; width: 100%; }
+.jb-ed-surface .jb-ed-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin: 0 0 12px;
+  align-items: start;
+}
+.jb-ed-surface .jb-ed-col {
+  min-width: 0;
+  min-height: 1.65em;
+  padding: 4px 6px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--border, #2d3346) 80%, transparent);
+  box-sizing: border-box;
+}
+.jb-ed-surface .jb-ed-col:focus-within {
+  border-color: color-mix(in srgb, var(--primary, #818cf8) 55%, var(--border, #2d3346));
+  background: color-mix(in srgb, var(--primary, #818cf8) 6%, transparent);
+}
+.jb-ed-surface .jb-ed-col > :first-child { margin-top: 0; }
+.jb-ed-surface .jb-ed-col > :last-child { margin-bottom: 0; }
+.jb-ed-surface .jb-ed-col img[data-jb-file] { max-width: 100%; margin: 8px 0; }
+@media (max-width: 640px) {
+  .jb-ed-surface .jb-ed-cols { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+}
 .jb-ed-surface img[data-jb-file] { display: block; max-width: 100%; height: auto; box-sizing: border-box; border-radius: 10px; margin: 10px 0; background: var(--surface2, #232838); cursor: pointer; -webkit-user-drag: none; user-select: none; touch-action: none; }
 .jb-ed-surface img.jb-ed-img-on { outline: 2px solid var(--primary, #818cf8); outline-offset: 2px; }
 .jb-ed-surface img.jb-ed-img-dragging {

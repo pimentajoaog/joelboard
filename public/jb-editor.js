@@ -661,6 +661,7 @@
       });
     }
     walk(box);
+    normalizeCols(box);
     if (box.querySelector('*')) {
       while (box.firstChild && box.firstChild.nodeType === 3) {
         var lead = box.firstChild;
@@ -687,8 +688,62 @@
     var s = String(html || '');
     if (/<img\b[^>]*\bdata-jb-file=/i.test(s)) return false;
     if (/data-jb-ink\s*=\s*"1"/i.test(s)) return false;
+    if (/\bjb-ed-cols\b/i.test(s)) return false;
     var t = s.replace(/&nbsp;/g, ' ').replace(/<br\s*\/?>/gi, '').replace(/<[^>]+>/g, '').trim();
     return !t;
+  }
+  function colsHtml(leftHtml, rightHtml) {
+    var left = String(leftHtml || '').trim() || '<p><br></p>';
+    var right = String(rightHtml || '').trim() || '<p><br></p>';
+    return '<div class="jb-ed-cols"><div class="jb-ed-col">' + left + '</div><div class="jb-ed-col">' + right + '</div></div><p><br></p>';
+  }
+  function ensureColBody(col) {
+    if (!col) return;
+    var hasBlock = false;
+    Array.prototype.forEach.call(col.childNodes || [], function (ch) {
+      if (ch.nodeType === 1) hasBlock = true;
+      else if (ch.nodeType === 3 && String(ch.nodeValue || '').trim()) hasBlock = true;
+    });
+    if (!hasBlock) col.innerHTML = '<p><br></p>';
+  }
+  function normalizeCols(root) {
+    if (!root || !root.querySelectorAll) return;
+    Array.prototype.forEach.call(root.querySelectorAll('.jb-ed-cols'), function (row) {
+      row.className = 'jb-ed-cols';
+      var cols = [];
+      Array.prototype.slice.call(row.childNodes || []).forEach(function (ch) {
+        if (ch.nodeType === 3) {
+          if (!String(ch.nodeValue || '').trim()) return;
+          var wrapT = document.createElement('div');
+          wrapT.className = 'jb-ed-col';
+          var p = document.createElement('p');
+          p.appendChild(document.createTextNode(ch.nodeValue));
+          wrapT.appendChild(p);
+          cols.push(wrapT);
+          return;
+        }
+        if (ch.nodeType !== 1) return;
+        if (ch.classList && ch.classList.contains('jb-ed-col')) {
+          ch.className = 'jb-ed-col';
+          ensureColBody(ch);
+          cols.push(ch);
+          return;
+        }
+        var wrap = document.createElement('div');
+        wrap.className = 'jb-ed-col';
+        wrap.appendChild(ch);
+        ensureColBody(wrap);
+        cols.push(wrap);
+      });
+      while (row.firstChild) row.removeChild(row.firstChild);
+      while (cols.length < 2) {
+        var empty = document.createElement('div');
+        empty.className = 'jb-ed-col';
+        empty.innerHTML = '<p><br></p>';
+        cols.push(empty);
+      }
+      cols.forEach(function (c) { row.appendChild(c); });
+    });
   }
 
   function wrapSelection(value, start, end, spec) {
@@ -1104,6 +1159,33 @@
         try { document.execCommand('styleWithCSS', false, false); } catch (_) {}
       }
       try { document.execCommand(name, false, val); } catch (_) {}
+      markDirty();
+    }
+    function insertColumns() {
+      histBeforeChange();
+      surface.focus();
+      var left = '<p><br></p>';
+      var right = '<p><br></p>';
+      try {
+        var sel = window.getSelection();
+        var range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+        if (range && rangeInSurface(range) && !range.collapsed) {
+          var frag = range.cloneContents();
+          var tmp = document.createElement('div');
+          tmp.appendChild(frag);
+          var extracted = sanitizeHtml(tmp.innerHTML);
+          if (!isEmptyHtml(extracted) && extracted.indexOf('jb-ed-cols') < 0) left = extracted;
+          range.deleteContents();
+        }
+      } catch (_) {}
+      var html = colsHtml(left, right);
+      var ok = false;
+      try { ok = document.execCommand('insertHTML', false, html); } catch (_) { ok = false; }
+      if (!ok) {
+        try {
+          surface.insertAdjacentHTML('beforeend', html);
+        } catch (__) {}
+      }
       markDirty();
     }
     function block(tag) {
@@ -3092,6 +3174,10 @@
       markDirty();
     });
     cBlocks.appendChild(hrBtn);
+    var colsBtn = btn('▥', 'Duas colunas');
+    colsBtn.setAttribute('aria-label', 'Inserir duas colunas');
+    colsBtn.addEventListener('click', function () { insertColumns(); });
+    cBlocks.appendChild(colsBtn);
 
     var chrome = document.createElement('div');
     chrome.className = 'jb-ed-chrome';
@@ -3454,6 +3540,7 @@
     mount: mount,
     sanitizeHtml: sanitizeHtml,
     isEmptyHtml: isEmptyHtml,
+    colsHtml: colsHtml,
     safeDriveFileId: safeDriveFileId,
     pasteImageFiles: pasteImageFiles,
     IMAGE_MAX_BYTES: IMAGE_MAX_BYTES,

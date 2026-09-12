@@ -191,6 +191,27 @@ test('isEmptyHtml treats ink overlay as content', function () {
   assert.equal(ED.isEmptyHtml('<img data-jb-ink="1" data-jb-file="1AbCdEfGhIjKlMnOpQrSt" alt="__jb-ink__">'), false);
 });
 
+test('colsHtml builds a two-column layout', function () {
+  var html = ED.colsHtml('<p>esq</p>', '<p>dir</p>');
+  assert.match(html, /class="jb-ed-cols"/);
+  assert.match(html, /class="jb-ed-col"><p>esq<\/p>/);
+  assert.match(html, /class="jb-ed-col"><p>dir<\/p>/);
+  assert.match(html, /<\/div><p><br><\/p>$/);
+  assert.equal(ED.isEmptyHtml(ED.colsHtml()), false);
+  assert.match(ED.colsHtml(), /<p><br><\/p>.*<p><br><\/p>/);
+});
+
+test('editor exposes two-column toolbar insert', function () {
+  assert.match(src, /function colsHtml/);
+  assert.match(src, /function insertColumns/);
+  assert.match(src, /function normalizeCols/);
+  assert.match(src, /Duas colunas/);
+  assert.match(src, /jb-ed-cols/);
+  assert.match(css, /\.jb-ed-surface \.jb-ed-cols/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\)/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.jb-ed-surface \.jb-ed-cols/);
+});
+
 test('ink overlay size follows the page box, not scrollHeight', function () {
   assert.match(src, /page\.clientHeight/);
   assert.doesNotMatch(src, /surface\.scrollHeight/);

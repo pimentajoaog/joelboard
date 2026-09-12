@@ -60,6 +60,7 @@ const I18N = {
     'empty.noHistory':'Not enough history for this period. Log some expenses or add recurring bills, then suggestions will appear here.',
     'empty.bundleChecklist':'Add recurring bills or savings first.',
     'bundle.thisMonth':'Active this month',
+    'bundle.monthOnlyHint':'Only items for this month. Links from other months stay on those months automatically.',
     'bundle.otherMonths':'Linked in other months (not charged now)',
     'bundle.otherMonthsHint':'Uncheck to unlink. These stay on the card only in their months.',
     'empty.noCats':'No categories yet — add one above.',
@@ -335,6 +336,7 @@ const I18N = {
     'empty.noHistory':'Histórico insuficiente para este período. Lance algumas despesas ou adicione contas fixas, e as sugestões aparecerão aqui.',
     'empty.bundleChecklist':'Adicione contas fixas ou metas primeiro.',
     'bundle.thisMonth':'Ativos neste mês',
+    'bundle.monthOnlyHint':'Só itens deste mês. Vínculos de outros meses ficam neles automaticamente.',
     'bundle.otherMonths':'Vinculados em outros meses (sem cobrança agora)',
     'bundle.otherMonthsHint':'Desmarque para desvincular. Só aparecem no cartão nos meses deles.',
     'empty.noCats':'Nenhuma categoria ainda — adicione uma acima.',
@@ -1732,10 +1734,7 @@ function billBundleMeta(b) {
 }
 function renderBundleChecklist(selected) {
   const sel = new Set(bundleItems({ items: selected || [] }).map(it => it.type + ':' + it.id));
-  const activeBillIds = new Set(activeBills().map(b => b.id));
-  const activeAllocIds = new Set(activeAllocations().map(a => a.id));
   let activeHtml = '';
-  let otherHtml = '';
 
   activeBills().forEach(function (b) {
     const on = sel.has('bill:' + b.id);
@@ -1749,42 +1748,44 @@ function renderBundleChecklist(selected) {
       + '💰 ' + esc(goalName(a.goalId)) + ' · ' + brl(a.amount) + '</label>';
   });
 
-  /* Linked items that are not charged in the selected month — keep unless unchecked. */
-  (selected || []).forEach(function (raw) {
-    const it = { type: normType(raw.type), id: raw.id };
-    const key = it.type + ':' + it.id;
-    if (it.type === 'bill') {
-      if (activeBillIds.has(it.id)) return;
-      const b = (DATA.recurring || []).find(x => String(x.id) === String(it.id));
-      if (!b) return;
-      const meta = billBundleMeta(b);
-      const when = b.startMonth ? ymLabel(b.startMonth) : '';
-      otherHtml += '<label class="bun-check bun-check-other"><input type="checkbox" data-type="bill" data-id="' + b.id + '" checked> '
-        + meta.tag + ' ' + esc(b.name) + ' · ' + brl(b.amount) + meta.suf
-        + (when ? ' · ' + esc(when) : '') + '</label>';
-    } else if (it.type === 'allocation') {
-      if (activeAllocIds.has(it.id)) return;
-      const a = (DATA.allocations || []).find(x => String(x.id) === String(it.id));
-      if (!a) return;
-      const when = a.startMonth ? ymLabel(a.startMonth) : '';
-      otherHtml += '<label class="bun-check bun-check-other"><input type="checkbox" data-type="allocation" data-id="' + a.id + '" checked> '
-        + '💰 ' + esc(goalName(a.goalId)) + ' · ' + brl(a.amount)
-        + (when ? ' · ' + esc(when) : '') + '</label>';
-    }
-  });
-
   let html = '';
   if (activeHtml) {
-    html += '<div class="bun-sec-label">' + esc(t('bundle.thisMonth')) + '</div>' + activeHtml;
-  }
-  if (otherHtml) {
-    html += '<div class="bun-sec-label bun-sec-other">' + esc(t('bundle.otherMonths')) + '</div>'
-      + '<div class="bun-sec-hint">' + esc(t('bundle.otherMonthsHint')) + '</div>'
-      + otherHtml;
+    html += '<div class="bun-sec-label">' + esc(t('bundle.thisMonth')) + '</div>'
+      + '<div class="bun-sec-hint">' + esc(t('bundle.monthOnlyHint')) + '</div>'
+      + activeHtml;
   }
   document.getElementById('bunItems').innerHTML = html || '<div class="empty">' + t('empty.bundleChecklist') + '</div>';
 }
-function collectBundleItems() { return [...document.querySelectorAll('#bunItems input[type=checkbox]')].filter(c=>c.checked).map(c=>({type:c.dataset.type, id:c.dataset.id})); }
+/** Checked items for the selected month, plus preserve links that belong to other months. */
+function collectBundleItems() {
+  const checked = [...document.querySelectorAll('#bunItems input[type=checkbox]')].filter(function (c) {
+    return c.checked;
+  }).map(function (c) {
+    return { type: c.dataset.type, id: c.dataset.id };
+  });
+  if (!(editing && editing.type === 'bundles' && editing.id)) return checked;
+
+  const b = (DATA.bundles || []).find(function (x) { return x.id === editing.id; });
+  if (!b) return checked;
+
+  const activeKeys = new Set();
+  activeBills().forEach(function (bill) { activeKeys.add('bill:' + bill.id); });
+  activeAllocations().forEach(function (a) { activeKeys.add('allocation:' + a.id); });
+
+  const historical = bundleItems(b).filter(function (it) {
+    return !activeKeys.has(it.type + ':' + it.id);
+  });
+
+  const seen = {};
+  const out = [];
+  checked.concat(historical).forEach(function (it) {
+    const key = it.type + ':' + it.id;
+    if (seen[key]) return;
+    seen[key] = 1;
+    out.push({ type: it.type, id: it.id });
+  });
+  return out;
+}
 function openBundle() {
   closeFab(); editing={type:null,id:null};
   document.getElementById('bunTitle').textContent=t('bundle.add'); document.getElementById('bunDel').style.display='none'; document.getElementById('bunSave').textContent=t('bundle.save');

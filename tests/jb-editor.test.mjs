@@ -398,7 +398,7 @@ test('note image clipboard round-trips Drive id and width', function () {
     getAttribute: function (name) {
       if (name === 'data-jb-file') return id;
       if (name === 'alt') return 'gráfico';
-      if (name === 'style') return 'width: 320px;';
+      if (name === 'style') return 'width: 320px; height: 180px;';
       if (name === 'data-jb-ink') return null;
       if (name === 'width') return null;
       return null;
@@ -408,11 +408,13 @@ test('note image clipboard round-trips Drive id and width', function () {
   assert.match(html, /data-jb-file="1aB-C_defghijklmnopqr"/);
   assert.match(html, /alt="gráfico"/);
   assert.match(html, /width: 320px/);
+  assert.match(html, /height: 180px/);
   var parsed = ED.parseNoteImgClipboard('<html><body><!--StartFragment-->' + html + '<!--EndFragment--></body></html>');
   assert.equal(parsed.length, 1);
   assert.equal(parsed[0].id, id);
   assert.equal(parsed[0].alt, 'gráfico');
   assert.equal(parsed[0].width, 320);
+  assert.equal(parsed[0].height, 180);
   assert.equal(ED.parseNoteImgClipboard('<img data-jb-ink="1" data-jb-file="' + id + '">').length, 0);
   assert.equal(ED.noteImgToClipboardHtml(null), '');
 });
@@ -436,4 +438,17 @@ test('cssImgWidthPx keeps a sane pixel width', function () {
   assert.equal(ED.cssImgWidthPx('', '240'), 240);
   assert.equal(ED.cssImgWidthPx('width: 12px', ''), 0);
   assert.equal(ED.cssImgWidthPx('color: red', ''), 0);
+  assert.equal(ED.cssImgHeightPx('height: 180px', ''), 180);
+  assert.equal(ED.cssImgHeightPx('width: 320px; height: 90px', ''), 90);
+  assert.equal(ED.cssImgHeightPx('', '120'), 120);
+  assert.equal(ED.cssImgHeightPx('height: 10px', ''), 0);
+});
+
+test('image resize supports edge handles for axis-only scaling', function () {
+  assert.match(src, /data-h="n"/);
+  assert.match(src, /data-h="e"/);
+  assert.match(src, /function applyImgSize/);
+  assert.match(src, /keepAspect/);
+  assert.match(css, /\.jb-ed-img-handle\.n/);
+  assert.match(css, /\.jb-ed-img-handle\.e/);
 });

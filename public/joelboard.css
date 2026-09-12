@@ -737,8 +737,6 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-surface .jb-ed-col img[data-jb-file] {
   display: block;
   max-width: 100%;
-  width: auto;
-  height: auto;
   margin: 0;
 }
 /* Hug content: collapse trailing empty caret paragraphs when not editing the column. */
@@ -809,6 +807,10 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-img-handle.ne { right: -7px; top: -7px; cursor: nesw-resize; }
 .jb-ed-img-handle.sw { left: -7px; bottom: -7px; cursor: nesw-resize; }
 .jb-ed-img-handle.se { right: -7px; bottom: -7px; cursor: nwse-resize; }
+.jb-ed-img-handle.n { left: 50%; top: -7px; margin-left: -6px; cursor: ns-resize; }
+.jb-ed-img-handle.s { left: 50%; bottom: -7px; margin-left: -6px; cursor: ns-resize; }
+.jb-ed-img-handle.e { right: -7px; top: 50%; margin-top: -6px; cursor: ew-resize; }
+.jb-ed-img-handle.w { left: -7px; top: 50%; margin-top: -6px; cursor: ew-resize; }
 .jb-ed-surface img.jb-ed-img-loading { min-height: 88px; }
 .jb-ed-surface img.jb-ed-img-err { outline: 1px dashed var(--border, #2d3346); }
 .jb-ed-compact .jb-ed-scroll { min-height: 112px; max-height: 200px; }
@@ -1010,6 +1012,10 @@ html.jb-ink-full .fab {
   .jb-ed-img-handle.ne { right: -11px; top: -11px; }
   .jb-ed-img-handle.sw { left: -11px; bottom: -11px; }
   .jb-ed-img-handle.se { right: -11px; bottom: -11px; }
+  .jb-ed-img-handle.n { left: 50%; top: -11px; margin-left: -11px; }
+  .jb-ed-img-handle.s { left: 50%; bottom: -11px; margin-left: -11px; }
+  .jb-ed-img-handle.e { right: -11px; top: 50%; margin-top: -11px; }
+  .jb-ed-img-handle.w { left: -11px; top: 50%; margin-top: -11px; }
   .jb-ed-img-frame { touch-action: pan-y; }
 }
 @media (max-width: 540px) {

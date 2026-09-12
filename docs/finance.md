@@ -33,7 +33,7 @@ Interface principal em **inglês** (i18n); dados ficam na planilha **Joelboard F
 
 ## Rachar conta (split)
 
-Registre um gasto (só você ou compartilhado), divida itens entre pessoas e acompanhe quem deve. O rascunho **salva sozinho**; dá para reabrir o calculador no card. Opcionalmente gera uma conta 1× no Finance com a sua parte (`🍻 Quem me deve · …`): no mês atual pode marcar como gasto pago; em mês futuro fica em aberto. A lista segue o **mês selecionado** no Finance (só rolês daquele mês).
+Registre um gasto (só você ou compartilhado), divida itens entre pessoas e acompanhe quem deve. **Rascunhos novos não gravam na planilha até você salvar** (botão Salvar / Pronto). Fechar com conteúdo sem salvar pergunta se quer gravar. Depois do primeiro save, o rascunho **salva sozinho** de novo. Dá para reabrir o calculador no card. Opcionalmente gera uma conta 1× no Finance com a sua parte (`🍻 Quem me deve · …`): no mês atual pode marcar como gasto pago; em mês futuro fica em aberto. A lista segue o **mês selecionado** no Finance (só rolês daquele mês).
 
 ## Planilha (abas)
 

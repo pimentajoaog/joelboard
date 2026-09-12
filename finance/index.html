@@ -204,9 +204,9 @@
 </div>
 
 <!-- Bill split (rachar conta) -->
-<div class="overlay" id="splitOverlay" onclick="if(event.target===this)doneSplit()">
+<div class="overlay" id="splitOverlay" onclick="if(event.target===this)requestSplitClose()">
   <div class="modal split-modal">
-    <div class="modal-head"><div class="modal-title" data-i18n="split.title">Split a bill</div><button class="close-btn" onclick="doneSplit()">✕</button></div>
+    <div class="modal-head"><div class="modal-title" data-i18n="split.title">Split a bill</div><button class="close-btn" onclick="requestSplitClose()">✕</button></div>
     <div class="sp-save-status" id="spSaveStatus" aria-live="polite"></div>
     <div class="fg"><label class="flabel" data-i18n="split.outingName">What was it?</label><input type="text" class="field" id="spTitle" placeholder="e.g. Friday drinks" data-i18n-ph="split.outingPh" oninput="scheduleSplitSave()"></div>
     <div class="sp-section">
@@ -242,7 +242,7 @@
     <div class="form-err" id="splitErr"></div>
     <div class="sp-actions">
       <button class="btn-ghost" onclick="copySplitSummary()" data-i18n="split.copy">Copy summary</button>
-      <button class="btn-primary" id="splitSave" onclick="doneSplit()" data-i18n="split.done">Done</button>
+      <button class="btn-primary" id="splitSave" onclick="saveAndCloseSplit()" data-i18n="split.save">Save who owes me</button>
     </div>
   </div>
 </div>

@@ -18,7 +18,7 @@ const I18N = {
     'action.refresh':'Refresh data', 'action.hub':'Back to hub', 'action.toggleTheme':'Toggle theme', 'eye.reveal':'Reveal this past month', 'eye.dim':'Dim this past month', 'eye.show':'Show amounts', 'eye.hide':'Hide amounts',
 
     'tab.overview':'Overview', 'tab.worklog':'Work Log', 'tab.money':'Money',
-    'split.open':'+ Split a bill', 'split.title':'Split a bill', 'split.outingName':'What was it?', 'split.outingPh':'e.g. Friday drinks', 'split.people':'People', 'split.addPerson':'+ Add', 'split.namePh':'Name…', 'split.me':'Me', 'split.meHint':'Tap a name to mark who you are (★). Solo is fine — add others only if someone owes you.', 'split.items':'Items', 'split.addItem':'+ Add item', 'split.itemName':'Item', 'split.qty':'Qty', 'split.totalPh':'Total', 'split.unit':'each', 'split.assigned':'assigned', 'split.divideEqual':'Split evenly', 'split.allMine':'All mine', 'split.service':'Service fee', 'split.perPerson':'Per person', 'split.grand':'Total', 'split.unassignedWarn':"Some items aren't fully assigned yet.", 'split.copy':'Copy summary', 'split.save':'Save who owes me', 'split.done':'Done', 'split.saving':'Saving…', 'split.savedSoft':'Saved', 'split.copied':'✓ Summary copied', 'split.saved':'✓ Saved to “Who owes me”', 'split.untitled':'Outing', 'split.errNoDebt':'Assign items to at least one other person first.', 'split.modeTotal':'Total', 'split.modeEach':'Each', 'split.eachPh':'Each', 'split.genBill':'Generate a Finance bill', 'split.genBillHint':'Uses your share. Same month can count as a paid expense; a future month stays as an unpaid bill (e.g. credit card).', 'split.billMonth':'Bill month', 'split.billPaidThisMonth':'Count as a paid expense this month', 'split.billName':'🍻 Who owes me · {title}',
+    'split.open':'+ Split a bill', 'split.title':'Split a bill', 'split.outingName':'What was it?', 'split.outingPh':'e.g. Friday drinks', 'split.people':'People', 'split.addPerson':'+ Add', 'split.namePh':'Name…', 'split.me':'Me', 'split.meHint':'Tap a name to mark who you are (★). Solo is fine — add others only if someone owes you.', 'split.items':'Items', 'split.addItem':'+ Add item', 'split.itemName':'Item', 'split.qty':'Qty', 'split.totalPh':'Total', 'split.unit':'each', 'split.assigned':'assigned', 'split.divideEqual':'Split evenly', 'split.allMine':'All mine', 'split.service':'Service fee', 'split.perPerson':'Per person', 'split.grand':'Total', 'split.unassignedWarn':"Some items aren't fully assigned yet.", 'split.copy':'Copy summary', 'split.save':'Save who owes me', 'split.done':'Done', 'split.saving':'Saving…', 'split.savedSoft':'Saved', 'split.copied':'✓ Summary copied', 'split.saved':'✓ Saved to “Who owes me”', 'split.untitled':'Outing', 'split.errNoDebt':'Assign items to at least one other person first.', 'split.modeTotal':'Total', 'split.modeEach':'Each', 'split.eachPh':'Each', 'split.genBill':'Generate a Finance bill', 'split.genBillHint':'Uses your share. Same month can count as a paid expense; a future month stays as an unpaid bill (e.g. credit card).', 'split.billMonth':'Bill month', 'split.billPaidThisMonth':'Count as a paid expense this month', 'split.billName':'🍻 Who owes me · {title}', 'split.unsavedTitle':'Save changes?', 'split.unsavedMsg':'You added details to this split. Save them to “Who owes me”?', 'split.saveChanges':'Save', 'split.discard':'Discard',
     'debts.title':'🍻 Who owes me', 'debts.toReceive':'To receive', 'debts.empty':'Split a bill to start tracking who owes you.', 'debts.markPaid':'Mark paid', 'debts.paid':'✓ Paid', 'debts.deleteOuting':'Delete outing', 'debts.edit':'Edit', 'debts.delTitle':'Delete this outing?', 'debts.delMsg':"This removes everyone's debt for it.", 'debts.yourShare':'Your share',
     'tab.bills':'Bills & Savings', 'tab.budget':'Budget',
 
@@ -290,7 +290,7 @@ const I18N = {
     'action.refresh':'Atualizar dados', 'action.hub':'Voltar ao hub', 'action.toggleTheme':'Alternar tema', 'eye.reveal':'Revelar este mês passado', 'eye.dim':'Ocultar este mês passado', 'eye.show':'Mostrar valores', 'eye.hide':'Ocultar valores',
 
     'tab.overview':'Visão geral', 'tab.worklog':'Jornada', 'tab.money':'Dinheiro',
-    'split.open':'+ Rachar conta', 'split.title':'Rachar conta', 'split.outingName':'O que foi?', 'split.outingPh':'ex.: Bar na sexta', 'split.people':'Pessoas', 'split.addPerson':'+ Adicionar', 'split.namePh':'Nome…', 'split.me':'Eu', 'split.meHint':'Toque num nome para marcar quem é você (★). Só você também vale — adicione outros só se alguém te deve.', 'split.items':'Itens', 'split.addItem':'+ Adicionar item', 'split.itemName':'Item', 'split.qty':'Qtd', 'split.totalPh':'Total', 'split.unit':'cada', 'split.assigned':'atribuído', 'split.divideEqual':'Dividir igual', 'split.allMine':'Tudo meu', 'split.service':'Taxa de serviço', 'split.perPerson':'Por pessoa', 'split.grand':'Total', 'split.unassignedWarn':'Alguns itens ainda não foram totalmente atribuídos.', 'split.copy':'Copiar resumo', 'split.save':'Salvar quem me deve', 'split.done':'Pronto', 'split.saving':'Salvando…', 'split.savedSoft':'Salvo', 'split.copied':'✓ Resumo copiado', 'split.saved':'✓ Salvo em “Quem me deve”', 'split.untitled':'Rolê', 'split.errNoDebt':'Atribua itens a pelo menos outra pessoa primeiro.', 'split.modeTotal':'Total', 'split.modeEach':'Cada', 'split.eachPh':'Cada', 'split.genBill':'Gerar conta no Finance', 'split.genBillHint':'Usa a sua parte. No mês atual pode contar como gasto pago; um mês futuro fica como conta em aberto (ex.: cartão).', 'split.billMonth':'Mês da conta', 'split.billPaidThisMonth':'Contar como gasto deste mês', 'split.billName':'🍻 Quem me deve · {title}',
+    'split.open':'+ Rachar conta', 'split.title':'Rachar conta', 'split.outingName':'O que foi?', 'split.outingPh':'ex.: Bar na sexta', 'split.people':'Pessoas', 'split.addPerson':'+ Adicionar', 'split.namePh':'Nome…', 'split.me':'Eu', 'split.meHint':'Toque num nome para marcar quem é você (★). Só você também vale — adicione outros só se alguém te deve.', 'split.items':'Itens', 'split.addItem':'+ Adicionar item', 'split.itemName':'Item', 'split.qty':'Qtd', 'split.totalPh':'Total', 'split.unit':'cada', 'split.assigned':'atribuído', 'split.divideEqual':'Dividir igual', 'split.allMine':'Tudo meu', 'split.service':'Taxa de serviço', 'split.perPerson':'Por pessoa', 'split.grand':'Total', 'split.unassignedWarn':'Alguns itens ainda não foram totalmente atribuídos.', 'split.copy':'Copiar resumo', 'split.save':'Salvar quem me deve', 'split.done':'Pronto', 'split.saving':'Salvando…', 'split.savedSoft':'Salvo', 'split.copied':'✓ Resumo copiado', 'split.saved':'✓ Salvo em “Quem me deve”', 'split.untitled':'Rolê', 'split.errNoDebt':'Atribua itens a pelo menos outra pessoa primeiro.', 'split.modeTotal':'Total', 'split.modeEach':'Cada', 'split.eachPh':'Cada', 'split.genBill':'Gerar conta no Finance', 'split.genBillHint':'Usa a sua parte. No mês atual pode contar como gasto pago; um mês futuro fica como conta em aberto (ex.: cartão).', 'split.billMonth':'Mês da conta', 'split.billPaidThisMonth':'Contar como gasto deste mês', 'split.billName':'🍻 Quem me deve · {title}', 'split.unsavedTitle':'Salvar alterações?', 'split.unsavedMsg':'Você preencheu este racha. Salvar em “Quem me deve”?', 'split.saveChanges':'Salvar', 'split.discard':'Descartar',
     'debts.title':'🍻 Quem me deve', 'debts.toReceive':'A receber', 'debts.empty':'Racha uma conta para começar a controlar quem te deve.', 'debts.markPaid':'Marcar pago', 'debts.paid':'✓ Pago', 'debts.deleteOuting':'Excluir rolê', 'debts.edit':'Editar', 'debts.delTitle':'Excluir este rolê?', 'debts.delMsg':'Isso remove a dívida de todo mundo dele.', 'debts.yourShare':'Sua parte',
     'tab.bills':'Contas e Metas', 'tab.budget':'Orçamento',
 
@@ -1936,7 +1936,7 @@ function toggleFab() { fabOpen=!fabOpen; document.getElementById('fab').classLis
 function closeFab() { fabOpen=false; document.getElementById('fab').classList.remove('open'); document.getElementById('fabMenu').classList.remove('open'); }
 function clearFormErrors() { document.querySelectorAll('.form-err').forEach(e=>{ e.textContent=''; e.classList.remove('show'); }); }
 function closeOverlay(id) {
-  if (id==='splitOverlay') { doneSplit(); return; }
+  if (id==='splitOverlay') { requestSplitClose(); return; }
   if (id==='billDelOverlay') billScopeCtx=null;
   if (mOpen) mOpen();
   document.getElementById(id).classList.remove('open');
@@ -1946,7 +1946,11 @@ function closeAllOverlays() {
   if (mOpen) mOpen();
   const splitOv = document.getElementById('splitOverlay');
   const splitOpen = !!(splitOv && splitOv.classList.contains('open') && splitState);
-  if (splitOpen) flushSplitSave(true);
+  if (splitOpen) {
+    if (splitState.persisted) flushSplitSave(true);
+    else if (!splitHasUserContent()) finishSplitClose();
+    else flushSplitSave(true);
+  }
   document.querySelectorAll('.overlay').forEach(function(o){
     if (splitOpen && o.id === 'splitOverlay') return;
     o.classList.remove('open');
@@ -2662,6 +2666,30 @@ function splUid(){ return 'x' + Date.now().toString(36) + Math.random().toString
 function fmtMoney(n){ const c = CURRENCIES[currencyTo()] || { symbol:'', locale:'en-US' }; return (c.symbol ? c.symbol+' ' : '') + (Math.abs(Number(n)||0)).toLocaleString(c.locale, { minimumFractionDigits:2, maximumFractionDigits:2 }); }
 function fmtUnit(n){ n = Number(n)||0; return (Math.abs(n % 1) < 1e-9) ? String(Math.round(n)) : n.toLocaleString(L(), { maximumFractionDigits:2 }); }
 function setSplitSaveStatus(msg){ const el = document.getElementById('spSaveStatus'); if (el) el.textContent = msg || ''; }
+function syncSplitActionBtn(){
+  const btn = document.getElementById('splitSave');
+  if (!btn || !splitState) return;
+  btn.textContent = splitState.persisted ? t('split.done') : t('split.save');
+}
+function splitHasUserContent(){
+  if (!splitState) return false;
+  const title = (document.getElementById('spTitle').value || '').trim();
+  if (title) return true;
+  if (document.getElementById('spSvc') && document.getElementById('spSvc').checked) return true;
+  if (document.getElementById('spGenBill') && document.getElementById('spGenBill').checked) return true;
+  if ((splitState.people || []).length > 1) return true;
+  const meLabel = t('split.me');
+  if ((splitState.people || []).some(function(p){ return p && String(p.name || '').trim() && String(p.name).trim() !== meLabel; })) return true;
+  return (splitState.items || []).some(function(it){
+    if (!it) return false;
+    if (String(it.name || '').trim()) return true;
+    if ((Number(it.price) || 0) > 0) return true;
+    if ((Number(it.qty) || 0) !== 1) return true;
+    if (it.priceMode && it.priceMode !== 'total') return true;
+    if (it.assign && Object.keys(it.assign).length) return true;
+    return false;
+  });
+}
 function splitBillCategory(){
   const names = activeCatNames();
   const hit = names.find(function(n){ return /Bills|Contas/i.test(n); });
@@ -2717,6 +2745,7 @@ function openSplit(splitId){
         linkedBillId: mine.linkedBillId || (rows.find(function(d){ return d.linkedBillId; }) || {}).linkedBillId || '',
         people: rebuilt.people,
         items: rebuilt.items,
+        persisted: true,
         _ready: false
       };
       document.getElementById('spTitle').value = mine.title || '';
@@ -2736,6 +2765,7 @@ function openSplit(splitId){
         linkedBillId: '',
         people: [{ id: splUid(), name: t('split.me'), isMe: true }],
         items: [],
+        persisted: false,
         _ready: false
       };
       document.getElementById('spTitle').value = '';
@@ -2745,6 +2775,7 @@ function openSplit(splitId){
       addItem(true);
     }
     renderSplitPeople(); renderSplitItems(); renderSplitTotals();
+    syncSplitActionBtn();
     splitState._ready = true;
     document.getElementById('splitOverlay').classList.add('open');
   } catch (e) {
@@ -2974,7 +3005,7 @@ function applySplitRowsLocal(rows){
   renderDebts();
 }
 function scheduleSplitSave(){
-  if (!splitState || !splitState._ready) return;
+  if (!splitState || !splitState._ready || !splitState.persisted) return;
   setSplitSaveStatus(t('split.saving'));
   clearTimeout(splitSaveTimer);
   splitSaveTimer = setTimeout(function(){ flushSplitSave(false); }, 600);
@@ -2993,6 +3024,10 @@ function flushSplitSave(closeAfter){
       applySplitRowsLocal(rows);
       return jbRun('replaceSplit', splitState.splitId, rows);
     }).then(function(){
+      if (splitState) {
+        splitState.persisted = true;
+        syncSplitActionBtn();
+      }
       setSplitSaveStatus(t('split.savedSoft'));
       if (wantClose) finishSplitClose();
       else if (document.getElementById('spGenBill') && document.getElementById('spGenBill').checked) renderAll();
@@ -3006,6 +3041,7 @@ function flushSplitSave(closeAfter){
   return splitSaveChain;
 }
 function finishSplitClose(){
+  clearTimeout(splitSaveTimer); splitSaveTimer = null;
   if (mOpen) mOpen();
   const ov = document.getElementById('splitOverlay');
   if (ov) ov.classList.remove('open');
@@ -3013,12 +3049,30 @@ function finishSplitClose(){
   setSplitSaveStatus('');
   splitState = null;
 }
-function doneSplit(){
+function saveAndCloseSplit(){
+  if (!splitState) { finishSplitClose(); return; }
+  if (!splitState.persisted && !splitHasUserContent()) { finishSplitClose(); return; }
+  flushSplitSave(true);
+}
+function requestSplitClose(){
   const ov = document.getElementById('splitOverlay');
   if (!ov || !ov.classList.contains('open')) return;
   if (!splitState) { finishSplitClose(); return; }
+  if (!splitState.persisted) {
+    if (!splitHasUserContent()) { finishSplitClose(); return; }
+    JB.confirm(t('split.unsavedTitle'), t('split.unsavedMsg'), function(){
+      flushSplitSave(true);
+    }, {
+      yes: t('split.saveChanges'),
+      no: t('split.discard'),
+      danger: false,
+      onNo: function(){ finishSplitClose(); }
+    });
+    return;
+  }
   flushSplitSave(true);
 }
+function doneSplit(){ requestSplitClose(); }
 function fmtDebtDate(ms){ if (!ms) return ''; try { return new Date(Number(ms)).toLocaleDateString(L(), { day:'2-digit', month:'short' }); } catch(e){ return ''; } }
 function debtInSelectedMonth(d){
   const t = Number(d && d.created) || 0;

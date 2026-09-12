@@ -214,7 +214,10 @@ test('editor exposes two-column toolbar insert', function () {
   assert.match(css, /width: fit-content/);
   assert.match(css, /min-width: 140px/);
   assert.match(css, /min-height: 88px/);
+  assert.match(css, /jb-ed-col-empty/);
   assert.match(css, /\.jb-ed-after-cols/);
+  assert.match(src, /function tryColsBackspace/);
+  assert.match(src, /function syncColEmptyState/);
   assert.match(css, /:not\(:focus-within\) > p:last-child:has\(> br:only-child\)/);
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.jb-ed-surface \.jb-ed-col/);
 });

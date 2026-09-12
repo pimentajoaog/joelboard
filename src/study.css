@@ -131,8 +131,35 @@ textarea.field{ resize:vertical; min-height:64px; }
 .anexbtn{ width:100%; margin-top:4px; }
 
 /* focus mode (Pomodoro) */
-.focover{ position:fixed; inset:0; z-index:300; display:none; flex-direction:column; background:var(--bg); background:radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--primary) 16%, var(--bg)) 0%, var(--bg) 58%); }
-.focover.open{ display:flex; }
+.focover{
+  position:fixed; inset:0; z-index:300;
+  display:flex; flex-direction:column;
+  background:var(--bg);
+  background:radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--primary) 16%, var(--bg)) 0%, var(--bg) 58%);
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:translateY(14px) scale(0.985);
+  transition:opacity 0.22s ease, transform 0.28s cubic-bezier(.2,.85,.3,1), visibility 0.28s ease;
+}
+.focover.open{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transform:none;
+}
+.focover.open.closing{
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:translateY(10px) scale(0.99);
+}
+@media (prefers-reduced-motion: reduce){
+  .focover, .focover.open, .focover.open.closing{
+    transition:none;
+    transform:none;
+  }
+}
 .foctop{ display:flex; align-items:center; justify-content:space-between; padding:18px 18px 6px; }
 .focx{ border:0; background:var(--surface2); color:var(--muted); width:36px; height:36px; border-radius:50%; font-size:16px; cursor:pointer; font-family:inherit; }
 .foctitle{ font-size:13px; font-weight:800; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%; }

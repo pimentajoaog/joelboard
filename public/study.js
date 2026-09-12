@@ -184,6 +184,7 @@ function studySyncRoute(opts){
   JB.qsPatch(patch, { replace: !!opts.replace });
 }
 function studyApplyRoute(){
+  var wantFoco=(JB.qsGet&&JB.qsGet('foco')==='1');
   var t=JB.qsGet?JB.qsGet('tab'):'';
   var date=JB.qsGet?JB.qsGet('date'):'';
   var mid=JB.qsGet?JB.qsGet('mat'):'';
@@ -191,24 +192,23 @@ function studyApplyRoute(){
   if(modId && modulo(modId)){
     tab('materias', { fromRoute:true, keepStack:true });
     openModNote(modId, { fromRoute:true });
-    return;
-  }
-  if(mid && mat(mid)){
+  } else if(mid && mat(mid)){
     tab('materias', { fromRoute:true, keepStack:true });
     openMatDetail(mid, { fromRoute:true });
-    return;
-  }
-  if(t==='materias'){
+  } else if(t==='materias'){
     tab('materias', { fromRoute:true });
     renderMaterias();
-    return;
+  } else {
+    if(date && /^\d{4}-\d{2}-\d{2}$/.test(date)){
+      selDate=date;
+      var d=parseISO(date); calY=d.getFullYear(); calM=d.getMonth();
+    }
+    tab('calendario', { fromRoute:true });
+    renderCal();
   }
-  if(date && /^\d{4}-\d{2}-\d{2}$/.test(date)){
-    selDate=date;
-    var d=parseISO(date); calY=d.getFullYear(); calM=d.getMonth();
-  }
-  tab('calendario', { fromRoute:true });
-  renderCal();
+  if(wantFoco) openFoco({ fromRoute:true });
+  else if(focState.active) endFoco({ fromRoute:true });
+  else closeFoco({ fromRoute:true });
 }
 function tab(name, opts){
   opts=opts||{};
@@ -751,9 +751,57 @@ function saveFocoCfg(){
   saveConfig('focoGoalWeek', String(Math.max(0,Number(gw&&gw.value)||0)));
   if($('cal')) renderCal();
 }
-var focState={active:false,running:false,phase:'foco',secs:0,tot:0,cycle:1,longb:false,matId:''}, focMat='', focInt=null;
-function openFoco(){ if(focState.active){ $('focoOverlay').classList.add('open'); renderFoco(); return; } focMat=(DATA.materias&&DATA.materias[0])?DATA.materias[0].id:''; focState={active:false,running:false,phase:'foco',secs:0,tot:0,cycle:1,longb:false,matId:''}; renderFoco(); $('focoOverlay').classList.add('open'); }
-function closeFoco(){ $('focoOverlay').classList.remove('open'); }
+var focState={active:false,running:false,phase:'foco',secs:0,tot:0,cycle:1,longb:false,matId:''}, focMat='', focInt=null, _focCloseTimer=0;
+function focReduceMotion(){
+  try{ return !!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches); }catch(_){ return false; }
+}
+function showFocoOverlay(){
+  var ov=$('focoOverlay'); if(!ov) return;
+  if(_focCloseTimer){ clearTimeout(_focCloseTimer); _focCloseTimer=0; }
+  ov.classList.remove('closing');
+  /* Force reflow so reopening after a close still animates. */
+  void ov.offsetWidth;
+  ov.classList.add('open');
+}
+function hideFocoOverlay(opts){
+  opts=opts||{};
+  var ov=$('focoOverlay'); if(!ov) return;
+  if(!ov.classList.contains('open')&&!ov.classList.contains('closing')) return;
+  if(_focCloseTimer){ clearTimeout(_focCloseTimer); _focCloseTimer=0; }
+  function finish(){
+    ov.classList.remove('open','closing');
+    _focCloseTimer=0;
+  }
+  if(focReduceMotion()){ finish(); return; }
+  ov.classList.add('closing');
+  _focCloseTimer=setTimeout(finish, 280);
+}
+function openFoco(opts){
+  opts=opts||{};
+  var ov=$('focoOverlay');
+  var already=!!(ov&&ov.classList.contains('open')&&!ov.classList.contains('closing'));
+  if(focState.active){
+    showFocoOverlay();
+    renderFoco();
+  } else if(already){
+    showFocoOverlay();
+  } else {
+    focMat=(DATA.materias&&DATA.materias[0])?DATA.materias[0].id:'';
+    focState={active:false,running:false,phase:'foco',secs:0,tot:0,cycle:1,longb:false,matId:''};
+    renderFoco();
+    showFocoOverlay();
+  }
+  if(!opts.fromRoute && JB.qsPatch){
+    var cur=JB.qsGet?JB.qsGet('foco'):'';
+    JB.qsPatch({ foco:'1' }, { replace: cur==='1' });
+  }
+}
+function closeFoco(opts){
+  opts=opts||{};
+  if(!opts.fromRoute && JB.qsGet && JB.qsGet('foco')==='1' && JB.routeBack && JB.routeBack({ foco:null })) return;
+  hideFocoOverlay(opts);
+  if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ foco:null }, { replace:true });
+}
 function renderFocMat(){ var el=$('focMatWrap'); if(!el) return; var cur=mat(focMat); var btn=cur?('<span class="dotc" style="background:'+cur.cor+'"></span>'+esc(cur.nome)):'— sem matéria —'; var opts='<div class="jb-dd-opt'+(focMat===''?' is-sel':'')+'" onclick="pickFocMat(\'\')">— sem matéria —</div>'+(DATA.materias||[]).map(function(m){return '<div class="jb-dd-opt'+(m.id===focMat?' is-sel':'')+'" onclick="pickFocMat(\''+m.id+'\')"><span class="dotc" style="background:'+m.cor+'"></span>'+esc(m.nome)+'</div>';}).join(''); el.innerHTML='<div class="jb-dd"><button type="button" class="jb-dd-btn" onclick="JB.ddToggle(this)"><span>'+btn+'</span><span class="jb-dd-caret">▾</span></button><div class="jb-dd-menu">'+opts+'</div></div>'; }
 function pickFocMat(id){ focMat=id; if(window.JB&&JB.ddClose)JB.ddClose(); renderFocMat(); }
 function startFocoRun(){ var c=focCfg(); focState={active:true,running:true,phase:'foco',tot:c.foco*60,secs:c.foco*60,cycle:1,longb:false,matId:focMat}; clearInterval(focInt); focInt=setInterval(focTick,1000); renderFoco(); }
@@ -761,7 +809,16 @@ function focTick(){ if(!focState.running) return; focState.secs--; if(focState.s
 function advanceFoc(){ var c=focCfg(); if(focState.phase==='foco'){ var long=(focState.cycle % c.cyc===0); focState.phase='pausa'; focState.longb=long; focState.tot=(long?c.long:c.pausa)*60; focState.secs=focState.tot; } else { focState.cycle++; focState.phase='foco'; focState.tot=c.foco*60; focState.secs=focState.tot; } renderFoco(); }
 function pauseFoco(){ focState.running=!focState.running; renderFoco(); }
 function skipFoco(){ logFocoBlock(); advanceFoc(); }
-function endFoco(){ if(focState.active) logFocoBlock(); clearInterval(focInt); focState.active=false; $('focoOverlay').classList.remove('open'); render(); }
+function endFoco(opts){
+  opts=opts||{};
+  if(!opts.fromRoute && JB.qsGet && JB.qsGet('foco')==='1' && JB.routeBack && JB.routeBack({ foco:null })) return;
+  if(focState.active) logFocoBlock();
+  clearInterval(focInt);
+  focState.active=false;
+  hideFocoOverlay(opts);
+  if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ foco:null }, { replace:true });
+  render();
+}
 function logFocoBlock(){ var mins=Math.round((focState.tot-focState.secs)/60); if(mins<1) return; logFoco(focState.matId||'', mins, focState.phase==='pausa'?'pausa':'foco'); }
 function logFoco(matId,mins,tipo){ var f={id:uuid(),data:todayISO(),materiaId:matId||'',min:mins,tipo:tipo==='pausa'?'pausa':'foco'}; DATA.focos=DATA.focos||[]; DATA.focos.push(f); JB.api('POST', ssUrl('/values/Foco:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[[f.data,f.materiaId,f.min,f.id,f.tipo]] }).catch(studyWriteErr); }
 function renderFoco(){

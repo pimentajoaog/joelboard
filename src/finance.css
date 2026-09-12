@@ -384,6 +384,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .bun-check { display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer; padding: 5px 4px; border-radius: 6px; }
 .bun-check:hover { background: var(--surface); }
 .bun-check input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+.bun-sec-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); margin: 6px 4px 2px; }
+.bun-sec-label:first-child { margin-top: 0; }
+.bun-sec-other { margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.bun-sec-hint { font-size: 11px; color: var(--muted); line-height: 1.35; margin: 0 4px 6px; }
+.bun-check-other { opacity: 0.72; }
 
 .ivb-top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .ivb-income { font-size: 12px; color: var(--muted); }

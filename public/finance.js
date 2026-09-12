@@ -59,6 +59,9 @@ const I18N = {
     'empty.noBudgetSuggest':'No category spending to suggest budgets from for this period yet.',
     'empty.noHistory':'Not enough history for this period. Log some expenses or add recurring bills, then suggestions will appear here.',
     'empty.bundleChecklist':'Add recurring bills or savings first.',
+    'bundle.thisMonth':'Active this month',
+    'bundle.otherMonths':'Linked in other months (not charged now)',
+    'bundle.otherMonthsHint':'Uncheck to unlink. These stay on the card only in their months.',
     'empty.noCats':'No categories yet — add one above.',
 
     'fab.transaction':'💸 Transaction', 'fab.bill':'🔄 Bill', 'fab.goal':'🎯 Goal',
@@ -331,6 +334,9 @@ const I18N = {
     'empty.noBudgetSuggest':'Ainda não há gastos por categoria para sugerir orçamentos neste período.',
     'empty.noHistory':'Histórico insuficiente para este período. Lance algumas despesas ou adicione contas fixas, e as sugestões aparecerão aqui.',
     'empty.bundleChecklist':'Adicione contas fixas ou metas primeiro.',
+    'bundle.thisMonth':'Ativos neste mês',
+    'bundle.otherMonths':'Vinculados em outros meses (sem cobrança agora)',
+    'bundle.otherMonthsHint':'Desmarque para desvincular. Só aparecem no cartão nos meses deles.',
     'empty.noCats':'Nenhuma categoria ainda — adicione uma acima.',
 
     'fab.transaction':'💸 Lançamento', 'fab.bill':'🔄 Conta', 'fab.goal':'🎯 Meta',
@@ -1718,12 +1724,65 @@ function confirmGroup() {
   grpCtx.items.forEach(it => { const pd = grpCtx.mode==='back' ? it.occDate : todayStr(); applyPaid(it.type, it.id, true, m, it.edited ? it.amount : undefined, pd); });
   grpCtx = null; closeOverlay('groupOverlay'); renderAll(); showToast(t('toast.nMarkedPaid',{n:n}));
 }
+function billBundleMeta(b) {
+  if (!b) return { tag: '📦', suf: '' };
+  if (b.installments <= 0) return { tag: '🔄', suf: '/mo' };
+  if (b.installments === 1) return { tag: '📦', suf: ' (1x)' };
+  return { tag: '📦', suf: ' (' + b.installments + 'x)' };
+}
 function renderBundleChecklist(selected) {
-  const sel = new Set(bundleItems({items:selected||[]}).map(it=>it.type+':'+it.id));
+  const sel = new Set(bundleItems({ items: selected || [] }).map(it => it.type + ':' + it.id));
+  const activeBillIds = new Set(activeBills().map(b => b.id));
+  const activeAllocIds = new Set(activeAllocations().map(a => a.id));
+  let activeHtml = '';
+  let otherHtml = '';
+
+  activeBills().forEach(function (b) {
+    const on = sel.has('bill:' + b.id);
+    const meta = billBundleMeta(b);
+    activeHtml += '<label class="bun-check"><input type="checkbox" data-type="bill" data-id="' + b.id + '"' + (on ? ' checked' : '') + '> '
+      + meta.tag + ' ' + esc(b.name) + ' · ' + brl(b.amount) + meta.suf + '</label>';
+  });
+  activeAllocations().forEach(function (a) {
+    const on = sel.has('allocation:' + a.id);
+    activeHtml += '<label class="bun-check"><input type="checkbox" data-type="allocation" data-id="' + a.id + '"' + (on ? ' checked' : '') + '> '
+      + '💰 ' + esc(goalName(a.goalId)) + ' · ' + brl(a.amount) + '</label>';
+  });
+
+  /* Linked items that are not charged in the selected month — keep unless unchecked. */
+  (selected || []).forEach(function (raw) {
+    const it = { type: normType(raw.type), id: raw.id };
+    const key = it.type + ':' + it.id;
+    if (it.type === 'bill') {
+      if (activeBillIds.has(it.id)) return;
+      const b = (DATA.recurring || []).find(x => String(x.id) === String(it.id));
+      if (!b) return;
+      const meta = billBundleMeta(b);
+      const when = b.startMonth ? ymLabel(b.startMonth) : '';
+      otherHtml += '<label class="bun-check bun-check-other"><input type="checkbox" data-type="bill" data-id="' + b.id + '" checked> '
+        + meta.tag + ' ' + esc(b.name) + ' · ' + brl(b.amount) + meta.suf
+        + (when ? ' · ' + esc(when) : '') + '</label>';
+    } else if (it.type === 'allocation') {
+      if (activeAllocIds.has(it.id)) return;
+      const a = (DATA.allocations || []).find(x => String(x.id) === String(it.id));
+      if (!a) return;
+      const when = a.startMonth ? ymLabel(a.startMonth) : '';
+      otherHtml += '<label class="bun-check bun-check-other"><input type="checkbox" data-type="allocation" data-id="' + a.id + '" checked> '
+        + '💰 ' + esc(goalName(a.goalId)) + ' · ' + brl(a.amount)
+        + (when ? ' · ' + esc(when) : '') + '</label>';
+    }
+  });
+
   let html = '';
-  (DATA.recurring||[]).forEach(b => { const on=sel.has('bill:'+b.id), tag=b.installments>0?'📦':'🔄', suf=b.installments>0?(' ('+b.installments+'x)'):'/mo'; html += '<label class="bun-check"><input type="checkbox" data-type="bill" data-id="'+b.id+'"'+(on?' checked':'')+'> '+tag+' '+esc(b.name)+' · '+brl(b.amount)+suf+'</label>'; });
-  (DATA.allocations||[]).forEach(a => { const on=sel.has('allocation:'+a.id); html += '<label class="bun-check"><input type="checkbox" data-type="allocation" data-id="'+a.id+'"'+(on?' checked':'')+'> 💰 '+esc(goalName(a.goalId))+' · '+brl(a.amount)+'</label>'; });
-  document.getElementById('bunItems').innerHTML = html || '<div class="empty">'+t('empty.bundleChecklist')+'</div>';
+  if (activeHtml) {
+    html += '<div class="bun-sec-label">' + esc(t('bundle.thisMonth')) + '</div>' + activeHtml;
+  }
+  if (otherHtml) {
+    html += '<div class="bun-sec-label bun-sec-other">' + esc(t('bundle.otherMonths')) + '</div>'
+      + '<div class="bun-sec-hint">' + esc(t('bundle.otherMonthsHint')) + '</div>'
+      + otherHtml;
+  }
+  document.getElementById('bunItems').innerHTML = html || '<div class="empty">' + t('empty.bundleChecklist') + '</div>';
 }
 function collectBundleItems() { return [...document.querySelectorAll('#bunItems input[type=checkbox]')].filter(c=>c.checked).map(c=>({type:c.dataset.type, id:c.dataset.id})); }
 function openBundle() {

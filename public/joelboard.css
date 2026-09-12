@@ -733,6 +733,26 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 @media (max-width: 640px) {
   .jb-ed-surface .jb-ed-cols { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 }
+.jb-ed-sc-list { display: flex; flex-direction: column; gap: 6px; }
+.jb-ed-sc-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; border: 1px solid var(--border, #2d3346); border-radius: 10px;
+  background: var(--surface2, #232838);
+}
+.jb-ed-sc-label { font-size: 13px; font-weight: 650; min-width: 0; }
+.jb-ed-sc-key {
+  flex: 0 0 auto; min-width: 118px; max-width: 52%;
+  padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border, #2d3346);
+  background: var(--surface, #1a1f2e); color: var(--text, #e7eaf3);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; cursor: pointer; text-align: center;
+}
+.jb-ed-sc-key:hover { border-color: var(--primary, #818cf8); }
+.jb-ed-sc-key.capturing {
+  border-color: var(--primary, #818cf8);
+  color: var(--primary, #818cf8);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #818cf8) 22%, transparent);
+}
 .jb-ed-surface img[data-jb-file] { display: block; max-width: 100%; height: auto; box-sizing: border-box; border-radius: 10px; margin: 10px 0; background: var(--surface2, #232838); cursor: pointer; -webkit-user-drag: none; user-select: none; touch-action: none; }
 .jb-ed-surface img.jb-ed-img-on { outline: 2px solid var(--primary, #818cf8); outline-offset: 2px; }
 .jb-ed-surface img.jb-ed-img-dragging {

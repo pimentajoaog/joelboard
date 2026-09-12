@@ -85,7 +85,9 @@
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>
     <div class="set-tabs">
       <button class="set-tab active" data-st="tema" onclick="switchSet('tema')">Tema</button>
-      <button class="set-tab" data-st="foco" onclick="switchSet('foco')">Foco</button><button class="set-tab" data-st="sobre" onclick="switchSet('sobre')">Sobre</button>
+      <button class="set-tab" data-st="foco" onclick="switchSet('foco')">Foco</button>
+      <button class="set-tab" data-st="atalhos" onclick="switchSet('atalhos')">Atalhos</button>
+      <button class="set-tab" data-st="sobre" onclick="switchSet('sobre')">Sobre</button>
     </div>
     <div class="set-pane" data-pane="tema">
       <div class="fg"><label class="fl">Tema do app</label><div id="setSkins"></div></div>
@@ -104,6 +106,9 @@
         <div class="fg" style="flex:1"><label class="fl">Meta diária (min foco)</label><input class="field" id="focoGoalDay" type="number" inputmode="numeric" min="0" placeholder="ex.: 120" onchange="saveFocoCfg()"></div>
         <div class="fg" style="flex:1"><label class="fl">Meta 7 dias (min foco)</label><input class="field" id="focoGoalWeek" type="number" inputmode="numeric" min="0" placeholder="ex.: 600" onchange="saveFocoCfg()"></div>
       </div>
+    </div>
+    <div class="set-pane" data-pane="atalhos" style="display:none">
+      <div id="setShortcuts"></div>
     </div>
     <div class="set-pane" data-pane="sobre" style="display:none">
       <div class="fg"><label class="fl">Conta</label><div class="rg" id="setAcctEmail">—</div></div>

@@ -35,6 +35,269 @@
     orange: '#ffcc80', red: '#ff8a80', blue: '#82b1ff', purple: '#e1bee7', violet: '#e1bee7'
   };
   var ALLOWED = { P:1, H1:1, H2:1, H3:1, DIV:1, BR:1, SPAN:1, STRONG:1, B:1, EM:1, I:1, U:1, S:1, STRIKE:1, A:1, UL:1, OL:1, LI:1, BLOCKQUOTE:1, PRE:1, CODE:1, HR:1, FONT:1, IMG:1 };
+  var SHORTCUT_STORE = 'jb_ed_shortcuts';
+  var SHORTCUT_DEFS = [
+    { id: 'bold', label: 'Negrito', def: 'Mod+B' },
+    { id: 'italic', label: 'Itálico', def: 'Mod+I' },
+    { id: 'underline', label: 'Sublinhado', def: 'Mod+U' },
+    { id: 'strike', label: 'Riscado', def: 'Mod+Shift+X' },
+    { id: 'highlight', label: 'Realçar', def: 'Mod+Shift+H' },
+    { id: 'h1', label: 'Título', def: 'Mod+Alt+1' },
+    { id: 'h2', label: 'Subtítulo', def: 'Mod+Alt+2' },
+    { id: 'h3', label: 'Seção', def: 'Mod+Alt+3' },
+    { id: 'fontInc', label: 'Aumentar fonte', def: 'Mod+Shift+.' },
+    { id: 'fontDec', label: 'Diminuir fonte', def: 'Mod+Shift+,' },
+    { id: 'bullet', label: 'Lista', def: 'Mod+Shift+8' },
+    { id: 'number', label: 'Lista numerada', def: 'Mod+Shift+7' },
+    { id: 'quote', label: 'Citação', def: 'Mod+Shift+9' },
+    { id: 'link', label: 'Link', def: 'Mod+K' },
+    { id: 'hr', label: 'Linha horizontal', def: 'Mod+Shift+Enter' },
+    { id: 'columns', label: 'Duas colunas', def: 'Mod+Shift+C' },
+    { id: 'ink', label: 'Sharpie', def: 'Mod+E' },
+    { id: 'save', label: 'Salvar', def: 'Mod+S' },
+    { id: 'undo', label: 'Desfazer', def: 'Mod+Z' },
+    { id: 'redo', label: 'Refazer', def: 'Mod+Shift+Z' }
+  ];
+  function isMacUi() {
+    try {
+      var p = navigator.platform || '';
+      var ua = navigator.userAgent || '';
+      return /Mac|iPhone|iPad|iPod/.test(p) || /Mac OS X/.test(ua);
+    } catch (_) { return false; }
+  }
+  function normalizeShortcutKey(raw) {
+    var k = String(raw || '').toLowerCase();
+    if (k === 'escape') return 'esc';
+    if (k === 'arrowup') return 'up';
+    if (k === 'arrowdown') return 'down';
+    if (k === 'arrowleft') return 'left';
+    if (k === 'arrowright') return 'right';
+    if (k === ' ') return 'space';
+    if (k === 'add') return '+';
+    if (k === 'subtract') return '-';
+    if (k === 'decimal') return '.';
+    return k;
+  }
+  function parseShortcut(str) {
+    var parts = String(str || '').split('+').map(function (p) { return p.trim(); }).filter(Boolean);
+    var out = { mod: false, alt: false, shift: false, key: '' };
+    parts.forEach(function (p) {
+      var low = p.toLowerCase();
+      if (low === 'mod' || low === 'cmd' || low === 'meta' || low === 'ctrl' || low === 'control') out.mod = true;
+      else if (low === 'alt' || low === 'option') out.alt = true;
+      else if (low === 'shift') out.shift = true;
+      else out.key = normalizeShortcutKey(p);
+    });
+    return out.key ? out : null;
+  }
+  function shortcutFromEvent(ev) {
+    if (!ev) return null;
+    var key = '';
+    var code = String(ev.code || '');
+    if (/^Digit[0-9]$/.test(code)) key = code.slice(5);
+    else if (/^Key[A-Z]$/.test(code)) key = code.slice(3).toLowerCase();
+    else if (code === 'Enter' || code === 'NumpadEnter') key = 'enter';
+    else if (code === 'Minus' || code === 'NumpadSubtract') key = '-';
+    else if (code === 'Equal' || code === 'NumpadAdd') key = '=';
+    else if (code === 'Period' || code === 'NumpadDecimal') key = '.';
+    else if (code === 'Comma') key = ',';
+    else if (code === 'Slash') key = '/';
+    else if (code === 'Backslash') key = '\\';
+    else if (code === 'BracketLeft') key = '[';
+    else if (code === 'BracketRight') key = ']';
+    else if (code === 'Semicolon') key = ';';
+    else if (code === 'Quote') key = "'";
+    else if (code === 'Backquote') key = '`';
+    else key = normalizeShortcutKey(ev.key);
+    if (!key || key === 'shift' || key === 'control' || key === 'alt' || key === 'meta' || key === 'cmd') return null;
+    var mod = isMacUi() ? !!ev.metaKey : !!ev.ctrlKey;
+    if (!mod && !ev.altKey && !ev.shiftKey && key.length === 1) return null;
+    return {
+      mod: mod,
+      alt: !!ev.altKey,
+      shift: !!ev.shiftKey,
+      key: key
+    };
+  }
+  function serializeShortcut(parts) {
+    if (!parts || !parts.key) return '';
+    var bits = [];
+    if (parts.mod) bits.push('Mod');
+    if (parts.alt) bits.push('Alt');
+    if (parts.shift) bits.push('Shift');
+    var k = parts.key;
+    if (k === 'enter') k = 'Enter';
+    else if (k === 'esc') k = 'Esc';
+    else if (k === 'space') k = 'Space';
+    else if (k.length === 1) k = /[a-z]/.test(k) ? k.toUpperCase() : k;
+    else k = k.charAt(0).toUpperCase() + k.slice(1);
+    bits.push(k);
+    return bits.join('+');
+  }
+  function formatShortcut(str) {
+    var p = parseShortcut(str);
+    if (!p) return '';
+    var mac = isMacUi();
+    var bits = [];
+    if (p.mod) bits.push(mac ? '⌘' : 'Ctrl');
+    if (p.alt) bits.push(mac ? '⌥' : 'Alt');
+    if (p.shift) bits.push(mac ? '⇧' : 'Shift');
+    var k = p.key;
+    if (k === 'enter') k = mac ? '↵' : 'Enter';
+    else if (k === 'esc') k = 'Esc';
+    else if (k === 'space') k = 'Space';
+    else if (k.length === 1) k = k.toUpperCase();
+    else k = k.charAt(0).toUpperCase() + k.slice(1);
+    bits.push(k);
+    return mac ? bits.join('') : bits.join('+');
+  }
+  function shortcutsMatch(a, b) {
+    return !!(a && b && a.mod === b.mod && a.alt === b.alt && a.shift === b.shift && a.key === b.key);
+  }
+  function defaultShortcutMap() {
+    var out = {};
+    SHORTCUT_DEFS.forEach(function (d) { out[d.id] = d.def; });
+    return out;
+  }
+  function readShortcutOverrides() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(SHORTCUT_STORE) || '{}');
+      return raw && typeof raw === 'object' ? raw : {};
+    } catch (_) { return {}; }
+  }
+  function getShortcutMap() {
+    var out = defaultShortcutMap();
+    var ov = readShortcutOverrides();
+    Object.keys(ov).forEach(function (id) {
+      if (out[id] == null) return;
+      if (ov[id] === '' || ov[id] == null) out[id] = '';
+      else if (typeof ov[id] === 'string' && parseShortcut(ov[id])) out[id] = serializeShortcut(parseShortcut(ov[id]));
+    });
+    return out;
+  }
+  function getShortcut(id) {
+    return getShortcutMap()[id] || '';
+  }
+  function setShortcut(id, chord) {
+    if (!SHORTCUT_DEFS.some(function (d) { return d.id === id; })) return getShortcutMap();
+    var ov = readShortcutOverrides();
+    var def = '';
+    SHORTCUT_DEFS.forEach(function (d) { if (d.id === id) def = d.def; });
+    var next = chord == null ? '' : String(chord).trim();
+    if (next) {
+      var parsed = parseShortcut(next);
+      next = parsed ? serializeShortcut(parsed) : '';
+    }
+    if (!next || next === def) delete ov[id];
+    else ov[id] = next;
+    try { localStorage.setItem(SHORTCUT_STORE, JSON.stringify(ov)); } catch (_) {}
+    try { window.dispatchEvent(new CustomEvent('jb-ed-shortcuts')); } catch (_) {}
+    return getShortcutMap();
+  }
+  function resetShortcuts() {
+    try { localStorage.removeItem(SHORTCUT_STORE); } catch (_) {}
+    try { window.dispatchEvent(new CustomEvent('jb-ed-shortcuts')); } catch (_) {}
+    return getShortcutMap();
+  }
+  function findShortcutAction(ev, map) {
+    var parts = shortcutFromEvent(ev);
+    if (!parts) return '';
+    var ids = Object.keys(map || {});
+    var i, id, want;
+    for (i = 0; i < ids.length; i++) {
+      id = ids[i];
+      want = parseShortcut(map[id]);
+      if (want && shortcutsMatch(parts, want)) return id;
+    }
+    return '';
+  }
+  function shortcutTitle(label, id) {
+    var chord = formatShortcut(getShortcut(id));
+    return chord ? (label + ' (' + chord + ')') : label;
+  }
+  function mountShortcutsSettings(host) {
+    if (!host) return;
+    host.innerHTML = '';
+    var hint = document.createElement('div');
+    hint.className = 'rg';
+    hint.style.marginBottom = '10px';
+    hint.textContent = 'Atalhos do editor de notas. Clique num atalho e pressione a combinação. Esc cancela; Backspace limpa.';
+    host.appendChild(hint);
+    var list = document.createElement('div');
+    list.className = 'jb-ed-sc-list';
+    host.appendChild(list);
+    var capturing = '';
+    function paint() {
+      var map = getShortcutMap();
+      list.innerHTML = '';
+      SHORTCUT_DEFS.forEach(function (d) {
+        var row = document.createElement('div');
+        row.className = 'jb-ed-sc-row';
+        var lab = document.createElement('div');
+        lab.className = 'jb-ed-sc-label';
+        lab.textContent = d.label;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'jb-ed-sc-key' + (capturing === d.id ? ' capturing' : '');
+        var chord = map[d.id] || '';
+        btn.textContent = capturing === d.id ? 'Pressione…' : (formatShortcut(chord) || 'Nenhum');
+        btn.title = chord || d.def;
+        btn.addEventListener('click', function () {
+          capturing = capturing === d.id ? '' : d.id;
+          paint();
+        });
+        row.appendChild(lab);
+        row.appendChild(btn);
+        list.appendChild(row);
+      });
+    }
+    function onCap(ev) {
+      if (!capturing) return;
+      if (ev.key === 'Escape') {
+        ev.preventDefault();
+        capturing = '';
+        paint();
+        return;
+      }
+      if (ev.key === 'Backspace' || ev.key === 'Delete') {
+        ev.preventDefault();
+        setShortcut(capturing, '');
+        capturing = '';
+        paint();
+        return;
+      }
+      var parts = shortcutFromEvent(ev);
+      if (!parts || (!parts.mod && !parts.alt && parts.key !== 'esc')) return;
+      ev.preventDefault();
+      if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      var chord = serializeShortcut(parts);
+      var map = getShortcutMap();
+      Object.keys(map).forEach(function (id) {
+        if (id !== capturing && map[id] === chord) setShortcut(id, '');
+      });
+      setShortcut(capturing, chord);
+      capturing = '';
+      paint();
+    }
+    document.addEventListener('keydown', onCap, true);
+    var reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'btn ghost';
+    reset.style.width = '100%';
+    reset.style.marginTop = '12px';
+    reset.textContent = 'Restaurar padrões';
+    reset.addEventListener('click', function () {
+      resetShortcuts();
+      capturing = '';
+      paint();
+    });
+    host.appendChild(reset);
+    paint();
+    return function () {
+      document.removeEventListener('keydown', onCap, true);
+      capturing = '';
+    };
+  }
 
   function parseFontSizeInput(raw) {
     var n = parseFloat(String(raw == null ? '' : raw).replace(',', '.').replace(/px$/i, '').trim());
@@ -1161,6 +1424,86 @@
       try { document.execCommand(name, false, val); } catch (_) {}
       markDirty();
     }
+    function insertHr() {
+      histBeforeChange();
+      surface.focus();
+      try { document.execCommand('insertHorizontalRule'); } catch (_) {
+        try { document.execCommand('insertHTML', false, '<hr>'); } catch (__) {}
+      }
+      markDirty();
+    }
+    function tryMarkdownHr(ev) {
+      if (!ev || ev.key !== 'Enter' || ev.shiftKey || ev.altKey || ev.ctrlKey || ev.metaKey) return false;
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount || !sel.isCollapsed) return false;
+      var range = sel.getRangeAt(0);
+      if (!rangeInSurface(range)) return false;
+      var node = range.startContainer;
+      var blockEl = node.nodeType === 1 ? node : node.parentElement;
+      while (blockEl && blockEl !== surface && !/^(P|DIV|H1|H2|H3|LI|BLOCKQUOTE)$/.test(blockEl.tagName)) {
+        blockEl = blockEl.parentElement;
+      }
+      if (!blockEl || blockEl === surface) return false;
+      if (blockEl.classList && (blockEl.classList.contains('jb-ed-cols') || blockEl.classList.contains('jb-ed-col'))) return false;
+      var text = String(blockEl.textContent || '').replace(/\u200b/g, '').trim();
+      if (text !== '---' && text !== '***' && text !== '___') return false;
+      ev.preventDefault();
+      histBeforeChange();
+      var hr = document.createElement('hr');
+      var p = document.createElement('p');
+      p.appendChild(document.createElement('br'));
+      if (blockEl.parentNode) {
+        blockEl.parentNode.insertBefore(hr, blockEl);
+        blockEl.parentNode.insertBefore(p, blockEl);
+        blockEl.parentNode.removeChild(blockEl);
+      }
+      try {
+        var nr = document.createRange();
+        nr.selectNodeContents(p);
+        nr.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(nr);
+      } catch (_) {}
+      markDirty();
+      return true;
+    }
+    function runShortcutAction(id) {
+      if (!id) return false;
+      if (id === 'bold') { cmd('bold'); return true; }
+      if (id === 'italic') { cmd('italic'); return true; }
+      if (id === 'underline') { cmd('underline'); return true; }
+      if (id === 'strike') { cmd('strikeThrough'); return true; }
+      if (id === 'highlight') { applyHighlight(lastHighlight); return true; }
+      if (id === 'h1') { block('h1'); return true; }
+      if (id === 'h2') { block('h2'); return true; }
+      if (id === 'h3') { block('h3'); return true; }
+      if (id === 'fontInc') { applySize(stepFontSize(fsInput && fsInput.value, 1)); return true; }
+      if (id === 'fontDec') { applySize(stepFontSize(fsInput && fsInput.value, -1)); return true; }
+      if (id === 'bullet') { cmd('insertUnorderedList'); return true; }
+      if (id === 'number') { cmd('insertOrderedList'); return true; }
+      if (id === 'quote') { block('blockquote'); return true; }
+      if (id === 'link') { addLink(); return true; }
+      if (id === 'hr') { insertHr(); return true; }
+      if (id === 'columns') { insertColumns(); return true; }
+      if (id === 'ink') { if (uploadImage) toggleInk(); return !!uploadImage; }
+      if (id === 'save') { persist(true); return true; }
+      if (id === 'undo') { undoEditor(); return true; }
+      if (id === 'redo') { redoEditor(); return true; }
+      return false;
+    }
+    function editorHasFocus() {
+      var ae = document.activeElement;
+      return ae === surface || root.contains(ae) || (selectedImg && surface.contains(selectedImg));
+    }
+    function refreshShortcutTitles() {
+      Array.prototype.forEach.call(root.querySelectorAll('[data-sc]'), function (el) {
+        var id = el.getAttribute('data-sc');
+        var base = el.getAttribute('data-sc-label') || el.textContent || '';
+        if (!id) return;
+        el.title = shortcutTitle(base, id);
+      });
+    }
+    function onShortcutsChanged() { refreshShortcutTitles(); }
     function insertColumns() {
       histBeforeChange();
       surface.focus();
@@ -2951,21 +3294,25 @@
     }
 
     [
-      { label: 'B', title: 'Negrito', cmd: 'bold', key: 'bold' },
-      { label: 'I', title: 'Itálico', cmd: 'italic', key: 'italic' },
-      { label: 'U', title: 'Sublinhado', cmd: 'underline', key: 'underline' },
-      { label: 'S', title: 'Riscado', cmd: 'strikeThrough', key: 'strike' }
+      { label: 'B', title: 'Negrito', cmd: 'bold', key: 'bold', sc: 'bold' },
+      { label: 'I', title: 'Itálico', cmd: 'italic', key: 'italic', sc: 'italic' },
+      { label: 'U', title: 'Sublinhado', cmd: 'underline', key: 'underline', sc: 'underline' },
+      { label: 'S', title: 'Riscado', cmd: 'strikeThrough', key: 'strike', sc: 'strike' }
     ].forEach(function (t) {
-      var b = btn(t.label, t.title);
+      var b = btn(t.label, shortcutTitle(t.title, t.sc));
       b.setAttribute('data-cmd', t.key);
+      b.setAttribute('data-sc', t.sc);
+      b.setAttribute('data-sc-label', t.title);
       b.addEventListener('click', function () { cmd(t.cmd); });
       cMarks.appendChild(b);
     });
 
     hlWrap = document.createElement('div');
     hlWrap.className = 'jb-ed-hl';
-    var hlApply = btn('A', 'Realçar');
+    var hlApply = btn('A', shortcutTitle('Realçar', 'highlight'));
     hlApply.className += ' jb-ed-hl-apply';
+    hlApply.setAttribute('data-sc', 'highlight');
+    hlApply.setAttribute('data-sc-label', 'Realçar');
     hlSwatch = document.createElement('span');
     hlSwatch.className = 'jb-ed-hl-swatch';
     hlApply.appendChild(hlSwatch);
@@ -3019,10 +3366,12 @@
     paintHlBtn();
 
     if (uploadImage) {
-      inkBtn = btn('✎', 'Sharpie (Esc para sair)');
+      inkBtn = btn('✎', shortcutTitle('Sharpie (Esc para sair)', 'ink'));
       inkBtn.className += ' jb-ed-ink-toggle';
       inkBtn.setAttribute('aria-label', 'Sharpie');
-      inkBtn.title = 'Sharpie (Esc para sair)';
+      inkBtn.setAttribute('data-sc', 'ink');
+      inkBtn.setAttribute('data-sc-label', 'Sharpie (Esc para sair)');
+      inkBtn.title = shortcutTitle('Sharpie (Esc para sair)', 'ink');
       inkBtn.addEventListener('click', toggleInk);
       cPaint.appendChild(inkBtn);
 
@@ -3070,18 +3419,22 @@
     }
 
     [
-      { label: 'H1', title: 'Título', tag: 'h1' },
-      { label: 'H2', title: 'Subtítulo', tag: 'h2' },
-      { label: 'H3', title: 'Seção', tag: 'h3' }
+      { label: 'H1', title: 'Título', tag: 'h1', sc: 'h1' },
+      { label: 'H2', title: 'Subtítulo', tag: 'h2', sc: 'h2' },
+      { label: 'H3', title: 'Seção', tag: 'h3', sc: 'h3' }
     ].forEach(function (t) {
-      var b = btn(t.label, t.title);
+      var b = btn(t.label, shortcutTitle(t.title, t.sc));
+      b.setAttribute('data-sc', t.sc);
+      b.setAttribute('data-sc-label', t.title);
       b.addEventListener('click', function () { block(t.tag); });
       cHeads.appendChild(b);
     });
 
     var fsWrap = document.createElement('div');
     fsWrap.className = 'jb-ed-fontsize';
-    var fsDec = btn('A−', 'Diminuir fonte');
+    var fsDec = btn('A−', shortcutTitle('Diminuir fonte', 'fontDec'));
+    fsDec.setAttribute('data-sc', 'fontDec');
+    fsDec.setAttribute('data-sc-label', 'Diminuir fonte');
     fsDec.addEventListener('click', function () { applySize(stepFontSize(fsInput.value, -1)); });
     fsCombo = document.createElement('div');
     fsCombo.className = 'jb-ed-fs-combo';
@@ -3142,7 +3495,9 @@
     fsCombo.appendChild(fsInput);
     fsCombo.appendChild(fsCaret);
     fsCombo.appendChild(fsMenu);
-    var fsInc = btn('A+', 'Aumentar fonte');
+    var fsInc = btn('A+', shortcutTitle('Aumentar fonte', 'fontInc'));
+    fsInc.setAttribute('data-sc', 'fontInc');
+    fsInc.setAttribute('data-sc-label', 'Aumentar fonte');
     fsInc.addEventListener('click', function () { applySize(stepFontSize(fsInput.value, 1)); });
     fsWrap.appendChild(fsDec);
     fsWrap.appendChild(fsCombo);
@@ -3151,31 +3506,36 @@
     document.addEventListener('mousedown', onDocFsDown);
     document.addEventListener('selectionchange', onSelChange);
 
-    var listBtn = btn('•', 'Lista');
+    var listBtn = btn('•', shortcutTitle('Lista', 'bullet'));
+    listBtn.setAttribute('data-sc', 'bullet');
+    listBtn.setAttribute('data-sc-label', 'Lista');
     listBtn.addEventListener('click', function () { cmd('insertUnorderedList'); });
     cBlocks.appendChild(listBtn);
-    var numBtn = btn('1.', 'Lista numerada');
+    var numBtn = btn('1.', shortcutTitle('Lista numerada', 'number'));
+    numBtn.setAttribute('data-sc', 'number');
+    numBtn.setAttribute('data-sc-label', 'Lista numerada');
     numBtn.addEventListener('click', function () { cmd('insertOrderedList'); });
     cBlocks.appendChild(numBtn);
-    var qBtn = btn('“', 'Citação');
+    var qBtn = btn('“', shortcutTitle('Citação', 'quote'));
+    qBtn.setAttribute('data-sc', 'quote');
+    qBtn.setAttribute('data-sc-label', 'Citação');
     qBtn.addEventListener('click', function () { block('blockquote'); });
     cBlocks.appendChild(qBtn);
-    var linkBtn = btn('🔗', 'Link');
+    var linkBtn = btn('🔗', shortcutTitle('Link', 'link'));
+    linkBtn.setAttribute('data-sc', 'link');
+    linkBtn.setAttribute('data-sc-label', 'Link');
     linkBtn.addEventListener('click', function () { addLink(); });
     cBlocks.appendChild(linkBtn);
-    var hrBtn = btn('―', 'Linha horizontal');
+    var hrBtn = btn('―', shortcutTitle('Linha horizontal', 'hr'));
     hrBtn.setAttribute('aria-label', 'Inserir linha horizontal');
-    hrBtn.addEventListener('click', function () {
-      histBeforeChange();
-      surface.focus();
-      try { document.execCommand('insertHorizontalRule'); } catch (_) {
-        try { document.execCommand('insertHTML', false, '<hr>'); } catch (__) {}
-      }
-      markDirty();
-    });
+    hrBtn.setAttribute('data-sc', 'hr');
+    hrBtn.setAttribute('data-sc-label', 'Linha horizontal');
+    hrBtn.addEventListener('click', function () { insertHr(); });
     cBlocks.appendChild(hrBtn);
-    var colsBtn = btn('▥', 'Duas colunas');
+    var colsBtn = btn('▥', shortcutTitle('Duas colunas', 'columns'));
     colsBtn.setAttribute('aria-label', 'Inserir duas colunas');
+    colsBtn.setAttribute('data-sc', 'columns');
+    colsBtn.setAttribute('data-sc-label', 'Duas colunas');
     colsBtn.addEventListener('click', function () { insertColumns(); });
     cBlocks.appendChild(colsBtn);
 
@@ -3195,7 +3555,9 @@
       timerEl.className = 'jb-ed-timer';
       timerEl.title = 'Próximo auto-save';
       timerEl.textContent = remain + 's';
-      var saveBtn = btn('Salvar', 'Salvar agora', 'jb-ed-save');
+      var saveBtn = btn('Salvar', shortcutTitle('Salvar agora', 'save'), 'jb-ed-save');
+      saveBtn.setAttribute('data-sc', 'save');
+      saveBtn.setAttribute('data-sc-label', 'Salvar agora');
       saveBtn.addEventListener('click', function () { persist(true); });
       foot.appendChild(status);
       foot.appendChild(timerEl);
@@ -3207,6 +3569,8 @@
     hydrateImages();
     hydrateInk();
     resetEditorHistory();
+    refreshShortcutTitles();
+    window.addEventListener('jb-ed-shortcuts', onShortcutsChanged);
     function onWinResize() {
       paintImgFrame();
       if (inkOpen) placeInkTools();
@@ -3238,26 +3602,22 @@
         setInkMode(false);
         return;
       }
-      if (mod && key === 's') {
-        ev.preventDefault();
+      if (editorHasFocus() && tryMarkdownHr(ev)) {
         if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
         else ev.stopPropagation();
-        persist(true);
         return;
       }
-      if (mod && key === 'z' && !ev.altKey) {
+      var map = getShortcutMap();
+      var action = findShortcutAction(ev, map);
+      if (!action && mod && key === 'y' && !ev.shiftKey && !ev.altKey) action = 'redo';
+      if (action) {
+        var needsFocus = action !== 'save' && action !== 'undo' && action !== 'redo';
+        if (needsFocus && !editorHasFocus() && !inkOpen) return;
+        if (action === 'ink' && !uploadImage) return;
         ev.preventDefault();
         if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
         else ev.stopPropagation();
-        if (ev.shiftKey) redoEditor();
-        else undoEditor();
-        return;
-      }
-      if (mod && key === 'y' && !ev.shiftKey && !ev.altKey) {
-        ev.preventDefault();
-        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
-        else ev.stopPropagation();
-        redoEditor();
+        runShortcutAction(action);
         return;
       }
       if (mod || inkOpen) return;
@@ -3465,6 +3825,7 @@
         document.removeEventListener('mousedown', onDocFsDown);
         document.removeEventListener('selectionchange', onSelChange);
         document.removeEventListener('keydown', onEditorKey, true);
+        window.removeEventListener('jb-ed-shortcuts', onShortcutsChanged);
         document.removeEventListener('click', onInkSwallowClick, true);
         document.removeEventListener('copy', onEditorCopy, true);
         document.removeEventListener('cut', onEditorCut, true);
@@ -3541,6 +3902,17 @@
     sanitizeHtml: sanitizeHtml,
     isEmptyHtml: isEmptyHtml,
     colsHtml: colsHtml,
+    SHORTCUT_DEFS: SHORTCUT_DEFS,
+    parseShortcut: parseShortcut,
+    serializeShortcut: serializeShortcut,
+    formatShortcut: formatShortcut,
+    shortcutFromEvent: shortcutFromEvent,
+    getShortcutMap: getShortcutMap,
+    getShortcut: getShortcut,
+    setShortcut: setShortcut,
+    resetShortcuts: resetShortcuts,
+    findShortcutAction: findShortcutAction,
+    mountShortcutsSettings: mountShortcutsSettings,
     safeDriveFileId: safeDriveFileId,
     pasteImageFiles: pasteImageFiles,
     IMAGE_MAX_BYTES: IMAGE_MAX_BYTES,

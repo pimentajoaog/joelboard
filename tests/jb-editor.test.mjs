@@ -212,6 +212,25 @@ test('editor exposes two-column toolbar insert', function () {
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.jb-ed-surface \.jb-ed-cols/);
 });
 
+test('editor shortcut map covers toolbar actions with HR default', function () {
+  var map = ED.getShortcutMap();
+  assert.equal(map.hr, 'Mod+Shift+Enter');
+  assert.equal(map.columns, 'Mod+Shift+C');
+  assert.equal(map.bold, 'Mod+B');
+  assert.equal(map.link, 'Mod+K');
+  assert.equal(ED.formatShortcut('Mod+Shift+Enter').length > 0, true);
+  var parsed = ED.parseShortcut('Mod+Shift+Enter');
+  assert.equal(parsed.mod, true);
+  assert.equal(parsed.shift, true);
+  assert.equal(parsed.key, 'enter');
+  assert.equal(ED.serializeShortcut(parsed), 'Mod+Shift+Enter');
+  assert.match(src, /function tryMarkdownHr/);
+  assert.match(src, /function mountShortcutsSettings/);
+  assert.match(src, /Mod\+Shift\+Enter/);
+  assert.match(css, /\.jb-ed-sc-list/);
+  assert.match(studyHtml, /data-st="atalhos"/);
+});
+
 test('ink overlay size follows the page box, not scrollHeight', function () {
   assert.match(src, /page\.clientHeight/);
   assert.doesNotMatch(src, /surface\.scrollHeight/);
@@ -399,8 +418,9 @@ test('editor undo history covers images and ink', function () {
   assert.match(src, /function undoEditor/);
   assert.match(src, /function redoEditor/);
   assert.match(src, /function histBeforeChange/);
-  assert.match(src, /key === 'z'/);
-  assert.match(src, /key === 'y'/);
+  assert.match(src, /id: 'undo'[\s\S]*def: 'Mod\+Z'/);
+  assert.match(src, /id: 'redo'[\s\S]*def: 'Mod\+Shift\+Z'/);
+  assert.match(src, /action === 'redo'|runShortcutAction\('redo'\)|id === 'redo'/);
   assert.match(src, /historyUndo/);
   assert.match(src, /undoBtn\.addEventListener\('click', function \(\) \{ undoEditor\(\); \}\)/);
   assert.match(src, /function startInkStroke/);

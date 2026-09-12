@@ -133,7 +133,7 @@ function injectContent(tabId, cb) {
       }
       chrome.scripting.executeScript({
         target: { tabId: tabId },
-        files: ['lib/shared.js', 'lib/sites.js', 'content.js']
+        files: ['refresh/lib/shared.js', 'refresh/lib/sites.js', 'refresh/content.js']
       }, function () {
         if (cb) cb(!chrome.runtime.lastError, chrome.runtime.lastError && chrome.runtime.lastError.message);
       });

@@ -26,4 +26,4 @@ Usuários com e-mail autorizado veem o tile **Feedback** — lista de bugs e ide
 
 ## Mini
 
-O card **Mini** abre o painel de extensões Chrome (Replace, Refresh, Report), instruções de instalação, sync Replace e lista de sites permitidos. Ver [mini.md](mini.md).
+O card **Mini** abre o painel da extensão Chrome unificada (Replace + Refresh), instruções de instalação, sync Replace e lista de sites permitidos. Ver [mini.md](mini.md).

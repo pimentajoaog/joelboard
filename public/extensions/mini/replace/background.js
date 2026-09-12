@@ -44,7 +44,7 @@ function injectReplace(tabId, cb) {
       }
       chrome.scripting.executeScript({
         target: { tabId: tabId },
-        files: ['lib/shared.js', 'content.js']
+        files: ['replace/lib/shared.js', 'replace/content.js']
       }, function () {
         if (cb) cb(!chrome.runtime.lastError);
       });
@@ -57,7 +57,7 @@ function maybeInjectHubBridge(tabId, url) {
   if (!/^https:\/\/joelboard\.vercel\.app\//.test(url) && !/^http:\/\/localhost/.test(url) && !/^http:\/\/127\.0\.0\.1/.test(url)) return;
   chrome.scripting.executeScript({
     target: { tabId: tabId },
-    files: ['hub-bridge.js']
+    files: ['replace/hub-bridge.js']
   });
 }
 

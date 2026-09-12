@@ -944,7 +944,7 @@ function miniSyncReplace() {
     });
   }).catch(function (e) {
     if (JB.toast) JB.toast('Erro: ' + ((e && e.message) || 'falha ao sincronizar'));
-    if (note) note.textContent = 'Falha — instale a extensão Replace ou abra Ajustes → Nuvem no popup.';
+    if (note) note.textContent = 'Falha — instale Joelboard Mini ou abra Replace → Ajustes → Nuvem.';
   });
 }
 

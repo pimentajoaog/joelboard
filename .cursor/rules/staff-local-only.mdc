@@ -9,4 +9,4 @@ The **Staff** Chrome extension lives at `public/extensions/staff/` and is listed
 
 - **Never commit or push** Staff source, zips, hub cards, or docs that ship it publicly.
 - **Never add Staff** to hub Novidades (and never edit Novidades anyway — owner-only).
-- Privacy policy and public docs cover only Replace, Refresh, and Report unless Staff is explicitly released later.
+- Privacy policy and public docs cover Joelboard Mini (Replace + Refresh) unless Staff is explicitly released later.

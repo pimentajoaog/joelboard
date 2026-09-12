@@ -16,7 +16,7 @@ Personal productivity suite by **Joel Soluções LTDA** — Finance, Fit, Study,
 | **Study** | `/study` | Calendar, subjects, exams, focus mode, attachments |
 | **Notes** | `/notas` | Lists (shopping, tasks, notes, travel), checkboxes, due dates |
 | **Planner** | `/planner` | Dated plans (trips, hangouts) with a day timeline and optional share |
-| **Mini** | Hub → Mini panel | Chrome extensions: **Replace** (text expansion) and **Refresh** (auto-reload tab) |
+| **Mini** | Hub → Mini panel | Chrome extension **Joelboard Mini**: Replace + Refresh in one install |
 
 User guides: **[docs/](docs/README.md)**
 
@@ -81,13 +81,13 @@ Each deploy bumps the service-worker cache id (`scripts/bump-sw.mjs`). Core asse
 
 ## Extensions (Mini)
 
-Zip bundles are built to `public/extensions/` and linked from the Hub Mini panel:
+Zip bundle built to `public/extensions/` and linked from the Hub Mini panel:
 
-- `joelboard-replace.zip` — text expansion
-- `joelboard-refresh.zip` — tab auto-refresh
-- `joelboard-report.zip` — recurring report counters (Slack)
+- `joelboard-mini.zip` — Joelboard Mini (Replace + Refresh launcher)
 
-Install: unzip → Chrome → Extensions → Developer mode → Load unpacked. Details: **[docs/mini.md](docs/mini.md)**
+Install: unzip → Chrome → Extensions → Developer mode → Load unpacked (`mini` folder). Details: **[docs/mini.md](docs/mini.md)**
+
+Staff is local-only and not shipped in this zip.
 
 ---
 

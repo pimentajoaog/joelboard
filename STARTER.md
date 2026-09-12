@@ -29,7 +29,7 @@ joelboard/
     finance-math.js       # bundled from scripts/bundle-finance-math.mjs
     finance-sheets.js     # Finance sheet I/O
     sw.js                 # PWA; cache id bumped each build
-    extensions/           # Replace + Refresh + Report source; zips via npm run zip:extensions
+    extensions/           # Joelboard Mini (Replace + Refresh); zip via npm run zip:extensions
                           # staff/ is gitignored — local/dev only, never commit or push
   tests/*.test.mjs
   docs/                   # user documentation per app
@@ -49,7 +49,7 @@ joelboard/
 | `npm run build` | `dist/` for production |
 | `npm run check` | `node --check` on all app scripts |
 | `npm test` | Node test runner |
-| `npm run zip:extensions` | `joelboard-replace.zip`, `joelboard-refresh.zip` |
+| `npm run zip:extensions` | `joelboard-mini.zip` |
 
 **Vercel:** Build `npm run build`, output `dist/`. Commit source only.
 
@@ -214,9 +214,9 @@ Each app: gate → create/link sheet → `loadData` → `show`.
 
 ## Extensions (Mini)
 
-Source: `public/extensions/replace/`, `public/extensions/refresh/`.
+Source: `public/extensions/mini/` (launcher + `replace/` + `refresh/`).
 
-Build zips: `npm run zip:extensions`. User docs: **[docs/mini.md](docs/mini.md)**.
+Build zip: `npm run zip:extensions`. User docs: **[docs/mini.md](docs/mini.md)**.
 
 Replace content script must tolerate **extension context invalidated** after reload — guard all `chrome.runtime` calls.
 

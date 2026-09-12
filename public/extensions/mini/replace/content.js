@@ -377,7 +377,7 @@
         host.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);padding:18px;box-sizing:border-box';
 
         var iframe = document.createElement('iframe');
-        var promptSrc = extUrl('prompt.html');
+        var promptSrc = extUrl('replace/prompt.html');
         if (!promptSrc) { warnExtDead(); resolve(null); return; }
         iframe.src = promptSrc;
         iframe.title = 'Completar template';

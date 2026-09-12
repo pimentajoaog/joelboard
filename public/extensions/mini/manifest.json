@@ -1,17 +1,26 @@
 {
   "manifest_version": 3,
-  "name": "Joelboard Refresh",
-  "short_name": "Refresh",
-  "version": "1.2.5",
-  "description": "Auto-refresh da aba atual — intervalo configurável, atalho e pausa em aba inativa. Parte do Joelboard Mini.",
-  "permissions": ["storage", "alarms", "tabs", "scripting"],
+  "name": "Joelboard Mini",
+  "short_name": "Mini",
+  "version": "2.0.0",
+  "description": "Joelboard Mini — Replace (expansão de texto) e Refresh (auto-reload) numa só extensão.",
+  "permissions": ["storage", "clipboardRead", "tabs", "scripting", "alarms"],
+  "host_permissions": ["https://www.googleapis.com/*", "https://joelboard.vercel.app/*"],
   "optional_host_permissions": ["http://localhost/*", "http://127.0.0.1/*", "https://*/*"],
+  "web_accessible_resources": [{
+    "resources": [
+      "replace/prompt.html",
+      "replace/prompt-frame.js",
+      "replace/lib/shared.js"
+    ],
+    "matches": ["<all_urls>"]
+  }],
   "externally_connectable": {
     "matches": ["https://joelboard.vercel.app/*", "http://localhost/*", "http://127.0.0.1/*"]
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Joelboard Refresh",
+    "default_title": "Joelboard Mini",
     "default_icon": {
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png",
@@ -27,6 +36,11 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [{
+    "matches": ["https://joelboard.vercel.app/*", "http://localhost/*", "http://127.0.0.1/*"],
+    "js": ["replace/hub-bridge.js"],
+    "run_at": "document_start"
+  }],
   "commands": {
     "toggle-refresh": {
       "suggested_key": {

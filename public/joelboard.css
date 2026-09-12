@@ -761,6 +761,19 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
   opacity: 0;
   pointer-events: none;
 }
+/* Image-only columns: never show a blank line under the image, even while focused. */
+.jb-ed-surface .jb-ed-col > img[data-jb-file] + p:last-child:has(> br:only-child),
+.jb-ed-surface .jb-ed-col > p:has(> img[data-jb-file]:only-child) + p:last-child:has(> br:only-child) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  line-height: 0;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
 @media (max-width: 640px) {
   .jb-ed-surface .jb-ed-cols { gap: 8px; }
   .jb-ed-surface .jb-ed-col { max-width: 100%; }

@@ -1726,8 +1726,29 @@
         return !String(probe.toString() || '').replace(/\u200b/g, '');
       } catch (_) { return false; }
     }
+    function unwrapColImageParagraphs(col) {
+      if (!col) return;
+      Array.prototype.slice.call(col.children || []).forEach(function (p) {
+        if (!p || p.tagName !== 'P') return;
+        var img = null;
+        var only = true;
+        Array.prototype.forEach.call(p.childNodes, function (ch) {
+          if (ch.nodeType === 1 && ch.tagName === 'IMG' && ch.getAttribute('data-jb-file') && !img) {
+            img = ch;
+            return;
+          }
+          if (ch.nodeType === 1 && ch.tagName === 'BR') return;
+          if (ch.nodeType === 3 && !String(ch.nodeValue || '').replace(/\u200b/g, '').trim()) return;
+          only = false;
+        });
+        if (!img || !only) return;
+        col.insertBefore(img, p);
+        if (p.parentNode === col) col.removeChild(p);
+      });
+    }
     function tidyCol(col) {
       if (!col || !surface.contains(col)) return;
+      unwrapColImageParagraphs(col);
       ensureColBody(col);
       stripTrailingEmptyColBlocks(col, true);
       syncColEmptyState(col);
@@ -1792,8 +1813,19 @@
         var last = col.lastElementChild;
         if (!last || last.tagName !== 'P') break;
         if (!blockIsVisuallyEmpty(last)) break;
-        if (keepLastIfCaret && caretBlock && last === caretBlock) break;
         if (last.querySelector && last.querySelector('img[data-jb-file]')) break;
+        var prev = last.previousElementSibling;
+        /* Image-only columns should hug the image — never keep a blank line under it. */
+        if (prev && (prev.tagName === 'IMG' || (prev.querySelector && prev.querySelector('img[data-jb-file]:only-child')))) {
+          var caretHere = caretBlock === last;
+          col.removeChild(last);
+          if (caretHere) {
+            if (prev.tagName === 'IMG') placeCaretNear(prev, true);
+            else placeCaretAfterColChild(prev, col);
+          }
+          continue;
+        }
+        if (keepLastIfCaret && caretBlock && last === caretBlock) break;
         col.removeChild(last);
       }
     }
@@ -2686,7 +2718,7 @@
       if (!img || !img.parentNode) return;
       var col = closestEdCol(img);
       if (col) {
-        /* Unwrap a lonely image stuck inside a paragraph so trailing gaps are real siblings. */
+        /* Unwrap a lonely image stuck inside a paragraph so it can hug the column. */
         var wrap = img.parentElement;
         if (wrap && wrap !== col && wrap.tagName === 'P' && wrap.parentElement === col) {
           var onlyImg = true;
@@ -2703,25 +2735,16 @@
             }
           }
         }
-        /* Keep a single caret paragraph after the image; drop stacked empty gaps. */
-        var caretP = img.nextElementSibling;
-        if (!caretP || caretP.tagName !== 'P' || !blockIsVisuallyEmpty(caretP)) {
-          caretP = document.createElement('p');
-          caretP.appendChild(document.createElement('br'));
-          if (img.nextSibling) col.insertBefore(caretP, img.nextSibling);
-          else col.appendChild(caretP);
+        while (img.nextElementSibling && blockIsVisuallyEmpty(img.nextElementSibling)
+          && !(img.nextElementSibling.querySelector && img.nextElementSibling.querySelector('img[data-jb-file]'))) {
+          col.removeChild(img.nextElementSibling);
         }
-        while (caretP.nextElementSibling && blockIsVisuallyEmpty(caretP.nextElementSibling)
-          && !(caretP.nextElementSibling.querySelector && caretP.nextElementSibling.querySelector('img[data-jb-file]'))) {
-          col.removeChild(caretP.nextElementSibling);
-        }
-        /* Drop empty paragraphs that ended up before the image from the paste split. */
         while (img.previousElementSibling && blockIsVisuallyEmpty(img.previousElementSibling)
           && !(img.previousElementSibling.querySelector && img.previousElementSibling.querySelector('img[data-jb-file]'))) {
           col.removeChild(img.previousElementSibling);
         }
-        placeCaretInEl(caretP, true);
-        stripTrailingEmptyColBlocks(col, true);
+        placeCaretNear(img, true);
+        stripTrailingEmptyColBlocks(col, false);
         syncColEmptyState(col);
         return;
       }

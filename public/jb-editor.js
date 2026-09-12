@@ -989,6 +989,16 @@
     });
     if (!hasBlock) col.innerHTML = '<p><br></p>';
   }
+  function colHasContent(col) {
+    if (!col) return false;
+    if (col.querySelector && col.querySelector('img[data-jb-file]:not([data-jb-ink])')) return true;
+    return !!String(col.textContent || '').replace(/\u200b/g, '').trim();
+  }
+  function syncColEmptyState(col) {
+    if (!col || !col.classList) return;
+    ensureColBody(col);
+    col.classList.toggle('jb-ed-col-empty', !colHasContent(col));
+  }
   function ensureExitAfterCols(row) {
     if (!row || !row.parentNode || typeof document === 'undefined') return null;
     var next = row.nextElementSibling;
@@ -1040,7 +1050,7 @@
         empty.innerHTML = '<p><br></p>';
         cols.push(empty);
       }
-      cols.forEach(function (c) { row.appendChild(c); });
+      cols.forEach(function (c) { row.appendChild(c); syncColEmptyState(c); });
       ensureExitAfterCols(row);
     });
   }
@@ -1600,6 +1610,70 @@
       markDirty();
       return after;
     }
+    function rangeAtStartOf(el, range) {
+      if (!el || !range || !range.collapsed) return false;
+      try {
+        var probe = range.cloneRange();
+        probe.selectNodeContents(el);
+        probe.setEnd(range.startContainer, range.startOffset);
+        return !String(probe.toString() || '').replace(/\u200b/g, '');
+      } catch (_) { return false; }
+    }
+    function tidyCol(col) {
+      if (!col || !surface.contains(col)) return;
+      ensureColBody(col);
+      while (col.children.length > 1) {
+        var last = col.lastElementChild;
+        if (!last || last.tagName !== 'P') break;
+        if (!blockIsVisuallyEmpty(last)) break;
+        var sel = window.getSelection();
+        var caretInLast = false;
+        try {
+          caretInLast = !!(sel && sel.rangeCount && last.contains(sel.getRangeAt(0).commonAncestorContainer));
+        } catch (_) {}
+        if (caretInLast) break;
+        col.removeChild(last);
+      }
+      syncColEmptyState(col);
+    }
+    function syncAllCols() {
+      Array.prototype.forEach.call(surface.querySelectorAll('.jb-ed-col'), tidyCol);
+    }
+    function repairColsCaret() {
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      var node = sel.getRangeAt(0).commonAncestorContainer;
+      if (!surface.contains(node)) {
+        var rows = surface.querySelectorAll('.jb-ed-cols');
+        if (rows.length) exitColsToAfter(rows[rows.length - 1]);
+        return;
+      }
+      var cols = closestEdCols(node);
+      if (cols && !closestEdCol(node)) {
+        var first = cols.querySelector('.jb-ed-col');
+        if (first) {
+          ensureColBody(first);
+          placeCaretInEl(colLastBlock(first) || first, true);
+        } else exitColsToAfter(cols);
+      }
+    }
+    function tryColsBackspace(ev) {
+      if (!ev || ev.key !== 'Backspace' || ev.altKey || ev.ctrlKey || ev.metaKey) return false;
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount || !sel.isCollapsed) return false;
+      var range = sel.getRangeAt(0);
+      if (!rangeInSurface(range)) return false;
+      var col = closestEdCol(range.commonAncestorContainer);
+      if (!col) return false;
+      if (!closestEdCols(col)) return false;
+      if (!rangeAtStartOf(col, range)) return false;
+      ev.preventDefault();
+      histBeforeChange();
+      ensureColBody(col);
+      syncColEmptyState(col);
+      placeCaretInEl(colLastBlock(col) || col, true);
+      return true;
+    }
     function tryColsEnter(ev) {
       if (!ev || (ev.key !== 'Enter' && ev.key !== 'NumpadEnter')) return false;
       if (ev.altKey || ev.ctrlKey || ev.metaKey) return false;
@@ -1614,17 +1688,31 @@
       if (ev.shiftKey) {
         ev.preventDefault();
         histBeforeChange();
-        try { document.execCommand('insertLineBreak'); } catch (_) {
-          try { document.execCommand('insertHTML', false, '<br>'); } catch (__) {}
+        try {
+          var block = range.commonAncestorContainer;
+          if (block && block.nodeType === 3) block = block.parentElement;
+          while (block && block !== col && block.parentElement !== col) block = block.parentElement;
+          if (block && block !== col && rangeAtEndOf(block, range)) {
+            var np = document.createElement('p');
+            np.appendChild(document.createElement('br'));
+            if (block.nextSibling) col.insertBefore(np, block.nextSibling);
+            else col.appendChild(np);
+            placeCaretInEl(np, true);
+          } else {
+            document.execCommand('insertHTML', false, '<br>');
+          }
+        } catch (_) {
+          try { document.execCommand('insertLineBreak'); } catch (__) {}
         }
+        syncColEmptyState(col);
         markDirty();
         return true;
       }
       var last = colLastBlock(col);
-      var block = range.commonAncestorContainer;
-      if (block && block.nodeType === 3) block = block.parentElement;
-      while (block && block !== col && block.parentElement !== col) block = block.parentElement;
-      if (!last || block !== last) return false;
+      var curBlock = range.commonAncestorContainer;
+      if (curBlock && curBlock.nodeType === 3) curBlock = curBlock.parentElement;
+      while (curBlock && curBlock !== col && curBlock.parentElement !== col) curBlock = curBlock.parentElement;
+      if (!last || curBlock !== last) return false;
       if (last.tagName === 'IMG') {
         /* caret after image is treated as end */
       } else if (!rangeAtEndOf(last, range) && !blockIsVisuallyEmpty(last)) {
@@ -1635,6 +1723,7 @@
       if (last && last.tagName === 'P' && blockIsVisuallyEmpty(last) && col.children.length > 1) {
         try { col.removeChild(last); } catch (_) {}
       }
+      syncColEmptyState(col);
       exitColsToAfter(cols);
       return true;
     }
@@ -1688,6 +1777,7 @@
           surface.insertAdjacentHTML('beforeend', html);
         } catch (__) {}
       }
+      syncAllCols();
       markDirty();
     }
     function block(tag) {
@@ -3780,6 +3870,7 @@
     hydrateInk();
     resetEditorHistory();
     refreshShortcutTitles();
+    syncAllCols();
     window.addEventListener('jb-ed-shortcuts', onShortcutsChanged);
     function onWinResize() {
       paintImgFrame();
@@ -3818,6 +3909,11 @@
         return;
       }
       if (editorHasFocus() && tryColsEnter(ev)) {
+        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        else ev.stopPropagation();
+        return;
+      }
+      if (editorHasFocus() && tryColsBackspace(ev)) {
         if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
         else ev.stopPropagation();
         return;
@@ -3881,6 +3977,20 @@
         redoEditor();
         return;
       }
+      if (ev.inputType === 'deleteContentBackward' || ev.inputType === 'deleteContentForward') {
+        var selDel = window.getSelection();
+        if (selDel && selDel.rangeCount) {
+          var delRange = selDel.getRangeAt(0);
+          var delCol = closestEdCol(delRange.commonAncestorContainer);
+          if (delCol && closestEdCols(delCol) && delRange.collapsed && ev.inputType === 'deleteContentBackward' && rangeAtStartOf(delCol, delRange)) {
+            ev.preventDefault();
+            ensureColBody(delCol);
+            syncColEmptyState(delCol);
+            placeCaretInEl(colLastBlock(delCol) || delCol, true);
+            return;
+          }
+        }
+      }
       if (uploadImage && ev.inputType === 'insertFromPaste') {
         var dt = ev.dataTransfer;
         if (dt && pasteImageFiles(dt).length) { ev.preventDefault(); return; }
@@ -3923,6 +4033,8 @@
       markDirty();
       if (inkCanvas) sizeInkCanvas();
       paintImgFrame();
+      syncAllCols();
+      repairColsCaret();
       if (typingGroup) {
         if (typingHistTimer) clearTimeout(typingHistTimer);
         typingHistTimer = setTimeout(function () {
@@ -3967,6 +4079,7 @@
         return;
       }
       if (tryColsEnter(ev)) return;
+      if (tryColsBackspace(ev)) return;
       if (selectedImg && !inkOpen && (key === 'delete' || key === 'backspace') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
         ev.preventDefault();
         removeNoteImg(selectedImg);

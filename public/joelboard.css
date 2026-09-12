@@ -723,15 +723,19 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-surface .jb-ed-col {
   position: relative;
   flex: 0 1 auto;
+  align-self: flex-start;
   box-sizing: border-box;
   width: fit-content;
   max-width: calc(50% - 6px);
   min-width: 140px;
-  min-height: 88px;
+  min-height: 0;
   height: fit-content;
   padding: 4px;
   border-radius: 10px;
   border: 1px dashed color-mix(in srgb, var(--border, #2d3346) 80%, transparent);
+}
+.jb-ed-surface .jb-ed-col.jb-ed-col-empty {
+  min-height: 88px;
 }
 .jb-ed-surface .jb-ed-col:focus-within {
   border-color: color-mix(in srgb, var(--primary, #818cf8) 55%, var(--border, #2d3346));

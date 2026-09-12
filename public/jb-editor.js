@@ -844,6 +844,26 @@
     return out.join('');
   }
 
+  /** True when every non-empty line looks like a markdown list item (1. x / - x). */
+  function pastePlainLooksLikeLists(text) {
+    var lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+    var content = 0;
+    var listish = 0;
+    var i, t;
+    for (i = 0; i < lines.length; i++) {
+      t = lines[i].trim();
+      if (!t) continue;
+      content++;
+      if (/^\d{1,3}\.\s+\S/.test(t) || /^[-*+]\s+\S/.test(t) || /^[-*]\s+\[[ xX]\]\s+\S/.test(t)) listish++;
+    }
+    return content > 0 && listish === content;
+  }
+
+  function markdownListPasteHtml(text) {
+    if (!pastePlainLooksLikeLists(text)) return '';
+    return mdToHtml(text);
+  }
+
   function decodeHtmlEntities(s) {
     return String(s == null ? '' : s)
       .replace(/&nbsp;/gi, ' ')
@@ -2080,6 +2100,17 @@
         ev.preventDefault();
         histBeforeChange();
         try {
+          var imgBefore = noteImgBeforeCaret(range);
+          if (imgBefore && col.contains(imgBefore)) {
+            var afterImg = document.createElement('p');
+            afterImg.appendChild(document.createElement('br'));
+            if (imgBefore.nextSibling) col.insertBefore(afterImg, imgBefore.nextSibling);
+            else col.appendChild(afterImg);
+            placeCaretInEl(afterImg, true);
+            syncColEmptyState(col);
+            markDirty();
+            return true;
+          }
           var block = range.commonAncestorContainer;
           if (block && block.nodeType === 3) block = block.parentElement;
           while (block && block !== col && block.parentElement !== col) block = block.parentElement;
@@ -2089,6 +2120,16 @@
             if (block.nextSibling) col.insertBefore(np, block.nextSibling);
             else col.appendChild(np);
             placeCaretInEl(np, true);
+          } else if (!block || block === col) {
+            var lastImg = colLastBlock(col);
+            if (lastImg && lastImg.tagName === 'IMG') {
+              var under = document.createElement('p');
+              under.appendChild(document.createElement('br'));
+              col.appendChild(under);
+              placeCaretInEl(under, true);
+            } else {
+              document.execCommand('insertHTML', false, '<br>');
+            }
           } else {
             document.execCommand('insertHTML', false, '<br>');
           }
@@ -4064,7 +4105,9 @@
       histBeforeChange();
       var dt = ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData);
       var html = '';
+      var plain = '';
       try { html = dt && dt.getData ? dt.getData('text/html') : ''; } catch (_) { html = ''; }
+      try { plain = dt && dt.getData ? dt.getData('text/plain') : ''; } catch (_) { plain = ''; }
       var metas = parseNoteImgClipboard(html);
       if (metas.length) {
         ev.preventDefault();
@@ -4075,7 +4118,34 @@
         for (i = 0; i < metas.length; i++) insertClonedNoteImg(metas[i]);
         return;
       }
-      pasteImages(ev);
+      var files = pasteImageFiles(dt);
+      if (files.length) {
+        pasteImages(ev);
+        return;
+      }
+      /* Plain "1. item" / "- item" lines → real lists (skip when clipboard already has ol/ul). */
+      if (plain && !(html && /<(?:ol|ul)\b/i.test(html))) {
+        var listHtml = markdownListPasteHtml(plain);
+        if (listHtml) {
+          ev.preventDefault();
+          if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+          else ev.stopPropagation();
+          restoreSelection();
+          var clean = sanitizeHtml(listHtml);
+          var ok = false;
+          try { ok = document.execCommand('insertHTML', false, clean); } catch (_) { ok = false; }
+          if (!ok) {
+            try {
+              var box = document.createElement('div');
+              box.innerHTML = clean;
+              while (box.firstChild) insertNode(box.firstChild);
+            } catch (__) {}
+          }
+          syncAllCols();
+          markDirty();
+          return;
+        }
+      }
     }
     function currentFontSizePx() {
       var sel = window.getSelection();
@@ -4779,6 +4849,8 @@
     AUTOSAVE_MS: AUTOSAVE_MS,
     esc: esc,
     mdToHtml: mdToHtml,
+    pastePlainLooksLikeLists: pastePlainLooksLikeLists,
+    markdownListPasteHtml: markdownListPasteHtml,
     looksLikeHtml: looksLikeHtml,
     valueToHtml: valueToHtml,
     wrapSelection: wrapSelection,

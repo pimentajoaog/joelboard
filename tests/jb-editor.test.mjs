@@ -40,6 +40,18 @@ test('renders checklists, quotes, code, links and hr', function () {
   assert.match(html, /<hr>/);
 });
 
+test('paste of 1. lines becomes a numbered list', function () {
+  assert.equal(ED.pastePlainLooksLikeLists('1. um\n2. dois'), true);
+  assert.equal(ED.pastePlainLooksLikeLists('- a\n- b'), true);
+  assert.equal(ED.pastePlainLooksLikeLists('1. um\ntexto'), false);
+  assert.equal(ED.pastePlainLooksLikeLists('hello'), false);
+  var html = ED.markdownListPasteHtml('1. um\n2. dois');
+  assert.match(html, /<ol>/);
+  assert.match(html, /<li>um<\/li>/);
+  assert.match(html, /<li>dois<\/li>/);
+  assert.equal(ED.markdownListPasteHtml('só texto'), '');
+});
+
 test('blocks javascript: links', function () {
   var html = ED.mdToHtml('[x](javascript:alert(1))');
   assert.doesNotMatch(html, /javascript:/);
@@ -261,8 +273,10 @@ test('editor shortcut map covers toolbar actions with HR default', function () {
   assert.equal(ED.serializeShortcut(parsed), 'Mod+Shift+Enter');
   assert.match(src, /function tryMarkdownHr/);
   assert.match(src, /function tryMarkdownList/);
+  assert.match(src, /markdownListPasteHtml/);
+  assert.match(src, /noteImgBeforeCaret\(range\)/);
+  assert.match(src, /afterImg/);
   assert.match(src, /insertOrderedList/);
-  assert.match(src, /\\d\{1,3\}/);
   assert.match(src, /function mountShortcutsSettings/);
   assert.match(src, /Mod\+Shift\+Enter/);
   assert.match(css, /\.jb-ed-sc-list/);

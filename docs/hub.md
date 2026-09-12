@@ -18,6 +18,8 @@ Um login Google vale para todos os apps. Ao sair no Hub, a sessão é encerrada 
 
 O Hub tem skin própria (`jb_skin_hub` no navegador). Cada app salva tema e modo claro/escuro **separadamente** — mudar o tema no Hub não altera Fit ou Finance automaticamente.
 
+Com login Google, **temas, tours concluídos e apelido/ícone do perfil** sincronizam entre dispositivos via o arquivo Drive `Joelboard — Prefs.json` (escopo `drive.file`). localStorage continua como cache rápido; modo ghost não sincroniza.
+
 ## Feedback (owner)
 
 Usuários com e-mail autorizado veem o tile **Feedback** — lista de bugs e ideias enviados pelos formulários in-app, com filtros por app e status.

@@ -1680,7 +1680,7 @@
     }
   }
   function applySkin(app){ applySkinAttr(getSkin(app)); applyModeAttr(getMode(app)); }
-  function setSkin(app, id){ if (id && id !== 'default') ls(skinKey(app), id); else lr(skinKey(app)); themeFlash(); applySkinAttr(id); applyModeAttr(getMode(app)); return id; }
+  function setSkin(app, id){ if (id && id !== 'default') ls(skinKey(app), id); else lr(skinKey(app)); themeFlash(); applySkinAttr(id); applyModeAttr(getMode(app)); schedulePrefsPush(); return id; }
   // --- day / night mode (orthogonal to skin; each skin has a native mode, user can flip) ---
   var SKIN_MODE = { vault:'dark', arcade:'dark', garden:'light', aperture:'light', sorbet:'light', press:'light', mint:'light' };
   function nativeMode(app){ return SKIN_MODE[getSkin(app)] || 'dark'; }
@@ -1693,7 +1693,7 @@
     else whenReady(function(){ applyModeAttr(m); });
   }
   function applyMode(app){ applyModeAttr(getMode(app)); }
-  function setMode(app, m){ m=(m==='light'?'light':'dark'); ls(modeKey(app), m); themeFlash(); applyModeAttr(m); return m; }
+  function setMode(app, m){ m=(m==='light'?'light':'dark'); ls(modeKey(app), m); themeFlash(); applyModeAttr(m); schedulePrefsPush(); return m; }
   function toggleMode(app){ return setMode(app, getMode(app)==='light'?'dark':'light'); }
   function renderSkinPicker(app, el, onChange, opts){
     if (!el) return;
@@ -1792,8 +1792,246 @@
     if(rect && rect.width){ var ph=pop.offsetHeight||180, pw=pop.offsetWidth||300; var top=rect.bottom+12; if(top+ph>window.innerHeight-8) top=Math.max(8, rect.top-ph-12); var left=Math.min(Math.max(8,rect.left), window.innerWidth-pw-8); pop.style.top=top+'px'; pop.style.left=left+'px'; pop.style.transform='none'; }
     else { pop.style.top='50%'; pop.style.left='50%'; pop.style.transform='translate(-50%,-50%)'; }
   }
-  function tourEnd(markDone){ var ov=document.getElementById('jbTour'); if(ov) ov.style.display='none'; if(markDone) ls('jb_tour_'+_tApp,'1'); if(_tDone) _tDone(); }
+  function tourEnd(markDone){ var ov=document.getElementById('jbTour'); if(ov) ov.style.display='none'; if(markDone) markTourDone(_tApp); if(_tDone) _tDone(); }
+  function markTourDone(app){
+    if (!app || isGhost()) return;
+    ls('jb_tour_' + app, '1');
+    schedulePrefsPush();
+  }
 
+  /* ===== Account prefs (Drive) — keep merge helpers aligned with lib/account-prefs.mjs ===== */
+  var PREFS_FILE_NAME = 'Joelboard — Prefs.json';
+  var PREFS_FILE_KEY = 'jb_prefs_file_id';
+  var PREFS_APPS = ['hub', 'finance', 'notas', 'planner', 'fit', 'study', 'prateleira'];
+  var PREFS_TOURS = ['hub', 'finance', 'notas', 'planner', 'fit', 'study', 'julioel'];
+  var prefsPushTimer = 0;
+  var prefsPulling = null;
+  var prefsPushing = null;
+
+  function prefsPathApp(){
+    try {
+      var path = (location.pathname || '/').replace(/\/index\.html$/i, '').replace(/\/+$/, '') || '/';
+      return path === '/' ? 'hub' : (path.split('/').filter(Boolean)[0] || 'hub');
+    } catch (_) { return 'hub'; }
+  }
+  function normalizePrefsBlob(raw){
+    var p = raw && typeof raw === 'object' ? raw : {};
+    return {
+      v: 1,
+      updatedAt: Number(p.updatedAt) || 0,
+      profile: p.profile && typeof p.profile === 'object' ? {
+        nome: String(p.profile.nome || '').trim(),
+        icone: jbNormProfileIcon(p.profile.icone) || '👤',
+        at: Number(p.profile.at) || 0
+      } : null,
+      skins: p.skins && typeof p.skins === 'object' ? Object.assign({}, p.skins) : {},
+      modes: p.modes && typeof p.modes === 'object' ? Object.assign({}, p.modes) : {},
+      tours: p.tours && typeof p.tours === 'object' ? Object.assign({}, p.tours) : {}
+    };
+  }
+  function planPrefsMerge(localSnap, remoteRaw){
+    var remote = normalizePrefsBlob(remoteRaw);
+    var local = localSnap || { skins: {}, modes: {}, tours: {}, profile: null };
+    var patch = { skins: {}, modes: {}, tours: {}, profile: null, changed: false };
+    PREFS_APPS.forEach(function (app) {
+      if (local.skins[app] == null && remote.skins[app]) {
+        patch.skins[app] = String(remote.skins[app]);
+        patch.changed = true;
+      }
+      if (local.modes[app] == null && remote.modes[app]) {
+        patch.modes[app] = remote.modes[app] === 'light' ? 'light' : 'dark';
+        patch.changed = true;
+      }
+    });
+    PREFS_TOURS.forEach(function (app) {
+      if (!local.tours[app] && remote.tours[app]) {
+        patch.tours[app] = true;
+        patch.changed = true;
+      }
+    });
+    var rp = remote.profile;
+    var lp = local.profile;
+    if (rp && rp.nome) {
+      if (!lp || !lp.nome) {
+        patch.profile = { nome: rp.nome, icone: rp.icone || '👤', at: rp.at || 0 };
+        patch.changed = true;
+      } else if ((rp.at || 0) > (lp.at || 0)) {
+        patch.profile = { nome: rp.nome, icone: rp.icone || '👤', at: rp.at || 0 };
+        patch.changed = true;
+      }
+    }
+    return patch;
+  }
+  function snapshotLocalPrefs(){
+    var skins = {}, modes = {}, tours = {};
+    PREFS_APPS.forEach(function (app) {
+      skins[app] = lg(skinKey(app));
+      modes[app] = lg(modeKey(app));
+    });
+    PREFS_TOURS.forEach(function (app) {
+      tours[app] = lg('jb_tour_' + app) === '1';
+    });
+    var p = readProfile();
+    var profile = p && p.nome ? { nome: p.nome, icone: p.icone || '👤', at: Number(p.at) || 0 } : null;
+    return { skins: skins, modes: modes, tours: tours, profile: profile };
+  }
+  function buildPrefsBlobFromLocal(){
+    var snap = snapshotLocalPrefs();
+    var skins = {}, modes = {}, tours = {};
+    PREFS_APPS.forEach(function (app) {
+      skins[app] = snap.skins[app] || 'default';
+      var m = snap.modes[app];
+      if (m === 'light' || m === 'dark') modes[app] = m;
+      else modes[app] = getMode(app);
+    });
+    PREFS_TOURS.forEach(function (app) {
+      if (snap.tours[app]) tours[app] = 1;
+    });
+    return {
+      v: 1,
+      updatedAt: Date.now(),
+      profile: snap.profile,
+      skins: skins,
+      modes: modes,
+      tours: tours
+    };
+  }
+  function applyPrefsPatch(patch){
+    if (!patch || !patch.changed) return false;
+    PREFS_APPS.forEach(function (app) {
+      if (patch.skins[app] != null) {
+        if (patch.skins[app] && patch.skins[app] !== 'default') ls(skinKey(app), patch.skins[app]);
+        else lr(skinKey(app));
+      }
+      if (patch.modes[app] === 'light' || patch.modes[app] === 'dark') ls(modeKey(app), patch.modes[app]);
+    });
+    PREFS_TOURS.forEach(function (app) {
+      if (patch.tours[app]) ls('jb_tour_' + app, '1');
+    });
+    if (patch.profile && patch.profile.nome) {
+      var raw = JSON.stringify({
+        nome: patch.profile.nome,
+        icone: jbNormProfileIcon(patch.profile.icone) || '👤',
+        email: (email() || '').toLowerCase(),
+        at: Number(patch.profile.at) || Date.now()
+      });
+      ls(profileStoreKey(), raw);
+      ls(PROFILE_KEY, raw);
+      var p = readProfile();
+      profileListeners.forEach(function (fn) { try { fn(p); } catch (_) {} });
+    }
+    applySkin(prefsPathApp());
+    return true;
+  }
+  function prefsAuthFetch(method, url, body, contentType){
+    function attempt(tok, retry){
+      var headers = { Authorization: 'Bearer ' + tok };
+      var opts = { method: method, headers: headers };
+      if (body != null) {
+        if (contentType) headers['Content-Type'] = contentType;
+        opts.body = body;
+      }
+      return fetch(url, opts).then(function (r) {
+        if (r.status === 401 && retry) {
+          return requestToken(false, { force: true }).then(function (nt) { return attempt(nt, false); });
+        }
+        if (!r.ok) return r.text().then(function (tx) {
+          var e = new Error('HTTP ' + r.status + ' — ' + String(tx || '').slice(0, 200));
+          e.status = r.status;
+          throw e;
+        });
+        if (r.status === 204) return {};
+        var ct = (r.headers && r.headers.get && r.headers.get('content-type')) || '';
+        if (/json/i.test(ct)) return r.json();
+        return r.text().then(function (tx) {
+          try { return JSON.parse(tx || '{}'); } catch (_) { return {}; }
+        });
+      });
+    }
+    var t = cachedToken();
+    return (t ? Promise.resolve(t) : tokenForApi()).then(function (tok) { return attempt(tok, true); });
+  }
+  function ensurePrefsFile(){
+    if (isGhost()) return Promise.reject(new Error('ghost'));
+    var cached = lg(PREFS_FILE_KEY);
+    if (cached) return Promise.resolve(cached);
+    var q = "trashed=false and name='" + PREFS_FILE_NAME.replace(/'/g, "\\'") + "'";
+    return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&pageSize=1&spaces=drive')
+      .then(function (res) {
+        var files = res.files || [];
+        if (files.length) { ls(PREFS_FILE_KEY, files[0].id); return files[0].id; }
+        var boundary = 'jbprefs' + Date.now();
+        var meta = JSON.stringify({ name: PREFS_FILE_NAME, mimeType: 'application/json' });
+        var empty = JSON.stringify(normalizePrefsBlob(null));
+        var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta
+          + '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + empty
+          + '\r\n--' + boundary + '--';
+        return prefsAuthFetch('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', body, 'multipart/related; boundary=' + boundary)
+          .then(function (f) { ls(PREFS_FILE_KEY, f.id); return f.id; });
+      });
+  }
+  function pullAccountPrefs(){
+    if (isGhost() || !isSignedIn()) return Promise.resolve(null);
+    if (prefsPulling) return prefsPulling;
+    prefsPulling = ensurePrefsFile().then(function (id) {
+      return prefsAuthFetch('GET', 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?alt=media')
+        .then(function (remote) {
+          var patch = planPrefsMerge(snapshotLocalPrefs(), remote);
+          applyPrefsPatch(patch);
+          var norm = normalizePrefsBlob(remote);
+          var remoteEmpty = !(norm.profile && norm.profile.nome)
+            && !Object.keys(norm.tours).length
+            && !PREFS_APPS.some(function (a) { return norm.skins[a] && norm.skins[a] !== 'default'; })
+            && !PREFS_APPS.some(function (a) { return !!norm.modes[a]; });
+          if (remoteEmpty) {
+            var local = snapshotLocalPrefs();
+            var localHas = (local.profile && local.profile.nome)
+              || PREFS_TOURS.some(function (a) { return local.tours[a]; })
+              || PREFS_APPS.some(function (a) { return !!local.skins[a] || !!local.modes[a]; });
+            if (localHas) schedulePrefsPush();
+          }
+          return norm;
+        }, function (err) {
+          if (err && err.status === 404) { lr(PREFS_FILE_KEY); return null; }
+          throw err;
+        });
+    }).catch(function () { return null; })
+      .finally(function () { prefsPulling = null; });
+    return prefsPulling;
+  }
+  function pushAccountPrefs(){
+    if (isGhost() || !isSignedIn()) return Promise.resolve(null);
+    if (prefsPushing) return prefsPushing;
+    var blob = buildPrefsBlobFromLocal();
+    prefsPushing = ensurePrefsFile().then(function (id) {
+      return prefsAuthFetch(
+        'PATCH',
+        'https://www.googleapis.com/upload/drive/v3/files/' + encodeURIComponent(id) + '?uploadType=media',
+        JSON.stringify(blob),
+        'application/json'
+      ).then(function () { return blob; }, function (err) {
+        if (err && err.status === 404) {
+          lr(PREFS_FILE_KEY);
+          return ensurePrefsFile().then(function (nid) {
+            return prefsAuthFetch(
+              'PATCH',
+              'https://www.googleapis.com/upload/drive/v3/files/' + encodeURIComponent(nid) + '?uploadType=media',
+              JSON.stringify(blob),
+              'application/json'
+            ).then(function () { return blob; });
+          });
+        }
+        throw err;
+      });
+    }).catch(function () { return null; })
+      .finally(function () { prefsPushing = null; });
+    return prefsPushing;
+  }
+  function schedulePrefsPush(){
+    if (isGhost() || !isSignedIn()) return;
+    clearTimeout(prefsPushTimer);
+    prefsPushTimer = setTimeout(function () { pushAccountPrefs(); }, 500);
+  }
 
   // ---- Shared in-app date picker (popup month calendar) ----
   function datePicker(curISO, onPick, opts){
@@ -2019,10 +2257,10 @@
   function jbProfileFromJSON(raw) {
     try {
       var o = JSON.parse(raw || 'null');
-      if (!o || typeof o !== 'object') return { nome: '', icone: '' };
-      return { nome: String(o.nome || '').trim(), icone: jbNormProfileIcon(o.icone) };
+      if (!o || typeof o !== 'object') return { nome: '', icone: '', at: 0 };
+      return { nome: String(o.nome || '').trim(), icone: jbNormProfileIcon(o.icone), at: Number(o.at) || 0 };
     } catch (_) {
-      return { nome: '', icone: '' };
+      return { nome: '', icone: '', at: 0 };
     }
   }
   function jbAdoptLegacyProfile(current, nome, icone) {
@@ -2112,6 +2350,7 @@
     ls(profileStoreKey(), raw);
     ls(PROFILE_KEY, raw);
     profileListeners.forEach(function (fn) { try { fn(p); } catch (_) {} });
+    schedulePrefsPush();
     return p;
   }
   function profileName() { return readProfile().nome; }
@@ -2323,13 +2562,17 @@
     if (cb) cb();
   }
   function ensureProfile(cb) {
-    if (profileReady()) { if (cb) cb(); return; }
-    gatherProfileCandidates().then(function (list) {
+    function go() {
       if (profileReady()) { if (cb) cb(); return; }
-      openProfile(cb, { required: true, candidates: list });
-    }).catch(function () {
-      openProfile(cb, { required: true });
-    });
+      gatherProfileCandidates().then(function (list) {
+        if (profileReady()) { if (cb) cb(); return; }
+        openProfile(cb, { required: true, candidates: list });
+      }).catch(function () {
+        openProfile(cb, { required: true });
+      });
+    }
+    if (isGhost() || !isSignedIn()) { go(); return; }
+    pullAccountPrefs().then(go, go);
   }
   function writeCollabMemberProfile(sid, opts) {
     opts = opts || {};
@@ -2368,8 +2611,20 @@
     PROFILE_ICONS: PROFILE_ICONS, normProfileIcon: jbNormProfileIcon, profileFromJSON: jbProfileFromJSON, adoptLegacyInto: jbAdoptLegacyProfile, mergeProfileCandidates: jbMergeProfileCandidates, acctText: jbAcctLabel,
     profileName: profileName, profileIcon: profileIcon, profileReady: profileReady, acctLabel: acctLabel, adoptLegacyProfile: adoptLegacyProfile, rememberProfileCandidate: rememberProfileCandidate,
     onProfileChange: onProfileChange, paintAcct: paintAcct, pickProfileIcon: pickProfileIcon, prepareProfileEditor: prepareProfileEditor, saveProfileValues: saveProfileValues, openProfile: openProfile, closeProfile: closeProfile, saveProfile: saveProfile, ensureProfile: ensureProfile,
-    chooseProfile: chooseProfile, profileStartFresh: profileStartFresh, writeCollabMemberProfile: writeCollabMemberProfile
+    chooseProfile: chooseProfile, profileStartFresh: profileStartFresh, writeCollabMemberProfile: writeCollabMemberProfile,
+    pullAccountPrefs: pullAccountPrefs, pushAccountPrefs: pushAccountPrefs, schedulePrefsPush: schedulePrefsPush, markTourDone: markTourDone
   };
+  onAuthRestored(function () {
+    if (isGhost() || !isSignedIn()) return;
+    pullAccountPrefs();
+  });
+  whenReady(function () {
+    if (isGhost()) return;
+    if (isSignedIn()) { pullAccountPrefs(); return; }
+    if (hasSession() && email()) {
+      ensureToken(false).then(function () { if (isSignedIn()) pullAccountPrefs(); }).catch(function () {});
+    }
+  });
   bootGhost();
   seedGhostProfile();
 })();

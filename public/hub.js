@@ -374,7 +374,12 @@ function endJulioelHint(markDone){
   document.body.classList.remove('julioel-hint-on');
   var ov=document.getElementById('julioelHint'); if(ov) ov.classList.remove('on');
   var brand=document.getElementById('hubBrand'); if(brand) brand.classList.remove('julioel-hint-pulse');
-  if(markDone) try{ localStorage.setItem('jb_tour_julioel','1'); }catch(_){}
+  if(markDone){
+    try{
+      if(JB.markTourDone) JB.markTourDone('julioel');
+      else localStorage.setItem('jb_tour_julioel','1');
+    }catch(_){}
+  }
 }
 function positionJulioelHint(){
   var ov=document.getElementById('julioelHint'); if(!ov||!ov.classList.contains('on')) return;
@@ -1007,7 +1012,12 @@ function openMini(){
   if (JB.isSignedIn()) miniApplySitesFromSheet().catch(function () {});
 }
 JB.applySkin('hub');
-if (JB.hasSession()) { JB.ensureToken(false).then(setGreet).catch(setGreet); } else { setGreet(); }
+if (JB.hasSession()) {
+  JB.ensureToken(false)
+    .then(function () { return JB.pullAccountPrefs ? JB.pullAccountPrefs() : null; })
+    .then(setGreet)
+    .catch(setGreet);
+} else { setGreet(); }
 document.addEventListener('DOMContentLoaded',function(){
   hubNewsInit();
   var brand=document.getElementById('hubBrand');

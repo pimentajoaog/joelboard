@@ -3611,9 +3611,18 @@
     }
     function paintInkTools() {
       if (!inkTools) return;
-      Array.prototype.forEach.call(inkTools.querySelectorAll('[data-ink-color]'), function (el) {
-        el.classList.toggle('on', !inkErase && el.getAttribute('data-ink-color') === inkColor);
+      var presetOn = false;
+      Array.prototype.forEach.call(inkTools.querySelectorAll('[data-ink-color]:not(.jb-ed-ink-custom)'), function (el) {
+        var on = !inkErase && el.getAttribute('data-ink-color') === inkColor;
+        if (on) presetOn = true;
+        el.classList.toggle('on', on);
       });
+      var custom = inkTools.querySelector('.jb-ed-ink-custom');
+      if (custom) {
+        if (presetOn) custom.style.background = '';
+        else custom.style.background = inkColor;
+        custom.classList.toggle('on', !inkErase && !presetOn);
+      }
       Array.prototype.forEach.call(inkTools.querySelectorAll('[data-ink-width]'), function (el) {
         el.classList.toggle('on', !inkErase && Number(el.getAttribute('data-ink-width')) === inkWidth);
       });
@@ -4257,6 +4266,28 @@
       });
       hlMenu.appendChild(o);
     });
+    var hlCustom = document.createElement('button');
+    hlCustom.type = 'button';
+    hlCustom.className = 'jb-ed-hl-chip jb-ed-hl-custom';
+    hlCustom.title = 'Cor personalizada';
+    hlCustom.setAttribute('aria-label', 'Cor personalizada');
+    hlCustom.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+    hlCustom.addEventListener('click', function () {
+      setHlMenuOpen(false);
+      if (!window.JB || !JB.pickColor) return;
+      JB.pickColor({
+        value: lastHighlight || HIGHLIGHTS[0].color,
+        title: 'Cor do realce',
+        presets: HIGHLIGHTS.map(function (h) { return h.color; }),
+        onDone: function (hex) {
+          lastHighlight = hex;
+          paintHlBtn();
+          applyHighlight(hex);
+          surface.focus();
+        }
+      });
+    });
+    hlMenu.appendChild(hlCustom);
     var hlNone = document.createElement('button');
     hlNone.type = 'button';
     hlNone.className = 'jb-ed-hl-chip none';
@@ -4305,6 +4336,25 @@
         });
         inkTools.appendChild(chip);
       });
+      var inkCustom = document.createElement('button');
+      inkCustom.type = 'button';
+      inkCustom.className = 'jb-ed-ink-chip jb-ed-ink-custom';
+      inkCustom.title = 'Cor personalizada';
+      inkCustom.setAttribute('aria-label', 'Cor personalizada');
+      inkCustom.addEventListener('click', function () {
+        if (!window.JB || !JB.pickColor) return;
+        JB.pickColor({
+          value: inkColor,
+          title: 'Cor do Sharpie',
+          presets: INK_COLORS.map(function (c) { return c.color; }),
+          onDone: function (hex) {
+            inkColor = hex;
+            inkErase = false;
+            paintInkTools();
+          }
+        });
+      });
+      inkTools.appendChild(inkCustom);
       var fineBtn = btn('Fino', 'Traço fino');
       fineBtn.setAttribute('data-ink-width', String(INK_WIDTH_FINE));
       fineBtn.addEventListener('click', function () { inkWidth = INK_WIDTH_FINE; inkErase = false; paintInkTools(); });

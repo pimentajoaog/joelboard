@@ -1552,10 +1552,29 @@ function renderGoals() {
       + '<div class="goal-allocs">'+allocHtml+'<button class="alloc-add" onclick="openAllocation(\''+g.id+'\')">'+t('goal.planSaving')+'</button></div></div>';
   }).join('');
 }
+function mountGoalColor(hex) {
+  const el = document.getElementById('goalColor'); if (!el) return;
+  const v = /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : '#818cf8';
+  if (JB.mountColorControl) {
+    JB.mountColorControl(el, { value: v, title: 'Cor da meta' });
+    return;
+  }
+  el.setAttribute('data-hex', v);
+}
+function goalColorValue() {
+  const el = document.getElementById('goalColor');
+  if (!el) return '#818cf8';
+  if (JB.colorControlValue) {
+    const h = JB.colorControlValue(el);
+    if (h) return h;
+  }
+  return el.getAttribute('data-hex') || '#818cf8';
+}
 function openGoal() {
   closeFab(); editing={type:null,id:null};
   document.getElementById('goalTitle').textContent=t('goal.add'); document.getElementById('goalDel').style.display='none'; document.getElementById('goalSave').textContent=t('goal.save');
-  document.getElementById('goalName').value=''; document.getElementById('goalTarget').value=''; document.getElementById('goalCurrent').value=''; JB.dpSet('goalDeadline',''); document.getElementById('goalColor').value='#818cf8';
+  document.getElementById('goalName').value=''; document.getElementById('goalTarget').value=''; document.getElementById('goalCurrent').value=''; JB.dpSet('goalDeadline','');
+  mountGoalColor('#818cf8');
   document.getElementById('goalOverlay').classList.add('open');
 }
 function editGoal(id) {
@@ -1563,12 +1582,12 @@ function editGoal(id) {
   editing={type:'goals',id:id};
   document.getElementById('goalTitle').textContent=t('goal.edit'); document.getElementById('goalDel').style.display='block'; document.getElementById('goalSave').textContent=t('goal.update');
   document.getElementById('goalName').value=g.name; document.getElementById('goalTarget').value=g.target; document.getElementById('goalCurrent').value=g.current; JB.dpSet('goalDeadline', g.deadline||'');
-  document.getElementById('goalColor').value=/^#[0-9a-fA-F]{6}$/.test(g.color)?g.color:'#818cf8';
+  mountGoalColor(/^#[0-9a-fA-F]{6}$/.test(g.color)?g.color:'#818cf8');
   document.getElementById('goalOverlay').classList.add('open');
 }
 function submitGoal() {
   setFormError('goalErr','');
-  const name=document.getElementById('goalName').value.trim(), target=parseAmount(document.getElementById('goalTarget').value), current=parseAmount(document.getElementById('goalCurrent').value)||0, deadline=JB.dpGet('goalDeadline'), color=document.getElementById('goalColor').value;
+  const name=document.getElementById('goalName').value.trim(), target=parseAmount(document.getElementById('goalTarget').value), current=parseAmount(document.getElementById('goalCurrent').value)||0, deadline=JB.dpGet('goalDeadline'), color=goalColorValue();
   if (!name||!target||target<=0) { setFormError('goalErr',t('err.goalFields')); return; }
   saveRecord('goals', {name,target,current,deadline,color}, document.getElementById('goalSave'), editing.id?t('goal.update'):t('goal.save'), 'goalOverlay');
 }
@@ -2082,9 +2101,18 @@ function renderCatList() {
     const tail = editing
       ? '<button class="cat-ok" onmousedown="event.preventDefault()" onclick="commitCatName(\''+c.id+'\', document.getElementById(\'catNameInput\').value)" title="Save">✓</button>'
       : '<button class="cat-del" onclick="deleteCat(\''+c.id+'\')" title="Delete">✕</button>';
-    return '<div class="cat-row"><input type="color" class="cat-swatch" value="'+catColor(c.name)+'" onchange="changeCatColor(\''+c.id+'\',this.value)" title="Change colour">'
+    return '<div class="cat-row"><button type="button" class="cat-swatch" style="background:'+catColor(c.name)+'" onclick="pickCatColor(\''+c.id+'\')" title="Change colour" aria-label="Change colour"></button>'
       + nameCell + tail + '</div>';
   }).join('');
+}
+function pickCatColor(id) {
+  const c = ((DATA.categories)||[]).find(x=>x.id===id); if (!c || !JB.pickColor) return;
+  const cur = catColor(c.name);
+  JB.pickColor({
+    value: cur,
+    title: 'Cor da categoria',
+    onDone: function(hex){ changeCatColor(id, hex); }
+  });
 }
 function editCatName(id) { editingCatId = id; renderCatList(); setTimeout(()=>{ const i=document.getElementById('catNameInput'); if(i){ i.focus(); i.select(); } }, 30); }
 function cancelCatName() { editingCatId = null; renderCatList(); }

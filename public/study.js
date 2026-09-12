@@ -539,7 +539,19 @@ function openMat(id){
 }
 function closeMat(){ $('matOverlay').classList.remove('open'); }
 function toggleMatConcluido(){ $('matConcluido').classList.toggle('on'); }
-function renderMatColors(){ var el=$('matColors'); if(!el) return; el.innerHTML=SUBJECT_COLORS.map(function(c){ return '<button type="button" class="cswatch'+(c===matCor?' on':'')+'" style="background:'+c+'" onclick="pickMatColor(\''+c+'\')"></button>'; }).join(''); }
+function renderMatColors(){
+  var el=$('matColors'); if(!el) return;
+  if(JB.mountColorControl){
+    JB.mountColorControl(el, {
+      value: matCor,
+      title: 'Cor da matéria',
+      presets: SUBJECT_COLORS,
+      onChange: function(h){ matCor=h; }
+    });
+    return;
+  }
+  el.innerHTML=SUBJECT_COLORS.map(function(c){ return '<button type="button" class="cswatch'+(c===matCor?' on':'')+'" style="background:'+c+'" onclick="pickMatColor(\''+c+'\')"></button>'; }).join('');
+}
 function pickMatColor(c){ matCor=c; renderMatColors(); }
 function saveMat(){
   var nome=($('matNome').value||'').trim(); if(!nome){ $('matNome').focus(); return; }

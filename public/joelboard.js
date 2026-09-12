@@ -1749,6 +1749,405 @@
     return close;
   }
 
+  // --- shared color picker (wheel or square + hex/RGB). opts:{value,title,presets,onDone,onCancel,onChange} ---
+  function cpClamp(n, a, b){ n = Number(n); if (!isFinite(n)) n = a; return Math.min(b, Math.max(a, n)); }
+  function cpNormHex(h){
+    h = String(h || '').trim().toLowerCase();
+    if (h.charAt(0) !== '#') h = '#' + h;
+    if (/^#[0-9a-f]{3}$/.test(h)) return '#' + h[1]+h[1]+h[2]+h[2]+h[3]+h[3];
+    if (/^#[0-9a-f]{6}$/.test(h)) return h;
+    return '';
+  }
+  function cpHexToRgb(hex){
+    hex = cpNormHex(hex); if (!hex) return { r:129, g:140, b:248 };
+    return { r:parseInt(hex.slice(1,3),16), g:parseInt(hex.slice(3,5),16), b:parseInt(hex.slice(5,7),16) };
+  }
+  function cpRgbToHex(r, g, b){
+    function hx(n){ n = cpClamp(Math.round(n), 0, 255); return (n < 16 ? '0' : '') + n.toString(16); }
+    return '#' + hx(r) + hx(g) + hx(b);
+  }
+  function cpRgbToHsv(r, g, b){
+    r /= 255; g /= 255; b /= 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    var h = 0, s = max === 0 ? 0 : d / max, v = max;
+    if (d) {
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+    }
+    return { h: h * 360, s: s, v: v };
+  }
+  function cpHsvToRgb(h, s, v){
+    h = ((h % 360) + 360) % 360; s = cpClamp(s, 0, 1); v = cpClamp(v, 0, 1);
+    var c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c, r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
+  }
+  var _cpOv = null, _cpState = null;
+  function pickColor(opts){
+    opts = opts || {};
+    var start = cpNormHex(opts.value) || '#818cf8';
+    var rgb0 = cpHexToRgb(start);
+    var hsv0 = cpRgbToHsv(rgb0.r, rgb0.g, rgb0.b);
+    var st = {
+      h: hsv0.h, s: hsv0.s, v: hsv0.v,
+      mode: 'wheel',
+      presets: Array.isArray(opts.presets) ? opts.presets.map(cpNormHex).filter(Boolean) : [],
+      onDone: opts.onDone, onCancel: opts.onCancel, onChange: opts.onChange,
+      title: opts.title || 'Escolher cor',
+      drag: null
+    };
+    _cpState = st;
+    if (_cpOv && _cpOv.parentNode) _cpOv.parentNode.removeChild(_cpOv);
+    var ov = document.createElement('div');
+    ov.id = 'jbColorPick';
+    ov.className = 'overlay jb-cp-overlay';
+    ov.style.zIndex = '100000';
+    ov.innerHTML = '<div class="modal jb-cp-modal" role="dialog" aria-modal="true" aria-labelledby="jbCpTitle">'
+      + '<div class="mh"><div class="mt" id="jbCpTitle"></div><button type="button" class="x" data-cp="x" aria-label="Fechar">✕</button></div>'
+      + '<div class="jb-cp-preview" data-cp="prev"></div>'
+      + '<div class="jb-cp-modes" role="tablist">'
+      +   '<button type="button" class="jb-cp-mode on" data-cp-mode="wheel" role="tab">Roda</button>'
+      +   '<button type="button" class="jb-cp-mode" data-cp-mode="square" role="tab">Quadrado</button>'
+      + '</div>'
+      + '<div class="jb-cp-body">'
+      +   '<div class="jb-cp-visual">'
+      +     '<div class="jb-cp-pane jb-cp-wheel-pane" data-cp-pane="wheel">'
+      +       '<canvas class="jb-cp-canvas" data-cp="wheel" width="220" height="220"></canvas>'
+      +       '<label class="jb-cp-vlab">Brilho<input type="range" class="jb-cp-vslider" data-cp="vslide" min="0" max="100" step="1" aria-label="Brilho"></label>'
+      +     '</div>'
+      +     '<div class="jb-cp-pane jb-cp-square-pane" data-cp-pane="square" hidden>'
+      +       '<canvas class="jb-cp-canvas jb-cp-sv" data-cp="sv" width="200" height="200"></canvas>'
+      +       '<canvas class="jb-cp-canvas jb-cp-hue" data-cp="hue" width="22" height="200"></canvas>'
+      +     '</div>'
+      +   '</div>'
+      +   '<div class="jb-cp-values">'
+      +     '<label class="jb-cp-lab">Hash<input type="text" class="field jb-cp-hex" data-cp="hex" maxlength="7" spellcheck="false" autocomplete="off"></label>'
+      +     '<label class="jb-cp-lab">R<input type="number" class="field jb-cp-chan" data-cp="r" min="0" max="255" step="1"></label>'
+      +     '<label class="jb-cp-lab">G<input type="number" class="field jb-cp-chan" data-cp="g" min="0" max="255" step="1"></label>'
+      +     '<label class="jb-cp-lab">B<input type="number" class="field jb-cp-chan" data-cp="b" min="0" max="255" step="1"></label>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="jb-cp-presets" data-cp="presets" hidden></div>'
+      + '<div class="jb-cp-actions">'
+      +   '<button type="button" class="jb-cp-btn ghost" data-cp="cancel">Cancelar</button>'
+      +   '<button type="button" class="jb-cp-btn primary" data-cp="ok">Usar</button>'
+      + '</div></div>';
+    ov.querySelector('#jbCpTitle').textContent = st.title;
+    document.body.appendChild(ov);
+    _cpOv = ov;
+    requestAnimationFrame(function(){ ov.classList.add('open'); });
+
+    var wheel = ov.querySelector('[data-cp=wheel]');
+    var sv = ov.querySelector('[data-cp=sv]');
+    var hue = ov.querySelector('[data-cp=hue]');
+    var vslide = ov.querySelector('[data-cp=vslide]');
+    var hexIn = ov.querySelector('[data-cp=hex]');
+    var rIn = ov.querySelector('[data-cp=r]');
+    var gIn = ov.querySelector('[data-cp=g]');
+    var bIn = ov.querySelector('[data-cp=b]');
+    var prev = ov.querySelector('[data-cp=prev]');
+    var presetsEl = ov.querySelector('[data-cp=presets]');
+
+    function hexNow(){
+      var rgb = cpHsvToRgb(st.h, st.s, st.v);
+      return cpRgbToHex(rgb.r, rgb.g, rgb.b);
+    }
+    function emitLive(){
+      if (typeof st.onChange === 'function') try { st.onChange(hexNow()); } catch (_) {}
+    }
+    function setMode(mode){
+      st.mode = mode === 'square' ? 'square' : 'wheel';
+      Array.prototype.forEach.call(ov.querySelectorAll('[data-cp-mode]'), function(b){
+        b.classList.toggle('on', b.getAttribute('data-cp-mode') === st.mode);
+      });
+      Array.prototype.forEach.call(ov.querySelectorAll('[data-cp-pane]'), function(p){
+        p.hidden = p.getAttribute('data-cp-pane') !== st.mode;
+      });
+      paintCanvases();
+    }
+    function paintWheel(){
+      var ctx = wheel.getContext('2d');
+      var W = wheel.width, H = wheel.height, cx = W / 2, cy = H / 2;
+      var outer = Math.min(W, H) / 2 - 2, inner = outer * 0.62;
+      ctx.clearRect(0, 0, W, H);
+      /* Hue ring */
+      for (var a = 0; a < 360; a++) {
+        var r0 = (a - 90) * Math.PI / 180, r1 = (a + 1.2 - 90) * Math.PI / 180;
+        var col = cpHsvToRgb(a, 1, 1);
+        ctx.beginPath();
+        ctx.arc(cx, cy, (outer + inner) / 2, r0, r1);
+        ctx.strokeStyle = cpRgbToHex(col.r, col.g, col.b);
+        ctx.lineWidth = outer - inner;
+        ctx.stroke();
+      }
+      /* Inner disk: sat from center at current hue + value */
+      var img = ctx.createImageData(W, H);
+      var data = img.data;
+      var lim = inner - 1;
+      for (var y = 0; y < H; y++) {
+        for (var x = 0; x < W; x++) {
+          var dx = x - cx, dy = y - cy, dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist >= lim) continue;
+          var sat = Math.min(1, dist / lim);
+          var ang = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+          if (ang < 0) ang += 360;
+          var rgb = cpHsvToRgb(ang, sat, st.v);
+          var i = (y * W + x) * 4;
+          data[i] = rgb.r; data[i+1] = rgb.g; data[i+2] = rgb.b; data[i+3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      /* Re-stroke ring over soft edge */
+      for (var a2 = 0; a2 < 360; a2++) {
+        var rr0 = (a2 - 90) * Math.PI / 180, rr1 = (a2 + 1.2 - 90) * Math.PI / 180;
+        var c2 = cpHsvToRgb(a2, 1, 1);
+        ctx.beginPath();
+        ctx.arc(cx, cy, (outer + inner) / 2, rr0, rr1);
+        ctx.strokeStyle = cpRgbToHex(c2.r, c2.g, c2.b);
+        ctx.lineWidth = outer - inner;
+        ctx.stroke();
+      }
+      var hr = (st.h - 90) * Math.PI / 180, mid = (outer + inner) / 2;
+      var hx = cx + Math.cos(hr) * mid, hy = cy + Math.sin(hr) * mid;
+      ctx.beginPath(); ctx.arc(hx, hy, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 2; ctx.stroke();
+      var sx = cx + Math.cos(hr) * st.s * lim;
+      var sy = cy + Math.sin(hr) * st.s * lim;
+      ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2);
+      ctx.fillStyle = hexNow(); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    function paintSv(){
+      var ctx = sv.getContext('2d');
+      var W = sv.width, H = sv.height;
+      var img = ctx.createImageData(W, H), data = img.data;
+      for (var y = 0; y < H; y++) {
+        for (var x = 0; x < W; x++) {
+          var rgb = cpHsvToRgb(st.h, x / (W - 1), 1 - y / (H - 1));
+          var i = (y * W + x) * 4;
+          data[i] = rgb.r; data[i+1] = rgb.g; data[i+2] = rgb.b; data[i+3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      var px = st.s * (W - 1), py = (1 - st.v) * (H - 1);
+      ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2);
+      ctx.fillStyle = hexNow(); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    function paintHueStrip(){
+      var ctx = hue.getContext('2d');
+      var W = hue.width, H = hue.height;
+      for (var y = 0; y < H; y++) {
+        var rgb = cpHsvToRgb((y / (H - 1)) * 360, 1, 1);
+        ctx.fillStyle = cpRgbToHex(rgb.r, rgb.g, rgb.b);
+        ctx.fillRect(0, y, W, 2);
+      }
+      var py = (st.h / 360) * (H - 1);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(1, py - 2, W - 2, 4);
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+      ctx.strokeRect(1.5, py - 2.5, W - 3, 5);
+    }
+    function paintCanvases(){
+      if (st.mode === 'wheel') paintWheel();
+      else { paintSv(); paintHueStrip(); }
+    }
+    function syncInputs(from){
+      var rgb = cpHsvToRgb(st.h, st.s, st.v);
+      var hex = cpRgbToHex(rgb.r, rgb.g, rgb.b);
+      prev.style.background = hex;
+      if (from !== 'hex') hexIn.value = hex;
+      if (from !== 'rgb') { rIn.value = rgb.r; gIn.value = rgb.g; bIn.value = rgb.b; }
+      vslide.value = String(Math.round(st.v * 100));
+      paintCanvases();
+    }
+    function applyRgb(r, g, b, from){
+      var hsv = cpRgbToHsv(r, g, b);
+      st.h = hsv.h; st.s = hsv.s; st.v = hsv.v;
+      syncInputs(from);
+      emitLive();
+    }
+
+    if (st.presets.length) {
+      presetsEl.hidden = false;
+      presetsEl.innerHTML = st.presets.map(function(c){
+        return '<button type="button" class="jb-cp-preset'+(c===start?' on':'')+'" data-hex="'+c+'" style="background:'+c+'" aria-label="'+c+'"></button>';
+      }).join('');
+    }
+
+    function close(ok){
+      ov.classList.remove('open');
+      setTimeout(function(){ if (ov.parentNode) ov.parentNode.removeChild(ov); if (_cpOv === ov) _cpOv = null; }, 220);
+      _cpState = null;
+      if (ok) { if (typeof st.onDone === 'function') st.onDone(hexNow()); }
+      else if (typeof st.onCancel === 'function') st.onCancel();
+    }
+    function pointerToLocal(canvas, ev){
+      var rect = canvas.getBoundingClientRect();
+      var sx = canvas.width / rect.width, sy = canvas.height / rect.height;
+      return { x: (ev.clientX - rect.left) * sx, y: (ev.clientY - rect.top) * sy };
+    }
+    function hitWheel(ev){
+      var p = pointerToLocal(wheel, ev);
+      var cx = wheel.width / 2, cy = wheel.height / 2;
+      var dx = p.x - cx, dy = p.y - cy, dist = Math.sqrt(dx * dx + dy * dy);
+      var outer = Math.min(wheel.width, wheel.height) / 2 - 2, inner = outer * 0.62;
+      if (dist >= inner - 2 && dist <= outer + 2) {
+        var ang = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+        if (ang < 0) ang += 360;
+        st.h = ang;
+        st.drag = 'hue';
+        syncInputs(); emitLive();
+        return true;
+      }
+      if (dist < inner) {
+        st.s = cpClamp(dist / (inner - 1), 0, 1);
+        /* Keep hue; position encodes sat along current hue ray — update hue from angle too for freer pick: */
+        var ang2 = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+        if (ang2 < 0) ang2 += 360;
+        st.h = ang2;
+        st.drag = 'disk';
+        syncInputs(); emitLive();
+        return true;
+      }
+      return false;
+    }
+    function hitSv(ev){
+      var p = pointerToLocal(sv, ev);
+      st.s = cpClamp(p.x / (sv.width - 1), 0, 1);
+      st.v = cpClamp(1 - p.y / (sv.height - 1), 0, 1);
+      st.drag = 'sv';
+      syncInputs(); emitLive();
+    }
+    function hitHue(ev){
+      var p = pointerToLocal(hue, ev);
+      st.h = cpClamp(p.y / (hue.height - 1), 0, 1) * 360;
+      st.drag = 'huestrip';
+      syncInputs(); emitLive();
+    }
+
+    ov.addEventListener('click', function(e){
+      if (e.target === ov) { close(false); return; }
+      var t = e.target;
+      if (t.getAttribute('data-cp') === 'x' || t.getAttribute('data-cp') === 'cancel') { close(false); return; }
+      if (t.getAttribute('data-cp') === 'ok') { close(true); return; }
+      var modeBtn = t.closest && t.closest('[data-cp-mode]');
+      if (modeBtn) { setMode(modeBtn.getAttribute('data-cp-mode')); return; }
+      var pre = t.closest && t.closest('.jb-cp-preset');
+      if (pre) {
+        var hx = cpNormHex(pre.getAttribute('data-hex'));
+        if (hx) { var rgb = cpHexToRgb(hx); applyRgb(rgb.r, rgb.g, rgb.b); }
+        Array.prototype.forEach.call(presetsEl.querySelectorAll('.jb-cp-preset'), function(b){
+          b.classList.toggle('on', b === pre);
+        });
+      }
+    });
+    wheel.addEventListener('pointerdown', function(ev){
+      if (hitWheel(ev)) { wheel.setPointerCapture(ev.pointerId); ev.preventDefault(); }
+    });
+    wheel.addEventListener('pointermove', function(ev){
+      if (st.drag === 'hue' || st.drag === 'disk') { hitWheel(ev); ev.preventDefault(); }
+    });
+    wheel.addEventListener('pointerup', function(){ st.drag = null; });
+    wheel.addEventListener('pointercancel', function(){ st.drag = null; });
+    sv.addEventListener('pointerdown', function(ev){ hitSv(ev); sv.setPointerCapture(ev.pointerId); ev.preventDefault(); });
+    sv.addEventListener('pointermove', function(ev){ if (st.drag === 'sv') { hitSv(ev); ev.preventDefault(); } });
+    sv.addEventListener('pointerup', function(){ st.drag = null; });
+    hue.addEventListener('pointerdown', function(ev){ hitHue(ev); hue.setPointerCapture(ev.pointerId); ev.preventDefault(); });
+    hue.addEventListener('pointermove', function(ev){ if (st.drag === 'huestrip') { hitHue(ev); ev.preventDefault(); } });
+    hue.addEventListener('pointerup', function(){ st.drag = null; });
+    vslide.addEventListener('input', function(){
+      st.v = cpClamp(Number(vslide.value) / 100, 0, 1);
+      syncInputs('v'); emitLive();
+    });
+    hexIn.addEventListener('input', function(){
+      var hx = cpNormHex(hexIn.value);
+      if (!hx) return;
+      var rgb = cpHexToRgb(hx);
+      applyRgb(rgb.r, rgb.g, rgb.b, 'hex');
+    });
+    function onRgbInput(){
+      applyRgb(cpClamp(rIn.value, 0, 255), cpClamp(gIn.value, 0, 255), cpClamp(bIn.value, 0, 255), 'rgb');
+    }
+    rIn.addEventListener('change', onRgbInput);
+    gIn.addEventListener('change', onRgbInput);
+    bIn.addEventListener('change', onRgbInput);
+    rIn.addEventListener('input', onRgbInput);
+    gIn.addEventListener('input', onRgbInput);
+    bIn.addEventListener('input', onRgbInput);
+
+    setMode('wheel');
+    syncInputs();
+    return close;
+  }
+
+  function mountColorControl(host, opts){
+    if (!host) return null;
+    opts = opts || {};
+    var value = cpNormHex(opts.value) || '#818cf8';
+    var presets = Array.isArray(opts.presets) ? opts.presets.map(cpNormHex).filter(Boolean) : [];
+    function paint(){
+      host.setAttribute('data-hex', value);
+      host.classList.add('jb-cp-host');
+      var swatches = presets.map(function(c){
+        return '<button type="button" class="jb-cp-mini'+(c===value?' on':'')+'" data-hex="'+c+'" style="background:'+c+'" aria-label="'+c+'"></button>';
+      }).join('');
+      host.innerHTML = '<button type="button" class="jb-cp-trigger" style="background:'+value+'" aria-label="Abrir seletor de cor" title="Escolher cor"></button>'
+        + (presets.length ? '<div class="jb-cp-minirow">'+swatches+'</div>' : '');
+      var trig = host.querySelector('.jb-cp-trigger');
+      if (trig) trig.addEventListener('click', function(ev){
+        ev.preventDefault();
+        var before = value;
+        pickColor({
+          value: value,
+          title: opts.title || 'Escolher cor',
+          presets: presets,
+          onChange: function(hex){
+            trig.style.background = hex;
+            if (typeof opts.onLive === 'function') opts.onLive(hex);
+          },
+          onDone: function(hex){
+            value = hex;
+            paint();
+            if (typeof opts.onChange === 'function') opts.onChange(hex);
+            if (typeof opts.onDone === 'function') opts.onDone(hex);
+          },
+          onCancel: function(){
+            value = before;
+            paint();
+            if (typeof opts.onCancel === 'function') opts.onCancel(before);
+          }
+        });
+      });
+      Array.prototype.forEach.call(host.querySelectorAll('.jb-cp-mini'), function(b){
+        b.addEventListener('click', function(ev){
+          ev.preventDefault();
+          value = cpNormHex(b.getAttribute('data-hex')) || value;
+          paint();
+          if (typeof opts.onChange === 'function') opts.onChange(value);
+        });
+      });
+    }
+    paint();
+    return {
+      get: function(){ return value; },
+      set: function(hex){ value = cpNormHex(hex) || value; paint(); }
+    };
+  }
+  function colorControlValue(host){
+    if (!host) return '';
+    return cpNormHex(host.getAttribute('data-hex')) || '';
+  }
+
   // --- shared custom dropdown: app renders .jb-dd markup (button + .jb-dd-menu of .jb-dd-opt); core toggles open + closes on outside-click ---
   function ddClose(){ var o = document.querySelectorAll('.jb-dd.open'); for (var i = 0; i < o.length; i++) o[i].classList.remove('open'); }
   function ddToggle(btn){ var dd = (btn && btn.closest) ? btn.closest('.jb-dd') : null; if (!dd) return; var wasOpen = dd.classList.contains('open'); ddClose(); if (!wasOpen) { dd.classList.add('open'); var sel = dd.querySelector('.jb-dd-opt.is-sel'); if (sel && sel.scrollIntoView) { try { sel.scrollIntoView({ block: 'nearest' }); } catch (_) {} } } }
@@ -2660,7 +3059,8 @@
     onProfileChange: onProfileChange, paintAcct: paintAcct, pickProfileIcon: pickProfileIcon, prepareProfileEditor: prepareProfileEditor, saveProfileValues: saveProfileValues, openProfile: openProfile, closeProfile: closeProfile, saveProfile: saveProfile, ensureProfile: ensureProfile,
     chooseProfile: chooseProfile, profileStartFresh: profileStartFresh, writeCollabMemberProfile: writeCollabMemberProfile,
     pullAccountPrefs: pullAccountPrefs, pushAccountPrefs: pushAccountPrefs, schedulePrefsPush: schedulePrefsPush, markTourDone: markTourDone,
-    qsGet: qsGet, qsPatch: qsPatch, qsClearJoin: qsClearJoin, onRoute: onRoute, routeBack: routeBack
+    qsGet: qsGet, qsPatch: qsPatch, qsClearJoin: qsClearJoin, onRoute: onRoute, routeBack: routeBack,
+    pickColor: pickColor, mountColorControl: mountColorControl, colorControlValue: colorControlValue
   };
   onAuthRestored(function () {
     if (isGhost() || !isSignedIn()) return;

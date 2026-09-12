@@ -689,7 +689,7 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 }
 .jb-ed-scroll:focus-within { border-color: var(--primary, #818cf8); }
 .jb-ed-page { position: relative; min-height: 100%; overflow: hidden; }
-.jb-ed-surface { min-height: 320px; background: transparent; border: 0; border-radius: 0; padding: 16px 18px; overflow: visible; line-height: 1.65; font-size: 16px; color: var(--text, #e7eaf3); outline: none; position: relative; z-index: 1; }
+.jb-ed-surface { min-height: 320px; background: transparent; border: 0; border-radius: 0; padding: 16px 18px 56px; overflow: visible; line-height: 1.65; font-size: 16px; color: var(--text, #e7eaf3); outline: none; position: relative; z-index: 1; }
 .jb-ed-surface:focus { outline: none; }
 .jb-ed-surface.is-empty:before { content: attr(data-placeholder); color: var(--muted, #7b85a0); pointer-events: none; }
 .jb-ed-surface h1, .jb-ed-surface h2, .jb-ed-surface h3 { font-weight: 800; margin: 0 0 10px; line-height: 1.25; }
@@ -713,7 +713,12 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 12px;
-  margin: 0 0 12px;
+  margin: 0 0 8px;
+}
+.jb-ed-surface .jb-ed-after-cols {
+  min-height: 1.65em;
+  margin: 0 0 10px;
+  padding: 2px 0 8px;
 }
 .jb-ed-surface .jb-ed-col {
   position: relative;

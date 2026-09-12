@@ -196,7 +196,7 @@ test('colsHtml builds a two-column layout', function () {
   assert.match(html, /class="jb-ed-cols"/);
   assert.match(html, /class="jb-ed-col"><p>esq<\/p>/);
   assert.match(html, /class="jb-ed-col"><p>dir<\/p>/);
-  assert.match(html, /<\/div><p><br><\/p>$/);
+  assert.match(html, /<\/div><p class="jb-ed-after-cols"><br><\/p>$/);
   assert.equal(ED.isEmptyHtml(ED.colsHtml()), false);
   assert.match(ED.colsHtml(), /<p><br><\/p>.*<p><br><\/p>/);
 });
@@ -205,12 +205,16 @@ test('editor exposes two-column toolbar insert', function () {
   assert.match(src, /function colsHtml/);
   assert.match(src, /function insertColumns/);
   assert.match(src, /function normalizeCols/);
+  assert.match(src, /function tryColsEnter/);
+  assert.match(src, /function ensureExitAfterCols/);
+  assert.match(src, /insertLineBreak/);
   assert.match(src, /Duas colunas/);
   assert.match(src, /jb-ed-cols/);
   assert.match(css, /\.jb-ed-surface \.jb-ed-cols/);
   assert.match(css, /width: fit-content/);
   assert.match(css, /min-width: 140px/);
   assert.match(css, /min-height: 88px/);
+  assert.match(css, /\.jb-ed-after-cols/);
   assert.match(css, /:not\(:focus-within\) > p:last-child:has\(> br:only-child\)/);
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.jb-ed-surface \.jb-ed-col/);
 });

@@ -978,7 +978,7 @@
   function colsHtml(leftHtml, rightHtml) {
     var left = String(leftHtml || '').trim() || '<p><br></p>';
     var right = String(rightHtml || '').trim() || '<p><br></p>';
-    return '<div class="jb-ed-cols"><div class="jb-ed-col">' + left + '</div><div class="jb-ed-col">' + right + '</div></div><p><br></p>';
+    return '<div class="jb-ed-cols"><div class="jb-ed-col">' + left + '</div><div class="jb-ed-col">' + right + '</div></div><p class="jb-ed-after-cols"><br></p>';
   }
   function ensureColBody(col) {
     if (!col) return;
@@ -988,6 +988,21 @@
       else if (ch.nodeType === 3 && String(ch.nodeValue || '').trim()) hasBlock = true;
     });
     if (!hasBlock) col.innerHTML = '<p><br></p>';
+  }
+  function ensureExitAfterCols(row) {
+    if (!row || !row.parentNode || typeof document === 'undefined') return null;
+    var next = row.nextElementSibling;
+    if (next && next.tagName === 'P' && !(next.classList && next.classList.contains('jb-ed-col'))) {
+      if (next.classList) next.classList.add('jb-ed-after-cols');
+      if (!next.childNodes.length) next.appendChild(document.createElement('br'));
+      return next;
+    }
+    var p = document.createElement('p');
+    p.className = 'jb-ed-after-cols';
+    p.appendChild(document.createElement('br'));
+    if (row.nextSibling) row.parentNode.insertBefore(p, row.nextSibling);
+    else row.parentNode.appendChild(p);
+    return p;
   }
   function normalizeCols(root) {
     if (!root || !root.querySelectorAll) return;
@@ -1026,6 +1041,7 @@
         cols.push(empty);
       }
       cols.forEach(function (c) { row.appendChild(c); });
+      ensureExitAfterCols(row);
     });
   }
 
@@ -1524,6 +1540,129 @@
       });
     }
     function onShortcutsChanged() { refreshShortcutTitles(); }
+    function closestEdCol(node) {
+      while (node && node !== surface) {
+        if (node.nodeType === 1 && node.classList && node.classList.contains('jb-ed-col')) return node;
+        node = node.parentNode;
+      }
+      return null;
+    }
+    function closestEdCols(node) {
+      while (node && node !== surface) {
+        if (node.nodeType === 1 && node.classList && node.classList.contains('jb-ed-cols')) return node;
+        node = node.parentNode;
+      }
+      return null;
+    }
+    function placeCaretInEl(el, atStart) {
+      if (!el) return;
+      var sel = window.getSelection();
+      if (!sel) return;
+      try {
+        var range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(!!atStart);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch (_) {}
+    }
+    function colLastBlock(col) {
+      if (!col) return null;
+      var kids = col.children;
+      var i, el, last = null;
+      for (i = 0; i < kids.length; i++) {
+        el = kids[i];
+        if (el.tagName === 'IMG' || /^(P|DIV|H1|H2|H3|BLOCKQUOTE|UL|OL|PRE)$/.test(el.tagName)) last = el;
+      }
+      return last;
+    }
+    function rangeAtEndOf(el, range) {
+      if (!el || !range || !range.collapsed) return false;
+      try {
+        var probe = range.cloneRange();
+        probe.selectNodeContents(el);
+        probe.setStart(range.endContainer, range.endOffset);
+        return !String(probe.toString() || '').replace(/\u200b/g, '');
+      } catch (_) { return false; }
+    }
+    function blockIsVisuallyEmpty(el) {
+      if (!el) return true;
+      if (el.tagName === 'IMG') return false;
+      var t = String(el.textContent || '').replace(/\u200b/g, '').trim();
+      if (t) return false;
+      if (el.querySelector && el.querySelector('img[data-jb-file]')) return false;
+      return true;
+    }
+    function exitColsToAfter(cols) {
+      var after = ensureExitAfterCols(cols);
+      surface.focus();
+      placeCaretInEl(after, true);
+      markDirty();
+      return after;
+    }
+    function tryColsEnter(ev) {
+      if (!ev || (ev.key !== 'Enter' && ev.key !== 'NumpadEnter')) return false;
+      if (ev.altKey || ev.ctrlKey || ev.metaKey) return false;
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount || !sel.isCollapsed) return false;
+      var range = sel.getRangeAt(0);
+      if (!rangeInSurface(range)) return false;
+      var col = closestEdCol(range.commonAncestorContainer);
+      if (!col) return false;
+      var cols = closestEdCols(col);
+      if (!cols) return false;
+      if (ev.shiftKey) {
+        ev.preventDefault();
+        histBeforeChange();
+        try { document.execCommand('insertLineBreak'); } catch (_) {
+          try { document.execCommand('insertHTML', false, '<br>'); } catch (__) {}
+        }
+        markDirty();
+        return true;
+      }
+      var last = colLastBlock(col);
+      var block = range.commonAncestorContainer;
+      if (block && block.nodeType === 3) block = block.parentElement;
+      while (block && block !== col && block.parentElement !== col) block = block.parentElement;
+      if (!last || block !== last) return false;
+      if (last.tagName === 'IMG') {
+        /* caret after image is treated as end */
+      } else if (!rangeAtEndOf(last, range) && !blockIsVisuallyEmpty(last)) {
+        return false;
+      }
+      ev.preventDefault();
+      histBeforeChange();
+      if (last && last.tagName === 'P' && blockIsVisuallyEmpty(last) && col.children.length > 1) {
+        try { col.removeChild(last); } catch (_) {}
+      }
+      exitColsToAfter(cols);
+      return true;
+    }
+    function onColsExitPointer(ev) {
+      if (inkOpen || !ev || ev.button) return;
+      var rows = surface.querySelectorAll('.jb-ed-cols');
+      if (!rows.length) return;
+      var lastCols = rows[rows.length - 1];
+      var after = ensureExitAfterCols(lastCols);
+      var y = ev.clientY;
+      var colsRect = lastCols.getBoundingClientRect();
+      var afterRect = after.getBoundingClientRect();
+      var surfaceRect = surface.getBoundingClientRect();
+      var inCol = closestEdCol(ev.target) || closestEdCols(ev.target);
+      if (inCol) {
+        /* Allow clicking the bottom padding of the surface while a col is under the pointer stack only if below the row. */
+        if (y <= colsRect.bottom + 2) return;
+      }
+      var belowCols = y > colsRect.bottom - 1;
+      var inExitPad = after.contains(ev.target) || ev.target === after;
+      var belowSurfaceContent = ev.target === surface && y > Math.min(afterRect.bottom, surfaceRect.bottom) - 28;
+      if (!belowCols && !inExitPad && !belowSurfaceContent) return;
+      if (inExitPad && y <= afterRect.bottom) return; /* let normal caret placement run */
+      if (belowCols || belowSurfaceContent || (inExitPad && y > afterRect.bottom - 2)) {
+        ev.preventDefault();
+        exitColsToAfter(lastCols);
+      }
+    }
     function insertColumns() {
       histBeforeChange();
       surface.focus();
@@ -3678,6 +3817,11 @@
         else ev.stopPropagation();
         return;
       }
+      if (editorHasFocus() && tryColsEnter(ev)) {
+        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        else ev.stopPropagation();
+        return;
+      }
       var map = getShortcutMap();
       var action = findShortcutAction(ev, map);
       if (!action && mod && key === 'y' && !ev.shiftKey && !ev.altKey) action = 'redo';
@@ -3814,6 +3958,7 @@
       var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
       linkMouse = (a && surface.contains(a)) ? { x: ev.clientX, y: ev.clientY } : null;
     });
+    surface.addEventListener('pointerdown', onColsExitPointer);
     surface.addEventListener('keydown', function (ev) {
       var key = (ev.key || '').toLowerCase();
       if ((ev.ctrlKey || ev.metaKey) && key === 's') {
@@ -3821,6 +3966,7 @@
         persist(true);
         return;
       }
+      if (tryColsEnter(ev)) return;
       if (selectedImg && !inkOpen && (key === 'delete' || key === 'backspace') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
         ev.preventDefault();
         removeNoteImg(selectedImg);

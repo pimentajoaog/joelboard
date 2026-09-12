@@ -15,7 +15,14 @@ var PL_TABS=[
 var PL_DAY_ICONS=['✈️','🏔️','🍷','🍽️','🌆','🚶','🎉','🏠','🌅','🌊','🎿','☕','🎵','🛍️','🏛️','🌴','📝','⭐','🚗','🛏️'];
 var PL_EVT_ICONS=['','✈️','🍽️','☕','🏨','🚶','🍷','🎵','🛍️','🌅','🎉','📍','🚗','🎿'];
 var PL_ICON_EXTRAS=['📅','📌','🎯','💡','📚','🐶','🐱','💼','🎁','🍕','🌱','💪','🎨','📷','💊','🎮','❤️','🔥','🌈','📎','🗂️','💬','🔔','⏰','🏋️','🧘','🛠️','📦','🌸','🍀','🎬','🏖️','🧁','🍳','🏨','📍'];
-var PL_TAG_COLORS=[{k:'warn',hex:'#fb923c'},{k:'ok',hex:'#34d399'},{k:'mute',hex:'#7b85a0'}];
+var PL_TAG_PRESETS=['#fb923c','#34d399','#7b85a0','#60a5fa','#a78bfa','#f472b6'];
+function plNormTagCor(v){ return (JB.resolveColor ? JB.resolveColor(v, PL_TAG_PRESETS[0]) : (v||PL_TAG_PRESETS[0])); }
+function plTagPill(tag, cor){
+  if(!tag) return '';
+  var hex=plNormTagCor(cor);
+  var st=JB.tintChipStyle ? JB.tintChipStyle(hex) : ('color:'+hex);
+  return '<span class="pl-pill" style="'+st+'">'+esc(tag)+'</span>';
+}
 var PL_WD=['dom','seg','ter','qua','qui','sex','sáb'];
 var PL_PERIODS={
   madrugada:180, manha:540, 'manhã':540, manhã:540, morning:540,
@@ -355,7 +362,7 @@ function parseEventos(rows){
       var parsed=plParseHora(hora);
       if(parsed.ok && parsed.min!=='') horaMin=parsed.min;
     }
-    return { id:String(r[9]), diaId:String(r[0]||''), hora:hora, horaMin:horaMin, titulo:String(r[3]||''), nota:String(r[4]||''), icone:String(r[5]||''), tag:String(r[6]||''), tagCor:String(r[7]||'warn'), ordem:Number(r[8])||0 };
+    return { id:String(r[9]), diaId:String(r[0]||''), hora:hora, horaMin:horaMin, titulo:String(r[3]||''), nota:String(r[4]||''), icone:String(r[5]||''), tag:String(r[6]||''), tagCor:plNormTagCor(r[7]), ordem:Number(r[8])||0 };
   });
 }
 function buildPlanner(t){
@@ -558,7 +565,7 @@ function dayBlock(d){
     +evHtml+'</div></div>';
 }
 function eventRow(e){
-  var pill=e.tag?'<span class="pl-pill '+esc(e.tagCor||'warn')+'">'+esc(e.tag)+'</span>':'';
+  var pill=plTagPill(e.tag, e.tagCor);
   var title=(e.icone?esc(e.icone)+' ':'')+esc(e.titulo||'(sem título)');
   return '<div class="pl-evt" onclick="openEvtEdit(\''+e.id+'\',\''+e.diaId+'\')"><div class="pl-time">'+esc(e.hora||'—')+'</div>'
     +'<div><div class="pl-et">'+title+'</div>'+(e.nota?'<div class="pl-en">'+esc(e.nota)+'</div>':'')+pill+'</div></div>';
@@ -840,7 +847,7 @@ function renderNewDates(){
 
 function planRowVals(p){ return [p.titulo,p.subtitulo||'',p.inicio,p.fim,p.icone||'',p.criado,p.atualizado,p.id,plFmtIds(p.listaIds)]; }
 function dayRowVals(d){ return [d.planoId,d.data,d.titulo||'',d.icone||'',d.ordem,d.id,plFmtIds(d.listaIds)]; }
-function evtRowVals(e){ return [e.diaId,e.hora||'',e.horaMin===''||e.horaMin==null?'':e.horaMin,e.titulo||'',e.nota||'',e.icone||'',e.tag||'',e.tagCor||'warn',e.ordem,e.id]; }
+function evtRowVals(e){ return [e.diaId,e.hora||'',e.horaMin===''||e.horaMin==null?'':e.horaMin,e.titulo||'',e.nota||'',e.icone||'',e.tag||'',plNormTagCor(e.tagCor),e.ordem,e.id]; }
 function metaRowVals(p){ return [p.titulo,p.subtitulo||'',p.inicio,p.fim,p.icone||'',p.criado,p.atualizado,p.id,p.collabOwner||'',plFmtIds(p.listaIds)]; }
 
 function plPersistForPlan(p, opts){
@@ -1035,7 +1042,7 @@ function openEvtEdit(id, dayId){
   $('evtNote').value=e?e.nota:'';
   $('evtTag').value=e?e.tag:'';
   window._plEvtIcon=e?e.icone:'';
-  window._plEvtTagCor=(e&&e.tagCor)||'warn';
+  window._plEvtTagCor=plNormTagCor(e&&e.tagCor);
   plPaintIconPicker('evt');
   renderTagColors();
   $('evtDelBtn').style.display=e?'block':'none';
@@ -1043,10 +1050,20 @@ function openEvtEdit(id, dayId){
   plFocusField('evtTitle', !!e);
 }
 function pickEvtIcon(ic){ window._plEvtIcon=ic; plPaintIconPicker('evt'); }
-function pickTagCor(k){ window._plEvtTagCor=k; renderTagColors(); }
+function pickTagCor(hex){ window._plEvtTagCor=plNormTagCor(hex); renderTagColors(); }
 function renderTagColors(){
-  $('evtTagColors').innerHTML=PL_TAG_COLORS.map(function(c){
-    return '<button type="button" class="pl-tag-sw'+(c.k===window._plEvtTagCor?' on':'')+'" style="background:'+c.hex+'" onclick="pickTagCor(\''+c.k+'\')"></button>';
+  var el=$('evtTagColors'); if(!el) return;
+  if(JB.mountColorControl){
+    JB.mountColorControl(el, {
+      value: plNormTagCor(window._plEvtTagCor),
+      title: 'Cor do destaque',
+      presets: PL_TAG_PRESETS,
+      onChange: function(h){ window._plEvtTagCor=plNormTagCor(h); }
+    });
+    return;
+  }
+  el.innerHTML=PL_TAG_PRESETS.map(function(c){
+    return '<button type="button" class="pl-tag-sw'+(c===plNormTagCor(window._plEvtTagCor)?' on':'')+'" style="background:'+c+'" onclick="pickTagCor(\''+c+'\')"></button>';
   }).join('');
 }
 function closeEvtEdit(){ $('evtOverlay').classList.remove('open'); _editEvtId=null; _editEvtDayId=null; _plEvtMer=''; }
@@ -1084,7 +1101,7 @@ function commitEvtEdit(){
   var sid=plSidForPlan(p);
   if(_editEvtId){
     var e=(DATA.eventos||[]).find(function(x){return x.id===_editEvtId;}); if(!e) return;
-    e.titulo=title; e.hora=hora; e.horaMin=parsed.min; e.nota=nota; e.icone=window._plEvtIcon||''; e.tag=tag; e.tagCor=window._plEvtTagCor||'warn';
+    e.titulo=title; e.hora=hora; e.horaMin=parsed.min; e.nota=nota; e.icone=window._plEvtIcon||''; e.tag=tag; e.tagCor=plNormTagCor(window._plEvtTagCor);
     plPersistForPlan(p, {
       run: function(){
         return findRowInSid(sid,'Eventos',9,e.id).then(function(row){
@@ -1098,7 +1115,7 @@ function commitEvtEdit(){
     return;
   }
   var ord=1; eventsOf(_editEvtDayId).forEach(function(x){ if(x.ordem>=ord) ord=x.ordem+1; });
-  var ev={ id:uuid(), diaId:_editEvtDayId, hora:hora, horaMin:parsed.min, titulo:title, nota:nota, icone:window._plEvtIcon||'', tag:tag, tagCor:window._plEvtTagCor||'warn', ordem:ord };
+  var ev={ id:uuid(), diaId:_editEvtDayId, hora:hora, horaMin:parsed.min, titulo:title, nota:nota, icone:window._plEvtIcon||'', tag:tag, tagCor:plNormTagCor(window._plEvtTagCor), ordem:ord };
   DATA.eventos=DATA.eventos||[]; DATA.eventos.push(ev);
   plPersistForPlan(p, {
     run: function(){

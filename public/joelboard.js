@@ -98,9 +98,9 @@
             { id: 'ghost-d3', planoId: 'ghost-p1', data: d2, titulo: 'Volta', icone: '🏠', ordem: 2, listaIds: [] }
           ],
           eventos: [
-            { id: 'ghost-e1', diaId: 'ghost-d1', hora: '16h', horaMin: 960, titulo: 'Check-in', nota: '', icone: '🏨', tag: '', tagCor: 'warn', ordem: 0 },
-            { id: 'ghost-e2', diaId: 'ghost-d2', hora: '9h30', horaMin: 570, titulo: 'Café', nota: '', icone: '☕', tag: '', tagCor: 'ok', ordem: 0 },
-            { id: 'ghost-e3', diaId: 'ghost-d2', hora: '21h', horaMin: 1260, titulo: 'Jantar', nota: '', icone: '🍽️', tag: '', tagCor: 'warn', ordem: 1 }
+            { id: 'ghost-e1', diaId: 'ghost-d1', hora: '16h', horaMin: 960, titulo: 'Check-in', nota: '', icone: '🏨', tag: '', tagCor: '#fb923c', ordem: 0 },
+            { id: 'ghost-e2', diaId: 'ghost-d2', hora: '9h30', horaMin: 570, titulo: 'Café', nota: '', icone: '☕', tag: '', tagCor: '#34d399', ordem: 0 },
+            { id: 'ghost-e3', diaId: 'ghost-d2', hora: '21h', horaMin: 1260, titulo: 'Jantar', nota: '', icone: '🍽️', tag: '', tagCor: '#fb923c', ordem: 1 }
           ],
           config: { perfil_nome: 'Cursor', perfil_icone: '👻' }
         }
@@ -2147,6 +2147,18 @@
     if (!host) return '';
     return cpNormHex(host.getAttribute('data-hex')) || '';
   }
+  /** Map legacy Planner keys (warn/ok/mute) or free hex → #rrggbb. */
+  function resolveColor(v, fallback){
+    var map = { warn: '#fb923c', ok: '#34d399', mute: '#7b85a0' };
+    var s = String(v == null ? '' : v).trim().toLowerCase();
+    if (map[s]) return map[s];
+    return cpNormHex(s) || cpNormHex(fallback) || map.warn;
+  }
+  /** Soft tint chip style (background mix + solid text/border color). */
+  function tintChipStyle(hex){
+    hex = resolveColor(hex);
+    return 'background:color-mix(in srgb,' + hex + ' 18%,transparent);color:' + hex;
+  }
 
   // --- shared custom dropdown: app renders .jb-dd markup (button + .jb-dd-menu of .jb-dd-opt); core toggles open + closes on outside-click ---
   function ddClose(){ var o = document.querySelectorAll('.jb-dd.open'); for (var i = 0; i < o.length; i++) o[i].classList.remove('open'); }
@@ -3060,7 +3072,8 @@
     chooseProfile: chooseProfile, profileStartFresh: profileStartFresh, writeCollabMemberProfile: writeCollabMemberProfile,
     pullAccountPrefs: pullAccountPrefs, pushAccountPrefs: pushAccountPrefs, schedulePrefsPush: schedulePrefsPush, markTourDone: markTourDone,
     qsGet: qsGet, qsPatch: qsPatch, qsClearJoin: qsClearJoin, onRoute: onRoute, routeBack: routeBack,
-    pickColor: pickColor, mountColorControl: mountColorControl, colorControlValue: colorControlValue
+    pickColor: pickColor, mountColorControl: mountColorControl, colorControlValue: colorControlValue,
+    resolveColor: resolveColor, tintChipStyle: tintChipStyle
   };
   onAuthRestored(function () {
     if (isGhost() || !isSignedIn()) return;

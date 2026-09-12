@@ -271,7 +271,7 @@
           icone: e.icone || '',
           nota: e.nota || '',
           tag: e.tag || '',
-          tagCor: e.tagCor || ''
+          tagCor: (window.JB && JB.resolveColor) ? JB.resolveColor(e.tagCor, '#fb923c') : (e.tagCor || '')
         };
       });
       var ids = parseIds(d.listaIds);
@@ -518,7 +518,9 @@
     var href = e.href || '/planner/';
     var rows = items.length
       ? items.map(function (it) {
-          var pill = it.tag ? ('<span class="jb-cal-peekpill ' + esc(it.tagCor || 'warn') + '">' + esc(it.tag) + '</span>') : '';
+          var hex = (window.JB && JB.resolveColor) ? JB.resolveColor(it.tagCor, '#fb923c') : (it.tagCor || '#fb923c');
+          var st = (window.JB && JB.tintChipStyle) ? JB.tintChipStyle(hex) : ('color:' + hex);
+          var pill = it.tag ? ('<span class="jb-cal-peekpill" style="' + st + '">' + esc(it.tag) + '</span>') : '';
           return '<div class="jb-cal-peekrow">'
             + '<div class="jb-cal-peektime">' + esc(it.time || '—') + '</div>'
             + '<div><div class="jb-cal-peekt">' + (it.icone ? esc(it.icone) + ' ' : '') + esc(it.title || 'Evento') + '</div>'

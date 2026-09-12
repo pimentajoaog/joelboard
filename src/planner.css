@@ -153,3 +153,41 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .pl-pill.mute{ background:var(--surface2); color:var(--muted); }
 
 .pl-empty-day{ color:var(--muted); font-size:12.5px; padding:4px 0 2px; }
+
+.pl-shell{
+  transition: opacity 0.22s ease, transform 0.26s cubic-bezier(.2,.85,.3,1);
+}
+.pl-shell.pl-prep{
+  opacity:0;
+  transform:translateY(14px) scale(0.985);
+  transition:none;
+}
+.pl-shell.pl-in{
+  opacity:1;
+  transform:none;
+}
+.pl-shell.pl-leaving{
+  opacity:0;
+  transform:translateY(10px) scale(0.99);
+  pointer-events:none;
+}
+.plans-home{
+  transition: opacity 0.22s ease, transform 0.26s cubic-bezier(.2,.85,.3,1);
+}
+.plans-home.home-prep{
+  opacity:0;
+  transform:translateY(10px);
+  transition:none;
+}
+.plans-home.home-in{
+  opacity:1;
+  transform:none;
+}
+@media (prefers-reduced-motion: reduce){
+  .pl-shell, .pl-shell.pl-prep, .pl-shell.pl-in, .pl-shell.pl-leaving,
+  .plans-home, .plans-home.home-prep, .plans-home.home-in{
+    transition:none;
+    transform:none;
+    opacity:1;
+  }
+}

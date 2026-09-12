@@ -438,6 +438,8 @@ function render(){
   $('fab').style.display=ed?'none':'flex';
   if(ed) renderTimeline(); else renderHome();
   plScrollFocusDay();
+  if(_plAnimEnter==='plan'){ _plAnimEnter=null; animatePlanEnter(); }
+  else if(_plAnimEnter==='home'){ _plAnimEnter=null; animateHomeEnter(); }
 }
 function plScrollFocusDay(){
   if(!_focusDay) return;
@@ -446,6 +448,30 @@ function plScrollFocusDay(){
   el.classList.add('pl-day-focus');
   try{ el.scrollIntoView({ block:'start', behavior:'smooth' }); }catch(_){ try{ el.scrollIntoView(); }catch(__){} }
   _focusDay='';
+}
+var _planAnimTimer=0, _plAnimEnter=null;
+function plReduceMotion(){
+  try{ return !!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches); }catch(_){ return false; }
+}
+function animatePlanEnter(){
+  var shell=document.querySelector('#main .pl-shell');
+  if(!shell||plReduceMotion()) return;
+  shell.classList.add('pl-prep');
+  void shell.offsetWidth;
+  requestAnimationFrame(function(){
+    shell.classList.remove('pl-prep');
+    shell.classList.add('pl-in');
+  });
+}
+function animateHomeEnter(){
+  var home=document.querySelector('#main .plans-home');
+  if(!home||plReduceMotion()) return;
+  home.classList.add('home-prep');
+  void home.offsetWidth;
+  requestAnimationFrame(function(){
+    home.classList.remove('home-prep');
+    home.classList.add('home-in');
+  });
 }
 function openPlan(id, opts){
   opts=opts||{};
@@ -458,15 +484,29 @@ function openPlan(id, opts){
     else patch.d=_focusDay;
     JB.qsPatch(patch, { replace: cur===id });
   }
+  if(_planAnimTimer){ clearTimeout(_planAnimTimer); _planAnimTimer=0; }
+  _plAnimEnter='plan';
   plRefreshLinks(); window.scrollTo(0,0);
 }
 function backHome(opts){
   opts=opts||{};
   function go(){
-    openPlanId=null; _edMenuOpen=false;
-    if(typeof plSetCollabWatch==='function') plSetCollabWatch(null);
-    if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ p:null, d:null }, { replace:true });
-    render();
+    function finish(){
+      openPlanId=null; _edMenuOpen=false;
+      if(typeof plSetCollabWatch==='function') plSetCollabWatch(null);
+      if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ p:null, d:null }, { replace:true });
+      _plAnimEnter='home';
+      render();
+    }
+    var shell=document.querySelector('#main .pl-shell');
+    if(shell && !plReduceMotion()){
+      if(_planAnimTimer) clearTimeout(_planAnimTimer);
+      shell.classList.remove('pl-in','pl-prep');
+      shell.classList.add('pl-leaving');
+      _planAnimTimer=setTimeout(function(){ _planAnimTimer=0; finish(); }, 240);
+      return;
+    }
+    finish();
   }
   if(!opts.fromRoute && JB.routeBack && openPlanId && JB.qsGet('p')){
     if(JB.routeBack({ p:null, d:null })) return;
@@ -489,10 +529,10 @@ function renderHome(){
   var list=(DATA.planos||[]).slice().sort(function(a,b){ return String(b.atualizado||b.criado||'').localeCompare(String(a.atualizado||a.criado||'')); });
   if(homeQuery){ var q=homeQuery.toLowerCase(); list=list.filter(function(p){ return (p.titulo+' '+p.subtitulo).toLowerCase().indexOf(q)>-1; }); }
   var shared=list.filter(function(p){return p.collabSheetId;}), priv=list.filter(function(p){return !p.collabSheetId;});
-  $('main').innerHTML='<div class="jb-search searchbar">'
+  $('main').innerHTML='<div class="plans-home"><div class="jb-search searchbar">'
     +'<input class="field jb-search-input" id="homeSearch" type="search" placeholder="Buscar planos…" value="'+escAttr(homeQuery)+'" oninput="onHomeSearch(this.value)" onfocus="JB.searchFocus(this)" onblur="JB.searchBlur(this)">'
     +'<button type="button" class="jb-search-clear" id="homeSearchClear" onclick="clearHomeSearch()" aria-label="Limpar busca" style="display:'+(homeQuery?'flex':'none')+'">✕</button>'
-    +'</div><div id="homeList"></div>';
+    +'</div><div id="homeList"></div></div>';
   var el=$('homeList');
   if(!list.length){
     el.innerHTML=(DATA.planos&&DATA.planos.length)? JB.emptyState({ icon:'🔎', title:'Nada encontrado', hint:'Tente outro termo.' }) : JB.emptyState({ icon:'📅', title:'Nenhum plano ainda', hint:'Crie um roteiro, um fim de semana ou um encontro.', action:'+ Novo plano', onclick:'openNew()' });
@@ -532,7 +572,7 @@ function renderTimeline(){
     :'<button type="button" class="ed-menu-item" onclick="closeEdMenu();plShareFromPrivate()">👥 Tornar compartilhado</button>';
   var leaveLabel=p.collabSheetId?(p.collabRole==='owner'?'Excluir plano compartilhado':'Sair do plano'):'Excluir plano';
   var leaveFn=p.collabSheetId?'plLeaveOrDelete()':'deletePlan()';
-  var html='<div class="tl-head"><div class="tl-kicker"><button class="tl-back" onclick="backHome()">← Planos</button>'
+  var html='<div class="pl-shell"><div class="tl-head"><div class="tl-kicker"><button class="tl-back" onclick="backHome()">← Planos</button>'
     +'<div class="tl-menu-wrap"><button class="tl-menu-btn" onclick="toggleEdMenu()" aria-label="Menu">⋯</button>'
     +'<div class="tl-menu'+(_edMenuOpen?' open':'')+'" id="tlMenu">'
     +'<button type="button" class="ed-menu-item" onclick="closeEdMenu();openEditPlan()">✏ Editar plano</button>'
@@ -543,7 +583,7 @@ function renderTimeline(){
     +'<div class="tl-title">'+esc(p.titulo||'(sem título)')+'</div>'
     +(sub?'<div class="tl-sub">'+esc(sub)+'</div>':'')+av
     +plPeekBlock(p.listaIds,'plan',p.id,false)+'</div>';
-  html+='<div class="pl-spine jb-stagger-list">'+days.map(function(d){ return dayBlock(d); }).join('')+'</div>';
+  html+='<div class="pl-spine jb-stagger-list">'+days.map(function(d){ return dayBlock(d); }).join('')+'</div></div>';
   $('main').innerHTML=html;
   if(!_stPlTl[p.id] && window.JB && JB.staggerChildren){
     _stPlTl[p.id]=true;

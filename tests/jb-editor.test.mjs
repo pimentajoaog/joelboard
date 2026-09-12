@@ -236,6 +236,9 @@ test('editor exposes two-column toolbar insert', function () {
   assert.match(src, /function finishInsertNoteImg/);
   assert.match(src, /function unwrapColImageParagraphs/);
   assert.match(src, /Image-only columns should hug/);
+  assert.match(src, /function reconcileColsRow/);
+  assert.match(src, /function noteImgBeforeCaret/);
+  assert.match(src, /Never strip column layout shells/);
   assert.match(css, /img\[data-jb-file\] \+ p:last-child/);
   assert.match(src, /move into the last column/);
   assert.match(src, /jump back to the previous column/);

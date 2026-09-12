@@ -1755,10 +1755,10 @@
     }
     function syncAllCols() {
       if (colsNeedRepair(surface)) normalizeCols(surface);
-      else {
-        Array.prototype.forEach.call(surface.querySelectorAll('.jb-ed-cols'), markColsEditable);
-        Array.prototype.forEach.call(surface.querySelectorAll('.jb-ed-col'), tidyCol);
-      }
+      Array.prototype.forEach.call(surface.querySelectorAll('.jb-ed-cols'), function (row) {
+        markColsEditable(row);
+        Array.prototype.forEach.call(row.querySelectorAll('.jb-ed-col'), tidyCol);
+      });
     }
     function placeCaretNear(node, after) {
       if (!node || !node.parentNode) {
@@ -1929,6 +1929,12 @@
       }
 
       if (ev.key === 'Delete') {
+        var delImg = noteImgAfterCaret(range);
+        if (delImg && closestEdCol(delImg)) {
+          ev.preventDefault();
+          removeNoteImg(delImg);
+          return true;
+        }
         /* Only selection removes a columns block — not Delete from the previous paragraph. */
         return false;
       }
@@ -1939,6 +1945,13 @@
         if (!cols) return false;
         var colList = cols.querySelectorAll('.jb-ed-col');
         var first = colList[0];
+
+        var backImg = noteImgBeforeCaret(range);
+        if (backImg && col.contains(backImg)) {
+          ev.preventDefault();
+          removeNoteImg(backImg);
+          return true;
+        }
 
         if (rangeAtStartOf(col, range)) {
           ev.preventDefault();
@@ -1977,7 +1990,8 @@
             ev.preventDefault();
             histBeforeChange();
             col.removeChild(block);
-            placeCaretAfterColChild(prevBlock, col);
+            if (noteImg(prevBlock)) placeCaretNear(prevBlock, true);
+            else placeCaretAfterColChild(prevBlock, col);
             stripTrailingEmptyColBlocks(col, true);
             syncColEmptyState(col);
             markDirty();
@@ -2851,9 +2865,20 @@
       if (!img) return;
       histBeforeChange();
       var parent = img.parentNode;
+      var col = closestEdCol(img);
+      var row = col ? closestEdCols(col) : null;
       if (selectedImg === img) clearImgSelect();
       if (img.parentNode) img.parentNode.removeChild(img);
       pruneEmptyBlock(parent);
+      if (row && surface.contains(row)) {
+        reconcileColsRow(row);
+        if (col && surface.contains(col) && !colHasContent(col)) {
+          ensureColBody(col);
+          placeCaretInEl(colLastBlock(col) || col, true);
+        }
+      } else if (col && surface.contains(col)) {
+        tidyCol(col);
+      }
       markDirty();
       if (inkCanvas) scheduleInkSize();
     }
@@ -2872,10 +2897,78 @@
     }
     function pruneEmptyBlock(el) {
       if (!el || el === surface || !el.parentNode) return;
+      /* Never strip column layout shells — only empty text wrappers. */
+      if (el.classList && (el.classList.contains('jb-ed-col') || el.classList.contains('jb-ed-cols') || el.classList.contains('jb-ed-after-cols'))) return;
       if (el.tagName !== 'P' && el.tagName !== 'DIV') return;
       if (el.querySelector('img')) return;
       if (String(el.textContent || '').replace(/\u200b/g, '').trim()) return;
       el.parentNode.removeChild(el);
+    }
+    function reconcileColsRow(row) {
+      if (!row || !surface.contains(row)) return;
+      markColsEditable(row);
+      if (colsNeedRepair(surface)) normalizeCols(surface);
+      Array.prototype.forEach.call(row.querySelectorAll('.jb-ed-col'), function (c) {
+        unwrapColImageParagraphs(c);
+        ensureColBody(c);
+        stripTrailingEmptyColBlocks(c, false);
+        syncColEmptyState(c);
+      });
+      ensureExitAfterCols(row);
+    }
+    function noteImgBeforeCaret(range) {
+      if (!range || !range.collapsed) return null;
+      var node = range.startContainer;
+      var offset = range.startOffset;
+      var prev = null;
+      if (node.nodeType === 1 && offset > 0) {
+        prev = node.childNodes[offset - 1];
+        while (prev && prev.nodeType === 3 && !String(prev.nodeValue || '').replace(/\u200b/g, '').trim()) {
+          prev = prev.previousSibling;
+        }
+        return noteImg(prev);
+      }
+      if (node.nodeType === 3 && offset === 0) {
+        prev = node.previousSibling;
+        while (prev && prev.nodeType === 3 && !String(prev.nodeValue || '').replace(/\u200b/g, '').trim()) {
+          prev = prev.previousSibling;
+        }
+        if (noteImg(prev)) return noteImg(prev);
+        var block = node.parentElement;
+        while (block && block.parentElement && block.parentElement !== surface && !block.parentElement.classList.contains('jb-ed-col')) {
+          if (block.previousElementSibling) break;
+          block = block.parentElement;
+        }
+        if (block && block.previousElementSibling) return noteImg(block.previousElementSibling);
+      }
+      return null;
+    }
+    function noteImgAfterCaret(range) {
+      if (!range || !range.collapsed) return null;
+      var node = range.startContainer;
+      var offset = range.startOffset;
+      var next = null;
+      if (node.nodeType === 1) {
+        next = node.childNodes[offset];
+        while (next && next.nodeType === 3 && !String(next.nodeValue || '').replace(/\u200b/g, '').trim()) {
+          next = next.nextSibling;
+        }
+        return noteImg(next);
+      }
+      if (node.nodeType === 3 && offset >= String(node.nodeValue || '').length) {
+        next = node.nextSibling;
+        while (next && next.nodeType === 3 && !String(next.nodeValue || '').replace(/\u200b/g, '').trim()) {
+          next = next.nextSibling;
+        }
+        if (noteImg(next)) return noteImg(next);
+        var block = node.parentElement;
+        while (block && block.parentElement && block.parentElement !== surface && !block.parentElement.classList.contains('jb-ed-col')) {
+          if (block.nextElementSibling) break;
+          block = block.parentElement;
+        }
+        if (block && block.nextElementSibling) return noteImg(block.nextElementSibling);
+      }
+      return null;
     }
     function caretRangeAt(x, y) {
       var range = null;

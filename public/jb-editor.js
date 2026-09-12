@@ -1729,27 +1729,30 @@
     }
     function onColsExitPointer(ev) {
       if (inkOpen || !ev || ev.button) return;
+      var t = ev.target;
+      /* Never steal caret/selection from real note content (paragraphs, lists, …). */
+      if (!t || t !== surface) return;
       var rows = surface.querySelectorAll('.jb-ed-cols');
       if (!rows.length) return;
-      var lastCols = rows[rows.length - 1];
-      var after = ensureExitAfterCols(lastCols);
       var y = ev.clientY;
-      var colsRect = lastCols.getBoundingClientRect();
-      var afterRect = after.getBoundingClientRect();
-      var surfaceRect = surface.getBoundingClientRect();
-      var inCol = closestEdCol(ev.target) || closestEdCols(ev.target);
-      if (inCol) {
-        /* Allow clicking the bottom padding of the surface while a col is under the pointer stack only if below the row. */
-        if (y <= colsRect.bottom + 2) return;
-      }
-      var belowCols = y > colsRect.bottom - 1;
-      var inExitPad = after.contains(ev.target) || ev.target === after;
-      var belowSurfaceContent = ev.target === surface && y > Math.min(afterRect.bottom, surfaceRect.bottom) - 28;
-      if (!belowCols && !inExitPad && !belowSurfaceContent) return;
-      if (inExitPad && y <= afterRect.bottom) return; /* let normal caret placement run */
-      if (belowCols || belowSurfaceContent || (inExitPad && y > afterRect.bottom - 2)) {
-        ev.preventDefault();
-        exitColsToAfter(lastCols);
+      var i, row, rect, after, ar, next, nr;
+      for (i = 0; i < rows.length; i++) {
+        row = rows[i];
+        rect = row.getBoundingClientRect();
+        if (y <= rect.bottom) continue;
+        after = ensureExitAfterCols(row);
+        ar = after.getBoundingClientRect();
+        next = after.nextElementSibling;
+        if (next) {
+          nr = next.getBoundingClientRect();
+          /* Click is over later content’s vertical band — leave it alone. */
+          if (y >= nr.top - 1) continue;
+        }
+        if (y <= Math.max(ar.bottom, rect.bottom) + 28) {
+          ev.preventDefault();
+          exitColsToAfter(row);
+          return;
+        }
       }
     }
     function insertColumns() {

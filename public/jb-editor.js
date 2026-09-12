@@ -2666,35 +2666,25 @@
         var dx = ev.clientX - imgResize.startX;
         var dy = ev.clientY - imgResize.startY;
         var handle = imgResize.handle;
-        var keepAspect = !!ev.shiftKey;
         var w = imgResize.startW;
         var h = imgResize.startH;
+        var ratio = imgResize.ratio || 1;
         if (handle === 'e' || handle === 'w') {
+          /* Horizontal edge: width only. */
           if (handle === 'w') dx = -dx;
-          w = imgResize.startW + dx;
-          h = keepAspect ? (w * imgResize.ratio) : imgResize.startH;
-          applyImgSize(selectedImg, w, h);
+          applyImgSize(selectedImg, imgResize.startW + dx, imgResize.startH);
         } else if (handle === 'n' || handle === 's') {
+          /* Vertical edge: height only. */
           if (handle === 'n') dy = -dy;
-          h = imgResize.startH + dy;
-          w = keepAspect ? (h / (imgResize.ratio || 1)) : imgResize.startW;
-          applyImgSize(selectedImg, w, h);
+          applyImgSize(selectedImg, imgResize.startW, imgResize.startH + dy);
         } else {
+          /* Corner: lock aspect — resize along the diagonal. */
           if (handle === 'nw' || handle === 'sw') dx = -dx;
           if (handle === 'nw' || handle === 'ne') dy = -dy;
-          if (keepAspect) {
-            /* Prefer the dominant drag axis for aspect-locked corner resize. */
-            if (Math.abs(dx) >= Math.abs(dy)) {
-              w = imgResize.startW + dx;
-              h = w * imgResize.ratio;
-            } else {
-              h = imgResize.startH + dy;
-              w = h / (imgResize.ratio || 1);
-            }
-          } else {
-            w = imgResize.startW + dx;
-            h = imgResize.startH + dy;
-          }
+          var fromX = imgResize.startW + dx;
+          var fromY = ratio > 0 ? (imgResize.startH + dy) / ratio : fromX;
+          w = Math.abs(dx) >= Math.abs(dy) ? fromX : fromY;
+          h = w * ratio;
           applyImgSize(selectedImg, w, h);
         }
         return;

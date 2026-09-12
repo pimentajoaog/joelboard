@@ -455,7 +455,9 @@ test('image resize supports edge handles for axis-only scaling', function () {
   assert.match(src, /data-h="n"/);
   assert.match(src, /data-h="e"/);
   assert.match(src, /function applyImgSize/);
-  assert.match(src, /keepAspect/);
+  assert.match(src, /Horizontal edge: width only/);
+  assert.match(src, /Vertical edge: height only/);
+  assert.match(src, /Corner: lock aspect/);
   assert.match(css, /\.jb-ed-img-handle\.n/);
   assert.match(css, /\.jb-ed-img-handle\.e/);
 });

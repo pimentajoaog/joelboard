@@ -2076,9 +2076,22 @@
       var r = sel.getRangeAt(0);
       if (rangeInSurface(r)) savedRange = r.cloneRange();
     }
+    function editableHostFor(node) {
+      var col = closestEdCol(node);
+      if (col) return col;
+      return surface;
+    }
+    function focusEditable(nodeOrRange) {
+      var node = nodeOrRange;
+      if (nodeOrRange && nodeOrRange.commonAncestorContainer) node = nodeOrRange.commonAncestorContainer;
+      var host = editableHostFor(node);
+      try { host.focus(); } catch (_) {
+        try { surface.focus(); } catch (__) {}
+      }
+    }
     function restoreSelection() {
       if (!savedRange) return;
-      surface.focus();
+      focusEditable(savedRange);
       var sel = window.getSelection();
       if (!sel) return;
       sel.removeAllRanges();
@@ -2499,18 +2512,48 @@
       cmd('createLink', url);
     }
     function insertNode(node) {
-      surface.focus();
       var sel = window.getSelection();
-      if (sel && sel.rangeCount) {
-        var range = sel.getRangeAt(0);
+      var range = null;
+      if (sel && sel.rangeCount && rangeInSurface(sel.getRangeAt(0))) {
+        range = sel.getRangeAt(0).cloneRange();
+      } else if (savedRange && rangeInSurface(savedRange)) {
+        range = savedRange.cloneRange();
+      }
+      if (!range) {
+        try { surface.focus(); } catch (_) {}
+        surface.appendChild(node);
+        try {
+          sel = window.getSelection();
+          if (sel) {
+            var end = document.createRange();
+            end.setStartAfter(node);
+            end.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(end);
+            savedRange = end.cloneRange();
+          }
+        } catch (_) {}
+        return;
+      }
+      focusEditable(range);
+      sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        try { sel.addRange(range); } catch (_) {}
+      }
+      try {
         range.deleteContents();
         range.insertNode(node);
         range.setStartAfter(node);
         range.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      } else {
-        surface.appendChild(node);
+        if (sel) {
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+        savedRange = range.cloneRange();
+      } catch (_) {
+        var host = editableHostFor(range.commonAncestorContainer);
+        try { host.appendChild(node); } catch (__) { surface.appendChild(node); }
       }
     }
     function hydrateImages() {
@@ -3708,6 +3751,7 @@
       if (!files.length) return;
       ev.preventDefault();
       if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      saveSelection();
       var i = 0;
       function next() {
         if (destroyed) return;
@@ -3720,7 +3764,9 @@
         }
         if (window.JB && JB.toast) JB.toast('Enviando imagem…');
         Promise.resolve(uploadImage(file)).then(function (info) {
+          restoreSelection();
           insertUploadedImage(info);
+          saveSelection();
           next();
         }).catch(function () {
           if (window.JB && JB.toast) JB.toast('Não foi possível colar a imagem');
@@ -3754,6 +3800,7 @@
     }
     function onEditorPaste(ev) {
       if (!clipboardInEditor(ev)) return;
+      saveSelection();
       histBeforeChange();
       var dt = ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData);
       var html = '';
@@ -3763,6 +3810,7 @@
         ev.preventDefault();
         if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
         else ev.stopPropagation();
+        restoreSelection();
         var i;
         for (i = 0; i < metas.length; i++) insertClonedNoteImg(metas[i]);
         return;

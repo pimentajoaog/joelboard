@@ -462,6 +462,15 @@ test('editor flushes dirty notes when the tab is hidden', function () {
   assert.match(src, /document\.visibilityState === 'hidden'/);
 });
 
+test('editor paste restores caret inside a column before inserting images', function () {
+  assert.match(src, /function editableHostFor/);
+  assert.match(src, /function focusEditable/);
+  assert.match(src, /saveSelection\(\);\s*\n\s*var i = 0;/);
+  assert.match(src, /restoreSelection\(\);\s*\n\s*insertUploadedImage/);
+  assert.match(src, /focusEditable\(range\)/);
+  assert.match(src, /focusEditable\(savedRange\)/);
+});
+
 test('cssImgWidthPx keeps a sane pixel width', function () {
   assert.equal(ED.cssImgWidthPx('width: 320px', ''), 320);
   assert.equal(ED.cssImgWidthPx('', '240'), 240);

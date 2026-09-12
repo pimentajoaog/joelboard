@@ -34,3 +34,25 @@ test('join explains missing Drive access', function () {
   assert.match(src, /ncFindRegistryRow\(ctx\.metaRow\[6\], sheetId\)/);
   assert.match(src, /n\.collabSheetId = sid/);
 });
+
+test('marcacao helpers and FeitoPor round-trip', function () {
+  vm.runInContext(
+    'this.ncNormMarcacao=ncNormMarcacao;this.ncParseFeitoPor=ncParseFeitoPor;this.ncSerializeFeitoPor=ncSerializeFeitoPor;',
+    ctx
+  );
+  assert.equal(ctx.ncNormMarcacao(''), 'compartilhado');
+  assert.equal(ctx.ncNormMarcacao('pessoal'), 'pessoal');
+  assert.equal(ctx.ncNormMarcacao('COMPARTILHADO'), 'compartilhado');
+  var map = ctx.ncParseFeitoPor('{"A@B.COM":true,"x@y.com":false}');
+  assert.equal(map['a@b.com'], true);
+  assert.equal(map['x@y.com'], undefined);
+  assert.equal(ctx.ncSerializeFeitoPor({ 'A@B.com': true }), '{"a@b.com":true}');
+  assert.equal(ctx.ncSerializeFeitoPor({}), '');
+  assert.match(src, /Marcacao/);
+  assert.match(src, /FeitoPor/);
+  assert.match(src, /function ncSetShareMarcacao/);
+  assert.match(src, /function ncDoShareFromPrivate/);
+  assert.match(notas, /function itemIsDone/);
+  assert.match(notas, /function setItemDone/);
+  assert.match(notas, /noteSaveLastCol/);
+});

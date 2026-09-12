@@ -1,7 +1,7 @@
 /* Joelboard Notes — shared lists (collab). © 2026 Joel Soluções LTDA. */
 var NC_COLLAB_TABS = [
-  ['Meta', ['Titulo', 'Tipo', 'Cor', 'Fixado', 'Criado', 'Atualizado', 'ID', 'Vence', 'OwnerEmail']],
-  ['Itens', ['NotaID', 'Ordem', 'Texto', 'Marcavel', 'Feito', 'ID', 'Tipo']],
+  ['Meta', ['Titulo', 'Tipo', 'Cor', 'Fixado', 'Criado', 'Atualizado', 'ID', 'Vence', 'OwnerEmail', 'Marcacao']],
+  ['Itens', ['NotaID', 'Ordem', 'Texto', 'Marcavel', 'Feito', 'ID', 'Tipo', 'FeitoPor']],
   ['Membros', ['Email', 'Nome', 'Icone', 'Papel', 'Status', 'Entrou']]
 ];
 var NC_PROFILE_ICONS = ['🧑', '👩', '🧑‍💻', '🌸', '🐱', '🦊', '🐻', '🦁', '🐼', '🦉', '🐸', '🦄', '⭐', '🔥', '💜', '🛒', '✈️', '📝', '☕', '🌈'];
@@ -19,6 +19,30 @@ var NC_POLL_FAST = 7000;
 var NC_POLL_SLOW = 40000;
 var NC_POLL_IDLE_MS = 90000;
 
+function ncNormMarcacao(v) {
+  return String(v || '').toLowerCase() === 'pessoal' ? 'pessoal' : 'compartilhado';
+}
+function ncParseFeitoPor(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    var o = {};
+    Object.keys(raw).forEach(function (k) { if (raw[k]) o[String(k).toLowerCase()] = true; });
+    return o;
+  }
+  try {
+    var p = JSON.parse(String(raw));
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return {};
+    var out = {};
+    Object.keys(p).forEach(function (k) { if (p[k]) out[String(k).toLowerCase()] = true; });
+    return out;
+  } catch (_) { return {}; }
+}
+function ncSerializeFeitoPor(map) {
+  var out = {}, keys = Object.keys(map || {});
+  keys.forEach(function (k) { if (map[k]) out[String(k).toLowerCase()] = true; });
+  return Object.keys(out).length ? JSON.stringify(out) : '';
+}
+
 function ncWithSync(fn) {
   _ncSyncChain = _ncSyncChain.then(fn, fn);
   return _ncSyncChain;
@@ -32,7 +56,8 @@ function ncRowToItem(r, notaId) {
     texto: String(r[2] || ''),
     marcavel: !!r[3],
     feito: !!r[4],
-    tipo: String(r[6] || '')
+    tipo: String(r[6] || ''),
+    feitoPor: ncParseFeitoPor(r[7])
   };
 }
 
@@ -51,7 +76,7 @@ function ncParseItemRows(rows, notaId) {
 
 function ncItemsSignature(items) {
   return (items || []).slice().sort(function (a, b) { return a.ordem - b.ordem; }).map(function (it) {
-    return it.id + '\t' + it.ordem + '\t' + it.texto + '\t' + (it.feito ? 1 : 0) + '\t' + (it.marcavel ? 1 : 0) + '\t' + (it.tipo || '');
+    return it.id + '\t' + it.ordem + '\t' + it.texto + '\t' + (it.feito ? 1 : 0) + '\t' + (it.marcavel ? 1 : 0) + '\t' + (it.tipo || '') + '\t' + ncSerializeFeitoPor(it.feitoPor);
   }).join('\n');
 }
 
@@ -223,13 +248,17 @@ function ncStripCollabFromData() {
 function ncFetchCollabPack(sid, opts) {
   opts = opts || {};
   if (collabGrids[sid]) {
-    return ncLoadCollabSheetData(sid, collabGrids[sid], opts);
+    return ensureCollabNotesHeaders(sid).then(function () {
+      return ncLoadCollabSheetData(sid, collabGrids[sid], opts);
+    });
   }
   return JB.api('GET', ncCollabUrl(sid, '?fields=sheets.properties(sheetId,title)')).then(function (meta) {
     var grid = {};
     (meta.sheets || []).forEach(function (sh) { grid[sh.properties.title] = sh.properties.sheetId; });
     collabGrids[sid] = grid;
-    return ncLoadCollabSheetData(sid, grid, opts);
+    return ensureCollabNotesHeaders(sid).then(function () {
+      return ncLoadCollabSheetData(sid, grid, opts);
+    });
   });
 }
 
@@ -271,6 +300,7 @@ function ncMergeRegistryRow(reg, pack) {
     criado: String(metaRow[4] || ''),
     atualizado: String(reg[5] || metaRow[5] || ''),
     vence: String(metaRow[7] || ''),
+    marcacao: ncNormMarcacao(metaRow[9]),
     collabSheetId: pack.sid,
     collabRole: String(reg[2] || my && my.papel || 'editor'),
     collabOwner: String(reg[3] || metaRow[8] || ''),
@@ -329,12 +359,14 @@ function ncRefreshCollabOnly(force) {
         var v = String(metaRow[7] || '');
         var cor = String(metaRow[2] || '');
         var tipo = String(metaRow[1] || cur.tipo);
-        if (t !== cur.titulo || u !== cur.atualizado || v !== cur.vence || cor !== cur.cor || tipo !== cur.tipo) changed = true;
+        var marc = ncNormMarcacao(metaRow[9]);
+        if (t !== cur.titulo || u !== cur.atualizado || v !== cur.vence || cor !== cur.cor || tipo !== cur.tipo || marc !== cur.marcacao) changed = true;
         cur.titulo = t;
         cur.atualizado = u;
         cur.vence = v;
         cur.cor = cor;
         cur.tipo = tipo;
+        cur.marcacao = marc;
       }
       if (pack.membros && pack.membros.length) cur.collabMembers = ncParseMembers(pack.membros);
       return { changed: changed, remote: !!changed };
@@ -427,10 +459,47 @@ function ncMemberRow(em, nome, icone, papel, status) {
   return [em, nome || '', icone || '👤', papel || 'editor', status || 'active', new Date().toISOString()];
 }
 
-function ncCreateCollabSpreadsheet(n, items, inviteEmail) {
+function ncEnsureCollabGridCols(sid, tab, minCols) {
+  var grid = collabGrids[sid] || {};
+  var sheetId = grid[tab];
+  if (sheetId == null) return Promise.resolve();
+  return JB.api('GET', ncCollabUrl(sid, '?fields=sheets(properties(sheetId,gridProperties(columnCount)))')).then(function (meta) {
+    var cc = 0;
+    (meta.sheets || []).forEach(function (sh) {
+      if (sh.properties && sh.properties.sheetId === sheetId) cc = ((sh.properties.gridProperties) || {}).columnCount || 0;
+    });
+    if (cc >= minCols) return;
+    return JB.api('POST', ncCollabUrl(sid, ':batchUpdate'), {
+      requests: [{ updateSheetProperties: { properties: { sheetId: sheetId, gridProperties: { columnCount: minCols } }, fields: 'gridProperties.columnCount' } }]
+    });
+  }).catch(function () {});
+}
+
+function ensureCollabNotesHeaders(sid) {
+  if (!sid || !JB.api) return Promise.resolve();
+  return Promise.all([
+    ncEnsureCollabGridCols(sid, 'Meta', 10).then(function () {
+      return JB.api('GET', ncCollabUrl(sid, '/values/' + encodeURIComponent('Meta!1:1')));
+    }).then(function (res) {
+      var h = (res.values && res.values[0]) || [];
+      if (h[9] === 'Marcacao') return;
+      return JB.api('PUT', ncCollabUrl(sid, '/values/' + encodeURIComponent('Meta!J1') + '?valueInputOption=RAW'), { values: [['Marcacao']] });
+    }).catch(function () {}),
+    ncEnsureCollabGridCols(sid, 'Itens', 8).then(function () {
+      return JB.api('GET', ncCollabUrl(sid, '/values/' + encodeURIComponent('Itens!1:1')));
+    }).then(function (res) {
+      var h = (res.values && res.values[0]) || [];
+      if (h[7] === 'FeitoPor') return;
+      return JB.api('PUT', ncCollabUrl(sid, '/values/' + encodeURIComponent('Itens!H1') + '?valueInputOption=RAW'), { values: [['FeitoPor']] });
+    }).catch(function () {})
+  ]);
+}
+
+function ncCreateCollabSpreadsheet(n, items, inviteEmail, marcacao) {
   var em = ncEmail();
+  var marc = ncNormMarcacao(marcacao || n.marcacao);
   var title = '📝 Joelboard — ' + (n.titulo || 'Lista compartilhada');
-  var metaVals = [n.titulo, n.tipo, n.cor || '', n.fixado ? '1' : '', n.criado, new Date().toISOString(), n.id, n.vence || '', em];
+  var metaVals = [n.titulo, n.tipo, n.cor || '', n.fixado ? '1' : '', n.criado, new Date().toISOString(), n.id, n.vence || '', em, marc];
   var itemVals = (items || []).map(itemRowVals);
   var members = [ncMemberRow(em, ncProfileName(), ncProfileIcon(), 'owner', 'active')];
   if (inviteEmail && inviteEmail !== em) members.push(ncMemberRow(inviteEmail, '', '👤', 'editor', 'pending'));
@@ -475,38 +544,68 @@ function ncDeletePrivateList(n) {
   });
 }
 
+var _ncShareModePick = 'compartilhado';
+
+function ncCloseShareMode() {
+  var ov = $('shareModeOverlay');
+  if (ov) ov.classList.remove('open');
+}
+
+function ncPickShareMode(mode) {
+  _ncShareModePick = ncNormMarcacao(mode);
+  var opts = document.querySelectorAll('#shareModeOverlay .share-mode-opt');
+  for (var i = 0; i < opts.length; i++) {
+    opts[i].classList.toggle('on', opts[i].getAttribute('data-mode') === _ncShareModePick);
+  }
+}
+
+function ncConfirmShareMode() {
+  ncCloseShareMode();
+  ncDoShareFromPrivate(_ncShareModePick);
+}
+
 function ncShareFromPrivate() {
   var n = note(openNoteId);
   if (!n || n.collabSheetId) return;
   ncEnsureProfile(function () {
-    JB.confirm('Tornar compartilhada?', 'A lista será copiada para uma planilha compartilhada no Drive. A versão privada será removida daqui.', function () {
-      loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Criando lista compartilhada…</div></div>');
-      var items = itemsOf(n.id);
-      ncCreateCollabSpreadsheet(n, items, '').then(function (sid) {
-        n.collabSheetId = sid;
-        n.collabRole = 'owner';
-        n.collabOwner = ncEmail();
-        n.collabMembers = [{ email: ncEmail(), nome: ncProfileName(), icone: ncProfileIcon(), papel: 'owner', status: 'active' }];
-        return ncDeletePrivateList(n);
-      }).then(function () {
-        DATA.notas = (DATA.notas || []).filter(function (x) { return x.id !== n.id; });
-        DATA.notas.push(n);
-        ncSetCollabItems(n.id, items, { sheetId: n.collabSheetId });
-        return ncLoadCollabLists().catch(function () {});
-      }).then(function () {
-        if (!note(n.id)) {
-          DATA.notas.push(n);
-          ncSetCollabItems(n.id, items, { sheetId: n.collabSheetId });
-        }
-        show();
-        openNote(n.id);
-        toast('✓ Lista compartilhada — convide alguém em Compartilhar');
-        ncOpenShare();
-      }).catch(function (e) {
-        show();
-        toast('Erro: ' + ((e && e.message) || 'falha'));
-      });
-    }, { yes: 'Compartilhar', no: 'Cancelar' });
+    _ncShareModePick = 'compartilhado';
+    ncPickShareMode('compartilhado');
+    var ov = $('shareModeOverlay');
+    if (ov) ov.classList.add('open');
+    else ncDoShareFromPrivate('compartilhado');
+  });
+}
+
+function ncDoShareFromPrivate(marcacao) {
+  var n = note(openNoteId);
+  if (!n || n.collabSheetId) return;
+  var marc = ncNormMarcacao(marcacao);
+  loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Criando lista compartilhada…</div></div>');
+  var items = itemsOf(n.id);
+  ncCreateCollabSpreadsheet(n, items, '', marc).then(function (sid) {
+    n.collabSheetId = sid;
+    n.collabRole = 'owner';
+    n.collabOwner = ncEmail();
+    n.marcacao = marc;
+    n.collabMembers = [{ email: ncEmail(), nome: ncProfileName(), icone: ncProfileIcon(), papel: 'owner', status: 'active' }];
+    return ncDeletePrivateList(n);
+  }).then(function () {
+    DATA.notas = (DATA.notas || []).filter(function (x) { return x.id !== n.id; });
+    DATA.notas.push(n);
+    ncSetCollabItems(n.id, items, { sheetId: n.collabSheetId });
+    return ncLoadCollabLists().catch(function () {});
+  }).then(function () {
+    if (!note(n.id)) {
+      DATA.notas.push(n);
+      ncSetCollabItems(n.id, items, { sheetId: n.collabSheetId });
+    }
+    show();
+    openNote(n.id);
+    toast('✓ Lista compartilhada — convide alguém em Compartilhar');
+    ncOpenShare();
+  }).catch(function (e) {
+    show();
+    toast('Erro: ' + ((e && e.message) || 'falha'));
   });
 }
 
@@ -530,12 +629,49 @@ function ncShareSheetUrl(n) {
   return 'https://docs.google.com/spreadsheets/d/' + n.collabSheetId + '/edit';
 }
 
+function ncRenderShareMarcacao(n) {
+  var wrap = $('shareMarcacao');
+  if (!wrap) return;
+  var marc = ncNormMarcacao(n && n.marcacao);
+  var opts = wrap.querySelectorAll('.share-mode-opt');
+  for (var i = 0; i < opts.length; i++) {
+    opts[i].classList.toggle('on', opts[i].getAttribute('data-mode') === marc);
+  }
+}
+
+function ncSetShareMarcacao(mode) {
+  var n = note(openNoteId);
+  if (!n || !n.collabSheetId) return;
+  var next = ncNormMarcacao(mode);
+  var prev = ncNormMarcacao(n.marcacao);
+  if (next === prev) return;
+  n.marcacao = next;
+  var changed = [];
+  if (next === 'compartilhado') {
+    (DATA.itens || []).forEach(function (it) {
+      if (it.notaId !== n.id || !it.marcavel) return;
+      var any = false;
+      Object.keys(it.feitoPor || {}).forEach(function (k) { if (it.feitoPor[k]) any = true; });
+      it.feito = any || !!it.feito;
+      it.feitoPor = {};
+      changed.push(it);
+    });
+  }
+  ncRenderShareMarcacao(n);
+  if (typeof saveNoteRow === 'function') saveNoteRow(n);
+  if (changed.length && typeof persistItems === 'function') persistItems(changed);
+  if (typeof renderItems === 'function') renderItems();
+  if (typeof renderEditor === 'function' && openNoteId === n.id) renderEditor();
+  toast(next === 'pessoal' ? '✓ Cada um marca o seu' : '✓ Uma marcação para todos');
+}
+
 function ncOpenShare() {
   var n = note(openNoteId);
   if (!n || !n.collabSheetId) return;
   $('shareListTitle').textContent = n.titulo || 'Lista';
   $('shareInviteEmail').value = '';
   ncRenderShareMembers(n);
+  ncRenderShareMarcacao(n);
   $('shareJoinLink').value = ncShareJoinUrl(n);
   $('shareSheetLink').value = ncShareSheetUrl(n);
   $('shareOverlay').classList.add('open');

@@ -39,6 +39,15 @@ Dados na planilha **Joelboard Notes** no seu Drive.
 
 Tema, tutorial, feedback.
 
+## Listas compartilhadas
+
+Ao tornar uma lista compartilhada, escolha como itens marcáveis funcionam:
+
+- **Uma marcação para todos** (padrão) — um ✓ vale para toda a lista.
+- **Cada um marca o seu** — o mesmo item fica aberto para os outros (útil em mala de viagem). Dá para mudar depois em Compartilhar.
+
+Na planilha da lista: Meta coluna `Marcacao`; Itens coluna `FeitoPor` (JSON por e-mail) no modo pessoal.
+
 ## Planilha (abas)
 
 `Notas`, `Itens`, `Config`.

@@ -103,6 +103,19 @@
   <div class="modal modal-wide">
     <div class="mh"><div class="mt">Compartilhar — <span id="shareListTitle"></span></div><button class="x" onclick="ncCloseShare()">✕</button></div>
     <div class="fg">
+      <label class="fl">Marcação</label>
+      <div id="shareMarcacao" class="share-marcacao">
+        <button type="button" class="share-mode-opt" data-mode="compartilhado" onclick="ncSetShareMarcacao('compartilhado')">
+          <span class="share-mode-title">Uma marcação para todos</span>
+          <span class="share-mode-hint">Um ✓ vale para a lista inteira</span>
+        </button>
+        <button type="button" class="share-mode-opt" data-mode="pessoal" onclick="ncSetShareMarcacao('pessoal')">
+          <span class="share-mode-title">Cada um marca o seu</span>
+          <span class="share-mode-hint">Mesmo item, cada membro marca o próprio</span>
+        </button>
+      </div>
+    </div>
+    <div class="fg">
       <label class="fl">Convidar por e-mail</label>
       <div class="share-invite-row">
         <input class="field" id="shareInviteEmail" placeholder="amigo@gmail.com" type="email">
@@ -131,6 +144,28 @@
       <button class="btn ghost" style="width:100%;margin-top:8px" type="button" onclick="ncOpenDriveShare()">↗ Abrir planilha no Drive</button>
     </div>
     <button class="btn-primary" onclick="ncCloseShare()">Pronto</button>
+  </div>
+</div>
+
+<!-- first-share marcação chooser -->
+<div class="overlay" id="shareModeOverlay" onclick="if(event.target===this)ncCloseShareMode()">
+  <div class="modal" style="max-width:400px">
+    <div class="mh"><div class="mt">Tornar compartilhada</div><button class="x" onclick="ncCloseShareMode()">✕</button></div>
+    <div class="rg" style="margin-bottom:12px">A lista será copiada para uma planilha compartilhada no Drive. Como os itens marcáveis funcionam?</div>
+    <div class="share-marcacao" id="shareModePick">
+      <button type="button" class="share-mode-opt on" data-mode="compartilhado" onclick="ncPickShareMode('compartilhado')">
+        <span class="share-mode-title">Uma marcação para todos</span>
+        <span class="share-mode-hint">Um ✓ vale para a lista inteira</span>
+      </button>
+      <button type="button" class="share-mode-opt" data-mode="pessoal" onclick="ncPickShareMode('pessoal')">
+        <span class="share-mode-title">Cada um marca o seu</span>
+        <span class="share-mode-hint">Mesmo item, cada membro marca o próprio (ex.: mala de viagem)</span>
+      </button>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button type="button" class="btn ghost" style="flex:1" onclick="ncCloseShareMode()">Cancelar</button>
+      <button type="button" class="btn-primary" style="flex:1" onclick="ncConfirmShareMode()">Continuar</button>
+    </div>
   </div>
 </div>
 

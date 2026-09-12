@@ -1,6 +1,7 @@
 /* Joelboard Planner — app logic. © 2026 Joel Soluções LTDA.
    Classic global script (NOT a module); loads after /joelboard.js. */
 var DATA=null, plannerGrid={}, authDone=false, openPlanId=null, homeQuery='', _pbooted=false, _edMenuOpen=false, _focusDay='';
+var _stPlHome=false, _stPlTl={};
 var _linkOpen={}, _linkSnaps={}, _linkTarget=null;
 var _editPlanId=null, _editDayId=null, _editEvtId=null, _editEvtDayId=null, _plEvtMer='', newStart='', newEnd='', newIcon='✈️';
 var _rowCache={};
@@ -459,9 +460,13 @@ function renderHome(){
     return;
   }
   var html='';
-  if(shared.length){ html+='<div class="secbar"><div class="sect">Compartilhados</div></div>'+shared.map(planCard).join(''); }
-  if(priv.length){ html+='<div class="secbar"><div class="sect">'+(shared.length?'Seus planos':'Planos')+'</div></div>'+priv.map(planCard).join(''); }
+  if(shared.length){ html+='<div class="secbar"><div class="sect">Compartilhados</div></div><div class="jb-stagger-list">'+shared.map(planCard).join('')+'</div>'; }
+  if(priv.length){ html+='<div class="secbar"><div class="sect">'+(shared.length?'Seus planos':'Planos')+'</div></div><div class="jb-stagger-list">'+priv.map(planCard).join('')+'</div>'; }
   el.innerHTML=html;
+  if(!_stPlHome && !homeQuery && window.JB && JB.staggerChildren){
+    _stPlHome=true;
+    el.querySelectorAll('.jb-stagger-list').forEach(function(l,i){ JB.staggerChildren(l, 'pl-home-'+i); });
+  }
 }
 function planCard(p){
   var av=(typeof plMemberAvatarsHtml==='function'&&p.collabSheetId)?plMemberAvatarsHtml(p):'';
@@ -499,8 +504,13 @@ function renderTimeline(){
     +'<div class="tl-title">'+esc(p.titulo||'(sem título)')+'</div>'
     +(sub?'<div class="tl-sub">'+esc(sub)+'</div>':'')+av
     +plPeekBlock(p.listaIds,'plan',p.id,false)+'</div>';
-  html+='<div class="pl-spine">'+days.map(function(d){ return dayBlock(d); }).join('')+'</div>';
+  html+='<div class="pl-spine jb-stagger-list">'+days.map(function(d){ return dayBlock(d); }).join('')+'</div>';
   $('main').innerHTML=html;
+  if(!_stPlTl[p.id] && window.JB && JB.staggerChildren){
+    _stPlTl[p.id]=true;
+    var spine=$('main').querySelector('.pl-spine');
+    if(spine) JB.staggerChildren(spine, 'pl-tl-'+p.id);
+  }
 }
 function dayBlock(d){
   var evs=eventsOf(d.id);

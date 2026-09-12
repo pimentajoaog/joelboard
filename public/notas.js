@@ -480,6 +480,7 @@ function renderHomeList(){
   el.innerHTML=html;
   if (!_stNotasHome && !q) {
     _stNotasHome = true;
+    el.querySelectorAll('.due-strip').forEach(function (g, i) { JB.staggerChildren(g, 'notas-due-' + i); });
     el.querySelectorAll('.notes-grid').forEach(function (g, i) { JB.staggerChildren(g, 'notas-' + i); });
   }
 }

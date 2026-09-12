@@ -1018,6 +1018,7 @@
       bind();
       syncPeekDom();
       bindPeekMove();
+      maybeStaggerFirstPaint();
     }
     function paint() {
       if (state.agendaFirst) { paintAgenda(); return; }
@@ -1055,6 +1056,18 @@
       bind();
       syncPeekDom();
       bindPeekMove();
+      maybeStaggerFirstPaint();
+    }
+    function maybeStaggerFirstPaint() {
+      if (el._jbCalDidStagger) return;
+      if (!window.JB || !JB.staggerChildren) return;
+      var apps = el.querySelectorAll('.jb-cal-app');
+      var days = el.querySelectorAll('.jb-cal-dayblock');
+      if (!apps.length && !days.length) return;
+      el._jbCalDidStagger = true;
+      var i;
+      for (i = 0; i < apps.length; i++) JB.staggerChildren(apps[i], 'jb-cal-app-' + i);
+      for (i = 0; i < days.length; i++) JB.staggerChildren(days[i], 'jb-cal-day-' + i);
     }
     function bind() {
       el.querySelectorAll('[data-view]').forEach(function (b) {

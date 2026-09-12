@@ -216,12 +216,28 @@ test('planner day rows expand a view-only peek instead of listing hours', functi
   assert.doesNotMatch(calSrc, /classList\.add\('open'\)/);
   assert.match(calSrc, /function withScrollLock/);
   assert.match(calSrc, /closest\('\.hub-agenda'\)/);
+  assert.match(calSrc, /function maybeStaggerFirstPaint/);
+  assert.match(calSrc, /JB\.staggerChildren/);
   assert.match(calSrc, /function hidePeek/);
   assert.match(calSrc, /function ensurePeekNode/);
   assert.match(calSrc, /jb-cal-peek-on/);
   assert.match(calSrc, /function syncPeekDom/);
   assert.doesNotMatch(calSrc, /-9999px/);
   assert.doesNotMatch(calSrc, /if \(spaceRight >= w\) return/);
+});
+
+test('Planner Hub Notes reuse JB.staggerChildren on first paint', function () {
+  const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+  const planner = read('../public/planner.js');
+  assert.match(planner, /_stPlHome/);
+  assert.match(planner, /JB\.staggerChildren\(l, 'pl-home-/);
+  assert.match(planner, /JB\.staggerChildren\(spine, 'pl-tl-/);
+  const hub = read('../public/hub.js');
+  assert.match(hub, /_stHubNews/);
+  assert.match(hub, /JB\.staggerChildren\(nov, 'hub-news'\)/);
+  const notas = read('../public/notas.js');
+  assert.match(notas, /JB\.staggerChildren\(g, 'notas-due-/);
+  assert.match(notas, /JB\.staggerChildren\(g, 'notas-/);
 });
 
 test('eventsFromNotas keeps completed due lists as done', function () {

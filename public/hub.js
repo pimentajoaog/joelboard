@@ -125,6 +125,7 @@ function hubNewsInit(){
   });
 }
 
+var _stHubNews=false;
 function renderHubNews(){
   var el=document.getElementById('hubNews'); if(!el) return;
   try{
@@ -138,6 +139,11 @@ function renderHubNews(){
     el.innerHTML='<div class="nov-head"><div class="nov-title">Novidades</div></div><ul class="nov-list">'+HUB_NEWS.map(function(n){
       return '<li class="nov-item"><div class="nov-meta"><span class="nov-app '+n.app+'">'+esc(HUB_NEWS_LABEL[n.app]||n.app)+'</span><span class="nov-kind '+n.kind+'">'+(HUB_NEWS_KIND[n.kind]||n.kind)+'</span></div>'+esc(n.text)+'</li>';
     }).join('')+'</ul>';
+  }
+  if(!_stHubNews && window.JB && JB.staggerChildren){
+    _stHubNews=true;
+    var nov=el.querySelector('.nov-list');
+    if(nov) JB.staggerChildren(nov, 'hub-news');
   }
 }
 

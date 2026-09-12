@@ -429,16 +429,18 @@ function initSitesUI() {
   var btnAddSite = $('btnAddSite');
   if (!sitesList || !siteInput || !btnAddSite) return;
 
-  async function ensureHostPermission(host) {
-    host = JB_SITES.normalizeHost(host);
-    if (!host) return false;
-    var patterns = JB_SITES.patternForHost(host);
-    return new Promise(function (resolve) {
-      chrome.permissions.contains({ origins: patterns }, function (has) {
-        if (has) { resolve(true); return; }
-        chrome.permissions.request({ origins: patterns }, resolve);
+  function requestHostPatterns(patterns, cb) {
+    if (!patterns || !patterns.length) {
+      cb(false);
+      return;
+    }
+    try {
+      chrome.permissions.request({ origins: patterns }, function (granted) {
+        cb(!chrome.runtime.lastError && !!granted);
       });
-    });
+    } catch (_) {
+      cb(false);
+    }
   }
 
   function renderSites(sites) {
@@ -449,6 +451,7 @@ function initSitesUI() {
     sitesList.querySelectorAll('.site-rm').forEach(function (btn) {
       btn.onclick = function () {
         chrome.runtime.sendMessage({ type: 'removeSite', host: btn.getAttribute('data-host') }, function (res) {
+          if (chrome.runtime.lastError) return;
           if (res && res.sites) renderSites(res.sites);
         });
       };
@@ -456,24 +459,34 @@ function initSitesUI() {
   }
 
   chrome.runtime.sendMessage({ type: 'getSites' }, function (sites) {
+    if (chrome.runtime.lastError) {
+      renderSites(JB_SITES.DEFAULT_SITES);
+      return;
+    }
     renderSites(sites || JB_SITES.DEFAULT_SITES);
   });
 
-  btnAddSite.onclick = async function () {
+  btnAddSite.onclick = function () {
     var host = JB_SITES.normalizeHost(siteInput.value.trim());
     if (!host) {
       toast('Site inválido.');
       return;
     }
-    chrome.runtime.sendMessage({ type: 'addSite', host: host }, async function (res) {
-      if (!res || !res.ok) {
-        toast('Não foi possível salvar o site.');
+    /* permissions.request must run in the click turn — before any message await. */
+    requestHostPatterns(JB_SITES.patternForHost(host), function (allowed) {
+      if (!allowed) {
+        toast('Permissão negada — permita o acesso no Chrome.');
         return;
       }
-      siteInput.value = '';
-      renderSites(res.sites);
-      await ensureHostPermission(host);
-      toast('Site adicionado.');
+      chrome.runtime.sendMessage({ type: 'addSite', host: host }, function (res) {
+        if (chrome.runtime.lastError || !res || !res.ok) {
+          toast('Não foi possível salvar o site.');
+          return;
+        }
+        siteInput.value = '';
+        renderSites(res.sites);
+        toast('Site adicionado.');
+      });
     });
   };
 

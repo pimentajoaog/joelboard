@@ -1,5 +1,11 @@
 /* Joelboard Replace — service worker. © 2026 Joel Soluções LTDA. */
-importScripts('lib/shared.js', 'lib/sites.js', 'lib/sheets-sync.js', 'lib/sheet-data.js');
+/* Paths are relative to the Mini service worker root (mini/), not this folder. */
+importScripts(
+  'replace/lib/shared.js',
+  'replace/lib/sites.js',
+  'replace/lib/sheets-sync.js',
+  'replace/lib/sheet-data.js'
+);
 
 var pushTimer = null;
 var sitesPushTimer = null;

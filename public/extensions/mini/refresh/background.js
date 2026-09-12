@@ -1,5 +1,6 @@
 /* Joelboard Refresh — service worker. © 2026 Joel Soluções LTDA. */
-importScripts('lib/shared.js', 'lib/sites.js');
+/* Paths are relative to the Mini service worker root (mini/), not this folder. */
+importScripts('refresh/lib/shared.js', 'refresh/lib/sites.js');
 
 function getState(cb) {
   chrome.storage.local.get([JB_REFRESH.STORAGE_KEY], function (res) {
@@ -446,45 +447,7 @@ chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
     });
     return true;
   }
-  if (msg.type === 'getSites') {
-    JB_SITES.loadSites(sendResponse);
-    return true;
-  }
-  if (msg.type === 'addSite') {
-    JB_SITES.addSite(msg.host, sendResponse);
-    return true;
-  }
-  if (msg.type === 'removeSite') {
-    JB_SITES.removeSite(msg.host, sendResponse);
-    return true;
-  }
-  if (msg.type === 'setSites') {
-    JB_SITES.saveSites(msg.sites, function () {
-      JB_SITES.loadSites(function (sites) {
-        sendResponse({ ok: true, sites: sites });
-      });
-    });
-    return true;
-  }
-});
-
-chrome.runtime.onMessageExternal.addListener(function (msg, sender, sendResponse) {
-  if (msg.type === 'getSites') {
-    JB_SITES.loadSites(sendResponse);
-    return true;
-  }
-  if (msg.type === 'setSites' && Array.isArray(msg.sites)) {
-    JB_SITES.saveSites(msg.sites, function () {
-      JB_SITES.loadSites(function (sites) {
-        sendResponse({ ok: true, sites: sites });
-      });
-    });
-    return true;
-  }
-  if (msg.type === 'addSite' && msg.host) {
-    JB_SITES.addSite(msg.host, sendResponse);
-    return true;
-  }
+  /* Site list messages are owned by Replace (shared jb_mini_sites). */
 });
 
 chrome.runtime.onInstalled.addListener(function (details) {

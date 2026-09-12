@@ -20,9 +20,14 @@
   var shortcutUse = $('shortcutUse');
   var toast = $('toast');
 
+  var currentTabUrl = '';
+
   function send(msg) {
     return new Promise(function (resolve) {
-      chrome.runtime.sendMessage(msg, resolve);
+      chrome.runtime.sendMessage(msg, function (res) {
+        if (chrome.runtime.lastError) resolve(null);
+        else resolve(res);
+      });
     });
   }
 
@@ -33,39 +38,30 @@
     toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2600);
   }
 
-  function permContains(origins) {
-    return new Promise(function (resolve) {
-      chrome.permissions.contains({ origins: origins }, resolve);
-    });
-  }
-
-  function permRequest(origins) {
-    return new Promise(function (resolve) {
-      chrome.permissions.request({ origins: origins }, resolve);
-    });
-  }
-
-  async function ensureTabPermission(tabUrl) {
-    var origin = '';
-    var host = '';
-    try {
-      var u = new URL(tabUrl);
-      origin = u.origin + '/*';
-      host = JB_SITES.normalizeHost(u.hostname);
-    } catch (_) {
-      return false;
+  /** Request host access synchronously in the click turn (gesture required). */
+  function requestHostPatterns(patterns, cb) {
+    if (!patterns || !patterns.length) {
+      cb(false);
+      return;
     }
-    if (await permContains([origin])) return true;
-    if (!host) return false;
-    return permRequest(JB_SITES.patternForHost(host));
+    try {
+      chrome.permissions.request({ origins: patterns }, function (granted) {
+        cb(!chrome.runtime.lastError && !!granted);
+      });
+    } catch (_) {
+      cb(false);
+    }
   }
 
-  async function ensureHostPermission(host) {
-    host = JB_SITES.normalizeHost(host);
-    if (!host) return false;
-    var patterns = JB_SITES.patternForHost(host);
-    if (await permContains(patterns)) return true;
-    return permRequest(patterns);
+  function patternsForTabUrl(url) {
+    try {
+      var u = new URL(url);
+      var host = JB_SITES.normalizeHost(u.hostname);
+      if (!host) return [];
+      return JB_SITES.patternForHost(host);
+    } catch (_) {
+      return [];
+    }
   }
 
   function setShortcutLabel(shortcut) {
@@ -157,12 +153,14 @@
   async function refreshUI() {
     var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     var tab = tabs[0];
+    currentTabUrl = '';
     if (!tab || tab.id == null) {
       tabUrl.textContent = 'Nenhuma aba ativa';
       btnStart.disabled = true;
       return;
     }
     tabId = tab.id;
+    currentTabUrl = tab.url || '';
     var host = '—';
     try {
       host = tab.url ? new URL(tab.url).hostname || tab.url : tab.url || '—';
@@ -180,36 +178,37 @@
     }
 
     var status = await send({ type: 'getStatus', tabId: tabId });
-    render(status);
+    if (status) render(status);
   }
 
-  btnStart.addEventListener('click', async function () {
+  btnStart.addEventListener('click', function () {
     if (tabId == null) return;
-    var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    var tab = tabs[0];
-    if (!tab || !tab.url) {
+    if (!currentTabUrl) {
       showToast('Nenhuma aba ativa.');
       return;
     }
-    var allowed = await ensureTabPermission(tab.url);
-    if (!allowed) {
-      showToast('Permissão negada — permita o acesso a este site no Chrome.');
-      return;
-    }
-    var res = await send({ type: 'start', tabId: tabId, opts: currentOpts() });
-    if (res && res.error === 'not-allowed') {
-      showToast('Este site não está na lista permitida — adicione abaixo.');
-      return;
-    }
-    if (res && (res.error === 'denied' || res.error === 'needs-permission')) {
-      showToast('Permissão negada — permita o acesso a este site no Chrome.');
-      return;
-    }
-    if (res && res.error) {
-      showToast('Não foi possível iniciar nesta aba. Recarregue a página e tente de novo.');
-      return;
-    }
-    render(res);
+    var patterns = patternsForTabUrl(currentTabUrl);
+    requestHostPatterns(patterns, function (allowed) {
+      if (!allowed) {
+        showToast('Permissão negada — permita o acesso a este site no Chrome.');
+        return;
+      }
+      send({ type: 'start', tabId: tabId, opts: currentOpts() }).then(function (res) {
+        if (res && res.error === 'not-allowed') {
+          showToast('Este site não está na lista permitida — adicione abaixo.');
+          return;
+        }
+        if (res && (res.error === 'denied' || res.error === 'needs-permission')) {
+          showToast('Permissão negada — permita o acesso a este site no Chrome.');
+          return;
+        }
+        if (!res || res.error) {
+          showToast('Não foi possível iniciar nesta aba. Recarregue a página e tente de novo.');
+          return;
+        }
+        render(res);
+      });
+    });
   });
 
   btnStop.addEventListener('click', async function () {
@@ -266,7 +265,7 @@
     shortcutBtn.classList.remove('recording');
     applyShortcut(shortcut);
     shortcutHint.textContent = 'Clique acima e pressione a nova combinação. Funciona na página enquanto ela estiver em foco.';
-  });
+  }, true);
 
   function initSitesUI() {
     var sitesList = document.getElementById('sitesList');
@@ -283,6 +282,7 @@
         btn.addEventListener('click', function () {
           var host = btn.getAttribute('data-host');
           chrome.runtime.sendMessage({ type: 'removeSite', host: host }, function (res) {
+            if (chrome.runtime.lastError) return;
             if (res && res.sites) renderSites(res.sites);
           });
         });
@@ -291,25 +291,36 @@
 
     function loadSites() {
       chrome.runtime.sendMessage({ type: 'getSites' }, function (sites) {
+        if (chrome.runtime.lastError) {
+          renderSites(JB_SITES.DEFAULT_SITES);
+          return;
+        }
         renderSites(sites || JB_SITES.DEFAULT_SITES);
       });
     }
 
-    btnAddSite.addEventListener('click', async function () {
+    btnAddSite.addEventListener('click', function () {
       var host = JB_SITES.normalizeHost(siteInput.value.trim());
       if (!host) {
         showToast('Site inválido.');
         return;
       }
-      var saved = await send({ type: 'addSite', host: host });
-      if (!saved || !saved.ok) {
-        showToast('Não foi possível salvar o site.');
-        return;
-      }
-      siteInput.value = '';
-      renderSites(saved.sites);
-      await ensureHostPermission(host);
-      showToast('Site adicionado.');
+      var patterns = JB_SITES.patternForHost(host);
+      requestHostPatterns(patterns, function (allowed) {
+        if (!allowed) {
+          showToast('Permissão negada — permita o acesso no Chrome.');
+          return;
+        }
+        chrome.runtime.sendMessage({ type: 'addSite', host: host }, function (saved) {
+          if (chrome.runtime.lastError || !saved || !saved.ok) {
+            showToast('Não foi possível salvar o site.');
+            return;
+          }
+          siteInput.value = '';
+          renderSites(saved.sites);
+          showToast('Site adicionado.');
+        });
+      });
     });
 
     siteInput.addEventListener('keydown', function (e) {

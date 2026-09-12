@@ -208,8 +208,11 @@ test('editor exposes two-column toolbar insert', function () {
   assert.match(src, /Duas colunas/);
   assert.match(src, /jb-ed-cols/);
   assert.match(css, /\.jb-ed-surface \.jb-ed-cols/);
-  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\)/);
-  assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.jb-ed-surface \.jb-ed-cols/);
+  assert.match(css, /width: fit-content/);
+  assert.match(css, /min-width: 140px/);
+  assert.match(css, /min-height: 88px/);
+  assert.match(css, /:not\(:focus-within\) > p:last-child:has\(> br:only-child\)/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.jb-ed-surface \.jb-ed-col/);
 });
 
 test('editor shortcut map covers toolbar actions with HR default', function () {

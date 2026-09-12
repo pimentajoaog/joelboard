@@ -189,6 +189,7 @@ function studyApplyRoute(){
   }
   if(t==='materias'){
     tab('materias', { fromRoute:true });
+    renderMaterias();
     return;
   }
   if(date && /^\d{4}-\d{2}-\d{2}$/.test(date)){
@@ -201,11 +202,16 @@ function studyApplyRoute(){
 function tab(name, opts){
   opts=opts||{};
   destroyModEd();
-  if(!opts.keepStack){ matDetail=null; matNote=null; }
+  var cleared=false;
+  if(!opts.keepStack){
+    cleared=!!(matDetail||matNote);
+    matDetail=null; matNote=null;
+  }
   ['calendario','materias'].forEach(function(t){ var p=$('p-'+t); if(p) p.classList.toggle('on',t===name); });
   var bs=document.querySelectorAll('.tabb'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on',bs[i].getAttribute('data-tab')===name);
   $('fab').style.display = (name==='calendario')?'flex':'none';
   if(!opts.fromRoute) studySyncRoute({ replace:false });
+  if(name==='materias' && cleared) renderMaterias();
 }
 function mat(id){ return (DATA.materias||[]).find(function(m){return m.id===id;}); }
 function matColor(id){ var m=mat(id); return m?m.cor:'var(--muted)'; }

@@ -200,6 +200,8 @@ test('planner day rows expand a view-only peek instead of listing hours', functi
   assert.match(css, /\.jb-cal-peek \{[\s\S]*?position:\s*fixed/);
   assert.match(css, /\.jb-cal-rowwrap \{[^}]*height:\s*52px/);
   assert.match(css, /\.jb-cal\.compact \.jb-cal-rowwrap \{[\s\S]*?height:\s*44px/);
+  assert.match(css, /#setOverlay \.modal,\s*#hubSet \.modal/);
+  assert.match(css, /#setOverlay \.modal > \.set-pane,\s*#hubSet \.modal > \.set-pane/);
   assert.match(css, /\.jb-cal-row\[data-peek="1"\]\.jb-peek-open[\s\S]*?box-shadow:\s*inset/);
   assert.doesNotMatch(css, /\.jb-cal-row\[data-peek="1"\]\.open::after/);
   assert.match(css, /scrollbar-gutter:\s*stable/);

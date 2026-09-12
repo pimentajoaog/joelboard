@@ -36,8 +36,37 @@ html.jb-cal-peek-on {
 }
 ::-webkit-scrollbar-corner { background: transparent; }
 
-/* Settings modal keeps one consistent size across tabs (content scrolls inside) */
-#setOverlay .modal { height: min(640px, 88vh); }
+/* Settings: one modal height for every tab; active pane fills and scrolls inside */
+#setOverlay .modal,
+#hubSet .modal {
+  height: min(640px, 88vh);
+  max-height: min(640px, 88vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#setOverlay .modal > .mh,
+#setOverlay .modal > .modal-head,
+#setOverlay .modal > .set-tabs,
+#setOverlay .modal > .acct-bar,
+#setOverlay .modal > .acct-hint,
+#hubSet .modal > .mh,
+#hubSet .modal > .set-tabs {
+  flex: 0 0 auto;
+}
+#setOverlay .modal > .set-pane,
+#hubSet .modal > .set-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#setOverlay .modal > .btn-primary,
+#setOverlay .modal > button.btn-primary {
+  flex: 0 0 auto;
+  margin-top: 12px;
+}
 
 /* Shared primitives — one definition for every app (overlay + modal). Per-app extras
    (e.g. Finance .modal.split-modal, mobile sheet) layer on top in each app's stylesheet.
@@ -536,7 +565,8 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
     margin: 6px auto 14px;
     flex-shrink: 0;
   }
-  #setOverlay .modal { height: min(640px, 92vh); }
+  #setOverlay .modal,
+  #hubSet .modal { height: min(640px, 92vh); max-height: min(640px, 92vh); }
 }
 
 /* Shared live editor (JB.editor) */

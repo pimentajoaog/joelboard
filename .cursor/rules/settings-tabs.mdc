@@ -1,5 +1,5 @@
 ---
-description: Settings overlays use tabs — never one long scroll
+description: Settings overlays use tabs — never one long scroll; panes share one height
 alwaysApply: true
 ---
 
@@ -11,3 +11,12 @@ Joelboard Ajustes are **tabbed**. Do not flatten Hub or app settings into a sing
 - Default first tab is **Tema**. Extra app stuff gets its own tab (Perfil, Calendar, Sobre, …).
 - Hub uses `#hubSet` and `switchHubSet`. Apps use `#setOverlay`.
 - New apps: copy Notes — tabs in the overlay, panes hidden until selected.
+
+## Equal pane height
+
+Every settings tab must keep the **same modal height** when switching panes. Do not let short tabs shrink the sheet or tall tabs resize it.
+
+- `#setOverlay .modal` and `#hubSet .modal` use a fixed height (`min(640px, 88vh)` / `92vh` on mobile) with flex column layout.
+- `.set-pane` fills the remaining space and scrolls inside (`overflow-y: auto`). Header, tabs, and footer actions stay outside the scroll.
+- Do not remove that height lock or go back to content-sized modals for Ajustes.
+- Prefer `display: none` / `.active` on panes (existing pattern); the visible pane still fills the locked height.

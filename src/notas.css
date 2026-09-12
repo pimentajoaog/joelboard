@@ -181,7 +181,44 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .nc-pick-ico.on{ border-color:var(--primary); background:color-mix(in srgb, var(--primary) 12%, var(--surface2)); }
 
 /* ===== editor ===== */
-.ed-shell{ @apply flex flex-col min-h-[calc(100dvh-120px)] pb-28; }
+.ed-shell{
+  @apply flex flex-col min-h-[calc(100dvh-120px)] pb-28;
+  transition: opacity 0.22s ease, transform 0.26s cubic-bezier(.2,.85,.3,1);
+}
+.ed-shell.ed-prep{
+  opacity:0;
+  transform:translateY(14px) scale(0.985);
+  transition:none;
+}
+.ed-shell.ed-in{
+  opacity:1;
+  transform:none;
+}
+.ed-shell.ed-leaving{
+  opacity:0;
+  transform:translateY(10px) scale(0.99);
+  pointer-events:none;
+}
+.notes-home{
+  transition: opacity 0.22s ease, transform 0.26s cubic-bezier(.2,.85,.3,1);
+}
+.notes-home.home-prep{
+  opacity:0;
+  transform:translateY(10px);
+  transition:none;
+}
+.notes-home.home-in{
+  opacity:1;
+  transform:none;
+}
+@media (prefers-reduced-motion: reduce){
+  .ed-shell, .ed-shell.ed-prep, .ed-shell.ed-in, .ed-shell.ed-leaving,
+  .notes-home, .notes-home.home-prep, .notes-home.home-in{
+    transition:none;
+    transform:none;
+    opacity:1;
+  }
+}
 .ed-top{ @apply flex items-center justify-between gap-2 mb-3; }
 .ed-back{ @apply text-sm; }
 .ed-head{ @apply flex items-center gap-2 mb-2 flex-wrap; }

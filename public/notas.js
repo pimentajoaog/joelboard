@@ -316,8 +316,40 @@ function refreshData(){
 }
 
 /* ---- routing / render ---- */
-function note(id){ return (DATA.notas||[]).find(function(n){return n.id===id;}); }
+function note(id){
+  var list=DATA.notas||[], collab=null, any=null;
+  for(var i=0;i<list.length;i++){
+    if(list[i].id!==id) continue;
+    if(list[i].collabSheetId){ collab=list[i]; break; }
+    if(!any) any=list[i];
+  }
+  return collab||any||null;
+}
 function render(){ var ed=!!(openNoteId&&note(openNoteId)); $('fab').style.display=ed?'none':'flex'; if(ed) renderEditor(); else renderHomeShell(); updateSelBar(); }
+var _noteAnimTimer=0;
+function noteReduceMotion(){
+  try{ return !!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches); }catch(_){ return false; }
+}
+function animateNoteEnter(){
+  var shell=document.querySelector('#main .ed-shell');
+  if(!shell||noteReduceMotion()) return;
+  shell.classList.add('ed-prep');
+  void shell.offsetWidth;
+  requestAnimationFrame(function(){
+    shell.classList.remove('ed-prep');
+    shell.classList.add('ed-in');
+  });
+}
+function animateHomeEnter(){
+  var home=document.querySelector('#main .notes-home');
+  if(!home||noteReduceMotion()) return;
+  home.classList.add('home-prep');
+  void home.offsetWidth;
+  requestAnimationFrame(function(){
+    home.classList.remove('home-prep');
+    home.classList.add('home-in');
+  });
+}
 function openNote(id, opts){
   opts=opts||{};
   openNoteId=id; _lastTick=null; _editId=null; _renameNoteId=null; _edMenuOpen=false;
@@ -326,15 +358,29 @@ function openNote(id, opts){
     var cur=JB.qsGet('lista');
     JB.qsPatch({ lista:id }, { replace: cur===id });
   }
+  if(_noteAnimTimer){ clearTimeout(_noteAnimTimer); _noteAnimTimer=0; }
   render(); window.scrollTo(0,0);
+  animateNoteEnter();
 }
 function backHome(opts){
   opts=opts||{};
   function go(){
-    openNoteId=null; _edMenuOpen=false;
-    if(typeof ncSetCollabWatch==='function') ncSetCollabWatch(null);
-    if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ lista:null }, { replace:true });
-    render();
+    function finish(){
+      openNoteId=null; _edMenuOpen=false;
+      if(typeof ncSetCollabWatch==='function') ncSetCollabWatch(null);
+      if(!opts.fromRoute && JB.qsPatch) JB.qsPatch({ lista:null }, { replace:true });
+      render();
+      animateHomeEnter();
+    }
+    var shell=document.querySelector('#main .ed-shell');
+    if(shell && !noteReduceMotion()){
+      if(_noteAnimTimer) clearTimeout(_noteAnimTimer);
+      shell.classList.remove('ed-in','ed-prep');
+      shell.classList.add('ed-leaving');
+      _noteAnimTimer=setTimeout(function(){ _noteAnimTimer=0; finish(); }, 240);
+      return;
+    }
+    finish();
   }
   if(!opts.fromRoute && JB.routeBack && openNoteId && JB.qsGet('lista')){
     if(JB.routeBack({ lista:null })) return;
@@ -352,10 +398,10 @@ function notasApplyRoute(){
 
 /* ---- home ---- */
 function renderHomeShell(){
-  $('main').innerHTML='<div class="jb-search searchbar">'
+  $('main').innerHTML='<div class="notes-home"><div class="jb-search searchbar">'
     +'<input class="field jb-search-input" id="homeSearch" type="search" placeholder="Buscar listas…" value="'+escAttr(homeQuery)+'" oninput="onHomeSearch(this.value)" onfocus="JB.searchFocus(this)" onblur="JB.searchBlur(this)">'
     +'<button type="button" class="jb-search-clear" id="homeSearchClear" onclick="clearHomeSearch()" aria-label="Limpar busca" style="display:'+(homeQuery?'flex':'none')+'">✕</button>'
-    +'</div><div id="homeList"></div>';
+    +'</div><div id="homeList"></div></div>';
   renderHomeList();
 }
 function onHomeSearch(v){ homeQuery=v; JB.searchClearVis('homeSearch','homeSearchClear',!!v); renderHomeList(); }

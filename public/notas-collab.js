@@ -308,11 +308,51 @@ function ncMergeRegistryRow(reg, pack) {
   };
 }
 
+function ncDedupePrivateVsCollab() {
+  var groups = {};
+  (DATA.notas || []).forEach(function (n) {
+    var id = String(n.id || '');
+    if (!id) return;
+    (groups[id] = groups[id] || []).push(n);
+  });
+  var keep = [];
+  var healIds = [];
+  Object.keys(groups).forEach(function (id) {
+    var arr = groups[id];
+    if (arr.length === 1) { keep.push(arr[0]); return; }
+    var collab = null, priv = null;
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i].collabSheetId) collab = arr[i];
+      else priv = arr[i];
+    }
+    if (collab) {
+      if (priv) {
+        if (priv.sticker) collab.sticker = true;
+        if (priv.preset) collab.preset = true;
+        healIds.push(id);
+      }
+      keep.push(collab);
+    } else {
+      keep.push(arr[0]);
+    }
+  });
+  DATA.notas = keep;
+  healIds.forEach(function (id) {
+    ncDeletePrivateList({ id: id }).catch(function () {});
+  });
+}
+
 function ncLoadCollabLists() {
   if (!DATA || !notasGrid['Compartilhadas']) return Promise.resolve();
   return ncWithSync(function () {
     return JB.api('GET', personalSsUrl('/values/Compartilhadas?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
       var regs = body(res.values || []);
+      var stickerKeep = {}, presetKeep = {};
+      (DATA.notas || []).forEach(function (n) {
+        if (n.collabSheetId) return;
+        if (n.sticker) stickerKeep[n.id] = 1;
+        if (n.preset) presetKeep[n.id] = 1;
+      });
       ncStripCollabFromData();
       if (!regs.length) return;
       var failed = 0;
@@ -323,10 +363,13 @@ function ncLoadCollabLists() {
           if (!pack) { failed++; return; }
           var n = ncMergeRegistryRow(reg, pack);
           if (!n) { failed++; return; }
+          if (stickerKeep[n.id]) n.sticker = true;
+          if (presetKeep[n.id]) n.preset = true;
           DATA.notas.push(n);
           ncSetCollabItems(n.id, ncParseItemRows(pack.itens, n.id), { sheetId: pack.sid, itemRows: pack.itens });
         }).catch(function () { failed++; });
       })).then(function () {
+        ncDedupePrivateVsCollab();
         if (failed && typeof toast === 'function') {
           toast(failed === 1
             ? 'Uma lista compartilhada não abriu — confira o acesso Editor no Drive.'
@@ -527,7 +570,8 @@ function ncCreateCollabSpreadsheet(n, items, inviteEmail, marcacao) {
 }
 
 function ncDeletePrivateList(n) {
-  return findRow('Notas', 6, n.id).then(function (noteRow) {
+  var personalSid = JB.getSheetId('notas');
+  return findRowInSid(personalSid, 'Notas', 6, n.id).then(function (noteRow) {
     return JB.api('GET', personalSsUrl('/values/Itens?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
       var v = res.values || [], rows = [], reqs = [];
       for (var i = 1; i < v.length; i++) {
@@ -539,6 +583,8 @@ function ncDeletePrivateList(n) {
       });
       if (noteRow > 0) reqs.push({ deleteDimension: { range: { sheetId: notasGrid['Notas'], dimension: 'ROWS', startIndex: noteRow - 1, endIndex: noteRow } } });
       if (!reqs.length) return;
+      invalidateRowCacheForSid(personalSid, 'Notas');
+      invalidateRowCacheForSid(personalSid, 'Itens');
       return JB.api('POST', personalSsUrl(':batchUpdate'), { requests: reqs });
     });
   });
@@ -580,6 +626,8 @@ function ncDoShareFromPrivate(marcacao) {
   var n = note(openNoteId);
   if (!n || n.collabSheetId) return;
   var marc = ncNormMarcacao(marcacao);
+  var keepSticker = !!n.sticker;
+  var keepPreset = !!n.preset;
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Criando lista compartilhada…</div></div>');
   var items = itemsOf(n.id);
   ncCreateCollabSpreadsheet(n, items, '', marc).then(function (sid) {
@@ -587,6 +635,8 @@ function ncDoShareFromPrivate(marcacao) {
     n.collabRole = 'owner';
     n.collabOwner = ncEmail();
     n.marcacao = marc;
+    n.sticker = keepSticker;
+    n.preset = keepPreset;
     n.collabMembers = [{ email: ncEmail(), nome: ncProfileName(), icone: ncProfileIcon(), papel: 'owner', status: 'active' }];
     return ncDeletePrivateList(n);
   }).then(function () {
@@ -598,6 +648,10 @@ function ncDoShareFromPrivate(marcacao) {
     if (!note(n.id)) {
       DATA.notas.push(n);
       ncSetCollabItems(n.id, items, { sheetId: n.collabSheetId });
+    } else {
+      var cur = note(n.id);
+      if (keepSticker) cur.sticker = true;
+      if (keepPreset) cur.preset = true;
     }
     show();
     openNote(n.id);

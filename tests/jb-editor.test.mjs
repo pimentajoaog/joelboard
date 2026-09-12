@@ -254,6 +254,9 @@ test('editor shortcut map covers toolbar actions with HR default', function () {
   assert.equal(parsed.key, 'enter');
   assert.equal(ED.serializeShortcut(parsed), 'Mod+Shift+Enter');
   assert.match(src, /function tryMarkdownHr/);
+  assert.match(src, /function tryMarkdownList/);
+  assert.match(src, /insertOrderedList/);
+  assert.match(src, /\\d\{1,3\}/);
   assert.match(src, /function mountShortcutsSettings/);
   assert.match(src, /Mod\+Shift\+Enter/);
   assert.match(css, /\.jb-ed-sc-list/);

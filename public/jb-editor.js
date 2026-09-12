@@ -1570,6 +1570,56 @@
       markDirty();
       return true;
     }
+    function markdownListBlock(node) {
+      var blockEl = node && node.nodeType === 1 ? node : (node && node.parentElement);
+      while (blockEl && blockEl !== surface && !/^(P|DIV|H1|H2|H3|BLOCKQUOTE)$/.test(blockEl.tagName)) {
+        blockEl = blockEl.parentElement;
+      }
+      if (!blockEl || blockEl === surface) return null;
+      if (blockEl.classList && (blockEl.classList.contains('jb-ed-cols') || blockEl.classList.contains('jb-ed-col'))) return null;
+      if (blockEl.closest && blockEl.closest('li, ul, ol')) return null;
+      return blockEl;
+    }
+    function tryMarkdownList(ev) {
+      if (!ev || ev.key !== ' ' || ev.altKey || ev.ctrlKey || ev.metaKey) return false;
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount || !sel.isCollapsed) return false;
+      var range = sel.getRangeAt(0);
+      if (!rangeInSurface(range)) return false;
+      var blockEl = markdownListBlock(range.startContainer);
+      if (!blockEl) return false;
+      if (!rangeAtEndOf(blockEl, range)) return false;
+      var text = String(blockEl.textContent || '').replace(/\u200b/g, '');
+      var ordered = text.match(/^\s*(\d{1,3})\.\s*$/);
+      var bullet = !ordered && /^\s*[-*+]\s*$/.test(text);
+      if (!ordered && !bullet) return false;
+      var startN = ordered ? (parseInt(ordered[1], 10) || 1) : 1;
+      ev.preventDefault();
+      histBeforeChange();
+      while (blockEl.firstChild) blockEl.removeChild(blockEl.firstChild);
+      blockEl.appendChild(document.createElement('br'));
+      try {
+        var nr = document.createRange();
+        nr.selectNodeContents(blockEl);
+        nr.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(nr);
+      } catch (_) {}
+      try {
+        document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList');
+      } catch (_) {}
+      if (ordered && startN > 1) {
+        try {
+          var liNode = sel.anchorNode;
+          if (liNode && liNode.nodeType === 3) liNode = liNode.parentElement;
+          while (liNode && liNode !== surface && liNode.tagName !== 'LI') liNode = liNode.parentElement;
+          var ol = liNode && liNode.parentElement;
+          if (ol && ol.tagName === 'OL') ol.setAttribute('start', String(startN));
+        } catch (_) {}
+      }
+      markDirty();
+      return true;
+    }
     function runShortcutAction(id) {
       if (!id) return false;
       if (id === 'bold') { cmd('bold'); return true; }
@@ -4277,6 +4327,11 @@
         if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
         else ev.stopPropagation();
         setInkMode(false);
+        return;
+      }
+      if (editorHasFocus() && tryMarkdownList(ev)) {
+        if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+        else ev.stopPropagation();
         return;
       }
       if (editorHasFocus() && tryMarkdownHr(ev)) {

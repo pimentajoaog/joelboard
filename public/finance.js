@@ -18,8 +18,8 @@ const I18N = {
     'action.refresh':'Refresh data', 'action.hub':'Back to hub', 'action.toggleTheme':'Toggle theme', 'eye.reveal':'Reveal this past month', 'eye.dim':'Dim this past month', 'eye.show':'Show amounts', 'eye.hide':'Hide amounts',
 
     'tab.overview':'Overview', 'tab.worklog':'Work Log', 'tab.money':'Money',
-    'split.open':'+ Split a bill', 'split.title':'Split a bill', 'split.outingName':'What was it?', 'split.outingPh':'e.g. Friday drinks', 'split.people':'People', 'split.addPerson':'+ Add', 'split.namePh':'Name…', 'split.me':'Me', 'split.meHint':'Tap a name to mark who you are (★).', 'split.items':'Items', 'split.addItem':'+ Add item', 'split.itemName':'Item', 'split.qty':'Qty', 'split.totalPh':'Total', 'split.unit':'each', 'split.assigned':'assigned', 'split.divideEqual':'Split evenly', 'split.allMine':'All mine', 'split.service':'Service fee', 'split.perPerson':'Per person', 'split.grand':'Total', 'split.unassignedWarn':"Some items aren't fully assigned yet.", 'split.copy':'Copy summary', 'split.save':'Save who owes me', 'split.copied':'✓ Summary copied', 'split.saved':'✓ Saved to “Who owes me”', 'split.untitled':'Outing', 'split.errNoDebt':'Assign items to at least one other person first.', 'split.modeTotal':'Total', 'split.modeEach':'Each', 'split.eachPh':'Each',
-    'debts.title':'🍻 Who owes me', 'debts.toReceive':'To receive', 'debts.empty':'Split a bill to start tracking who owes you.', 'debts.markPaid':'Mark paid', 'debts.paid':'✓ Paid', 'debts.deleteOuting':'Delete outing', 'debts.delTitle':'Delete this outing?', 'debts.delMsg':"This removes everyone's debt for it.", 'debts.yourShare':'Your share',
+    'split.open':'+ Split a bill', 'split.title':'Split a bill', 'split.outingName':'What was it?', 'split.outingPh':'e.g. Friday drinks', 'split.people':'People', 'split.addPerson':'+ Add', 'split.namePh':'Name…', 'split.me':'Me', 'split.meHint':'Tap a name to mark who you are (★). Solo is fine — add others only if someone owes you.', 'split.items':'Items', 'split.addItem':'+ Add item', 'split.itemName':'Item', 'split.qty':'Qty', 'split.totalPh':'Total', 'split.unit':'each', 'split.assigned':'assigned', 'split.divideEqual':'Split evenly', 'split.allMine':'All mine', 'split.service':'Service fee', 'split.perPerson':'Per person', 'split.grand':'Total', 'split.unassignedWarn':"Some items aren't fully assigned yet.", 'split.copy':'Copy summary', 'split.save':'Save who owes me', 'split.done':'Done', 'split.saving':'Saving…', 'split.savedSoft':'Saved', 'split.copied':'✓ Summary copied', 'split.saved':'✓ Saved to “Who owes me”', 'split.untitled':'Outing', 'split.errNoDebt':'Assign items to at least one other person first.', 'split.modeTotal':'Total', 'split.modeEach':'Each', 'split.eachPh':'Each', 'split.genBill':'Generate a Finance bill', 'split.genBillHint':'Uses your share. Same month can count as a paid expense; a future month stays as an unpaid bill (e.g. credit card).', 'split.billMonth':'Bill month', 'split.billPaidThisMonth':'Count as a paid expense this month', 'split.billName':'🍻 Who owes me · {title}',
+    'debts.title':'🍻 Who owes me', 'debts.toReceive':'To receive', 'debts.empty':'Split a bill to start tracking who owes you.', 'debts.markPaid':'Mark paid', 'debts.paid':'✓ Paid', 'debts.deleteOuting':'Delete outing', 'debts.edit':'Edit', 'debts.delTitle':'Delete this outing?', 'debts.delMsg':"This removes everyone's debt for it.", 'debts.yourShare':'Your share',
     'tab.bills':'Bills & Savings', 'tab.budget':'Budget',
 
     'sum.income':'Income', 'sum.expenses':'Expenses', 'sum.balance':'Balance',
@@ -290,8 +290,8 @@ const I18N = {
     'action.refresh':'Atualizar dados', 'action.hub':'Voltar ao hub', 'action.toggleTheme':'Alternar tema', 'eye.reveal':'Revelar este mês passado', 'eye.dim':'Ocultar este mês passado', 'eye.show':'Mostrar valores', 'eye.hide':'Ocultar valores',
 
     'tab.overview':'Visão geral', 'tab.worklog':'Jornada', 'tab.money':'Dinheiro',
-    'split.open':'+ Rachar conta', 'split.title':'Rachar conta', 'split.outingName':'O que foi?', 'split.outingPh':'ex.: Bar na sexta', 'split.people':'Pessoas', 'split.addPerson':'+ Adicionar', 'split.namePh':'Nome…', 'split.me':'Eu', 'split.meHint':'Toque num nome para marcar quem é você (★).', 'split.items':'Itens', 'split.addItem':'+ Adicionar item', 'split.itemName':'Item', 'split.qty':'Qtd', 'split.totalPh':'Total', 'split.unit':'cada', 'split.assigned':'atribuído', 'split.divideEqual':'Dividir igual', 'split.allMine':'Tudo meu', 'split.service':'Taxa de serviço', 'split.perPerson':'Por pessoa', 'split.grand':'Total', 'split.unassignedWarn':'Alguns itens ainda não foram totalmente atribuídos.', 'split.copy':'Copiar resumo', 'split.save':'Salvar quem me deve', 'split.copied':'✓ Resumo copiado', 'split.saved':'✓ Salvo em “Quem me deve”', 'split.untitled':'Rolê', 'split.errNoDebt':'Atribua itens a pelo menos outra pessoa primeiro.', 'split.modeTotal':'Total', 'split.modeEach':'Cada', 'split.eachPh':'Cada',
-    'debts.title':'🍻 Quem me deve', 'debts.toReceive':'A receber', 'debts.empty':'Racha uma conta para começar a controlar quem te deve.', 'debts.markPaid':'Marcar pago', 'debts.paid':'✓ Pago', 'debts.deleteOuting':'Excluir rolê', 'debts.delTitle':'Excluir este rolê?', 'debts.delMsg':'Isso remove a dívida de todo mundo dele.', 'debts.yourShare':'Sua parte',
+    'split.open':'+ Rachar conta', 'split.title':'Rachar conta', 'split.outingName':'O que foi?', 'split.outingPh':'ex.: Bar na sexta', 'split.people':'Pessoas', 'split.addPerson':'+ Adicionar', 'split.namePh':'Nome…', 'split.me':'Eu', 'split.meHint':'Toque num nome para marcar quem é você (★). Só você também vale — adicione outros só se alguém te deve.', 'split.items':'Itens', 'split.addItem':'+ Adicionar item', 'split.itemName':'Item', 'split.qty':'Qtd', 'split.totalPh':'Total', 'split.unit':'cada', 'split.assigned':'atribuído', 'split.divideEqual':'Dividir igual', 'split.allMine':'Tudo meu', 'split.service':'Taxa de serviço', 'split.perPerson':'Por pessoa', 'split.grand':'Total', 'split.unassignedWarn':'Alguns itens ainda não foram totalmente atribuídos.', 'split.copy':'Copiar resumo', 'split.save':'Salvar quem me deve', 'split.done':'Pronto', 'split.saving':'Salvando…', 'split.savedSoft':'Salvo', 'split.copied':'✓ Resumo copiado', 'split.saved':'✓ Salvo em “Quem me deve”', 'split.untitled':'Rolê', 'split.errNoDebt':'Atribua itens a pelo menos outra pessoa primeiro.', 'split.modeTotal':'Total', 'split.modeEach':'Cada', 'split.eachPh':'Cada', 'split.genBill':'Gerar conta no Finance', 'split.genBillHint':'Usa a sua parte. No mês atual pode contar como gasto pago; um mês futuro fica como conta em aberto (ex.: cartão).', 'split.billMonth':'Mês da conta', 'split.billPaidThisMonth':'Contar como gasto deste mês', 'split.billName':'🍻 Quem me deve · {title}',
+    'debts.title':'🍻 Quem me deve', 'debts.toReceive':'A receber', 'debts.empty':'Racha uma conta para começar a controlar quem te deve.', 'debts.markPaid':'Marcar pago', 'debts.paid':'✓ Pago', 'debts.deleteOuting':'Excluir rolê', 'debts.edit':'Editar', 'debts.delTitle':'Excluir este rolê?', 'debts.delMsg':'Isso remove a dívida de todo mundo dele.', 'debts.yourShare':'Sua parte',
     'tab.bills':'Contas e Metas', 'tab.budget':'Orçamento',
 
     'sum.income':'Receitas', 'sum.expenses':'Despesas', 'sum.balance':'Saldo',
@@ -761,7 +761,7 @@ function enhanceMonth(inp){
   inp._mSync=sync; sync();
 }
 function mSync(id){ const i=document.getElementById(id); if(i&&i._mSync) i._mSync(); }
-function enhanceMonthsAll(){ ['billStart','allocStart'].forEach(id=>{ const i=document.getElementById(id); if(i) enhanceMonth(i); }); }
+function enhanceMonthsAll(){ ['billStart','allocStart','spBillMonth'].forEach(id=>{ const i=document.getElementById(id); if(i) enhanceMonth(i); }); }
 function csSyncAll(){ document.querySelectorAll('select').forEach(s=>{ if(s._csSync) s._csSync(); }); }
 /* ---- Keyboard: confirm card + global ---- */
 function ccVisibleFocusables(){ const card=document.getElementById('confirmCard'); return [...card.querySelectorAll('.cc-date-btn, .cc-btn, .cc-input')].filter(el=> el.offsetParent!==null); }
@@ -1910,8 +1910,24 @@ function renderThemePicker() {
 function toggleFab() { fabOpen=!fabOpen; document.getElementById('fab').classList.toggle('open',fabOpen); document.getElementById('fabMenu').classList.toggle('open',fabOpen); }
 function closeFab() { fabOpen=false; document.getElementById('fab').classList.remove('open'); document.getElementById('fabMenu').classList.remove('open'); }
 function clearFormErrors() { document.querySelectorAll('.form-err').forEach(e=>{ e.textContent=''; e.classList.remove('show'); }); }
-function closeOverlay(id) { if (id==='billDelOverlay') billScopeCtx=null; if (mOpen) mOpen(); document.getElementById(id).classList.remove('open'); clearFormErrors(); }
-function closeAllOverlays() { if (mOpen) mOpen(); document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open')); clearFormErrors(); }
+function closeOverlay(id) {
+  if (id==='splitOverlay') { doneSplit(); return; }
+  if (id==='billDelOverlay') billScopeCtx=null;
+  if (mOpen) mOpen();
+  document.getElementById(id).classList.remove('open');
+  clearFormErrors();
+}
+function closeAllOverlays() {
+  if (mOpen) mOpen();
+  const splitOv = document.getElementById('splitOverlay');
+  const splitOpen = !!(splitOv && splitOv.classList.contains('open') && splitState);
+  if (splitOpen) flushSplitSave(true);
+  document.querySelectorAll('.overlay').forEach(function(o){
+    if (splitOpen && o.id === 'splitOverlay') return;
+    o.classList.remove('open');
+  });
+  clearFormErrors();
+}
 function bgClose(e,id) { if (e.target===document.getElementById(id)) closeOverlay(id); }
 function saveRecord(type, data, btn, label, overlayId) {
   const isEdit = !!(editing.id && editing.type===type), editId = editing.id;
@@ -2615,28 +2631,96 @@ function showToast(msg, type, undoFn) {
 }
 /* ===================== Bill split — rachar conta ===================== */
 let splitState = null;
+let splitSaveTimer = null;
+let splitSaveChain = Promise.resolve();
 function splUid(){ return 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function fmtMoney(n){ const c = CURRENCIES[currencyTo()] || { symbol:'', locale:'en-US' }; return (c.symbol ? c.symbol+' ' : '') + (Math.abs(Number(n)||0)).toLocaleString(c.locale, { minimumFractionDigits:2, maximumFractionDigits:2 }); }
 function fmtUnit(n){ n = Number(n)||0; return (Math.abs(n % 1) < 1e-9) ? String(Math.round(n)) : n.toLocaleString(L(), { maximumFractionDigits:2 }); }
+function setSplitSaveStatus(msg){ const el = document.getElementById('spSaveStatus'); if (el) el.textContent = msg || ''; }
+function splitBillCategory(){
+  const names = activeCatNames();
+  const hit = names.find(function(n){ return /Bills|Contas/i.test(n); });
+  return hit || t('cat.uncategorized');
+}
 function setItemMode(id, mode){
   const it = splitState.items.find(i => i.id === id); if (!it || it.priceMode === mode) return;
   const total = itemTotal(it), q = Number(it.qty)||0;
   it.price = round2(mode === 'unit' ? (q > 0 ? total/q : 0) : total);
   it.priceMode = mode;
-  renderSplitItems(); renderSplitTotals();
+  renderSplitItems(); renderSplitTotals(); scheduleSplitSave();
 }
-
-function openSplit(){
+function resetSplitBillUi(opts){
+  opts = opts || {};
+  const gen = document.getElementById('spGenBill');
+  const paid = document.getElementById('spBillPaid');
+  const month = document.getElementById('spBillMonth');
+  if (gen) gen.checked = !!opts.genBill;
+  if (paid) paid.checked = opts.paidThisMonth !== false;
+  if (month) month.value = opts.billMonth || ymStr(selY, selM);
+  mSync('spBillMonth');
+  syncSplitBillUi();
+}
+function syncSplitBillUi(){
+  const gen = document.getElementById('spGenBill');
+  const opts = document.getElementById('spBillOpts');
+  const paidWrap = document.getElementById('spBillPaidWrap');
+  const monthEl = document.getElementById('spBillMonth');
+  if (!gen || !opts) return;
+  opts.style.display = gen.checked ? 'block' : 'none';
+  if (!paidWrap) return;
+  const month = (monthEl && monthEl.value) || ymStr(selY, selM);
+  paidWrap.style.display = (gen.checked && month === ymStr(selY, selM)) ? 'block' : 'none';
+}
+function openSplit(splitId){
   try {
     closeFab();
-    splitState = { people:[{ id:splUid(), name:t('split.me'), isMe:true }], items:[] };
-    document.getElementById('spTitle').value = '';
-    document.getElementById('spSvc').checked = false;
-    document.getElementById('spSvcPct').value = '10';
-    document.getElementById('spPersonName').value = '';
+    clearTimeout(splitSaveTimer); splitSaveTimer = null;
     setFormError('splitErr','');
-    addItem();
+    setSplitSaveStatus('');
+    document.getElementById('spPersonName').value = '';
+    if (splitId) {
+      const rows = (DATA.debts || []).filter(function(d){ return d.splitId === splitId; });
+      if (!rows.length) return;
+      const mine = rows.find(function(d){ return d.mine; }) || rows[0];
+      const detail = mine.detail || (rows.find(function(d){ return d.detail; }) || {}).detail || null;
+      const rebuilt = FinMath.splitStateFromDetail(detail, rows.map(function(d){
+        return { id: d.id, name: d.person, isMe: !!d.mine };
+      }));
+      splitState = {
+        splitId: splitId,
+        created: Number(mine.created) || Date.now(),
+        linkedBillId: mine.linkedBillId || (rows.find(function(d){ return d.linkedBillId; }) || {}).linkedBillId || '',
+        people: rebuilt.people,
+        items: rebuilt.items,
+        _ready: false
+      };
+      document.getElementById('spTitle').value = mine.title || '';
+      document.getElementById('spSvc').checked = !!rebuilt.svcOn;
+      document.getElementById('spSvcPct').value = String(rebuilt.svcPct != null ? rebuilt.svcPct : 10);
+      let billMonth = ymStr(selY, selM);
+      if (splitState.linkedBillId) {
+        const b = (DATA.recurring || []).find(function(x){ return String(x.id) === String(splitState.linkedBillId); });
+        if (b && b.startMonth) billMonth = b.startMonth;
+      }
+      resetSplitBillUi({ genBill: !!splitState.linkedBillId, billMonth: billMonth, paidThisMonth: true });
+      if (!splitState.items.length) addItem(true);
+    } else {
+      splitState = {
+        splitId: splUid(),
+        created: Date.now(),
+        linkedBillId: '',
+        people: [{ id: splUid(), name: t('split.me'), isMe: true }],
+        items: [],
+        _ready: false
+      };
+      document.getElementById('spTitle').value = '';
+      document.getElementById('spSvc').checked = false;
+      document.getElementById('spSvcPct').value = '10';
+      resetSplitBillUi({ genBill: false, billMonth: ymStr(selY, selM), paidThisMonth: true });
+      addItem(true);
+    }
     renderSplitPeople(); renderSplitItems(); renderSplitTotals();
+    splitState._ready = true;
     document.getElementById('splitOverlay').classList.add('open');
   } catch (e) {
     try { showToast('Rachar: ' + (e && e.message ? e.message : e), 'error'); } catch (_) { alert('Rachar: ' + (e && e.message ? e.message : e)); }
@@ -2647,53 +2731,54 @@ function addPerson(){
   if (!name) return;
   splitState.people.push({ id:splUid(), name:name, isMe:false });
   inp.value = ''; inp.focus();
-  renderSplitPeople(); renderSplitItems(); renderSplitTotals();
+  renderSplitPeople(); renderSplitItems(); renderSplitTotals(); scheduleSplitSave();
 }
 function removePerson(id){
+  if (!splitState || splitState.people.length <= 1) return;
   splitState.people = splitState.people.filter(p => p.id !== id);
   splitState.items.forEach(it => { delete it.assign[id]; });
   if (!splitState.people.some(p => p.isMe) && splitState.people[0]) splitState.people[0].isMe = true;
-  renderSplitPeople(); renderSplitItems(); renderSplitTotals();
+  renderSplitPeople(); renderSplitItems(); renderSplitTotals(); scheduleSplitSave();
 }
-function setMe(id){ splitState.people.forEach(p => p.isMe = (p.id === id)); renderSplitPeople(); renderSplitTotals(); }
+function setMe(id){ splitState.people.forEach(p => p.isMe = (p.id === id)); renderSplitPeople(); renderSplitTotals(); scheduleSplitSave(); }
 function renderSplitPeople(){
   const el = document.getElementById('spPeople');
   el.innerHTML = splitState.people.map(p =>
     '<span class="sp-chip'+(p.isMe?' me':'')+'" onclick="setMe(\''+p.id+'\')">'
     + (p.isMe ? '<span class="star">★</span>' : '')
     + '<span>'+esc(p.name)+'</span>'
-    + '<span class="sp-chip-x" onclick="event.stopPropagation();removePerson(\''+p.id+'\')">✕</span>'
+    + (splitState.people.length > 1 ? '<span class="sp-chip-x" onclick="event.stopPropagation();removePerson(\''+p.id+'\')">✕</span>' : '')
     + '</span>'
   ).join('');
 }
-function addItem(){ splitState.items.push({ id:splUid(), name:'', qty:1, price:0, priceMode:'total', assign:{} }); renderSplitItems(); renderSplitTotals(); }
-function removeItem(id){ splitState.items = splitState.items.filter(i => i.id !== id); renderSplitItems(); renderSplitTotals(); }
+function addItem(skipSave){ splitState.items.push({ id:splUid(), name:'', qty:1, price:0, priceMode:'total', assign:{} }); renderSplitItems(); renderSplitTotals(); if (!skipSave) scheduleSplitSave(); }
+function removeItem(id){ splitState.items = splitState.items.filter(i => i.id !== id); renderSplitItems(); renderSplitTotals(); scheduleSplitSave(); }
 function setItemField(id, field, val){
   const it = splitState.items.find(i => i.id === id); if (!it) return;
   if (field === 'name') it.name = val;
   else if (field === 'qty') it.qty = Math.max(0, parseFloat(String(val).replace(',','.')) || 0);
   else if (field === 'price') it.price = Math.max(0, parseAmount(val) || 0);
-  renderSplitItems(); renderSplitTotals();
+  renderSplitItems(); renderSplitTotals(); scheduleSplitSave();
 }
 function assignUnit(itemId, personId, delta){
   const it = splitState.items.find(i => i.id === itemId); if (!it) return;
   let next = (Number(it.assign[personId]) || 0) + delta;
   if (next < 0) next = 0;
   if (Math.abs(next) < 1e-9) delete it.assign[personId]; else it.assign[personId] = next;
-  renderSplitItems(); renderSplitTotals();
+  renderSplitItems(); renderSplitTotals(); scheduleSplitSave();
 }
 function splitEqual(itemId){
   const it = splitState.items.find(i => i.id === itemId); if (!it) return;
   const n = splitState.people.length; if (!n) return;
   it.assign = {}; const each = (Number(it.qty)||0) / n;
   splitState.people.forEach(p => it.assign[p.id] = each);
-  renderSplitItems(); renderSplitTotals();
+  renderSplitItems(); renderSplitTotals(); scheduleSplitSave();
 }
 function allMine(itemId){
   const it = splitState.items.find(i => i.id === itemId); if (!it) return;
   const me = splitState.people.find(p => p.isMe) || splitState.people[0]; if (!me) return;
   it.assign = {}; it.assign[me.id] = Number(it.qty) || 0;
-  renderSplitItems(); renderSplitTotals();
+  renderSplitItems(); renderSplitTotals(); scheduleSplitSave();
 }
 function renderSplitItems(){
   const el = document.getElementById('spItems');
@@ -2752,22 +2837,162 @@ function copySplitSummary(){
   else splFallbackCopy(text);
 }
 function splFallbackCopy(text){ const ta = document.createElement('textarea'); ta.value = text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); showToast(t('split.copied')); } catch(e){} document.body.removeChild(ta); }
-function saveSplit(){
-  if (!splitState) return;
+function buildSplitRows(){
   const title = (document.getElementById('spTitle').value || '').trim() || t('split.untitled');
   const r = computeSplit();
-  const splitId = splUid(), created = Date.now();
-  const rows = [];
-  splitState.people.forEach(function(p){
-    const amt = Math.round((r.totals[p.id]||0) * 100) / 100;
-    if (amt <= 0) return;
-    rows.push({ id:splUid(), splitId:splitId, created:created, title:title, person:p.name, amount:amt, paid:false, paidDate:0, mine: !!p.isMe });
+  const svcOn = document.getElementById('spSvc').checked;
+  const svcPct = svcOn ? (parseFloat(document.getElementById('spSvcPct').value) || 0) : (parseFloat(document.getElementById('spSvcPct').value) || 0);
+  const detail = FinMath.splitDetailFromState(splitState, svcOn, svcPct);
+  const existing = (DATA.debts || []).filter(function(d){ return d.splitId === splitState.splitId; });
+  const paidByPerson = {};
+  existing.forEach(function(d){
+    if (!d.mine) paidByPerson[d.person] = { paid: !!d.paid, paidDate: d.paidDate || 0, id: d.id };
   });
-  if (!rows.some(function(d){ return !d.mine; })) { setFormError('splitErr', t('split.errNoDebt')); return; }
-  if (!DATA.debts) DATA.debts = [];
-  rows.forEach(d => DATA.debts.push(d));
-  closeOverlay('splitOverlay'); renderDebts(); showToast(t('split.saved'));
-  jbRun('addSplit', rows).catch(function(e){ showToast(t('err.prefix') + e.message, 'error'); reload(); });
+  const linkedBillId = splitState.linkedBillId || '';
+  const rows = [];
+  let mineWritten = false;
+  splitState.people.forEach(function(p){
+    const amt = round2(r.totals[p.id] || 0);
+    if (p.isMe) {
+      mineWritten = true;
+      const prev = existing.find(function(d){ return d.mine; });
+      rows.push({
+        id: (prev && prev.id) || splUid(),
+        splitId: splitState.splitId,
+        created: splitState.created,
+        title: title,
+        person: p.name,
+        amount: amt,
+        paid: false,
+        paidDate: 0,
+        mine: true,
+        detail: detail,
+        linkedBillId: linkedBillId
+      });
+    } else if (amt > 0) {
+      const prev = paidByPerson[p.name] || {};
+      rows.push({
+        id: prev.id || splUid(),
+        splitId: splitState.splitId,
+        created: splitState.created,
+        title: title,
+        person: p.name,
+        amount: amt,
+        paid: !!prev.paid,
+        paidDate: prev.paidDate || 0,
+        mine: false,
+        detail: '',
+        linkedBillId: ''
+      });
+    }
+  });
+  if (!mineWritten) {
+    const me = splitState.people[0] || { id: splUid(), name: t('split.me'), isMe: true };
+    rows.unshift({
+      id: splUid(), splitId: splitState.splitId, created: splitState.created, title: title,
+      person: me.name, amount: round2(r.totals[me.id] || 0), paid: false, paidDate: 0, mine: true,
+      detail: detail, linkedBillId: linkedBillId
+    });
+  }
+  return rows;
+}
+function ensureSplitBill(rows){
+  const gen = document.getElementById('spGenBill');
+  if (!gen || !gen.checked) return Promise.resolve(rows);
+  const mine = rows.find(function(r){ return r.mine; });
+  const myShare = mine ? Number(mine.amount) || 0 : 0;
+  const title = (document.getElementById('spTitle').value || '').trim() || t('split.untitled');
+  const billName = t('split.billName', { title: title });
+  const startMonth = (document.getElementById('spBillMonth').value || ymStr(selY, selM));
+  const dueDay = Math.min(Math.max(now.getDate(), 1), 31);
+  const cat = splitBillCategory();
+  const financeMonth = ymStr(selY, selM);
+  const markPaid = startMonth === financeMonth && document.getElementById('spBillPaid') && document.getElementById('spBillPaid').checked;
+
+  function stamp(id){
+    splitState.linkedBillId = id;
+    rows.forEach(function(r){ if (r.mine) r.linkedBillId = id; });
+  }
+
+  if (splitState.linkedBillId) {
+    const id = splitState.linkedBillId;
+    const b = (DATA.recurring || []).find(function(x){ return String(x.id) === String(id); });
+    const data = {
+      name: billName,
+      amount: myShare,
+      dueDay: (b && b.dueDay) || dueDay,
+      frequency: (b && b.frequency) || 'Monthly',
+      category: (b && b.category) || cat,
+      installments: 1,
+      startMonth: startMonth
+    };
+    return jbRun('updateRecord', 'recurring', id, data).then(function(){
+      if (b) Object.assign(b, data);
+      else (DATA.recurring = DATA.recurring || []).push(Object.assign({}, data, { id: id }));
+      stamp(id);
+      return rows;
+    });
+  }
+  if (myShare <= 0) return Promise.resolve(rows);
+  const data = { name: billName, amount: myShare, dueDay: dueDay, frequency: 'Monthly', category: cat, installments: 1, startMonth: startMonth };
+  return jbRun('addRecord', 'recurring', data).then(function(res){
+    const id = res && res.id;
+    if (!id) return rows;
+    (DATA.recurring = DATA.recurring || []).push(Object.assign({}, data, { id: id }));
+    stamp(id);
+    if (markPaid) applyPaid('bill', id, true, startMonth, myShare, todayStr());
+    return rows;
+  });
+}
+function applySplitRowsLocal(rows){
+  DATA.debts = (DATA.debts || []).filter(function(d){ return d.splitId !== splitState.splitId; }).concat(rows);
+  renderDebts();
+}
+function scheduleSplitSave(){
+  if (!splitState || !splitState._ready) return;
+  setSplitSaveStatus(t('split.saving'));
+  clearTimeout(splitSaveTimer);
+  splitSaveTimer = setTimeout(function(){ flushSplitSave(false); }, 600);
+}
+function flushSplitSave(closeAfter){
+  clearTimeout(splitSaveTimer); splitSaveTimer = null;
+  if (!splitState) return Promise.resolve();
+  const wantClose = !!closeAfter;
+  const run = function(){
+    if (!splitState) return Promise.resolve();
+    setSplitSaveStatus(t('split.saving'));
+    setFormError('splitErr','');
+    let rows = buildSplitRows();
+    return ensureSplitBill(rows).then(function(finalRows){
+      rows = finalRows || rows;
+      applySplitRowsLocal(rows);
+      return jbRun('replaceSplit', splitState.splitId, rows);
+    }).then(function(){
+      setSplitSaveStatus(t('split.savedSoft'));
+      if (wantClose) finishSplitClose();
+      else if (document.getElementById('spGenBill') && document.getElementById('spGenBill').checked) renderAll();
+    }).catch(function(e){
+      setSplitSaveStatus('');
+      showToast(t('err.prefix') + (e && e.message ? e.message : e), 'error');
+      if (!wantClose) reload();
+    });
+  };
+  splitSaveChain = splitSaveChain.then(run, run);
+  return splitSaveChain;
+}
+function finishSplitClose(){
+  if (mOpen) mOpen();
+  const ov = document.getElementById('splitOverlay');
+  if (ov) ov.classList.remove('open');
+  clearFormErrors();
+  setSplitSaveStatus('');
+  splitState = null;
+}
+function doneSplit(){
+  const ov = document.getElementById('splitOverlay');
+  if (!ov || !ov.classList.contains('open')) return;
+  if (!splitState) { finishSplitClose(); return; }
+  flushSplitSave(true);
 }
 function fmtDebtDate(ms){ if (!ms) return ''; try { return new Date(Number(ms)).toLocaleDateString(L(), { day:'2-digit', month:'short' }); } catch(e){ return ''; } }
 function renderDebts(){
@@ -2798,7 +3023,11 @@ function renderDebts(){
         + '</div>';
     }).join('');
     return '<div class="debt-outing'+(allPaid?' done':'')+'">'
-      + '<div class="do-head"><div><span class="do-title">'+esc(g.title)+'</span><span class="do-date">'+fmtDebtDate(g.created)+'</span></div><button class="do-del" onclick="deleteOuting(\''+sid+'\')" title="'+escAttr(t('debts.deleteOuting'))+'">🗑</button></div>'
+      + '<div class="do-head">'
+        + '<button type="button" class="do-head-main" onclick="openSplit(\''+sid+'\')"><span class="do-title">'+esc(g.title)+'</span><span class="do-date">'+fmtDebtDate(g.created)+'</span></button>'
+        + '<div class="do-actions"><button type="button" class="do-edit" onclick="openSplit(\''+sid+'\')">'+esc(t('debts.edit'))+'</button>'
+        + '<button class="do-del" onclick="deleteOuting(\''+sid+'\')" title="'+escAttr(t('debts.deleteOuting'))+'">🗑</button></div>'
+      + '</div>'
       + owedHtml + mineHtml
       + '</div>';
   }).join('');

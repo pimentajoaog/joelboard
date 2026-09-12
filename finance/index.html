@@ -204,15 +204,16 @@
 </div>
 
 <!-- Bill split (rachar conta) -->
-<div class="overlay" id="splitOverlay" onclick="bgClose(event,'splitOverlay')">
+<div class="overlay" id="splitOverlay" onclick="if(event.target===this)doneSplit()">
   <div class="modal split-modal">
-    <div class="modal-head"><div class="modal-title" data-i18n="split.title">Split a bill</div><button class="close-btn" onclick="closeOverlay('splitOverlay')">✕</button></div>
-    <div class="fg"><label class="flabel" data-i18n="split.outingName">What was it?</label><input type="text" class="field" id="spTitle" placeholder="e.g. Friday drinks" data-i18n-ph="split.outingPh"></div>
+    <div class="modal-head"><div class="modal-title" data-i18n="split.title">Split a bill</div><button class="close-btn" onclick="doneSplit()">✕</button></div>
+    <div class="sp-save-status" id="spSaveStatus" aria-live="polite"></div>
+    <div class="fg"><label class="flabel" data-i18n="split.outingName">What was it?</label><input type="text" class="field" id="spTitle" placeholder="e.g. Friday drinks" data-i18n-ph="split.outingPh" oninput="scheduleSplitSave()"></div>
     <div class="sp-section">
       <div class="sp-label" data-i18n="split.people">People</div>
       <div class="sp-people" id="spPeople"></div>
       <div class="sp-add-row"><input type="text" class="field" id="spPersonName" placeholder="Name…" data-i18n-ph="split.namePh" onkeydown="if(event.key==='Enter'){event.preventDefault();addPerson();}"><button class="sp-mini" onclick="addPerson()" data-i18n="split.addPerson">+ Add</button></div>
-      <div class="sp-unit" style="margin-top:6px;" data-i18n="split.meHint">Tap a name to mark who you are (★).</div>
+      <div class="sp-unit" style="margin-top:6px;" data-i18n="split.meHint">Tap a name to mark who you are (★). Solo is fine — add others only if someone owes you.</div>
     </div>
     <div class="sp-section">
       <div class="sp-label" data-i18n="split.items">Items</div>
@@ -220,18 +221,28 @@
       <button class="btn-ghost" style="width:100%;" onclick="addItem()" data-i18n="split.addItem">+ Add item</button>
     </div>
     <div class="sp-section sp-svc">
-      <label class="sp-toggle"><input type="checkbox" id="spSvc" onchange="renderSplitTotals()"> <span data-i18n="split.service">Service fee</span></label>
-      <input type="number" class="field" id="spSvcPct" value="10" min="0" max="100" step="1" oninput="renderSplitTotals()"><span style="color:var(--muted);">%</span>
+      <label class="sp-toggle"><input type="checkbox" id="spSvc" onchange="renderSplitTotals();scheduleSplitSave()"> <span data-i18n="split.service">Service fee</span></label>
+      <input type="number" class="field" id="spSvcPct" value="10" min="0" max="100" step="1" oninput="renderSplitTotals();scheduleSplitSave()"><span style="color:var(--muted);">%</span>
     </div>
     <div class="sp-section">
       <div class="sp-label" data-i18n="split.perPerson">Per person</div>
       <div class="sp-totals" id="spTotals"></div>
       <div class="sp-warn" id="spWarn" style="display:none;"></div>
     </div>
+    <div class="sp-section sp-bill-block">
+      <label class="sp-toggle"><input type="checkbox" id="spGenBill" onchange="syncSplitBillUi();scheduleSplitSave()"> <span data-i18n="split.genBill">Generate a Finance bill</span></label>
+      <div class="rg" data-i18n="split.genBillHint">Uses your share. Same month can count as a paid expense; a future month stays as an unpaid bill (e.g. credit card).</div>
+      <div id="spBillOpts" style="display:none;margin-top:10px;">
+        <div class="fg" style="margin-bottom:8px;"><label class="flabel" data-i18n="split.billMonth">Bill month</label><input type="text" class="field" id="spBillMonth" readonly inputmode="none" autocomplete="off" oninput="syncSplitBillUi();scheduleSplitSave()"></div>
+        <div id="spBillPaidWrap" style="display:none;">
+          <label class="sp-toggle"><input type="checkbox" id="spBillPaid" checked onchange="scheduleSplitSave()"> <span data-i18n="split.billPaidThisMonth">Count as a paid expense this month</span></label>
+        </div>
+      </div>
+    </div>
     <div class="form-err" id="splitErr"></div>
     <div class="sp-actions">
       <button class="btn-ghost" onclick="copySplitSummary()" data-i18n="split.copy">Copy summary</button>
-      <button class="btn-primary" id="splitSave" onclick="saveSplit()" data-i18n="split.save">Save who owes me</button>
+      <button class="btn-primary" id="splitSave" onclick="doneSplit()" data-i18n="split.done">Done</button>
     </div>
   </div>
 </div>

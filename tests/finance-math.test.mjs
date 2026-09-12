@@ -2,7 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ymStr, dayStr, monthDiff, ymAdd, parseAmount,
-  colLetter, planBillSplit, computeSplitTotals, itemTotal, round2
+  colLetter, planBillSplit, computeSplitTotals, itemTotal, round2,
+  splitDetailFromState, splitStateFromDetail
 } from '../lib/finance-math.mjs';
 
 describe('ymStr / monthDiff / ymAdd', () => {
@@ -89,5 +90,33 @@ describe('itemTotal', () => {
   });
   it('uses total mode as flat price', () => {
     assert.equal(itemTotal({ priceMode: 'total', price: 40, qty: 2 }), 40);
+  });
+});
+
+describe('splitDetail round-trip', () => {
+  it('preserves people items and service', () => {
+    const state = {
+      people: [{ id: 'a', name: 'Me', isMe: true }, { id: 'b', name: 'Jo', isMe: false }],
+      items: [{ id: 'i1', name: 'Beer', qty: 2, price: 20, priceMode: 'total', assign: { a: 1, b: 1 } }]
+    };
+    const detail = splitDetailFromState(state, true, 10);
+    assert.equal(detail.svcOn, true);
+    assert.equal(detail.svcPct, 10);
+    assert.equal(detail.items[0].name, 'Beer');
+    const rebuilt = splitStateFromDetail(detail, []);
+    assert.equal(rebuilt.people.length, 2);
+    assert.equal(rebuilt.people.find(p => p.isMe).name, 'Me');
+    assert.equal(rebuilt.items[0].assign.b, 1);
+    assert.equal(rebuilt.svcOn, true);
+    assert.equal(rebuilt.svcPct, 10);
+  });
+  it('falls back to people-only rows when Detail missing', () => {
+    const rebuilt = splitStateFromDetail(null, [
+      { name: 'Eu', isMe: true },
+      { name: 'Ana', isMe: false }
+    ]);
+    assert.equal(rebuilt.people.length, 2);
+    assert.equal(rebuilt.items.length, 0);
+    assert.equal(rebuilt.people[0].isMe, true);
   });
 });

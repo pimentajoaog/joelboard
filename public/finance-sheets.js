@@ -32,7 +32,25 @@ var JB_COLS = {
   allocations: function(d,id){ var c=parseInt(d.installments,10), has=c&&c>0; return [d.goalId, parseFloat(d.amount), has?c:'', d.startMonth, id]; },
   bundles: function(d,id){ return [d.name, d.payee||'', JSON.stringify(d.items||[]), id]; },
   categories: function(d,id){ return [d.name, d.color||'', id]; },
-  debts: function(d,id){ return [String(d.splitId||''), Number(d.created)||Date.now(), d.title||'', d.person||'', parseFloat(d.amount)||0, (d.paid===true||d.paid==='true'), (d.paidDate?Number(d.paidDate):''), (d.mine===true||d.mine==='true'), id]; }
+  debts: function(d,id){
+    var detail = d.detail;
+    if (detail && typeof detail !== 'string') {
+      try { detail = JSON.stringify(detail); } catch (e) { detail = ''; }
+    }
+    return [
+      String(d.splitId||''),
+      Number(d.created)||Date.now(),
+      d.title||'',
+      d.person||'',
+      parseFloat(d.amount)||0,
+      (d.paid===true||d.paid==='true'),
+      (d.paidDate?Number(d.paidDate):''),
+      (d.mine===true||d.mine==='true'),
+      id,
+      detail||'',
+      d.linkedBillId||''
+    ];
+  }
 };
 
 var JB_IMPL = {
@@ -40,6 +58,7 @@ var JB_IMPL = {
   updateRecord: function(type,id,data){ var arr=JB_COLS[type](data,id); return jbFindRow(JB_TAB[type], JB_DATACOLS[type], id).then(function(row){ if(row<0) throw new Error('Registro não encontrado — atualize.'); return jbPutRange(JB_TAB[type]+'!A'+row+':'+jbColLetter(arr.length-1)+row, [arr]); }).then(function(){ return {success:true}; }); },
   deleteRecord: function(type,id){ return jbFindRow(JB_TAB[type], JB_DATACOLS[type], id).then(function(row){ if(row<0) throw new Error('Registro não encontrado.'); return jbDeleteRow(JB_TAB[type], row); }).then(function(){ return {success:true}; }); },
   addSplit: function(rows){ var ch=Promise.resolve(); (rows||[]).forEach(function(d){ if(!d||!d.person) return; ch=ch.then(function(){ return jbAppend('Debts', JB_COLS.debts(d, d.id||jbUuid())); }); }); return ch.then(function(){ return {success:true}; }); },
+  replaceSplit: function(splitId, rows){ return JB_IMPL.deleteSplit(splitId).then(function(){ return JB_IMPL.addSplit(rows); }); },
   setDebtPaid: function(id,paid,paidDate){ return jbFindRow('Debts',8,id).then(function(row){ if(row<0) throw new Error('não encontrado'); var on=(paid===true||paid==='true'); return jbPutRange('Debts!F'+row+':G'+row, [[on, on?(Number(paidDate)||Date.now()):'']]); }).then(function(){ return {success:true}; }); },
   deleteSplit: function(splitId){ return jbGetVals('Debts').then(function(vals){ var reqs=[]; for(var i=vals.length-1;i>=1;i--){ if(String((vals[i]||[])[0])===String(splitId)) reqs.push({ deleteDimension:{ range:{ sheetId:jbGrid['Debts'], dimension:'ROWS', startIndex:i, endIndex:i+1 } } }); } if(!reqs.length) return {}; return jbReq('POST', jbBatchUrl(), { requests:reqs }); }).then(function(){ return {success:true}; }); },
   setWorkDay: function(date,worked,hours,otHours){ var arr=[date,(worked===true||worked==='true'),Number(hours),Number(otHours)||0]; return jbGetVals('WorkLog').then(function(vals){ for(var i=1;i<vals.length;i++){ var dv=(vals[i]||[])[0]; var ds=(typeof dv==='number')?jbDate(dv):String(dv); if(ds===date) return jbPutRange('WorkLog!A'+(i+1)+':D'+(i+1), [arr]); } return jbAppend('WorkLog', arr); }).then(function(){ return {success:true}; }); },
@@ -182,7 +201,7 @@ var JB_HEADERS = [
   ['Allocations',['Goal ID','Amount','Installments','Start Month','ID']],
   ['Bundles',['Name','Payee','Items','ID']],
   ['Categories',['Name','Color','ID']],
-  ['Debts',['Split ID','Date','Title','Person','Amount','Paid','Paid Date','Mine','ID']],
+  ['Debts',['Split ID','Date','Title','Person','Amount','Paid','Paid Date','Mine','ID','Detail','LinkedBillId']],
   ['WorkLog',['Date','Worked','Hours','OT Hours']],
   ['Payments',['Month','Type','Item ID','Paid','Actual Amount','Paid Date']],
   ['Settings',['Key','Value']]
@@ -230,7 +249,26 @@ function jbBuildData(t){
   var allocations = jbBody(t.Allocations).filter(function(r){ return r[0]; }).map(function(r){ return { id:r[4], goalId:r[0], amount:jbNum(r[1]), installments:jbNum(r[2])||0, startMonth:jbMonth(r[3]) }; });
   var bundles = jbBody(t.Bundles).filter(function(r){ return r[0]; }).map(function(r){ var items=[]; try{ items=JSON.parse(r[2]||'[]'); }catch(e){ items=[]; } return { id:r[3], name:r[0], payee:r[1]||'', items:items }; });
   var categories = jbBody(t.Categories).filter(function(r){ return r[0]; }).map(function(r){ return { id:r[2], name:r[0], color:r[1]||'' }; });
-  var debts = jbBody(t.Debts).filter(function(r){ return r[3]; }).map(function(r){ return { id:r[8], splitId:String(r[0]), created:jbNum(r[1]), title:r[2]||'', person:r[3], amount:jbNum(r[4]), paid:jbBool(r[5]), paidDate:jbNum(r[6]), mine:jbBool(r[7]) }; });
+  var debts = jbBody(t.Debts).filter(function(r){ return r[3]; }).map(function(r){
+    var detail = null;
+    if (r[9]) {
+      try { detail = typeof r[9] === 'string' ? JSON.parse(r[9]) : r[9]; }
+      catch (e) { detail = null; }
+    }
+    return {
+      id:r[8],
+      splitId:String(r[0]),
+      created:jbNum(r[1]),
+      title:r[2]||'',
+      person:r[3],
+      amount:jbNum(r[4]),
+      paid:jbBool(r[5]),
+      paidDate:jbNum(r[6]),
+      mine:jbBool(r[7]),
+      detail:detail,
+      linkedBillId:r[10] ? String(r[10]) : ''
+    };
+  });
   var workLog = jbBody(t.WorkLog).filter(function(r){ return r[0]; }).map(function(r){ return { date:jbDate(r[0]), worked:jbBool(r[1]), hours:jbNum(r[2]), otHours:jbNum(r[3]) }; });
   var payments = jbBody(t.Payments).filter(function(r){ return r[0] && r[2]; }).map(function(r){ return { month:String(r[0]).replace(/^m/,'').slice(0,7), type:r[1], itemId:String(r[2]), paid:jbBool(r[3]), actualAmount:(r[4]===''||r[4]==null)?null:jbNum(r[4]), paidDate:(typeof r[5]==='number'?jbDate(r[5]):(r[5]?String(r[5]).slice(0,10):'')) }; });
   var settings = { hourly_rate:0, exchange_rate:0, off_weekdays:[0,6], mode:'hourly', monthly_salary:0, daily_hours:8, overtime_mode:'off', overtime_mult:1.5, convert_enabled:'true', currency_from:'USD', currency_to:'BRL', profile_set:'true' };

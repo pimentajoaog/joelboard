@@ -36,6 +36,8 @@ var FinMath = (() => {
     parseAmount: () => parseAmount,
     planBillSplit: () => planBillSplit,
     round2: () => round2,
+    splitDetailFromState: () => splitDetailFromState,
+    splitStateFromDetail: () => splitStateFromDetail,
     sumAssign: () => sumAssign,
     ymAdd: () => ymAdd,
     ymStr: () => ymStr
@@ -152,6 +154,53 @@ var FinMath = (() => {
       grand += v;
     });
     return { sub, totals, grand, pct, anyUnassigned };
+  }
+  function splitDetailFromState(state, svcOn, svcPct) {
+    return {
+      people: (state.people || []).map(function(p) {
+        return { id: p.id, name: p.name, isMe: !!p.isMe };
+      }),
+      items: (state.items || []).map(function(it) {
+        return {
+          id: it.id,
+          name: it.name || "",
+          qty: Number(it.qty) || 0,
+          price: Number(it.price) || 0,
+          priceMode: it.priceMode === "unit" ? "unit" : "total",
+          assign: Object.assign({}, it.assign || {})
+        };
+      }),
+      svcOn: !!svcOn,
+      svcPct: Number(svcPct) || 0
+    };
+  }
+  function splitStateFromDetail(detail, fallbackPeople) {
+    if (detail && Array.isArray(detail.people) && detail.people.length) {
+      return {
+        people: detail.people.map(function(p) {
+          return { id: p.id || "p" + Math.random().toString(36).slice(2, 8), name: p.name || "", isMe: !!p.isMe };
+        }),
+        items: (detail.items || []).map(function(it) {
+          return {
+            id: it.id || "i" + Math.random().toString(36).slice(2, 8),
+            name: it.name || "",
+            qty: Number(it.qty) || 0,
+            price: Number(it.price) || 0,
+            priceMode: it.priceMode === "unit" ? "unit" : "total",
+            assign: Object.assign({}, it.assign || {})
+          };
+        }),
+        svcOn: !!detail.svcOn,
+        svcPct: detail.svcPct != null ? Number(detail.svcPct) : 10
+      };
+    }
+    const people = (fallbackPeople || []).map(function(p, i) {
+      return { id: p.id || "p" + i, name: p.name || "", isMe: !!p.isMe };
+    });
+    if (people.length && !people.some(function(p) {
+      return p.isMe;
+    })) people[0].isMe = true;
+    return { people, items: [], svcOn: false, svcPct: 10 };
   }
   return __toCommonJS(finance_math_exports);
 })();

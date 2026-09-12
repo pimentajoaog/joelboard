@@ -213,6 +213,11 @@ test('planner day rows expand a view-only peek instead of listing hours', functi
   assert.doesNotMatch(hubCss, /^\.open\{/m);
   assert.doesNotMatch(hubCss, /\.hub-agenda\{[\s\S]*?max-height:\s*calc\(100dvh - 48px\)/);
   assert.match(hubCss, /html\.jb-cal-peek-on \.hub-agenda\{[^}]*overflow:\s*hidden/);
+  assert.match(hubCss, /\.hub-agenda\{[\s\S]*?z-index:\s*2/);
+  assert.match(hubCss, /@media \(hover:hover\)/);
+  assert.match(hubCss, /position:static !important/);
+  const hubSrc = readFileSync(new URL('../public/hub.js', import.meta.url), 'utf8');
+  assert.match(hubSrc, /showFilters: mode==='wide'/);
   const calSrc = readFileSync(new URL('../public/jb-cal.js', import.meta.url), 'utf8');
   assert.match(calSrc, /jb-peek-open/);
   assert.doesNotMatch(calSrc, /classList\.add\('open'\)/);
@@ -290,7 +295,7 @@ test('groupByDay skips empty dates and keeps day order', function () {
   assert.match(cal.dayBlocksHtml([], 'hint'), /Nada neste per[ií]odo/);
 });
 
-test('agendaFirst paints day blocks and hides the month until opened', function () {
+test('agendaFirst paints Mini-like app blocks with the same per-app cap', function () {
   var store = { html: '' };
   var el = {
     get innerHTML() { return store.html; },
@@ -298,18 +303,23 @@ test('agendaFirst paints day blocks and hides the month until opened', function 
     querySelectorAll: function () { return []; },
     querySelector: function () { return null; }
   };
-  var evs = [
-    { app: 'finance', id: 'f1', date: '2026-09-09', title: 'Luz', color: '#34d399' },
-    { app: 'planner', id: 'p1', date: '2026-09-12', title: 'Chegada', color: '#2dd4bf' }
-  ];
+  var finance = [];
+  for (var i = 1; i <= 7; i++) {
+    finance.push({ app: 'finance', id: 'f' + i, date: '2026-09-0' + Math.min(9, i), title: 'Bill ' + i, color: '#34d399' });
+  }
+  finance.push({ app: 'planner', id: 'p1', date: '2026-09-12', title: 'Chegada', color: '#2dd4bf' });
   var api = cal.mount(el, {
-    events: evs, view: 'month', date: '2026-09-09',
-    agendaFirst: true, monthOpen: false, showFilters: true, views: [], compact: false
+    events: finance, view: 'month', date: '2026-09-09',
+    agendaFirst: true, monthOpen: false, showFilters: false, views: [], compact: false,
+    appLimit: 5
   });
-  assert.match(store.html, /jb-cal agenda/);
-  assert.doesNotMatch(store.html, / compact/);
-  assert.match(store.html, /jb-cal-dayblock/);
-  assert.match(store.html, /Luz/);
+  assert.match(store.html, /jb-cal agenda compact/);
+  assert.match(store.html, /jb-cal-cluster/);
+  assert.match(store.html, /jb-cal-appt-ico/);
+  assert.match(store.html, /Bill 7/);
+  assert.match(store.html, /Ver mais · 2/);
+  assert.doesNotMatch(store.html, /Bill 1/);
+  assert.doesNotMatch(store.html, /jb-cal-dayblock/);
   assert.match(store.html, />Mês</);
   assert.doesNotMatch(store.html, /id="calCells"/);
   api.setMonthOpen(true);

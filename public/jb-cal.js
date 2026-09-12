@@ -778,10 +778,11 @@
       return dayBlockHtml(g.date, g.events, opts);
     }).join('');
   }
-  function agendaToolbarHtml(date, open) {
+  function agendaToolbarHtml(date, open, cluster) {
     var d = parseYmd(date) || new Date();
     return '<div class="jb-cal-toolbar' + (open ? ' only-toggle' : '') + '">'
       + (open ? '' : ('<div class="jb-cal-rangelbl">' + esc(MOFULL[d.getMonth()] + ' ' + d.getFullYear()) + '</div>'))
+      + (cluster || '')
       + '<button type="button" class="jb-cal-monthbtn' + (open ? ' on' : '') + '" data-month="toggle" aria-expanded="' + (open ? 'true' : 'false') + '">'
       + (open ? 'Ocultar' : 'Mês') + '</button></div>';
   }
@@ -1055,17 +1056,19 @@
     function paintAgenda() {
       var range = rangeForView('month', state.date);
       var vis = eventsInRange(filtered(), range.start, range.end);
-      var html = '<div class="jb-cal agenda' + (state.monthOpen ? ' month-open' : '') + '">';
-      html += agendaToolbarHtml(state.date, state.monthOpen);
-      if (state.showFilters) html += filterBarHtml(state.filters, counts());
+      var html = '<div class="jb-cal agenda compact' + (state.monthOpen ? ' month-open' : '') + (state.clusterOpen ? ' cluster-open' : '') + '">';
+      html += agendaToolbarHtml(state.date, state.monthOpen, clusterHtml(state.filters, counts(), state.clusterOpen));
       if (state.monthOpen) html += monthCellsHtml(filtered(), state.date, state.picked);
+      var opts = Object.assign({}, listOpts(), { compact: true });
       if (state.picked) {
         var dayEvs = eventsInRange(filtered(), state.picked, state.picked);
-        html += dayBlockHtml(state.picked, dayEvs, Object.assign({}, listOpts(), {
-          extra: '<button type="button" class="jb-cal-clearpick" data-pick="clear">Todo o mês</button>'
-        }));
+        html += '<div class="jb-cal-sec">' + dayHeadHtml(state.picked, '<button type="button" class="jb-cal-clearpick" data-pick="clear">Todo o mês</button>')
+          + (dayEvs.length
+            ? appBlocksHtml(dayEvs, Object.assign({}, opts, { scope: state.picked, showDate: false }))
+            : '<div class="rg">Nada nesse dia.</div>') + '</div>';
       } else {
-        html += dayBlocksHtml(vis, state.emptyHint, listOpts());
+        html += '<div class="jb-cal-monthhint">Por app · toque num dia no mês para filtrar</div>';
+        html += groupedListHtml(vis, state.emptyHint, opts);
       }
       if (state.footerHtml) html += '<div class="jb-cal-foot">' + state.footerHtml + '</div>';
       html += '</div>';

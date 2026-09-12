@@ -1277,8 +1277,12 @@ html.jb-ink-full .fab {
 }
 .jb-cal-sectd { font-weight: 800; }
 .jb-cal-monthhint { font-size: 11px; color: var(--muted, #7b85a0); margin: 8px 0 2px; }
-.jb-cal.agenda .jb-cal-toolbar { flex-wrap: wrap; }
+.jb-cal.agenda .jb-cal-toolbar { flex-wrap: wrap; align-items: center; gap: 8px; }
 .jb-cal.agenda .jb-cal-toolbar.only-toggle { justify-content: flex-end; }
+.jb-cal.agenda.compact .jb-cal-rangelbl { flex: 1; min-width: 0; }
+.jb-cal.agenda.compact .jb-cal-cluster-wrap { margin-left: auto; }
+.jb-cal.agenda.compact .jb-cal-monthbtn { flex: 0 0 auto; }
+.jb-cal.agenda.compact .jb-cal-monthhint { margin-top: 4px; }
 .jb-cal-monthbtn {
   border: 1px solid var(--border, #2d3346);
   background: var(--surface2, #252a40);

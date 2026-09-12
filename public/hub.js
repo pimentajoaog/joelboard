@@ -523,7 +523,7 @@ function hubAgendaMountOpts(events){
     compact:compact,
     agendaFirst:agenda,
     monthOpen: agenda && hubAgendaMonthOpen(),
-    showFilters:!compact,
+    showFilters: mode==='wide',
     picked: agenda ? (_agendaPicked||null) : (_agendaView==='month' ? null : undefined),
     appLimit:hubAgendaLimit(),
     views: agenda?[]:(compact?['day','week','month']:['day','3day','week','month']),

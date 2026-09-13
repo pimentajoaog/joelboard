@@ -1254,6 +1254,11 @@ function recipePlanChips(r) {
   }).join('') + '</div>';
 }
 
+function romanPart(n) {
+  var r = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  return r[n - 1] || String(n);
+}
+
 function leafActions(r) {
   var has = hasAnyChecks(r.id);
   return '<div class="leaf-actions">'
@@ -1267,6 +1272,32 @@ function leafActions(r) {
     + '<button type="button" class="leaf-act" onclick="scheduleRecipe(\'' + escAttr(r.id) + '\')"'
     + ' title="Agendar no Calendar" aria-label="Agendar no Calendar">📅</button>'
     + '</div>';
+}
+
+function leafChrome(r) {
+  var parts = partsFor(r.id);
+  var nav = '';
+  if (parts.length) {
+    nav = '<div class="leaf-part-nav" role="navigation" aria-label="Partes">'
+      + parts.map(function (p, i) {
+        var label = romanPart(i + 1);
+        return '<button type="button" class="leaf-part-jump" onclick="jumpRecipePart(\'' + escAttr(r.id) + '\',\'' + escAttr(p.id) + '\')"'
+          + ' title="' + esc(p.name || 'Parte') + '" aria-label="' + esc((p.name || 'Parte') + ' (' + label + ')') + '">'
+          + label + '</button>';
+      }).join('')
+      + '</div>';
+  }
+  return '<div class="leaf-chrome">' + leafActions(r) + nav + '</div>';
+}
+
+function jumpRecipePart(recipeId, partId) {
+  var el = document.getElementById('rc-part-' + recipeId + '-' + partId);
+  if (!el) return;
+  var body = el.closest('.leaf-body');
+  if (!body) return;
+  var er = el.getBoundingClientRect();
+  var br = body.getBoundingClientRect();
+  body.scrollTo({ top: body.scrollTop + (er.top - br.top) - 8, behavior: 'smooth' });
 }
 
 function miseSection(r) {
@@ -1312,10 +1343,10 @@ function stepsSection(r) {
 }
 
 function recipePartsHtml(r) {
-  return partsFor(r.id).map(function (p) { return partSection(r, p); }).join('');
+  return partsFor(r.id).map(function (p, i) { return partSection(r, p, i); }).join('');
 }
 
-function partSection(r, p) {
+function partSection(r, p, idx) {
   var ings = ingsFor(r.id, p.id);
   var steps = stepsFor(r.id, p.id);
   var ingDone = doneCount(r.id, ings);
@@ -1338,8 +1369,9 @@ function partSection(r, p) {
       + (on ? '✓' : (i + 1)) + '</button>'
       + '<span><span class="ck-t">' + esc(st.text) + '</span></span></li>';
   }).join('');
-  return '<div class="leaf-part">'
-    + '<h3 class="leaf-part-name">' + esc(p.name || 'Parte') + '</h3>'
+  var num = romanPart((idx || 0) + 1);
+  return '<div class="leaf-part" id="rc-part-' + esc(r.id) + '-' + esc(p.id) + '">'
+    + '<h3 class="leaf-part-name"><span class="leaf-part-num">' + num + '</span> ' + esc(p.name || 'Parte') + '</h3>'
     + '<div class="leaf-sec">'
     + '<h3>Mise en place' + (ings.length ? '<em data-tally="' + esc(r.id + '|ing|' + p.id) + '">' + ingDone + '/' + ings.length + '</em>' : '') + '</h3>'
     + (ingRows ? '<ul class="ing-list">' + ingRows + '</ul>' : '<div class="rg">Nenhum ingrediente.</div>')
@@ -1359,7 +1391,7 @@ function leafEditBtn(r) {
 function recipeFullLeaf(r, side) {
   if (!r) return endLeaf(side);
   return '<div class="leaf is-' + side + '">'
-    + leafActions(r)
+    + leafChrome(r)
     + '<div class="leaf-body">'
     + recipeTitleBlock(r)
     + miseSection(r)
@@ -1374,7 +1406,7 @@ function recipeFullLeaf(r, side) {
 function recipeHeadLeaf(r, side) {
   if (!r) return endLeaf(side);
   return '<div class="leaf is-' + side + '">'
-    + leafActions(r)
+    + leafChrome(r)
     + '<div class="leaf-body">' + recipeTitleBlock(r) + miseSection(r) + '</div>'
     + leafFolio(side, recipePageLabel(r))
     + '</div>';
@@ -1382,6 +1414,7 @@ function recipeHeadLeaf(r, side) {
 function recipeStepsLeaf(r, side) {
   if (!r) return endLeaf(side);
   return '<div class="leaf is-' + side + '">'
+    + leafChrome(r)
     + '<div class="leaf-body">' + stepsSection(r) + recipePartsHtml(r) + '</div>'
     + leafFolio(side, 'Modo de fazer')
     + '</div>';
@@ -2208,7 +2241,7 @@ function paintPartBlocks() {
     return '<div class="part-edit">'
       + '<div class="part-edit-head">'
       + '<input class="field" placeholder="ex.: Ganache" value="' + esc(p.name) + '" oninput="_partDraft[' + i + '].name=this.value">'
-      + '<button type="button" class="rm" onclick="rmPartBlock(' + i + ')" aria-label="Remover parte">×</button>'
+      + '<button type="button" class="rm part-edit-rm" onclick="rmPartBlock(' + i + ')" aria-label="Remover parte">×</button>'
       + '</div>'
       + '<div class="edit-lines">' + ings + '</div>'
       + '<button type="button" class="btn ghost part-edit-add" onclick="addPartIng(' + i + ')">+ Ingrediente</button>'

@@ -288,7 +288,7 @@ function bootSheet(){
       plannerGrid=ctx.grid;
       return ensureTabs().then(ensurePlannerLinkHeaders).then(loadData);
     })
-    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml(JB.bootRetryHtml('bootSheet()', { inputId:'plUrl', pasteCall:'linkSheet()', errId:'plErr', msg:(JB.isTransientErr&&JB.isTransientErr(e))?undefined:('Erro: '+m) })); });
+    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length) offerPick(f, e); else gate(); return; } loadingHtml(JB.bootRetryHtml('bootSheet()', { inputId:'plUrl', pasteCall:'linkSheet()', errId:'plErr', msg:(JB.isTransientErr&&JB.isTransientErr(e))?undefined:('Erro: '+m) })); });
 }
 function ensureTabs(){
   var missing=PL_TABS.filter(function(t){ return plannerGrid[t[0]]==null; });
@@ -305,7 +305,19 @@ function plPersonalGate(msg){
     + '<div id="plErr" style="color:var(--primary);font-size:12px;margin-top:10px"></div></div>');
 }
 function gate(){ plPersonalGate(); }
-function offerLink(f){ loadingHtml('<div class="gate"><div class="gt">Encontramos seus planos 🎉</div><div class="gs">'+esc(f.name)+'</div><button class="btn-primary" onclick="pick(\''+f.id+'\')">Vincular e abrir</button><button class="del" onclick="gate()">usar outro / criar novo</button></div>'); }
+function offerPick(files, err){
+  var hint = (err&&err.fromFolder)
+    ? ('Escolha a planilha em Joelboard/' + (err.folderName||'Planner') + '.')
+    : 'Encontramos mais de uma planilha possível.';
+  loadingHtml(JB.sheetPickHtml(files, {
+    title: 'Qual planilha de planos?',
+    hint: hint,
+    pickCall: 'pick',
+    otherCall: 'gate()',
+    otherLabel: 'criar nova / colar link'
+  }));
+}
+function offerLink(f){ offerPick([f]); }
 function pick(id){ JB.setSheetId('planner',id); bootSheet(); }
 function createSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Criando seus planos…</div></div>');

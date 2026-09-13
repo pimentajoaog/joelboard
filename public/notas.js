@@ -213,7 +213,7 @@ function bootSheet(){
       notasGrid=ctx.grid;
       return ensureTabs().then(ensureVenceHeader).then(ensurePresetHeader).then(ensureStickerHeader).then(ensureTipoHeader).then(ensureFeitoPorHeader).then(loadData);
     })
-    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml(JB.bootRetryHtml('bootSheet()', { inputId:'notasUrl', pasteCall:'linkSheet()', errId:'notasErr', msg:(JB.isTransientErr&&JB.isTransientErr(e))?undefined:('Erro: '+m) })); });
+    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length) offerPick(f, e); else gate(); return; } loadingHtml(JB.bootRetryHtml('bootSheet()', { inputId:'notasUrl', pasteCall:'linkSheet()', errId:'notasErr', msg:(JB.isTransientErr&&JB.isTransientErr(e))?undefined:('Erro: '+m) })); });
 }
 function ensureTabs(){
   var missing=NOTAS_TABS.filter(function(t){ return notasGrid[t[0]]==null; });
@@ -230,7 +230,19 @@ function ensureVenceHeader(){ if(notasGrid['Notas']==null) return Promise.resolv
 function ensurePresetHeader(){ if(notasGrid['Notas']==null) return Promise.resolve(); return ensureGrid('Notas',9).then(function(){ return JB.api('GET', personalSsUrl('/values/'+encodeURIComponent('Notas!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[8]==='Preset') return; return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Notas!I1')+'?valueInputOption=RAW'), { values:[['Preset']] }); }).catch(function(){}); }
 function ensureStickerHeader(){ if(notasGrid['Notas']==null) return Promise.resolve(); return ensureGrid('Notas',10).then(function(){ return JB.api('GET', personalSsUrl('/values/'+encodeURIComponent('Notas!1:1'))); }).then(function(res){ var h=(res.values&&res.values[0])||[]; if(h[9]==='Sticker') return; return JB.api('PUT', personalSsUrl('/values/'+encodeURIComponent('Notas!J1')+'?valueInputOption=RAW'), { values:[['Sticker']] }); }).catch(function(){}); }
 function gate(){ notasPersonalGate('Crie sua planilha de notas — ela fica no seu Google Drive, separada das listas compartilhadas.'); }
-function offerLink(f){ loadingHtml('<div class="gate"><div class="gt">Encontramos suas notas 🎉</div><div class="gs">'+esc(f.name)+'</div><button class="btn-primary" onclick="pick(\''+f.id+'\')">Vincular e abrir</button><button class="del" onclick="gate()">usar outro / criar novo</button></div>'); }
+function offerPick(files, err){
+  var hint = (err&&err.fromFolder)
+    ? ('Escolha a planilha em Joelboard/' + (err.folderName||'Notes') + '.')
+    : 'Encontramos mais de uma planilha possível.';
+  loadingHtml(JB.sheetPickHtml(files, {
+    title: 'Qual planilha de notas?',
+    hint: hint,
+    pickCall: 'pick',
+    otherCall: 'gate()',
+    otherLabel: 'criar nova / colar link'
+  }));
+}
+function offerLink(f){ offerPick([f]); }
 function pick(id){ JB.setSheetId('notas',id); bootSheet(); }
 function linkSheet(){
   var u=($('notasUrl').value||'').trim(); var m=u.match(/[a-zA-Z0-9_-]{30,}/);

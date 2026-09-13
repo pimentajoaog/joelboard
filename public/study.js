@@ -53,7 +53,7 @@ function bootSheet(){
   loadingHtml('<div class="gate"><div class="gs" style="margin-top:60px">Procurando seus estudos…</div></div>');
   JB.resolveSheet({ app:'study', namePart:'Joelboard', requiredTabs: ['Materias','Eventos'] })  /* distinctive tabs only — Config is shared by all apps */
     .then(function(ctx){ studyGrid=ctx.grid; ensureTabs().then(loadData); })
-    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length>1) offerLink(f[0]); else gate(); return; } loadingHtml(JB.bootRetryHtml('bootSheet()', { inputId:'studyUrl', pasteCall:'linkSheet()', errId:'studyErr', msg:(JB.isTransientErr&&JB.isTransientErr(e))?undefined:('Erro: '+m) })); });
+    .catch(function(e){ var m=String((e&&e.message)||''); if(m.indexOf('silent_timeout')>-1||m.indexOf('auth_failed')>-1||m.indexOf('401')>-1||m.indexOf('cancelled')>-1){ showSignIn(); return; } if(m==='JB_NEED_SHEET'){ var f=(e.files||[]); if(f.length) offerPick(f, e); else gate(); return; } loadingHtml(JB.bootRetryHtml('bootSheet()', { inputId:'studyUrl', pasteCall:'linkSheet()', errId:'studyErr', msg:(JB.isTransientErr&&JB.isTransientErr(e))?undefined:('Erro: '+m) })); });
 }
 function ensureTabs(){
   var missing=STUDY_TABS.filter(function(t){ return studyGrid[t[0]]==null; });
@@ -70,7 +70,19 @@ function gate(){
     + '<input class="field" id="studyUrl" placeholder="Cole o link da planilha"><button class="btn ghost" style="width:100%;margin-top:10px" onclick="linkSheet()">Conectar planilha</button>'
     + '<div id="studyErr" style="color:var(--primary);font-size:12px;margin-top:10px"></div></div>');
 }
-function offerLink(f){ loadingHtml('<div class="gate"><div class="gt">Encontramos seus estudos 🎉</div><div class="gs">'+esc(f.name)+'</div><button class="btn-primary" onclick="pick(\''+f.id+'\')">Vincular e abrir</button><button class="del" onclick="gate()">usar outro / criar novo</button></div>'); }
+function offerPick(files, err){
+  var hint = (err&&err.fromFolder)
+    ? ('Escolha a planilha em Joelboard/' + (err.folderName||'Study') + '.')
+    : 'Encontramos mais de uma planilha possível.';
+  loadingHtml(JB.sheetPickHtml(files, {
+    title: 'Qual planilha de estudos?',
+    hint: hint,
+    pickCall: 'pick',
+    otherCall: 'gate()',
+    otherLabel: 'criar nova / colar link'
+  }));
+}
+function offerLink(f){ offerPick([f]); }
 function pick(id){ JB.setSheetId('study',id); bootSheet(); }
 function linkSheet(){ var u=($('studyUrl').value||'').trim(); var m=u.match(/[a-zA-Z0-9_-]{30,}/); if(!m){ $('studyErr').textContent='Link inválido.'; return; } JB.setSheetId('study',m[0]); bootSheet(); }
 function createSheet(){

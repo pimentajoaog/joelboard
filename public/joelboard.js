@@ -1037,7 +1037,7 @@
   }
   whenReady(initSheetSync);
 
-  // --- shared sheet resolution: search by app-specific name, validate required tabs, auto-pick a single match, self-heal a stale/wrong id ---
+  // --- shared sheet resolution: cached id → app Drive folder → name search ---
   function sheetTabs(id){
     return api('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' + id + '?fields=sheets.properties(sheetId,title)')
       .then(function (meta) { var grid = {}; (meta.sheets || []).forEach(function (x) { grid[x.properties.title] = x.properties.sheetId; }); return grid; });
@@ -1047,7 +1047,20 @@
     return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&orderBy=createdTime')
       .then(function (res) { return res.files || []; });
   }
-  // opts {app, namePart, requiredTabs}. Resolves {id, grid}. Rejects Error('JB_NEED_SHEET') with .files (0 or >1) when the app must show its gate/picker.
+  function searchSheetsInFolder(folderId){
+    if (!folderId) return Promise.resolve([]);
+    var q = "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and '" + folderId + "' in parents";
+    return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&orderBy=modifiedTime desc&pageSize=50')
+      .then(function (res) { return res.files || []; }, function () { return []; });
+  }
+  function resolveAppFolderKey(app){
+    var key = String(app || '').toLowerCase();
+    if (key === 'notas') return 'notes';
+    if (key === 'mini-replace' || key === 'mini_replace') return 'mini';
+    return key;
+  }
+  // opts {app, namePart, requiredTabs}. Resolves {id, grid}.
+  // Rejects Error('JB_NEED_SHEET') with .files (candidates to pick) and optional .fromFolder when the app must show its gate/picker.
   function isAuthErr(err){ var m = String((err && err.message) || ''); return m.indexOf('silent_timeout') > -1 || m.indexOf('silent_cooldown') > -1 || m.indexOf('signed_out') > -1 || m.indexOf('auth_failed') > -1 || m.indexOf('401') > -1 || m.indexOf('cancelled') > -1; }
   function isSessionErr(err){ var m = String((err && err.message) || ''); return m === 'silent_cooldown' || m === 'silent_timeout' || m === 'signed_out' || m === 'auth_failed' || (err && err.code === 'JB_NEED_SCOPES') || m.indexOf('401') > -1; }
   function writeErrMessage(err){
@@ -1070,22 +1083,107 @@
     });
   }
   function resolveSheet(opts){
+    opts = opts || {};
     var app = opts.app, namePart = opts.namePart, need = opts.requiredTabs || [];
     function valid(grid){ return need.length ? need.some(function (t) { return grid[t] != null; }) : true; }
-    // returns {id,grid} if this sheet matches; null to skip (wrong tabs / 403 / 404); rethrows auth errors so the app can re-login
     // {id,grid} if matches; null to skip (wrong tabs / sheet truly gone = 404|403); auth errors rethrow (re-login); transient errors (network/5xx/429) rethrow so we DON'T wipe a valid cached id
     function tryId(id){ return sheetTabs(id).then(function (grid) { return valid(grid) ? { id: id, grid: grid } : null; }, function (err) { if (isAuthErr(err)) throw err; var hm = String((err && err.message) || '').match(/HTTP (\d+)/); var st = hm ? +hm[1] : 0; if (st === 404 || st === 403) return null; throw err; }); }
-    function needErr(files){ var e = new Error('JB_NEED_SHEET'); e.files = files || []; return e; }
+    function needErr(files, meta){
+      var e = new Error('JB_NEED_SHEET');
+      e.files = files || [];
+      if (meta) {
+        if (meta.fromFolder) e.fromFolder = true;
+        if (meta.folderId) e.folderId = meta.folderId;
+        if (meta.folderName) e.folderName = meta.folderName;
+      }
+      return e;
+    }
+    function filterValid(files){
+      var out = [];
+      var i = 0;
+      function next(){
+        if (i >= files.length) return out;
+        var f = files[i++];
+        if (!f || !f.id) return next();
+        return tryId(f.id).then(function (ctx) {
+          if (ctx) out.push({ id: ctx.id, name: f.name || ctx.id, grid: ctx.grid });
+          return next();
+        });
+      }
+      return next();
+    }
+    function takeValid(valid, meta){
+      if (!valid || !valid.length) return null;
+      if (valid.length === 1) {
+        setSheetId(app, valid[0].id);
+        return { id: valid[0].id, grid: valid[0].grid };
+      }
+      throw needErr(valid.map(function (v) { return { id: v.id, name: v.name }; }), meta || {});
+    }
+    function fromFolder(){
+      if (isGhost()) return Promise.resolve(null);
+      var folderKey = resolveAppFolderKey(app);
+      if (!DRIVE_APP_NAMES[folderKey]) return Promise.resolve(null);
+      return ensureAppFolder(folderKey).then(function (folderId) {
+        return searchSheetsInFolder(folderId).then(function (files) {
+          if (!files.length) return null;
+          return filterValid(files).then(function (valid) {
+            return takeValid(valid, {
+              fromFolder: true,
+              folderId: folderId,
+              folderName: DRIVE_APP_NAMES[folderKey] || folderKey
+            });
+          });
+        });
+      }, function () { return null; });
+    }
     function fromSearch(){
       return searchSheets(namePart).then(function (files) {
-        var i = 0;
-        function next(){ if (i >= files.length) throw needErr([]); return tryId(files[i].id).then(function (ctx) { if (ctx) { setSheetId(app, ctx.id); return ctx; } i++; return next(); }); }
-        return next();
+        return filterValid(files).then(function (valid) {
+          var picked = takeValid(valid, { fromFolder: false });
+          if (picked) return picked;
+          throw needErr([]);
+        });
+      });
+    }
+    function afterCacheMiss(){
+      return fromFolder().then(function (ctx) {
+        if (ctx) return ctx;
+        return fromSearch();
       });
     }
     var cached = getSheetId(app);
-    if (!cached) return fromSearch();
-    return tryId(cached).then(function (ctx) { if (ctx) return ctx; clearSheetId(app); return fromSearch(); });
+    if (!cached) return afterCacheMiss();
+    return tryId(cached).then(function (ctx) {
+      if (ctx) return ctx;
+      clearSheetId(app);
+      return afterCacheMiss();
+    });
+  }
+  /** Shared multi-sheet picker HTML for JB_NEED_SHEET handlers. */
+  function sheetPickHtml(files, opts){
+    opts = opts || {};
+    var title = opts.title || 'Qual planilha?';
+    var hint = opts.hint || '';
+    var pickCall = opts.pickCall || 'pick';
+    var otherCall = opts.otherCall || 'gate()';
+    var otherLabel = opts.otherLabel || 'criar nova / colar link';
+    function esc(s){
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    var items = (files || []).map(function (f) {
+      var id = String(f.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+      if (!id) return '';
+      return '<button type="button" class="btn ghost" style="display:block;width:100%;text-align:left;margin:0 0 8px" onclick="'
+        + pickCall + '(\'' + id + '\')">📊 ' + esc(f.name || id) + '</button>';
+    }).join('');
+    return '<div class="gate">'
+      + '<div class="gt">' + esc(title) + '</div>'
+      + (hint ? ('<div class="gs">' + esc(hint) + '</div>') : '')
+      + '<div style="margin-top:14px;text-align:left">' + items + '</div>'
+      + '<button type="button" class="del" style="margin-top:10px" onclick="' + otherCall + '">' + esc(otherLabel) + '</button>'
+      + '</div>';
   }
 
   function signOut(){
@@ -3389,7 +3487,7 @@
     requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
     isTransientErr: isTransientErr, transientErrMessage: jbTransientErrMessage, bootRetryHtml: bootRetryHtml,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
-    sheetTabs: sheetTabs, resolveSheet: resolveSheet,
+    sheetTabs: sheetTabs, resolveSheet: resolveSheet, sheetPickHtml: sheetPickHtml,
     feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,
     toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady, ensureEditor: ensureEditor, editor: null, wireEggFooter: wireEggFooter, refreshNumberSteppers: scanNumberSteppers,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,

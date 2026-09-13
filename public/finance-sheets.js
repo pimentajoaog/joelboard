@@ -175,7 +175,7 @@ function jbBootSheet(){
   }).catch(function(e){
     var m = String((e&&e.message)||'');
     if (m.indexOf('silent_timeout')>-1 || m.indexOf('auth_failed')>-1 || m.indexOf('401')>-1 || m.indexOf('cancelled')>-1) { jbShowSignIn(); return; }
-    if (m === 'JB_NEED_SHEET'){ var f=(e.files||[]); if (f.length>1) jbOfferPick(f); else jbShowLink(); return; }
+    if (m === 'JB_NEED_SHEET'){ var f=(e.files||[]); if (f.length) jbOfferPick(f, e); else jbShowLink(); return; }
     jbLoadingHtml(JB.bootRetryHtml('jbBootSheet()', {
       inputId: 'jbSheetUrl', pasteCall: 'jbLink()', errId: 'jbLinkErr',
       msg: (JB.isTransientErr && JB.isTransientErr(e)) ? undefined : ('Erro ao carregar: ' + m)
@@ -183,7 +183,20 @@ function jbBootSheet(){
   });
 }
 function jbPick(id){ JB.setSheetId('finance', id); jbBootSheet(); }
-function jbOfferPick(files){
+function jbOfferPick(files, err){
+  var hint = (err&&err.fromFolder)
+    ? ('Escolha a planilha em Joelboard/' + (err.folderName||'Finance') + '.')
+    : 'Encontramos mais de uma planilha possível.';
+  if (JB.sheetPickHtml) {
+    jbLoadingHtml(JB.sheetPickHtml(files, {
+      title: 'Qual planilha?',
+      hint: hint,
+      pickCall: 'jbPick',
+      otherCall: 'jbShowLink()',
+      otherLabel: 'criar nova / colar link'
+    }));
+    return;
+  }
   var items = files.map(function(f){ return '<button onclick="jbPick(\'' + f.id + '\')" style="display:block;width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;font-family:inherit;font-size:14px">📊 ' + esc(f.name) + '</button>'; }).join('');
   jbLoadingHtml('<div style="max-width:430px;margin:0 auto;padding:44px 20px"><div style="font-size:18px;font-weight:800;margin-bottom:14px;text-align:center">Qual planilha?</div>' + items + '<button onclick="jbShowLink()" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;display:block;margin:8px auto 0">criar nova / colar link</button></div>');
 }

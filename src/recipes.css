@@ -458,6 +458,7 @@ body.recipes-book .book-title-row{ margin-bottom:8px !important; }
 .leaf-body{
   flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
   padding-right:6px; scrollbar-width:thin;
+  container-type:inline-size;
 }
 .leaf-body::-webkit-scrollbar{ width:6px; }
 .leaf-body::-webkit-scrollbar-thumb{ background:var(--border); border-radius:999px; }
@@ -541,7 +542,6 @@ body.recipes-book .book-title-row{ margin-bottom:8px !important; }
   background:color-mix(in srgb, var(--kc, var(--primary)) 14%, var(--surface2));
   overflow:hidden; flex:none;
 }
-.leaf-hero img{ width:100%; height:100%; object-fit:cover; }
 .leaf-title{
   text-align:center; font-family:var(--font-display); font-weight:800; font-size:21px;
   letter-spacing:-.4px; line-height:1.2; word-break:break-word;
@@ -563,6 +563,22 @@ body.recipes-book .book-title-row{ margin-bottom:8px !important; }
   border-bottom:1px solid var(--border); padding-bottom:6px;
 }
 .leaf-sec h3 em{ font-style:normal; color:var(--primary); font-size:11px; }
+
+/* foto da receita: ocupa a página de verdade em vez de virar um selinho */
+.mise-wrap{ display:grid; gap:12px; }
+.leaf-shot{
+  margin:0; border-radius:12px; overflow:hidden;
+  background:var(--surface2); border:1px solid var(--border);
+}
+.leaf-shot img{ display:block; width:100%; height:100%; object-fit:cover; aspect-ratio:16/10; }
+/* folha larga o bastante: ingredientes de um lado, foto do outro */
+@container (min-width: 400px){
+  .leaf-sec.has-shot .mise-wrap{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    align-items:start;
+  }
+  .leaf-sec.has-shot .leaf-shot img{ aspect-ratio:4/5; max-height:320px; }
+}
 .leaf-edit{
   position:absolute; top:10px; left:12px; z-index:2;
   width:30px; height:30px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:13px;

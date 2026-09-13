@@ -370,9 +370,9 @@ function loadAll() {
 }
 
 function refreshQuiet() {
-  if (!JB.isSignedIn()) return;
+  if (!JB.isSignedIn()) return Promise.resolve();
   var tabs = ['Cookbooks', 'Recipes', 'Ingredients', 'Steps'];
-  JB.api('GET', ssUrl('/values:batchGet?ranges=' + tabs.map(encodeURIComponent).join('&ranges=') + '&valueRenderOption=UNFORMATTED_VALUE'))
+  return JB.api('GET', ssUrl('/values:batchGet?ranges=' + tabs.map(encodeURIComponent).join('&ranges=') + '&valueRenderOption=UNFORMATTED_VALUE'))
     .then(function (res) {
       var vr = res.valueRanges || [];
       DATA.cookbooks = parseCookbooks(vr[0] && vr[0].values);
@@ -871,10 +871,21 @@ function leafFolio(side, label) {
   return '<div class="leaf-folio ' + side + '">' + esc(label) + '</div>';
 }
 
+/* Com foto, o carimbo de ícone sai de cena — a foto vira o destaque da página. */
 function recipeHero(r) {
-  return '<div class="leaf-hero">'
-    + (r.imageUrl ? '<img src="' + esc(r.imageUrl) + '" alt="">' : esc(r.icon || '🍽️'))
-    + '</div>';
+  if (r.imageUrl) return '';
+  return '<div class="leaf-hero">' + esc(r.icon || '🍽️') + '</div>';
+}
+
+function recipeShot(r) {
+  if (!r.imageUrl) return '';
+  return '<figure class="leaf-shot">'
+    + '<img src="' + esc(r.imageUrl) + '" alt="" onerror="rcShotFail(this)">'
+    + '</figure>';
+}
+function rcShotFail(img) {
+  var fig = img && img.parentNode;
+  if (fig && fig.parentNode) fig.parentNode.removeChild(fig);
 }
 
 function recipeTags(r) {
@@ -903,9 +914,15 @@ function miseSection(r) {
       + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
       + '<span>' + esc(label) + '</span></li>';
   }).join('');
-  return '<div class="leaf-sec">'
+  var shot = recipeShot(r);
+  return '<div class="leaf-sec' + (shot ? ' has-shot' : '') + '">'
     + '<h3>Mise en place' + (ings.length ? '<em>' + done + '/' + ings.length + '</em>' : '') + '</h3>'
+    + '<div class="mise-wrap">'
+    + '<div class="mise-col">'
     + (rows ? '<ul class="ing-list">' + rows + '</ul>' : '<div class="rg">Nenhum ingrediente.</div>')
+    + '</div>'
+    + shot
+    + '</div>'
     + '</div>';
 }
 
@@ -1630,13 +1647,35 @@ function saveRecipeModal() {
       })
       : JB.api('POST', ssUrl('/values/Recipes!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
         .then(function () { return replaceRecipeChildren(id); });
+    var inBook = view === 'book';
     return p.then(function () {
       closeRecipeModal();
-      openRecipeId = id;
-      view = 'recipe';
-      return refreshQuiet();
+      if (!inBook) {
+        openRecipeId = id;
+        view = 'recipe';
+      }
+      return refreshQuiet().then(function () {
+        if (inBook) focusRecipePage(id);
+      });
     });
   }).catch(function (e) { toast(e.message || 'Falha ao salvar'); });
+}
+
+/* Salvar de dentro do livro não deve expulsar da leitura: vira para a página. */
+function focusRecipePage(id) {
+  if (view !== 'book' || bookViewMode !== 'flip') return;
+  var list = visibleRecipes(openBookId);
+  var idx = -1;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].id === id) { idx = i; break; }
+  }
+  if (idx < 0) return;
+  var step = spreadStep();
+  var target = Math.floor(idx / step) * step;
+  if (target === flipIndex) return;
+  flipIndex = target;
+  render();
+  bindFlipGesture();
 }
 
 function replaceRecipeChildren(recipeId) {
@@ -1809,11 +1848,16 @@ function importMeal(sourceId) {
         });
     }).then(function (id) {
       closeSearch();
+      var inBook = view === 'book' && openBookId === _searchImportBookId;
       openBookId = _searchImportBookId;
-      openRecipeId = id;
-      view = 'recipe';
+      if (!inBook) {
+        openRecipeId = id;
+        view = 'recipe';
+      }
       toast('Receita salva no livro');
-      return refreshQuiet();
+      return refreshQuiet().then(function () {
+        if (inBook) focusRecipePage(id);
+      });
     }).catch(function (e) { toast(e.message || 'Falha ao importar'); });
 }
 

@@ -138,6 +138,7 @@
             { id: 'ghost-ri12', recipeId: 'ghost-r4', text: 'manteiga', qty: '1', unit: 'colher', order: 2 },
             { id: 'ghost-ri13', recipeId: 'ghost-r5', text: 'leite', qty: '500', unit: 'ml', order: 0 },
             { id: 'ghost-ri14', recipeId: 'ghost-r5', text: 'açúcar', qty: '1', unit: 'xícara', order: 1 },
+            { id: 'ghost-ri20', recipeId: 'ghost-r5', text: 'calda', qty: '', unit: '', order: 2 },
             { id: 'ghost-ri18', recipeId: 'ghost-r5', text: 'açúcar', qty: '1', unit: 'xícara', order: 0, partId: 'ghost-pt1' },
             { id: 'ghost-ri19', recipeId: 'ghost-r5', text: 'água', qty: '1/2', unit: 'xícara', order: 1, partId: 'ghost-pt1' },
             { id: 'ghost-ri15', recipeId: 'ghost-r6', text: 'batatas', qty: '3', unit: '', order: 0 },
@@ -165,7 +166,7 @@
             { id: 'ghost-rp2', recipeId: 'ghost-r4', date: jbGhostYmdFrom(today, 5), created: iso }
           ],
           parts: [
-            { id: 'ghost-pt1', recipeId: 'ghost-r5', name: 'Calda', order: 0 }
+            { id: 'ghost-pt1', recipeId: 'ghost-r5', name: 'Calda', order: 0, sourceIngId: 'ghost-ri20' }
           ]
         }
       };

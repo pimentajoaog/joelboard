@@ -772,16 +772,6 @@ body.recipes-book .secbar{ margin-bottom:10px; }
 .leaf-actions{
   display:flex; align-items:center; gap:6px; flex:none;
 }
-.leaf-part-nav{ display:flex; align-items:center; gap:4px; margin-left:auto; }
-.leaf-part-jump{
-  min-width:26px; height:26px; padding:0 7px; border-radius:999px; cursor:pointer;
-  font-family:inherit; font-size:11px; font-weight:800; letter-spacing:.2px; line-height:1;
-  background:color-mix(in srgb, #000 18%, var(--surface2));
-  border:1px solid color-mix(in srgb, #000 22%, var(--border));
-  color:var(--muted);
-  display:inline-flex; align-items:center; justify-content:center;
-}
-.leaf-part-jump:hover{ color:var(--text); border-color:var(--primary); }
 .leaf-act{
   width:30px; height:30px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:13px;
   background:var(--surface2); border:1px solid var(--border); color:var(--muted);
@@ -861,6 +851,17 @@ body.recipes-book .secbar{ margin-bottom:10px; }
   position:relative; transition:opacity .3s ease;
 }
 .ing-list li.on, .step-list li.on{ opacity:.55; }
+.ing-list li.has-part{ padding-right:8px; }
+.ing-part-go{
+  flex:none; align-self:center; width:26px; height:26px; margin-left:auto; padding:0;
+  border-radius:999px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:color-mix(in srgb, #000 20%, var(--surface2));
+  border:1px solid color-mix(in srgb, #000 24%, var(--border));
+  color:var(--muted);
+}
+.ing-part-go svg{ width:13px; height:13px; display:block; }
+.ing-part-go:hover{ color:var(--primary); border-color:var(--primary); }
 
 /* O risco é um gradiente no texto inline: com box-decoration-break cada linha
    quebrada ganha o seu, e a transição só dispara quando .on muda de verdade
@@ -935,7 +936,16 @@ button.step-num{ cursor:pointer; }
 
 .edit-lines{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
 .edit-line{ display:grid; grid-template-columns:1fr 72px 28px; gap:6px; align-items:center; }
+.edit-line.has-part-btn{ grid-template-columns:1fr 72px 32px 28px; }
 .edit-line.step{ grid-template-columns:1fr 28px; }
+.ing-part-make{
+  width:32px; height:36px; padding:0; border-radius:8px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:var(--surface2); border:1px solid var(--border); color:var(--muted);
+}
+.ing-part-make svg{ width:14px; height:14px; display:block; }
+.ing-part-make:hover{ color:var(--text); border-color:var(--primary); }
+.ing-part-make.is-on{ color:var(--primary); border-color:var(--primary); }
 .edit-line .rm, .part-edit-rm{
   background:var(--surface2); border:1px solid var(--border); color:var(--muted);
   border-radius:8px; width:36px; height:36px; cursor:pointer; padding:0;
@@ -959,9 +969,8 @@ button.step-num{ cursor:pointer; }
 .leaf-part-name{
   font-family:var(--font-display); font-weight:800; font-size:13px;
   letter-spacing:-.15px; color:var(--text); margin:0 0 4px;
-  text-transform:none; display:flex; align-items:baseline; gap:7px;
+  text-transform:none;
 }
-.leaf-part-num{ font-size:11px; font-weight:800; color:var(--muted); letter-spacing:.3px; }
 .leaf-part .leaf-sec{ margin-top:8px; }
 .leaf-part .leaf-sec h3{ font-size:10px; margin-bottom:6px; padding-bottom:4px; }
 .leaf-part .ing-list, .leaf-part .step-list{ gap:6px; }

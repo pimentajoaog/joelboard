@@ -34,7 +34,7 @@ var RECIPES_TABS = [
   ['Recipes', ['ID', 'CookbookID', 'Titulo', 'Icone', 'ImageUrl', 'Porcoes', 'Minutos', 'Notas', 'Ordem', 'Source', 'SourceID', 'Criado']],
   ['Ingredients', ['ID', 'RecipeID', 'Texto', 'Qtd', 'Unidade', 'Ordem', 'PartID']],
   ['Steps', ['ID', 'RecipeID', 'Texto', 'Ordem', 'PartID']],
-  ['Parts', ['ID', 'RecipeID', 'Nome', 'Ordem']],
+  ['Parts', ['ID', 'RecipeID', 'Nome', 'Ordem', 'SourceIngID']],
   ['Plans', ['ID', 'RecipeID', 'Data', 'Criado']],
   ['Settings', ['Chave', 'Valor']]
 ];
@@ -544,7 +544,7 @@ function parseParts(rows) {
     if (!r[0]) continue;
     out.push({
       id: String(r[0]), recipeId: String(r[1] || ''), name: String(r[2] || ''),
-      order: Number(r[3]) || 0
+      order: Number(r[3]) || 0, sourceIngId: String(r[4] || '')
     });
   }
   out.sort(function (a, b) { return a.order - b.order || a.name.localeCompare(b.name); });
@@ -600,6 +600,23 @@ function stepsFor(recipeId, partId) {
 }
 function partsFor(recipeId) {
   return (DATA.parts || []).filter(function (p) { return p.recipeId === recipeId; });
+}
+function partFromSourceIng(ingId) {
+  ingId = String(ingId || '');
+  if (!ingId) return null;
+  var list = DATA.parts || [];
+  for (var i = 0; i < list.length; i++) {
+    if (String(list[i].sourceIngId || '') === ingId) return list[i];
+  }
+  return null;
+}
+function draftPartFromIng(ingId) {
+  ingId = String(ingId || '');
+  if (!ingId) return null;
+  for (var i = 0; i < _partDraft.length; i++) {
+    if (String(_partDraft[i].sourceIngId || '') === ingId) return _partDraft[i];
+  }
+  return null;
 }
 function plansFor(recipeId) {
   return (DATA.plans || []).filter(function (p) { return p.recipeId === recipeId; });
@@ -1254,11 +1271,6 @@ function recipePlanChips(r) {
   }).join('') + '</div>';
 }
 
-function romanPart(n) {
-  var r = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-  return r[n - 1] || String(n);
-}
-
 function leafActions(r) {
   var has = hasAnyChecks(r.id);
   return '<div class="leaf-actions">'
@@ -1275,43 +1287,46 @@ function leafActions(r) {
 }
 
 function leafChrome(r) {
-  var parts = partsFor(r.id);
-  var nav = '';
-  if (parts.length) {
-    nav = '<div class="leaf-part-nav" role="navigation" aria-label="Partes">'
-      + parts.map(function (p, i) {
-        var label = romanPart(i + 1);
-        return '<button type="button" class="leaf-part-jump" onclick="jumpRecipePart(\'' + escAttr(r.id) + '\',\'' + escAttr(p.id) + '\')"'
-          + ' title="' + esc(p.name || 'Parte') + '" aria-label="' + esc((p.name || 'Parte') + ' (' + label + ')') + '">'
-          + label + '</button>';
-      }).join('')
-      + '</div>';
-  }
-  return '<div class="leaf-chrome">' + leafActions(r) + nav + '</div>';
+  return '<div class="leaf-chrome">' + leafActions(r) + '</div>';
 }
 
 function jumpRecipePart(recipeId, partId) {
   var el = document.getElementById('rc-part-' + recipeId + '-' + partId);
   if (!el) return;
   var body = el.closest('.leaf-body');
-  if (!body) return;
-  var er = el.getBoundingClientRect();
-  var br = body.getBoundingClientRect();
-  body.scrollTo({ top: body.scrollTop + (er.top - br.top) - 8, behavior: 'smooth' });
+  if (body) {
+    var er = el.getBoundingClientRect();
+    var br = body.getBoundingClientRect();
+    body.scrollTo({ top: body.scrollTop + (er.top - br.top) - 8, behavior: 'smooth' });
+    return;
+  }
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function miseIngRow(r, ing) {
+  var on = isChecked(r.id, ing.id);
+  var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
+  var part = partFromSourceIng(ing.id);
+  var go = '';
+  if (part) {
+    go = '<button type="button" class="ing-part-go" onclick="event.stopPropagation();jumpRecipePart(\'' + escAttr(r.id) + '\',\'' + escAttr(part.id) + '\')"'
+      + ' title="Ir a ' + esc(part.name || 'parte') + '" aria-label="Ir a ' + esc(part.name || 'parte') + '">'
+      + '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v9M4.2 8.2L8 12l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      + '</button>';
+  }
+  return '<li class="' + (on ? 'on' : '') + (part ? ' has-part' : '') + '" data-chk="' + esc(r.id + '|' + ing.id) + '">'
+    + '<button type="button" class="ichk' + (on ? ' on' : '') + '"'
+    + ' onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\')"'
+    + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
+    + '<span><span class="ck-t">' + esc(label) + '</span></span>'
+    + go
+    + '</li>';
 }
 
 function miseSection(r) {
   var ings = ingsFor(r.id);
   var done = doneCount(r.id, ings);
-  var rows = ings.map(function (ing) {
-    var on = isChecked(r.id, ing.id);
-    var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
-    return '<li class="' + (on ? 'on' : '') + '" data-chk="' + esc(r.id + '|' + ing.id) + '">'
-      + '<button type="button" class="ichk' + (on ? ' on' : '') + '"'
-      + ' onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\')"'
-      + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
-      + '<span><span class="ck-t">' + esc(label) + '</span></span></li>';
-  }).join('');
+  var rows = ings.map(function (ing) { return miseIngRow(r, ing); }).join('');
   var shot = recipeShot(r);
   return '<div class="leaf-sec' + (shot ? ' has-shot' : '') + '">'
     + '<h3>Mise en place' + (ings.length ? '<em data-tally="' + esc(r.id + '|ing') + '">' + done + '/' + ings.length + '</em>' : '') + '</h3>'
@@ -1343,10 +1358,10 @@ function stepsSection(r) {
 }
 
 function recipePartsHtml(r) {
-  return partsFor(r.id).map(function (p, i) { return partSection(r, p, i); }).join('');
+  return partsFor(r.id).map(function (p) { return partSection(r, p); }).join('');
 }
 
-function partSection(r, p, idx) {
+function partSection(r, p) {
   var ings = ingsFor(r.id, p.id);
   var steps = stepsFor(r.id, p.id);
   var ingDone = doneCount(r.id, ings);
@@ -1369,9 +1384,8 @@ function partSection(r, p, idx) {
       + (on ? '✓' : (i + 1)) + '</button>'
       + '<span><span class="ck-t">' + esc(st.text) + '</span></span></li>';
   }).join('');
-  var num = romanPart((idx || 0) + 1);
   return '<div class="leaf-part" id="rc-part-' + esc(r.id) + '-' + esc(p.id) + '">'
-    + '<h3 class="leaf-part-name"><span class="leaf-part-num">' + num + '</span> ' + esc(p.name || 'Parte') + '</h3>'
+    + '<h3 class="leaf-part-name">' + esc(p.name || 'Parte') + '</h3>'
     + '<div class="leaf-sec">'
     + '<h3>Mise en place' + (ings.length ? '<em data-tally="' + esc(r.id + '|ing|' + p.id) + '">' + ingDone + '/' + ings.length + '</em>' : '') + '</h3>'
     + (ingRows ? '<ul class="ing-list">' + ingRows + '</ul>' : '<div class="rg">Nenhum ingrediente.</div>')
@@ -1582,14 +1596,7 @@ function renderDetail() {
   if (r.minutes) meta += '<span class="ftag">' + esc(r.minutes) + ' min</span>';
   if (r.servings) meta += '<span class="ftag">' + esc(r.servings) + ' porções</span>';
   if (book) meta += '<span class="ftag">' + esc(book.icon + ' ' + book.name) + '</span>';
-  var ingHtml = ings.map(function (ing) {
-    var on = isChecked(r.id, ing.id);
-    var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
-    return '<li class="' + (on ? 'on' : '') + '" data-chk="' + esc(r.id + '|' + ing.id) + '">'
-      + '<button type="button" class="ichk' + (on ? ' on' : '') + '" onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\')"'
-      + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
-      + '<span><span class="ck-t">' + esc(label) + '</span></span></li>';
-  }).join('');
+  var ingHtml = ings.map(function (ing) { return miseIngRow(r, ing); }).join('');
   var stepHtml = steps.map(function (st, i) {
     var on = stepIsDone(r.id, st.id);
     return '<li class="' + (on ? 'on' : '') + '" data-chk="' + esc(r.id + '|' + st.id) + '">'
@@ -1943,6 +1950,7 @@ function openRecipeModal(id) {
     return {
       id: p.id,
       name: p.name,
+      sourceIngId: p.sourceIngId || '',
       ings: ingsFor(r.id, p.id).map(function (x) {
         return { id: x.id, text: x.text, qty: x.qty, unit: x.unit };
       }),
@@ -2166,9 +2174,16 @@ function paintIngLines() {
   var el = $('recipeIngList');
   if (!el) return;
   el.innerHTML = _ingDraft.map(function (line, i) {
-    return '<div class="edit-line">'
+    var linked = !!draftPartFromIng(line.id);
+    return '<div class="edit-line has-part-btn">'
       + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_ingDraft[' + i + '].text=this.value">'
       + '<input class="field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_ingDraft[' + i + '].qty=this.value">'
+      + '<button type="button" class="ing-part-make' + (linked ? ' is-on' : '') + '" onclick="makePartFromDraftIng(' + i + ')"'
+      + ' title="' + (linked ? 'Já é uma parte' : 'Criar parte') + '" aria-label="' + (linked ? 'Já é uma parte' : 'Criar parte') + '">'
+      + (linked
+        ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v9M4.2 8.2L8 12l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3.5h8v4.2c0 2.2-1.8 4-4 4s-4-1.8-4-4z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M8 7.2v5.3M6.2 11.2L8 13l1.8-1.8" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>')
+      + '</button>'
       + '<button type="button" class="rm" onclick="rmIngLine(' + i + ')">×</button></div>';
   }).join('');
 }
@@ -2183,13 +2198,49 @@ function paintStepLines() {
 }
 function addIngLine() { _ingDraft.push({ id: '', text: '', qty: '', unit: '' }); paintIngLines(); }
 function addStepLine() { _stepDraft.push({ id: '', text: '' }); paintStepLines(); }
-function rmIngLine(i) { _ingDraft.splice(i, 1); if (!_ingDraft.length) _ingDraft.push({ id: '', text: '', qty: '', unit: '' }); paintIngLines(); }
+function rmIngLine(i) {
+  var gone = _ingDraft[i] && _ingDraft[i].id;
+  _ingDraft.splice(i, 1);
+  if (gone) {
+    _partDraft.forEach(function (p) {
+      if (String(p.sourceIngId || '') === String(gone)) p.sourceIngId = '';
+    });
+  }
+  if (!_ingDraft.length) _ingDraft.push({ id: '', text: '', qty: '', unit: '' });
+  paintIngLines();
+}
+function makePartFromDraftIng(i) {
+  var line = _ingDraft[i];
+  if (!line) return;
+  var name = String(line.text || '').trim();
+  if (!name) { toast('Dê um nome ao ingrediente'); return; }
+  if (!line.id) line.id = uuid();
+  if (draftPartFromIng(line.id)) {
+    toast('Essa parte já existe');
+    return;
+  }
+  _partDraft.push({
+    id: uuid(),
+    name: name,
+    sourceIngId: line.id,
+    ings: [{ id: '', text: '', qty: '', unit: '' }],
+    steps: [{ id: '', text: '' }]
+  });
+  paintIngLines();
+  paintPartBlocks();
+  setTimeout(function () {
+    var cards = document.querySelectorAll('.part-edit');
+    var last = cards[cards.length - 1];
+    if (last && last.scrollIntoView) last.scrollIntoView({ block: 'nearest' });
+  }, 30);
+}
 function rmStepLine(i) { _stepDraft.splice(i, 1); if (!_stepDraft.length) _stepDraft.push({ id: '', text: '' }); paintStepLines(); }
 
 function addPartBlock() {
   _partDraft.push({
     id: '',
     name: '',
+    sourceIngId: '',
     ings: [{ id: '', text: '', qty: '', unit: '' }],
     steps: [{ id: '', text: '' }]
   });
@@ -2314,11 +2365,14 @@ function focusRecipePage(id) {
 function replaceRecipeChildren(recipeId) {
   return clearChildren(recipeId).then(function () {
     var ings = _ingDraft.filter(function (x) { return String(x.text || '').trim(); }).map(function (x, i) {
-      return [x.id || uuid(), recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), ''];
+      if (!x.id) x.id = uuid();
+      return [x.id, recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), ''];
     });
     var steps = _stepDraft.filter(function (x) { return String(x.text || '').trim(); }).map(function (x, i) {
       return [x.id || uuid(), recipeId, String(x.text).trim(), String(i), ''];
     });
+    var savedIng = {};
+    ings.forEach(function (row) { savedIng[row[0]] = true; });
     var parts = [];
     (_partDraft || []).forEach(function (p, pi) {
       var name = String(p.name || '').trim();
@@ -2326,7 +2380,8 @@ function replaceRecipeChildren(recipeId) {
       var pSteps = (p.steps || []).filter(function (x) { return String(x.text || '').trim(); });
       if (!name && !pIngs.length && !pSteps.length) return;
       var pid = p.id || uuid();
-      parts.push([pid, recipeId, name || 'Parte', String(pi)]);
+      var src = savedIng[String(p.sourceIngId || '')] ? String(p.sourceIngId) : '';
+      parts.push([pid, recipeId, name || 'Parte', String(pi), src]);
       pIngs.forEach(function (x, i) {
         ings.push([x.id || uuid(), recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), pid]);
       });
@@ -2347,7 +2402,7 @@ function replaceRecipeChildren(recipeId) {
     }
     if (parts.length) {
       chain = chain.then(function () {
-        return JB.api('POST', ssUrl('/values/Parts!A:D:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: parts });
+        return JB.api('POST', ssUrl('/values/Parts!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: parts });
       });
     }
     return chain;

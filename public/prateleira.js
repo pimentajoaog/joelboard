@@ -654,9 +654,21 @@ function handleBootErr(e) {
 
 function placePrateleiraDrive() {
   if (!JB.placePrateleiraInJoelboard || (JB.isGhost && JB.isGhost())) return Promise.resolve(null);
-  var id = JB.getSheetId(APP);
+  var id = JB.getSheetId(APP) || (JB.prateleiraSheetId && JB.prateleiraSheetId()) || PRATELEIRA_SHARED_SHEET;
   if (!id) return Promise.resolve(null);
-  return JB.placePrateleiraInJoelboard(id, 'Julioelboard Prateleira').catch(function () { return null; });
+  if (!JB.getSheetId(APP)) JB.setSheetId(APP, id);
+  return JB.placePrateleiraInJoelboard(id, '', { interactive: true }).then(function (r) {
+    if (!r) return r;
+    if (r.mode === 'moved') JB.toast('Prateleira movida para a pasta Joelboard');
+    else if (r.mode === 'already') { /* already in Joelboard/ */ }
+    else if (r.mode === 'shortcut' && r.created) JB.toast('Atalho da Prateleira criado na pasta Joelboard');
+    else if (r.mode === 'failed' && r.reason === 'drive_file_scope') {
+      JB.toast('Não deu pra mover a Prateleira no Drive — autorize quando pedir, ou mova “Julioelboard” pra pasta Joelboard na mão');
+    } else if (r.mode === 'failed') {
+      JB.toast('Não deu pra organizar a Prateleira no Drive');
+    }
+    return r;
+  }).catch(function () { return null; });
 }
 
 function resolveSheet() {

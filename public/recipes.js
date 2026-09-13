@@ -1045,12 +1045,14 @@ function bookCrest(book) {
     + ' onclick="toggleBookSearch(event)" title="Buscar receita" aria-label="Buscar receita"'
     + ' aria-expanded="' + (findOn ? 'true' : 'false') + '">' + plaqueSvg('search') + '</button>'
     + '</div>'
-    + '</div>'
     + '<div class="book-find-slot' + (findOn ? ' is-open' : '') + '">'
+    + '<div class="book-find-well">'
     + '<input class="book-find-input" id="bookSearch" type="search" placeholder="Buscar…" value="' + esc(bookQuery) + '"'
     + ' oninput="onBookSearch(this.value)" onclick="event.stopPropagation()">'
     + '<button type="button" class="book-find-clear" onclick="clearBookSearch()" aria-label="Limpar busca"'
     + ' style="display:' + (bookQuery ? 'flex' : 'none') + '">✕</button>'
+    + '</div>'
+    + '</div>'
     + '</div>'
     + '</div>';
 }

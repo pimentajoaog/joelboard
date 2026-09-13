@@ -96,6 +96,14 @@
     </div>
     <div class="set-pane" data-pane="prefs" style="display:none">
       <div class="fg"><button class="tg" id="setFlipPref" onclick="toggleFlipPref()">Abrir livros em páginas</button><div class="rg">Desligado = grade de cards (estilo Notes).</div></div>
+      <div class="fg">
+        <label class="fl">Layout das páginas</label>
+        <div class="view-toggle" id="setSpreadPref">
+          <button type="button" class="vbtn" data-spread="pair" onclick="setSpreadMode('pair')">Duas receitas</button>
+          <button type="button" class="vbtn" data-spread="recipe" onclick="setSpreadMode('recipe')">Uma receita</button>
+        </div>
+        <div class="rg">Duas receitas = uma em cada folha. Uma receita = ingredientes à esquerda, passos à direita. No celular é sempre uma página por vez.</div>
+      </div>
     </div>
     <div class="set-pane" data-pane="sobre" style="display:none">
       <div class="fg"><button class="btn ghost" style="width:100%" onclick="JB.feedback('Joelboard Recipes')">💬 Enviar feedback</button></div>

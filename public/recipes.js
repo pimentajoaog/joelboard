@@ -21,6 +21,10 @@ var _ingDraft = [];
 var _stepDraft = [];
 var CHECK_KEY = 'jb_recipes_checks';
 var VIEW_KEY = 'jb_recipes_view';
+var SPREAD_KEY = 'jb_recipes_spread';
+var spreadMode = 'pair'; /* pair = 2 receitas por spread | recipe = 1 receita nas duas folhas */
+var _turnDir = 0;
+var _spreadIntro = true;
 
 var RECIPES_TABS = [
   ['Cookbooks', ['ID', 'Nome', 'Icone', 'Cor', 'Ordem', 'Criado']],
@@ -64,6 +68,20 @@ function loadViewPref() {
 function saveViewPref() {
   try { localStorage.setItem(VIEW_KEY, bookViewMode); } catch (_) {}
 }
+function loadSpreadPref() {
+  try {
+    var v = localStorage.getItem(SPREAD_KEY);
+    spreadMode = (v === 'recipe') ? 'recipe' : 'pair';
+  } catch (_) { spreadMode = 'pair'; }
+}
+function saveSpreadPref() {
+  try { localStorage.setItem(SPREAD_KEY, spreadMode); } catch (_) {}
+}
+/* Duas folhas só cabem no desktop; no celular é sempre uma página por vez. */
+function wideSpread() {
+  try { return window.matchMedia('(min-width:721px)').matches; } catch (_) { return true; }
+}
+function spreadStep() { return (spreadMode === 'pair' && wideSpread()) ? 2 : 1; }
 function loadChecks() {
   try { return JSON.parse(localStorage.getItem(CHECK_KEY) || '{}') || {}; } catch (_) { return {}; }
 }
@@ -80,6 +98,17 @@ function toggleCheck(recipeId, ingId) {
   m[recipeId][ingId] = !m[recipeId][ingId];
   saveChecks(m);
 }
+/* Passos usam o mesmo mapa: ids de ingrediente e de passo são uuids distintos. */
+function stepIsDone(recipeId, stepId) { return isChecked(recipeId, stepId); }
+function toggleStepCheck(recipeId, stepId) {
+  toggleCheck(recipeId, stepId);
+  render();
+}
+function doneCount(recipeId, rows) {
+  var n = 0;
+  rows.forEach(function (x) { if (isChecked(recipeId, x.id)) n++; });
+  return n;
+}
 
 function recipesSignOut() { JB.signOut(); location.href = '/'; }
 function openSettings() {
@@ -87,7 +116,23 @@ function openSettings() {
   JB.renderSkinPicker(APP, $('setSkins'));
   var flip = $('setFlipPref');
   if (flip) flip.classList.toggle('on', bookViewMode === 'flip');
+  paintSpreadPref();
   $('setOverlay').classList.add('open');
+}
+function paintSpreadPref() {
+  var host = $('setSpreadPref');
+  if (!host) return;
+  host.querySelectorAll('.vbtn').forEach(function (b) {
+    b.classList.toggle('on', b.getAttribute('data-spread') === spreadMode);
+  });
+}
+function setSpreadMode(mode) {
+  spreadMode = mode === 'recipe' ? 'recipe' : 'pair';
+  saveSpreadPref();
+  paintSpreadPref();
+  flipIndex = 0;
+  _spreadIntro = true;
+  if (view === 'book' && bookViewMode === 'flip') render();
 }
 function closeSettings() { $('setOverlay').classList.remove('open'); }
 function switchSet(name) {
@@ -109,6 +154,7 @@ function toggleFlipPref() {
 /* ---- boot / sheet ---- */
 function startRecipes() {
   loadViewPref();
+  loadSpreadPref();
   if (JB.cachedToken && JB.cachedToken()) {
     authDone = true;
     bootSheet();
@@ -460,9 +506,21 @@ function render() {
   if (!main) return;
   if (JB.paintAcct) JB.paintAcct();
   document.body.classList.toggle('recipes-shelf', view === 'shelf');
+  document.body.classList.toggle('recipes-book', view === 'book' && bookViewMode === 'flip');
+  /* marcar um ingrediente repinta a página: mantém a rolagem das folhas.
+     Virar a página ou abrir o livro começa do topo. */
+  var sameSpread = !_turnDir && !_spreadIntro;
+  var keepScroll = [];
+  main.querySelectorAll('.leaf-body').forEach(function (el) { keepScroll.push(el.scrollTop); });
   if (view === 'shelf') main.innerHTML = renderShelf();
   else if (view === 'book') main.innerHTML = renderBook();
   else if (view === 'recipe') main.innerHTML = renderDetail();
+  if (sameSpread) {
+    var bodies = main.querySelectorAll('.leaf-body');
+    if (keepScroll.length === bodies.length) {
+      bodies.forEach(function (el, i) { el.scrollTop = keepScroll[i]; });
+    }
+  }
   var fab = $('fab');
   if (fab) {
     fab.style.display = '';
@@ -656,6 +714,7 @@ function openBook(id) {
   flipIndex = 0;
   bookQuery = '';
   view = 'book';
+  _spreadIntro = true;
   render();
 }
 function goShelf() {
@@ -732,12 +791,13 @@ function renderBook() {
     return head + tools + '<div class="empty">Nada com “' + esc(bookQuery) + '” neste livro.</div>';
   }
   if (bookViewMode === 'cards') return head + tools + renderCards(list, book);
-  return head + tools + renderFlip(list, book);
+  return head + tools + renderSpread(list, book);
 }
 
 function setBookView(mode) {
   bookViewMode = mode === 'cards' ? 'cards' : 'flip';
   saveViewPref();
+  _spreadIntro = true;
   render();
 }
 
@@ -757,42 +817,163 @@ function renderCards(list, book) {
   return '<div class="recipes-grid">' + cards + '</div>';
 }
 
-function renderFlip(list, book) {
+/* ---- open book spread (Páginas) ---- */
+function renderSpread(list, book) {
+  var step = spreadStep();
   if (flipIndex >= list.length) flipIndex = list.length - 1;
   if (flipIndex < 0) flipIndex = 0;
-  var r = list[flipIndex];
-  var blurb = r.notes ? String(r.notes).slice(0, 120) : (ingsFor(r.id).length + ' ingredientes · ' + stepsFor(r.id).length + ' passos');
+  flipIndex = Math.floor(flipIndex / step) * step;
+  var kc = esc(book.color || '#e07a5f');
+  var leaves;
+  if (spreadMode === 'recipe' && wideSpread()) {
+    var r = list[flipIndex];
+    leaves = recipeHeadLeaf(r, 'left') + recipeStepsLeaf(r, 'right');
+  } else if (step === 2) {
+    var a = list[flipIndex];
+    var b = list[flipIndex + 1];
+    leaves = recipeFullLeaf(a, 'left') + (b ? recipeFullLeaf(b, 'right') : endLeaf('right'));
+  } else {
+    leaves = recipeFullLeaf(list[flipIndex], 'solo');
+  }
+  var lastStart = Math.max(0, (Math.ceil(list.length / step) - 1) * step);
+  var atStart = flipIndex <= 0;
+  var atEnd = flipIndex >= lastStart;
+  var turn = _turnDir > 0 ? ' turn-fwd' : (_turnDir < 0 ? ' turn-back' : '');
+  _turnDir = 0;
+  var intro = _spreadIntro ? ' is-intro' : '';
+  _spreadIntro = false;
+  return '<div class="spread-wrap" id="flipWrap" style="--kc:' + kc + '">'
+    + '<button type="button" class="spread-arrow is-prev" onclick="flipPrev()" aria-label="Página anterior"'
+    + (atStart ? ' disabled' : '') + '>‹</button>'
+    + '<div class="spread' + intro + turn + '">' + leaves + '<span class="spread-gutter" aria-hidden="true"></span></div>'
+    + '<button type="button" class="spread-arrow is-next" onclick="flipNext()" aria-label="Próxima página"'
+    + (atEnd ? ' disabled' : '') + '>›</button>'
+    + '</div>';
+}
+
+function leafFolio(side, label) {
+  return '<div class="leaf-folio ' + side + '">' + esc(label) + '</div>';
+}
+
+function recipeHero(r) {
+  return '<div class="leaf-hero">'
+    + (r.imageUrl ? '<img src="' + esc(r.imageUrl) + '" alt="">' : esc(r.icon || '🍽️'))
+    + '</div>';
+}
+
+function recipeTags(r) {
   var tags = '';
   if (r.minutes) tags += '<span class="ftag">' + esc(r.minutes) + ' min</span>';
   if (r.servings) tags += '<span class="ftag">' + esc(r.servings) + ' porções</span>';
-  var hero = r.imageUrl
-    ? '<img src="' + esc(r.imageUrl) + '" alt="">'
-    : esc(r.icon || '🍽️');
-  return '<div class="flip-wrap" id="flipWrap">'
-    + '<div class="flip-stage"><div class="flip-page turn-in" style="--kc:' + esc(book.color) + '" onclick="openRecipe(\'' + escAttr(r.id) + '\')">'
-    + '<div class="flip-hero">' + hero + '</div>'
-    + '<div class="flip-title">' + esc(r.title) + '</div>'
-    + '<div class="flip-blurb">' + esc(blurb) + '</div>'
-    + '<div class="flip-tags">' + tags + '</div>'
-    + '<div class="rg" style="text-align:center;margin-top:16px">Toque para abrir a receita</div>'
-    + '</div></div>'
-    + '<div class="flip-nav">'
-    + '<button type="button" onclick="flipPrev()" ' + (flipIndex <= 0 ? 'disabled' : '') + '>‹</button>'
-    + '<span class="flip-count">' + (flipIndex + 1) + ' / ' + list.length + '</span>'
-    + '<button type="button" onclick="flipNext()" ' + (flipIndex >= list.length - 1 ? 'disabled' : '') + '>›</button>'
-    + '</div></div>';
+  return tags ? '<div class="leaf-tags">' + tags + '</div>' : '';
+}
+
+function recipeTitleBlock(r) {
+  return recipeHero(r)
+    + '<div class="leaf-title">' + esc(r.title) + '</div>'
+    + recipeTags(r)
+    + (r.notes ? '<div class="leaf-notes">' + esc(r.notes) + '</div>' : '');
+}
+
+function miseSection(r) {
+  var ings = ingsFor(r.id);
+  var done = doneCount(r.id, ings);
+  var rows = ings.map(function (ing) {
+    var on = isChecked(r.id, ing.id);
+    var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
+    return '<li class="' + (on ? 'on' : '') + '">'
+      + '<button type="button" class="ichk' + (on ? ' on' : '') + '"'
+      + ' onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\')"'
+      + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
+      + '<span>' + esc(label) + '</span></li>';
+  }).join('');
+  return '<div class="leaf-sec">'
+    + '<h3>Mise en place' + (ings.length ? '<em>' + done + '/' + ings.length + '</em>' : '') + '</h3>'
+    + (rows ? '<ul class="ing-list">' + rows + '</ul>' : '<div class="rg">Nenhum ingrediente.</div>')
+    + '</div>';
+}
+
+function stepsSection(r) {
+  var steps = stepsFor(r.id);
+  var done = doneCount(r.id, steps);
+  var rows = steps.map(function (st, i) {
+    var on = stepIsDone(r.id, st.id);
+    return '<li class="' + (on ? 'on' : '') + '">'
+      + '<button type="button" class="step-num' + (on ? ' on' : '') + '"'
+      + ' onclick="toggleStepCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(st.id) + '\')"'
+      + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="Passo ' + (i + 1) + '">'
+      + (on ? '✓' : (i + 1)) + '</button>'
+      + '<span>' + esc(st.text) + '</span></li>';
+  }).join('');
+  return '<div class="leaf-sec">'
+    + '<h3>Passo a passo' + (steps.length ? '<em>' + done + '/' + steps.length + '</em>' : '') + '</h3>'
+    + (rows ? '<ul class="step-list">' + rows + '</ul>' : '<div class="rg">Nenhum passo.</div>')
+    + '</div>';
+}
+
+function leafEditBtn(r) {
+  return '<button type="button" class="leaf-edit" onclick="openRecipeModal(\'' + escAttr(r.id) + '\')"'
+    + ' title="Editar receita" aria-label="Editar receita">✏</button>';
+}
+
+/* Uma receita inteira em uma folha (modo pares, ou celular). */
+function recipeFullLeaf(r, side) {
+  if (!r) return endLeaf(side);
+  return '<div class="leaf is-' + side + '">'
+    + leafEditBtn(r)
+    + '<div class="leaf-body">'
+    + recipeTitleBlock(r)
+    + miseSection(r)
+    + stepsSection(r)
+    + '</div>'
+    + leafFolio(side, recipePageLabel(r))
+    + '</div>';
+}
+
+/* Modo receita: capa + mise en place na esquerda, passos na direita. */
+function recipeHeadLeaf(r, side) {
+  if (!r) return endLeaf(side);
+  return '<div class="leaf is-' + side + '">'
+    + leafEditBtn(r)
+    + '<div class="leaf-body">' + recipeTitleBlock(r) + miseSection(r) + '</div>'
+    + leafFolio(side, recipePageLabel(r))
+    + '</div>';
+}
+function recipeStepsLeaf(r, side) {
+  if (!r) return endLeaf(side);
+  return '<div class="leaf is-' + side + '">'
+    + '<div class="leaf-body">' + stepsSection(r) + '</div>'
+    + leafFolio(side, 'Modo de fazer')
+    + '</div>';
+}
+
+function endLeaf(side) {
+  return '<div class="leaf is-' + side + ' is-blank" aria-hidden="true">'
+    + '<div class="leaf-body"><div class="leaf-end">fim</div></div>'
+    + '</div>';
+}
+
+function recipePageLabel(r) {
+  var list = visibleRecipes(openBookId);
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].id === r.id) return (i + 1) + ' / ' + list.length;
+  }
+  return '';
 }
 
 function flipPrev() {
   if (flipIndex <= 0) return;
-  flipIndex--;
+  flipIndex = Math.max(0, flipIndex - spreadStep());
+  _turnDir = -1;
   render();
   bindFlipGesture();
 }
 function flipNext() {
   var list = visibleRecipes(openBookId);
-  if (flipIndex >= list.length - 1) return;
-  flipIndex++;
+  var step = spreadStep();
+  if (flipIndex + step >= list.length) return;
+  flipIndex += step;
+  _turnDir = 1;
   render();
   bindFlipGesture();
 }
@@ -800,6 +981,7 @@ function bindFlipGesture() {
   var el = $('flipWrap');
   if (!el || el._rcBound) return;
   el._rcBound = true;
+  el.setAttribute('tabindex', '0');
   var x0 = 0;
   el.addEventListener('touchstart', function (e) {
     if (!e.touches || !e.touches[0]) return;
@@ -811,6 +993,24 @@ function bindFlipGesture() {
     if (dx > 48) flipPrev();
     else if (dx < -48) flipNext();
   }, { passive: true });
+  el.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); flipPrev(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); flipNext(); }
+  });
+  bindSpreadResize();
+}
+
+/* Cruzar o breakpoint muda quantas folhas cabem, então repinta. */
+function bindSpreadResize() {
+  if (bindSpreadResize._on) return;
+  bindSpreadResize._on = true;
+  var wasWide = wideSpread();
+  window.addEventListener('resize', function () {
+    var now = wideSpread();
+    if (now === wasWide) return;
+    wasWide = now;
+    if (view === 'book' && bookViewMode === 'flip') render();
+  });
 }
 
 function openRecipe(id) {
@@ -823,6 +1023,7 @@ function openRecipe(id) {
 function backToBook() {
   openRecipeId = null;
   view = 'book';
+  _spreadIntro = true;
   render();
   bindFlipGesture();
 }

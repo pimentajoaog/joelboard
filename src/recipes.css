@@ -767,14 +767,25 @@ li.just-on .ichk, li.just-on .step-num{ animation:rcTick .36s cubic-bezier(.3,1.
   transition:background .2s ease, border-color .2s ease;
 }
 .ichk.on{ background:var(--primary); border-color:var(--primary); }
+/* Anel oco com o número: lê como lista e como checkbox redondo. */
 .step-num{
-  width:24px; height:24px; border-radius:999px; flex:none; border:0; font-family:inherit;
-  background:color-mix(in srgb, var(--primary) 16%, var(--surface2)); color:var(--primary);
+  width:24px; height:24px; border-radius:999px; flex:none; font-family:inherit;
+  border:1.5px solid color-mix(in srgb, var(--primary) 42%, var(--border));
+  background:transparent; color:var(--primary);
   font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center;
-  transition:background .2s ease, color .2s ease;
+  transition:background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
 }
 button.step-num{ cursor:pointer; }
-.step-num.on{ background:var(--primary); color:var(--on-brand); }
+@media (hover: hover) and (pointer: fine){
+  button.step-num:hover{
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
+  }
+}
+.step-num.on{
+  background:var(--primary); border-color:var(--primary); color:var(--on-brand);
+  box-shadow:none;
+}
 .detail-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
 
 .color-row{ display:flex; flex-wrap:wrap; gap:8px; }

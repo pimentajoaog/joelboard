@@ -1389,7 +1389,13 @@ function renderDetail() {
       + '<span><span class="ck-t">' + esc(label) + '</span></span></li>';
   }).join('');
   var stepHtml = steps.map(function (st, i) {
-    return '<li><span class="step-num">' + (i + 1) + '</span><span>' + esc(st.text) + '</span></li>';
+    var on = stepIsDone(r.id, st.id);
+    return '<li class="' + (on ? 'on' : '') + '" data-chk="' + esc(r.id + '|' + st.id) + '">'
+      + '<button type="button" class="step-num' + (on ? ' on' : '') + '" data-n="' + (i + 1) + '"'
+      + ' onclick="toggleStepCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(st.id) + '\')"'
+      + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="Passo ' + (i + 1) + '">'
+      + (on ? '✓' : (i + 1)) + '</button>'
+      + '<span><span class="ck-t">' + esc(st.text) + '</span></span></li>';
   }).join('');
   return '<div class="detail">'
     + '<div class="secbar"><button class="back" onclick="backToBook()">← ' + esc((book && book.name) || 'Livro') + '</button></div>'

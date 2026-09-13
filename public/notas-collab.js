@@ -364,7 +364,7 @@ function ncLoadCollabLists() {
           var n = ncMergeRegistryRow(reg, pack);
           if (!n) { failed++; return; }
           if (stickerKeep[n.id]) n.sticker = true;
-          if (presetKeep[n.id]) n.preset = true;
+          if (presetKeep[n.id] || (DATA.config || {})['preset_' + n.id] === '1') n.preset = true;
           DATA.notas.push(n);
           ncSetCollabItems(n.id, ncParseItemRows(pack.itens, n.id), { sheetId: pack.sid, itemRows: pack.itens });
         }).catch(function () { failed++; });
@@ -375,9 +375,52 @@ function ncLoadCollabLists() {
             ? 'Uma lista compartilhada não abriu — confira o acesso Editor no Drive.'
             : failed + ' listas compartilhadas não abriram — confira o acesso no Drive.');
         }
+        ncMigrateCollabDriveFolders();
       });
     });
   }).catch(function () {});
+}
+
+function ncLooksLikeKit(n) {
+  if (!n) return false;
+  if (n.preset) return true;
+  if ((DATA.config || {})['preset_' + n.id] === '1') return true;
+  try {
+    var packs = (JB.link && JB.link.defaultPresets) ? JB.link.defaultPresets()
+      : ((window.JB_LINK && JB_LINK.defaultPresets) ? JB_LINK.defaultPresets() : []);
+    var t = String(n.titulo || '').trim().toLowerCase();
+    for (var i = 0; i < (packs || []).length; i++) {
+      if (String((packs[i] && packs[i].titulo) || '').trim().toLowerCase() === t) return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+function ncMigrateCollabDriveFolders() {
+  if (JB.isGhost && JB.isGhost()) return;
+  if (!JB.placeFileInFolder) return;
+  var me = String(ncEmail() || '').toLowerCase();
+  var chain = Promise.resolve();
+  (DATA.notas || []).forEach(function (n) {
+    if (!n || !n.collabSheetId) return;
+    var role = String(n.collabRole || '').toLowerCase();
+    var owner = String(n.collabOwner || '').toLowerCase();
+    if (role !== 'owner' && !(me && owner === me)) return;
+    if (ncLooksLikeKit(n)) {
+      n.preset = true;
+      if (typeof saveConfig === 'function') saveConfig('preset_' + n.id, '1');
+    }
+    chain = chain.then(function () {
+      var ensure = n.preset
+        ? (JB.ensureNotesKitSharedFolder ? JB.ensureNotesKitSharedFolder() : Promise.resolve(''))
+        : (JB.ensureNotesSharedFolder ? JB.ensureNotesSharedFolder() : Promise.resolve(''));
+      return ensure.then(function (folderId) {
+        if (!folderId) return;
+        return JB.placeFileInFolder(n.collabSheetId, folderId);
+      });
+    });
+  });
+  chain.catch(function () {});
 }
 
 function ncRefreshCollabOnly(force) {

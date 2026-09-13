@@ -319,9 +319,30 @@ function plLoadCollabPlans() {
             ? 'Um plano compartilhado não abriu — confira o acesso Editor no Drive.'
             : failed + ' planos compartilhados não abriram — confira o acesso no Drive.');
         }
+        plMigrateCollabDriveFolders();
       });
     });
   }).catch(function () {});
+}
+
+function plMigrateCollabDriveFolders() {
+  if (JB.isGhost && JB.isGhost()) return;
+  if (!JB.placeFileInFolder || !JB.ensurePlannerSharedFolder) return;
+  var me = String(plEmail() || '').toLowerCase();
+  var chain = Promise.resolve();
+  (DATA.planos || []).forEach(function (p) {
+    if (!p || !p.collabSheetId) return;
+    var role = String(p.collabRole || '').toLowerCase();
+    var owner = String(p.collabOwner || '').toLowerCase();
+    if (role !== 'owner' && !(me && owner === me)) return;
+    chain = chain.then(function () {
+      return JB.ensurePlannerSharedFolder().then(function (folderId) {
+        if (!folderId) return;
+        return JB.placeFileInFolder(p.collabSheetId, folderId);
+      });
+    });
+  });
+  chain.catch(function () {});
 }
 
 function plRefreshCollabOnly(force) {

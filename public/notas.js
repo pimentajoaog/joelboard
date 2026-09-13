@@ -1155,6 +1155,7 @@ function toggleNotePreset(id){
   var n=note(id); if(!n) return;
   n.preset=!n.preset;
   if(n.preset){ n.vence=''; n.sticker=false; }
+  if(n.collabSheetId) saveConfig('preset_'+n.id, n.preset?'1':'');
   touchNote(n); render();
   toast(n.preset?'✦ Virou preset':'Lista comum de novo');
 }

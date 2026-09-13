@@ -2460,7 +2460,7 @@
   var DRIVE_FOLDERS_KEY = 'jb_drive_folders';
   var DRIVE_LAYOUT_VER_KEY = 'jb_drive_layout_v';
   var DRIVE_LAYOUT_NOTICE_KEY = 'jb_drive_layout_notice';
-  var DRIVE_LAYOUT_VERSION = 2;
+  var DRIVE_LAYOUT_VERSION = 3;
   var DRIVE_ROOT_NAME = 'Joelboard';
   var DRIVE_APP_NAMES = {
     finance: 'Finance', notes: 'Notes', notas: 'Notes', planner: 'Planner',
@@ -2675,6 +2675,93 @@
     bar.querySelector('.jb-drive-notice-x').onclick = dismiss;
     a.addEventListener('click', function () { setTimeout(dismiss, 400); });
   }
+  function isCollabRegistryOwner(reg) {
+    var papel = String((reg && reg[2]) || '').toLowerCase();
+    var owner = String((reg && reg[3]) || '').toLowerCase();
+    var me = String(email() || '').toLowerCase();
+    return papel === 'owner' || (!!me && owner === me);
+  }
+  function defaultKitTitles() {
+    var out = {};
+    try {
+      var packs = [];
+      if (typeof window !== 'undefined' && window.JB && JB.link && typeof JB.link.defaultPresets === 'function') {
+        packs = JB.link.defaultPresets() || [];
+      } else if (typeof window !== 'undefined' && window.JB_LINK && typeof JB_LINK.defaultPresets === 'function') {
+        packs = JB_LINK.defaultPresets() || [];
+      }
+      (packs || []).forEach(function (p) {
+        if (p && p.titulo) out[String(p.titulo).trim().toLowerCase()] = 1;
+      });
+    } catch (_) {}
+    return out;
+  }
+  function migrateOwnedCollabSheets() {
+    if (isGhost() || !isSignedIn()) return Promise.resolve(0);
+    var moved = 0;
+    var kitTitles = defaultKitTitles();
+    function sheetValues(sid, tab) {
+      return api('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(sid)
+        + '/values/' + encodeURIComponent(tab) + '?valueRenderOption=UNFORMATTED_VALUE')
+        .then(function (res) { return res.values || []; }, function () { return []; });
+    }
+    function moveOwned(sid, folderId) {
+      if (!sid || !folderId) return Promise.resolve();
+      return moveFile(sid, folderId).then(function (r) {
+        if (r && r.moved) moved++;
+      }, function () {});
+    }
+    var notesId = getSheetId('notas');
+    var plannerId = getSheetId('planner');
+    var jobs = [];
+    if (notesId) {
+      jobs.push(Promise.all([
+        sheetValues(notesId, 'Compartilhadas'),
+        sheetValues(notesId, 'Config')
+      ]).then(function (pair) {
+        var regs = (pair[0] || []).slice(1);
+        var cfg = {};
+        (pair[1] || []).slice(1).forEach(function (r) {
+          if (r && r[0] != null) cfg[String(r[0])] = r[1];
+        });
+        if (!regs.length) return null;
+        return Promise.all([
+          ensureNotesSharedFolder(),
+          ensureNotesKitSharedFolder()
+        ]).then(function (folders) {
+          var sharedId = folders[0], kitId = folders[1];
+          var chain = Promise.resolve();
+          regs.forEach(function (reg) {
+            if (!isCollabRegistryOwner(reg)) return;
+            var sid = String(reg[1] || '');
+            var listaId = String(reg[4] || '');
+            var titulo = String(reg[0] || '').trim().toLowerCase();
+            if (!sid) return;
+            var isKit = cfg['preset_' + listaId] === '1' || cfg['preset_' + listaId] === 1 || !!kitTitles[titulo];
+            chain = chain.then(function () { return moveOwned(sid, isKit ? kitId : sharedId); });
+          });
+          return chain;
+        });
+      }));
+    }
+    if (plannerId) {
+      jobs.push(sheetValues(plannerId, 'Compartilhadas').then(function (vals) {
+        var regs = (vals || []).slice(1);
+        if (!regs.length) return null;
+        return ensurePlannerSharedFolder().then(function (folderId) {
+          var chain = Promise.resolve();
+          regs.forEach(function (reg) {
+            if (!isCollabRegistryOwner(reg)) return;
+            var sid = String(reg[1] || '');
+            if (!sid) return;
+            chain = chain.then(function () { return moveOwned(sid, folderId); });
+          });
+          return chain;
+        });
+      }));
+    }
+    return Promise.all(jobs).then(function () { return moved; }, function () { return moved; });
+  }
   function organizeDriveLayout() {
     if (isGhost() || !isSignedIn()) return Promise.resolve({ changed: false, rootId: '' });
     var changed = 0;
@@ -2754,6 +2841,7 @@
             }, function () { return ensureStudyAnexosFolder(); });
         });
       }));
+      jobs.push(migrateOwnedCollabSheets().then(function (n) { if (n) bump(); }));
       return Promise.all(jobs).then(function () {
         return { changed: changed > 0, rootId: rootId };
       });
@@ -3503,6 +3591,7 @@
     placeFileInFolder: placeFileInFolder, placeSpreadsheetInAppFolder: placeSpreadsheetInAppFolder,
     uploadFileToFolder: uploadFileToFolder, driveFolderWebLink: driveFolderWebLink,
     trashDriveFile: trashDriveFile, dedupeChildFoldersByName: dedupeChildFoldersByName,
+    migrateOwnedCollabSheets: migrateOwnedCollabSheets,
     ensureDriveLayoutOnce: ensureDriveLayoutOnce, organizeDriveLayout: organizeDriveLayout,
     qsGet: qsGet, qsPatch: qsPatch, qsClearJoin: qsClearJoin, onRoute: onRoute, routeBack: routeBack,
     pickColor: pickColor, mountColorControl: mountColorControl, colorControlValue: colorControlValue,

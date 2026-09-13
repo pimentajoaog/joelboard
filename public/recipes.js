@@ -679,7 +679,8 @@ function fillBookPeek(el) {
   var right = el.querySelector('.book-leaf.is-right .book-page');
   if (!left && !right) return;
   var pick = pickPeekPair(el.getAttribute('data-id'));
-  if (left) left.innerHTML = peekPageHtml(pick[0], 1);
+  /* Livro vazio: folha em branco e só um "fim", nunca dois. */
+  if (left) left.innerHTML = pick[0] ? peekPageHtml(pick[0], 1) : '';
   if (right) right.innerHTML = peekPageHtml(pick[1], 2);
 }
 

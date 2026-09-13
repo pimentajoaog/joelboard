@@ -434,7 +434,7 @@ var HUB_AGENDA_WIDE='jb_hub_agenda_wide';
 var HUB_AGENDA_MONTH='jb_hub_agenda_month';
 var HUB_AGENDA_LIMIT='jb_hub_agenda_limit';
 var HUB_AGENDA_LIMIT_DEFAULT=5;
-var HUB_AGENDA_LABEL={ finance:'Finance', fit:'Fit', study:'Study', notas:'Notes', planner:'Planner' };
+var HUB_AGENDA_LABEL={ finance:'Finance', fit:'Fit', study:'Study', notas:'Notes', planner:'Planner', recipes:'Recipes' };
 function hubAgendaWide(){
   try{ return localStorage.getItem(HUB_AGENDA_WIDE)==='1'; }catch(_){ return false; }
 }

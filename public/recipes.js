@@ -1,7 +1,7 @@
 /* Joelboard Recipes — app logic. © 2026 Joel Soluções LTDA.
    Classic global script; loads after /joelboard.js. */
 var APP = 'recipes';
-var DATA = { cookbooks: [], recipes: [], ingredients: [], steps: [] };
+var DATA = { cookbooks: [], recipes: [], ingredients: [], steps: [], plans: [] };
 var recipesGrid = {};
 var authDone = false;
 var view = 'shelf'; /* shelf | book | recipe */
@@ -33,6 +33,7 @@ var RECIPES_TABS = [
   ['Recipes', ['ID', 'CookbookID', 'Titulo', 'Icone', 'ImageUrl', 'Porcoes', 'Minutos', 'Notas', 'Ordem', 'Source', 'SourceID', 'Criado']],
   ['Ingredients', ['ID', 'RecipeID', 'Texto', 'Qtd', 'Unidade', 'Ordem']],
   ['Steps', ['ID', 'RecipeID', 'Texto', 'Ordem']],
+  ['Plans', ['ID', 'RecipeID', 'Data', 'Criado']],
   ['Settings', ['Chave', 'Valor']]
 ];
 
@@ -111,6 +112,19 @@ function doneCount(recipeId, rows) {
   rows.forEach(function (x) { if (isChecked(recipeId, x.id)) n++; });
   return n;
 }
+function hasAnyChecks(recipeId) {
+  var m = loadChecks()[recipeId];
+  if (!m) return false;
+  for (var k in m) if (m[k]) return true;
+  return false;
+}
+function resetRecipeChecks(recipeId) {
+  var m = loadChecks();
+  if (!m[recipeId]) return;
+  delete m[recipeId];
+  saveChecks(m);
+  render();
+}
 
 function recipesSignOut() { JB.signOut(); location.href = '/'; }
 function openSettings() {
@@ -161,7 +175,8 @@ function startRecipes() {
     authDone = true;
     var fx = JB.ghostFixture && JB.ghostFixture('recipes');
     recipesGrid = (fx && fx.grid) || {};
-    DATA = (fx && fx.data) || { cookbooks: [], recipes: [], ingredients: [], steps: [] };
+    DATA = (fx && fx.data) || { cookbooks: [], recipes: [], ingredients: [], steps: [], plans: [] };
+    if (!DATA.plans) DATA.plans = [];
     showApp();
     render();
     return;
@@ -350,7 +365,7 @@ function seedIntoSheet() {
 }
 
 function loadAll() {
-  var tabs = ['Cookbooks', 'Recipes', 'Ingredients', 'Steps'];
+  var tabs = ['Cookbooks', 'Recipes', 'Ingredients', 'Steps', 'Plans'];
   return JB.api('GET', ssUrl('/values:batchGet?ranges=' + tabs.map(encodeURIComponent).join('&ranges=') + '&valueRenderOption=UNFORMATTED_VALUE'))
     .then(function (res) {
       var vr = res.valueRanges || [];
@@ -358,6 +373,7 @@ function loadAll() {
       DATA.recipes = parseRecipes(vr[1] && vr[1].values);
       DATA.ingredients = parseIngredients(vr[2] && vr[2].values);
       DATA.steps = parseSteps(vr[3] && vr[3].values);
+      DATA.plans = parsePlans(vr[4] && vr[4].values);
       showApp();
       render();
       if (!window._rcTabSync) {
@@ -380,7 +396,8 @@ function loadAll() {
 
 function refreshQuiet() {
   if (!JB.isSignedIn()) return Promise.resolve();
-  var tabs = ['Cookbooks', 'Recipes', 'Ingredients', 'Steps'];
+  if (JB.isGhost && JB.isGhost()) { render(); return Promise.resolve(); }
+  var tabs = ['Cookbooks', 'Recipes', 'Ingredients', 'Steps', 'Plans'];
   return JB.api('GET', ssUrl('/values:batchGet?ranges=' + tabs.map(encodeURIComponent).join('&ranges=') + '&valueRenderOption=UNFORMATTED_VALUE'))
     .then(function (res) {
       var vr = res.valueRanges || [];
@@ -388,6 +405,7 @@ function refreshQuiet() {
       DATA.recipes = parseRecipes(vr[1] && vr[1].values);
       DATA.ingredients = parseIngredients(vr[2] && vr[2].values);
       DATA.steps = parseSteps(vr[3] && vr[3].values);
+      DATA.plans = parsePlans(vr[4] && vr[4].values);
       render();
     }).catch(function () {});
 }
@@ -445,6 +463,29 @@ function parseSteps(rows) {
   out.sort(function (a, b) { return a.order - b.order; });
   return out;
 }
+function sheetsDateLocal(v) {
+  if (JB.cal && JB.cal.sheetsDate) return JB.cal.sheetsDate(v);
+  if (v == null || v === '') return '';
+  if (typeof v === 'number') {
+    var d = new Date(Date.UTC(1899, 11, 30));
+    d.setUTCDate(d.getUTCDate() + Math.floor(v));
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+  }
+  var s = String(v).trim();
+  return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : s;
+}
+function parsePlans(rows) {
+  var out = [];
+  for (var i = 1; i < (rows || []).length; i++) {
+    var r = rows[i] || [];
+    if (!r[0]) continue;
+    out.push({
+      id: String(r[0]), recipeId: String(r[1] || ''), date: sheetsDateLocal(r[2]), created: String(r[3] || '')
+    });
+  }
+  out.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)) || String(a.id).localeCompare(String(b.id)); });
+  return out;
+}
 
 function bookById(id) {
   for (var i = 0; i < DATA.cookbooks.length; i++) if (DATA.cookbooks[i].id === id) return DATA.cookbooks[i];
@@ -462,6 +503,9 @@ function ingsFor(recipeId) {
 }
 function stepsFor(recipeId) {
   return DATA.steps.filter(function (x) { return x.recipeId === recipeId; });
+}
+function plansFor(recipeId) {
+  return (DATA.plans || []).filter(function (p) { return p.recipeId === recipeId; });
 }
 function countInBook(bookId) { return recipesInBook(bookId).length; }
 
@@ -993,7 +1037,41 @@ function recipeTitleBlock(r) {
   return recipeHero(r)
     + '<div class="leaf-title">' + esc(r.title) + '</div>'
     + recipeTags(r)
+    + recipePlanChips(r)
     + (r.notes ? '<div class="leaf-notes">' + esc(r.notes) + '</div>' : '');
+}
+
+function fmtPlanDate(iso) {
+  if (JB.cal && JB.cal.fmtBR) return JB.cal.fmtBR(iso);
+  var p = String(iso || '').split('-');
+  if (p.length < 3) return iso || '';
+  return p[2] + '/' + p[1];
+}
+
+function recipePlanChips(r) {
+  var list = plansFor(r.id);
+  if (!list.length) return '';
+  return '<div class="plan-chips">' + list.map(function (p) {
+    return '<span class="plan-chip">'
+      + '<span>' + esc(fmtPlanDate(p.date)) + '</span>'
+      + '<button type="button" class="plan-chip-x" onclick="event.stopPropagation();removeRecipePlan(\'' + escAttr(p.id) + '\')"'
+      + ' title="Remover prazo" aria-label="Remover prazo">×</button>'
+      + '</span>';
+  }).join('') + '</div>';
+}
+
+function leafActions(r) {
+  var has = hasAnyChecks(r.id);
+  return '<div class="leaf-actions">'
+    + '<button type="button" class="leaf-act" onclick="openRecipeModal(\'' + escAttr(r.id) + '\')"'
+    + ' title="Editar receita" aria-label="Editar receita">✏</button>'
+    + '<button type="button" class="leaf-act' + (has ? '' : ' is-dim') + '"'
+    + (has ? '' : ' disabled')
+    + ' onclick="resetRecipeChecks(\'' + escAttr(r.id) + '\')"'
+    + ' title="Limpar checks" aria-label="Limpar checks">↺</button>'
+    + '<button type="button" class="leaf-act" onclick="scheduleRecipe(\'' + escAttr(r.id) + '\')"'
+    + ' title="Agendar no Calendar" aria-label="Agendar no Calendar">📅</button>'
+    + '</div>';
 }
 
 function miseSection(r) {
@@ -1039,15 +1117,14 @@ function stepsSection(r) {
 }
 
 function leafEditBtn(r) {
-  return '<button type="button" class="leaf-edit" onclick="openRecipeModal(\'' + escAttr(r.id) + '\')"'
-    + ' title="Editar receita" aria-label="Editar receita">✏</button>';
+  return leafActions(r);
 }
 
 /* Uma receita inteira em uma folha (modo pares, ou celular). */
 function recipeFullLeaf(r, side) {
   if (!r) return endLeaf(side);
   return '<div class="leaf is-' + side + '">'
-    + leafEditBtn(r)
+    + leafActions(r)
     + '<div class="leaf-body">'
     + recipeTitleBlock(r)
     + miseSection(r)
@@ -1061,7 +1138,7 @@ function recipeFullLeaf(r, side) {
 function recipeHeadLeaf(r, side) {
   if (!r) return endLeaf(side);
   return '<div class="leaf is-' + side + '">'
-    + leafEditBtn(r)
+    + leafActions(r)
     + '<div class="leaf-body">' + recipeTitleBlock(r) + miseSection(r) + '</div>'
     + leafFolio(side, recipePageLabel(r))
     + '</div>';
@@ -1251,6 +1328,7 @@ function renderDetail() {
     + hero
     + '<div class="detail-title">' + esc(r.title) + '</div>'
     + '<div class="detail-meta">' + meta + '</div>'
+    + recipePlanChips(r)
     + (r.notes ? '<div class="rg" style="margin-bottom:12px;line-height:1.5">' + esc(r.notes) + '</div>' : '')
     + '<div class="dsec"><h3>Ingredientes</h3>'
     + (ingHtml ? '<ul class="ing-list">' + ingHtml + '</ul>' : '<div class="rg">Nenhum ingrediente.</div>')
@@ -1260,6 +1338,10 @@ function renderDetail() {
     + '</div>'
     + '<div class="detail-actions">'
     + '<button class="btn" onclick="openRecipeModal(\'' + escAttr(r.id) + '\')">✏ Editar</button>'
+    + '<button class="btn ghost' + (hasAnyChecks(r.id) ? '' : ' is-dim') + '"'
+    + (hasAnyChecks(r.id) ? '' : ' disabled')
+    + ' onclick="resetRecipeChecks(\'' + escAttr(r.id) + '\')">↺ Limpar checks</button>'
+    + '<button class="btn ghost" onclick="scheduleRecipe(\'' + escAttr(r.id) + '\')">📅 Agendar</button>'
     + '</div></div>';
 }
 
@@ -1393,7 +1475,7 @@ function deleteBookModal() {
   }, { danger: true, yes: 'Excluir livro', no: 'Cancelar' });
 }
 
-/** Wipe a cookbook and every recipe / ingredient / step that belongs to it. */
+/** Wipe a cookbook and every recipe / ingredient / step / plan that belongs to it. */
 function deleteBookCascade(bookId) {
   var recipeIds = {};
   recipesInBook(bookId).forEach(function (r) { recipeIds[r.id] = true; });
@@ -1401,10 +1483,14 @@ function deleteBookCascade(bookId) {
     JB.api('GET', ssUrl('/values/Ingredients?valueRenderOption=UNFORMATTED_VALUE')),
     JB.api('GET', ssUrl('/values/Steps?valueRenderOption=UNFORMATTED_VALUE')),
     JB.api('GET', ssUrl('/values/Recipes?valueRenderOption=UNFORMATTED_VALUE')),
-    JB.api('GET', ssUrl('/values/Cookbooks?valueRenderOption=UNFORMATTED_VALUE'))
+    JB.api('GET', ssUrl('/values/Cookbooks?valueRenderOption=UNFORMATTED_VALUE')),
+    recipesGrid.Plans != null
+      ? JB.api('GET', ssUrl('/values/Plans?valueRenderOption=UNFORMATTED_VALUE'))
+      : Promise.resolve({ values: [] })
   ]).then(function (pack) {
     var ingRows = collectRowNumsAny(pack[0].values, 1, recipeIds);
     var stepRows = collectRowNumsAny(pack[1].values, 1, recipeIds);
+    var planRows = collectRowNumsAny(pack[4].values, 1, recipeIds);
     var recipeRows = [];
     var recipeVals = pack[2].values || [];
     for (var i = 1; i < recipeVals.length; i++) {
@@ -1423,6 +1509,7 @@ function deleteBookCascade(bookId) {
     }
     var reqs = [];
     function pushDeletes(sheetId, rows) {
+      if (sheetId == null) return;
       rows.sort(function (a, b) { return b - a; }).forEach(function (rn) {
         reqs.push({
           deleteDimension: {
@@ -1433,12 +1520,15 @@ function deleteBookCascade(bookId) {
     }
     pushDeletes(recipesGrid.Ingredients, ingRows);
     pushDeletes(recipesGrid.Steps, stepRows);
+    pushDeletes(recipesGrid.Plans, planRows);
     pushDeletes(recipesGrid.Recipes, recipeRows);
     if (bookRow > 0) pushDeletes(recipesGrid.Cookbooks, [bookRow]);
     if (!reqs.length) return null;
     return JB.api('POST', ssUrl(':batchUpdate'), { requests: reqs });
   }).then(function () {
     purgeRecipeChecks(Object.keys(recipeIds));
+    DATA.plans = (DATA.plans || []).filter(function (p) { return !recipeIds[p.recipeId]; });
+    if (JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();
   });
 }
 
@@ -1459,6 +1549,89 @@ function purgeRecipeChecks(ids) {
     if (m[id]) { delete m[id]; changed = true; }
   });
   if (changed) saveChecks(m);
+}
+
+/* ---- prazos no Calendar (aba Plans) ---- */
+function scheduleRecipe(recipeId) {
+  if (!recipeById(recipeId)) return;
+  if (!JB.datePicker) { toast('Seletor de data indisponível'); return; }
+  JB.datePicker(todayISO(), function (iso) {
+    if (!iso) return;
+    addRecipePlan(recipeId, iso);
+  }, { clearLabel: 'Cancelar' });
+}
+
+function addRecipePlan(recipeId, date) {
+  date = sheetsDateLocal(date);
+  if (!date || !recipeId) return;
+  var dup = (DATA.plans || []).some(function (p) {
+    return p.recipeId === recipeId && p.date === date;
+  });
+  if (dup) { toast('Já agendado para esse dia'); return; }
+  var plan = { id: uuid(), recipeId: recipeId, date: date, created: todayISO() };
+  if (JB.isGhost && JB.isGhost()) {
+    DATA.plans = (DATA.plans || []).concat([plan]);
+    if (JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();
+    render();
+    toast('Prazo adicionado');
+    return;
+  }
+  JB.api('POST', ssUrl('/values/Plans!A:D:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {
+    values: [[plan.id, plan.recipeId, plan.date, plan.created]]
+  }).then(function () {
+    DATA.plans = (DATA.plans || []).concat([plan]);
+    if (JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();
+    render();
+    toast('Prazo no Calendar');
+  }).catch(function (e) { toast(e.message || 'Falha ao agendar'); });
+}
+
+function removeRecipePlan(planId) {
+  var plan = null;
+  for (var i = 0; i < (DATA.plans || []).length; i++) {
+    if (DATA.plans[i].id === planId) { plan = DATA.plans[i]; break; }
+  }
+  if (!plan) return;
+  if (JB.isGhost && JB.isGhost()) {
+    DATA.plans = DATA.plans.filter(function (p) { return p.id !== planId; });
+    if (JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();
+    render();
+    return;
+  }
+  findRow('Plans', 0, planId).then(function (rn) {
+    if (rn < 0) return;
+    return deleteSheetRow('Plans', rn);
+  }).then(function () {
+    DATA.plans = (DATA.plans || []).filter(function (p) { return p.id !== planId; });
+    if (JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();
+    render();
+  }).catch(function (e) { toast(e.message || 'Falha ao remover'); });
+}
+
+function deletePlansForRecipes(recipeIds) {
+  var idMap = {};
+  (recipeIds || []).forEach(function (id) { idMap[String(id)] = true; });
+  if (!Object.keys(idMap).length) return Promise.resolve();
+  if (JB.isGhost && JB.isGhost()) {
+    DATA.plans = (DATA.plans || []).filter(function (p) { return !idMap[p.recipeId]; });
+    return Promise.resolve();
+  }
+  if (recipesGrid.Plans == null) return Promise.resolve();
+  return JB.api('GET', ssUrl('/values/Plans?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
+    var rows = collectRowNumsAny(res.values, 1, idMap);
+    var reqs = [];
+    rows.sort(function (a, b) { return b - a; }).forEach(function (rn) {
+      reqs.push({
+        deleteDimension: {
+          range: { sheetId: recipesGrid.Plans, dimension: 'ROWS', startIndex: rn - 1, endIndex: rn }
+        }
+      });
+    });
+    if (!reqs.length) return null;
+    return JB.api('POST', ssUrl(':batchUpdate'), { requests: reqs });
+  }).then(function () {
+    DATA.plans = (DATA.plans || []).filter(function (p) { return !idMap[p.recipeId]; });
+  });
 }
 
 /* ---- recipe modal ---- */
@@ -1844,10 +2017,14 @@ function deleteRecipeModal() {
 
 function deleteRecipeCascade(id) {
   return clearChildren(id).then(function () {
+    return deletePlansForRecipes([id]);
+  }).then(function () {
     return findRow('Recipes', 0, id).then(function (rn) {
       if (rn < 0) return;
       return deleteSheetRow('Recipes', rn);
     });
+  }).then(function () {
+    if (JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();
   });
 }
 

@@ -4,19 +4,21 @@
   var WD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   var MO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   var MOFULL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  var APP_ORDER = ['finance', 'fit', 'study', 'notas', 'planner'];
+  var APP_ORDER = ['finance', 'fit', 'study', 'notas', 'planner', 'recipes'];
   var APP_META = {
     finance: { label: 'Finance', color: 'var(--finance, #0d9488)', kind: 'conta', ink: '#0d9488', bg: '#0a2422' },
     fit: { label: 'Fit', color: 'var(--fit, #fb7185)', kind: 'treino', ink: '#fb7185', bg: '#3a2530' },
     study: { label: 'Study', color: 'var(--study, #a78bfa)', kind: 'prova', ink: '#a78bfa', bg: '#241f3a' },
     notas: { label: 'Notes', color: 'var(--notas, #f59e0b)', kind: 'prazo', ink: '#f59e0b', bg: '#33280f' },
-    planner: { label: 'Planner', color: 'var(--planner, #2dd4bf)', kind: 'plano', ink: '#2dd4bf', bg: '#0f2a28' }
+    planner: { label: 'Planner', color: 'var(--planner, #2dd4bf)', kind: 'plano', ink: '#2dd4bf', bg: '#0f2a28' },
+    recipes: { label: 'Recipes', color: 'var(--recipes, #e07a5f)', kind: 'prazo', ink: '#e07a5f', bg: '#3a241f' }
   };
   function appGlyph(app) {
     if (app === 'finance') return '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="9.4" width="2.8" height="4" rx=".7" fill="currentColor" opacity=".5"/><rect x="6.2" y="6.6" width="2.8" height="6.8" rx=".7" fill="currentColor" opacity=".78"/><rect x="10.4" y="3.6" width="2.8" height="9.8" rx=".7" fill="currentColor"/></svg>';
     if (app === 'fit') return '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.4" y="5.4" width="1.8" height="5.2" rx=".5" fill="currentColor"/><rect x="12.8" y="5.4" width="1.8" height="5.2" rx=".5" fill="currentColor"/><rect x="3" y="6.4" width="1.6" height="3.2" rx=".4" fill="currentColor"/><rect x="11.4" y="6.4" width="1.6" height="3.2" rx=".4" fill="currentColor"/><rect x="4.4" y="7.2" width="7.2" height="1.6" rx=".7" fill="currentColor"/></svg>';
     if (app === 'study') return '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.6 14.4 6 8 9.4 1.6 6Z" fill="currentColor"/><path d="M4 8.1v2.5c0 .8 1.8 1.7 4 1.7s4-.9 4-1.7V8.1" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/><path d="M14.4 6v4.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
     if (app === 'notas') return '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="2.2" width="9" height="11.6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.8 5.6h3.4M5.8 8h4.6M5.8 10.4h2.6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M9.2 10.8l1.15 1.15 2.15-2.3" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    if (app === 'recipes') return '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 4.2c0-1.7 1.2-3 2.8-3s2.8 1.3 2.8 3c1.4.1 2.5 1.2 2.5 2.6v.4H3.7v-.4c0-1.4 1.1-2.5 2.5-2.6Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M3.4 7.6h9.2v5.2c0 .9-.7 1.6-1.6 1.6H5c-.9 0-1.6-.7-1.6-1.6V7.6Z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/><path d="M5.6 10h4.8" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"/></svg>';
     return '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.8" y="3.2" width="10.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.8 6.3h10.4M5.6 2.3v2.8M10.4 2.3v2.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="6.1" cy="9.3" r=".85" fill="currentColor"/><circle cx="8.4" cy="9.3" r=".85" fill="currentColor"/><circle cx="10.7" cy="9.3" r=".85" fill="currentColor"/></svg>';
   }
   var BILL_PAID = ['bill', 'recurring', 'installment'];
@@ -237,6 +239,26 @@
       });
     });
   }
+  function eventsFromRecipes(plans, recipes, cookbooks) {
+    var byR = {}, byB = {};
+    (recipes || []).forEach(function (r) { byR[r.id] = r; });
+    (cookbooks || []).forEach(function (b) { byB[b.id] = b; });
+    return (plans || []).filter(function (p) { return p.date || p.data; }).map(function (p) {
+      var date = sheetsDate(p.date || p.data);
+      var r = byR[p.recipeId];
+      var book = r && byB[r.cookbookId];
+      var title = r ? ((r.icon ? r.icon + ' ' : '') + (r.title || 'Receita')) : 'Receita';
+      var sub = 'fazer até';
+      if (book && book.name) sub += ' · ' + book.name;
+      return ev({
+        app: 'recipes', id: 'recipes:' + p.id, rawId: String(p.recipeId || ''),
+        date: date, title: title, subtitle: sub,
+        href: '/recipes/?r=' + encodeURIComponent(p.recipeId || ''),
+        color: (book && book.color) || APP_META.recipes.color,
+        kind: 'prazo', icone: (r && r.icon) || ''
+      });
+    });
+  }
   function plannerHref(planId, dayId) {
     var q = 'p=' + encodeURIComponent(planId || '');
     if (dayId) q += '&d=' + encodeURIComponent(dayId);
@@ -367,6 +389,7 @@
     var evs = [];
     if (app === 'notas') evs = eventsFromNotas(listsFromGhostNotas(data));
     else if (app === 'planner') evs = eventsFromPlanner(data.planos, data.dias, data.eventos);
+    else if (app === 'recipes') evs = eventsFromRecipes(data.plans, data.recipes, data.cookbooks);
     else return [];
     return evs.filter(function (e) { return e.date >= start && e.date <= end; });
   }
@@ -472,6 +495,22 @@
         });
       });
     }
+    if (app === 'recipes') {
+      var rt = tabsPresent(grid, ['Plans', 'Recipes', 'Cookbooks']);
+      if (rt.indexOf('Plans') < 0) return [];
+      return batchGet(sid, rt).then(function (by) {
+        var plans = body(by.Plans).filter(function (r) { return r[0] && r[2]; }).map(function (r) {
+          return { id: String(r[0]), recipeId: String(r[1] || ''), date: sheetsDate(r[2]), created: String(r[3] || '') };
+        });
+        var recipes = body(by.Recipes).filter(function (r) { return r[0]; }).map(function (r) {
+          return { id: String(r[0]), cookbookId: String(r[1] || ''), title: String(r[2] || ''), icon: String(r[3] || '') };
+        });
+        var cookbooks = body(by.Cookbooks).filter(function (r) { return r[0]; }).map(function (r) {
+          return { id: String(r[0]), name: String(r[1] || ''), icon: String(r[2] || ''), color: String(r[3] || '') };
+        });
+        return eventsFromRecipes(plans, recipes, cookbooks).filter(function (e) { return e.date >= start && e.date <= end; });
+      });
+    }
     return Promise.resolve([]);
   }
   var _hubCache = null;
@@ -485,7 +524,7 @@
       && _hubCache.start <= focus.start && _hubCache.end >= focus.end) {
       return Promise.resolve({ events: _hubCache.events, missed: _hubCache.missed, range: focus, window: win, cached: true });
     }
-    var apps = opts.apps || ['finance', 'fit', 'study', 'notas', 'planner'];
+    var apps = opts.apps || ['finance', 'fit', 'study', 'notas', 'planner', 'recipes'];
     var missed = [];
     return Promise.all(apps.map(function (app) {
       return loadAppEvents(app, win.start, win.end).then(function (part) {
@@ -1295,6 +1334,7 @@
     timeMinFromLabel: timeMinFromLabel, expandFinanceDue: expandFinanceDue,
     eventsFromFit: eventsFromFit, eventsFromStudy: eventsFromStudy,
     eventsFromNotas: eventsFromNotas, eventsFromPlanner: eventsFromPlanner,
+    eventsFromRecipes: eventsFromRecipes,
     isCollabPlannerGrid: isCollabPlannerGrid, isCollabNotasGrid: isCollabNotasGrid,
     eventRowHtml: eventRowHtml, plannerPeekHtml: plannerPeekHtml, relLabel: relLabel, nearClass: nearClass, daysUntil: daysUntil, fmtBR: fmtBR,
     loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp, clearHubCache: clearHubCache, appsInDay: appsInDay, splitByWhen: splitByWhen, orderWithinApp: orderWithinApp,

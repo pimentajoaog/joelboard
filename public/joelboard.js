@@ -108,7 +108,7 @@
     }
     if (app === 'recipes') {
       return {
-        grid: { Cookbooks: 0, Recipes: 1, Ingredients: 2, Steps: 3, Settings: 4 },
+        grid: { Cookbooks: 0, Recipes: 1, Ingredients: 2, Steps: 3, Plans: 4, Settings: 5 },
         data: {
           cookbooks: [
             { id: 'ghost-cb1', name: 'Rápido', icon: '🍳', color: '#e07a5f', order: 0, created: iso },
@@ -156,6 +156,10 @@
             { id: 'ghost-rs11', recipeId: 'ghost-r5', text: 'Asse em banho-maria por 1 hora.', order: 1 },
             { id: 'ghost-rs12', recipeId: 'ghost-r6', text: 'Cozinhe as batatas e bata com o caldo.', order: 0 },
             { id: 'ghost-rs13', recipeId: 'ghost-r6', text: 'Junte a couve e a linguiça em rodelas.', order: 1 }
+          ],
+          plans: [
+            { id: 'ghost-rp1', recipeId: 'ghost-r1', date: jbGhostYmdFrom(today, 2), created: iso },
+            { id: 'ghost-rp2', recipeId: 'ghost-r4', date: jbGhostYmdFrom(today, 5), created: iso }
           ]
         }
       };

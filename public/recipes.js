@@ -989,40 +989,73 @@ function recipePageLabel(r) {
 
 function flipPrev() {
   if (flipIndex <= 0) return;
+  var keep = captureLeaf('right');
   flipIndex = Math.max(0, flipIndex - spreadStep());
   _turnDir = -1;
   render();
   bindFlipGesture();
-  playPageTurn(-1);
+  playPageTurn(-1, keep);
 }
 function flipNext() {
   var list = visibleRecipes(openBookId);
   var step = spreadStep();
   if (flipIndex + step >= spreadPageCount(list)) return;
+  var keep = captureLeaf('left');
   flipIndex += step;
   _turnDir = 1;
   render();
   bindFlipGesture();
-  playPageTurn(1);
+  playPageTurn(1, keep);
 }
 
 function reducedMotion() {
   try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { return false; }
 }
 
-/* Folha de papel que gira sobre o vinco, revelando a página nova por baixo. */
-function playPageTurn(dir) {
+/* Guarda a página que ficará escondida atrás da folha em movimento. */
+function captureLeaf(side) {
+  if (!wideSpread() || reducedMotion()) return null;
+  var el = document.querySelector('.spread .leaf.is-' + side);
+  if (!el) return null;
+  var body = el.querySelector('.leaf-body');
+  return { side: side, html: el.outerHTML, scroll: body ? body.scrollTop : 0 };
+}
+
+/* Folha de papel que gira sobre o vinco. A página de destino viaja no verso
+   dela: fica escondida (a antiga continua à vista) até a folha assentar. */
+function playPageTurn(dir, keep) {
   if (reducedMotion()) return;
   var stage = $('spreadStage');
   if (!stage) return;
-  var old = stage.querySelector('.page-turn');
-  if (old && old.parentNode) old.parentNode.removeChild(old);
+  var junk = stage.querySelectorAll('.page-turn, .leaf-ghost');
+  for (var i = 0; i < junk.length; i++) junk[i].parentNode.removeChild(junk[i]);
+  var solo = !wideSpread();
+  var side = dir > 0 ? 'left' : 'right';
+  var dest = solo ? null : stage.querySelector('.leaf.is-' + side);
+  var gone = [];
+  if (dest) {
+    dest.classList.add('is-arriving');
+    if (keep && keep.html && keep.side === side) {
+      var ghost = document.createElement('div');
+      ghost.className = 'leaf-ghost is-' + side;
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.innerHTML = keep.html;
+      stage.appendChild(ghost);
+      var gb = ghost.querySelector('.leaf-body');
+      if (gb) gb.scrollTop = keep.scroll || 0;
+      gone.push(ghost);
+    }
+  }
   var el = document.createElement('div');
-  el.className = 'page-turn ' + (dir > 0 ? 'is-fwd' : 'is-back') + (wideSpread() ? '' : ' is-solo');
+  el.className = 'page-turn ' + (dir > 0 ? 'is-fwd' : 'is-back') + (solo ? ' is-solo' : '');
   el.setAttribute('aria-hidden', 'true');
   el.innerHTML = '<span class="pt-face pt-front"></span><span class="pt-face pt-back"></span>';
   stage.appendChild(el);
-  var drop = function () { if (el.parentNode) el.parentNode.removeChild(el); };
+  gone.push(el);
+  var drop = function () {
+    gone.forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
+    if (dest) dest.classList.remove('is-arriving');
+  };
   el.addEventListener('animationend', drop);
   setTimeout(drop, 1000);
 }

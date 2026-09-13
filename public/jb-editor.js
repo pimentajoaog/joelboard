@@ -1209,6 +1209,7 @@
     var uploadImage = imgOpts && typeof imgOpts.upload === 'function' ? imgOpts.upload : null;
     var loadImage = imgOpts && typeof imgOpts.load === 'function' ? imgOpts.load : null;
     var replaceImage = imgOpts && typeof imgOpts.replace === 'function' ? imgOpts.replace : null;
+    var removeImage = imgOpts && typeof imgOpts.remove === 'function' ? imgOpts.remove : null;
     var dirty = false;
     var destroyed = false;
     var lastSaved = valueToHtml(opts.value);
@@ -2905,6 +2906,8 @@
       img = noteImg(img);
       if (!img) return;
       histBeforeChange();
+      var fid = safeDriveFileId(img.getAttribute('data-jb-file'));
+      var isInk = img.getAttribute('data-jb-ink') === '1';
       var parent = img.parentNode;
       var col = closestEdCol(img);
       var row = col ? closestEdCols(col) : null;
@@ -2922,6 +2925,12 @@
       }
       markDirty();
       if (inkCanvas) scheduleInkSize();
+      if (removeImage && fid && !isInk) {
+        var still = surface.querySelector('img[data-jb-file="' + fid + '"]');
+        if (!still) {
+          Promise.resolve(removeImage(fid)).catch(function () {});
+        }
+      }
     }
     function paintImgFrame() {
       if (!imgFrame || !selectedImg || !selectedImg.parentNode || inkOpen || (imgDrag && imgDrag.moved)) {

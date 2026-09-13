@@ -2362,13 +2362,14 @@
   var DRIVE_FOLDERS_KEY = 'jb_drive_folders';
   var DRIVE_LAYOUT_VER_KEY = 'jb_drive_layout_v';
   var DRIVE_LAYOUT_NOTICE_KEY = 'jb_drive_layout_notice';
-  var DRIVE_LAYOUT_VERSION = 1;
+  var DRIVE_LAYOUT_VERSION = 2;
   var DRIVE_ROOT_NAME = 'Joelboard';
   var DRIVE_APP_NAMES = {
     finance: 'Finance', notes: 'Notes', notas: 'Notes', planner: 'Planner',
     study: 'Study', fit: 'Fit', mini: 'Mini', feedback: 'Feedback'
   };
   var driveLayoutOnce = null;
+  var ensureFolderInflight = {};
 
   function driveEscName(name) {
     return String(name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -2385,6 +2386,69 @@
   function driveFolderWebLink(id) {
     return id ? ('https://drive.google.com/drive/folders/' + id) : 'https://drive.google.com/drive/my-drive';
   }
+  function trashDriveFile(fileId) {
+    if (!fileId || isGhost()) return Promise.resolve(null);
+    return api('PATCH', 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?fields=id,trashed', { trashed: true })
+      .then(function (f) { return f; }, function () { return null; });
+  }
+  function listDriveChildren(parentId) {
+    if (!parentId) return Promise.resolve([]);
+    var out = [];
+    function page(token) {
+      var url = 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("'" + parentId + "' in parents and trashed=false")
+        + '&fields=nextPageToken,files(id,name,mimeType)&pageSize=100&spaces=drive';
+      if (token) url += '&pageToken=' + encodeURIComponent(token);
+      return api('GET', url).then(function (res) {
+        out = out.concat(res.files || []);
+        if (res.nextPageToken) return page(res.nextPageToken);
+        return out;
+      });
+    }
+    return page('');
+  }
+  function moveAllChildren(fromId, toId) {
+    if (!fromId || !toId || fromId === toId) return Promise.resolve(0);
+    return listDriveChildren(fromId).then(function (files) {
+      var n = 0;
+      var chain = Promise.resolve();
+      (files || []).forEach(function (f) {
+        chain = chain.then(function () {
+          return moveFile(f.id, toId).then(function (r) {
+            if (r && r.moved) n++;
+          }, function () {});
+        });
+      });
+      return chain.then(function () { return n; });
+    });
+  }
+  /** Merge sibling folders that share the same name under parentId. Returns how many duplicates were trashed. */
+  function dedupeChildFoldersByName(parentId) {
+    if (!parentId || isGhost()) return Promise.resolve(0);
+    return listDriveChildren(parentId).then(function (files) {
+      var byName = {};
+      (files || []).forEach(function (f) {
+        if (!f || f.mimeType !== 'application/vnd.google-apps.folder') return;
+        var n = String(f.name || '');
+        if (!n) return;
+        (byName[n] = byName[n] || []).push(f);
+      });
+      var trashed = 0;
+      var chain = Promise.resolve();
+      Object.keys(byName).forEach(function (name) {
+        var group = byName[name];
+        if (group.length < 2) return;
+        var keep = group[0];
+        group.slice(1).forEach(function (dup) {
+          chain = chain.then(function () {
+            return moveAllChildren(dup.id, keep.id).then(function () {
+              return trashDriveFile(dup.id).then(function () { trashed++; });
+            });
+          });
+        });
+      });
+      return chain.then(function () { return trashed; });
+    }, function () { return 0; });
+  }
   function ensureFolder(opts) {
     opts = opts || {};
     var name = String(opts.name || '').trim();
@@ -2394,10 +2458,12 @@
     var cacheKey = opts.cacheKey || '';
     var cache = driveFoldersCache();
     if (cacheKey && cache[cacheKey]) return Promise.resolve(cache[cacheKey]);
+    var inflightKey = (parentId || 'root') + '::' + name.toLowerCase();
+    if (ensureFolderInflight[inflightKey]) return ensureFolderInflight[inflightKey];
     var q = "mimeType='application/vnd.google-apps.folder' and trashed=false and name='" + driveEscName(name) + "'";
     if (parentId) q += " and '" + parentId + "' in parents";
     else q += " and 'root' in parents";
-    return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&pageSize=5')
+    ensureFolderInflight[inflightKey] = api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&pageSize=5')
       .then(function (res) {
         var files = res.files || [];
         if (files.length) {
@@ -2410,7 +2476,9 @@
           if (cacheKey) { cache[cacheKey] = f.id; saveDriveFoldersCache(cache); }
           return f.id;
         });
-      });
+      })
+      .finally(function () { delete ensureFolderInflight[inflightKey]; });
+    return ensureFolderInflight[inflightKey];
   }
   function moveFile(fileId, newParentId) {
     if (!fileId || !newParentId) return Promise.resolve({ id: fileId, moved: false });
@@ -2521,6 +2589,7 @@
     }
     return ensureJoelboardRoot().then(function (rootId) {
       var jobs = [];
+      jobs.push(dedupeChildFoldersByName(rootId).then(function (n) { if (n) bump(); }));
       [
         ['finance', 'finance'],
         ['notas', 'notes'],
@@ -2545,26 +2614,47 @@
         return null;
       }));
       jobs.push(ensureAppFolder('study').then(function (studyId) {
-        var q = "mimeType='application/vnd.google-apps.folder' and trashed=false and name='Joelboard Study — Anexos' and 'root' in parents";
-        return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&pageSize=3')
-          .then(function (res) {
-            var files = res.files || [];
-            if (!files.length) return ensureStudyAnexosFolder();
-            var legacyId = files[0].id;
-            return moveFile(legacyId, studyId).then(function (r) {
-              return api('PATCH', 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(legacyId) + '?fields=id', { name: 'Anexos' })
-                .then(function () {
-                  var cache = driveFoldersCache();
-                  cache['study:anexos'] = legacyId;
-                  cache['app:study'] = studyId;
-                  saveDriveFoldersCache(cache);
-                  if (r && r.moved) bump();
-                  return legacyId;
-                }, function () {
-                  return ensureStudyAnexosFolder();
+        return dedupeChildFoldersByName(rootId).then(function (n) {
+          if (n) bump();
+          var cache = driveFoldersCache();
+          if (cache['app:study'] && cache['app:study'] !== studyId) {
+            /* Prefer the cached Study folder after dedupe. */
+            studyId = cache['app:study'];
+          } else {
+            cache['app:study'] = studyId;
+            saveDriveFoldersCache(cache);
+          }
+          var q = "mimeType='application/vnd.google-apps.folder' and trashed=false and name='Joelboard Study — Anexos' and 'root' in parents";
+          return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&pageSize=3')
+            .then(function (res) {
+              var files = res.files || [];
+              if (!files.length) {
+                return ensureStudyAnexosFolder().then(function (anexosId) {
+                  return dedupeChildFoldersByName(studyId).then(function (n2) {
+                    if (n2) bump();
+                    return dedupeChildFoldersByName(anexosId).then(function (n3) { if (n3) bump(); return anexosId; });
+                  });
                 });
+              }
+              var legacyId = files[0].id;
+              return moveFile(legacyId, studyId).then(function (r) {
+                return api('PATCH', 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(legacyId) + '?fields=id', { name: 'Anexos' })
+                  .then(function () {
+                    var c2 = driveFoldersCache();
+                    c2['study:anexos'] = legacyId;
+                    c2['app:study'] = studyId;
+                    saveDriveFoldersCache(c2);
+                    if (r && r.moved) bump();
+                    return dedupeChildFoldersByName(studyId).then(function (n2) {
+                      if (n2) bump();
+                      return dedupeChildFoldersByName(legacyId).then(function (n3) { if (n3) bump(); return legacyId; });
+                    });
+                  }, function () {
+                    return ensureStudyAnexosFolder();
+                  });
+              }, function () { return ensureStudyAnexosFolder(); });
             }, function () { return ensureStudyAnexosFolder(); });
-          }, function () { return ensureStudyAnexosFolder(); });
+        });
       }));
       return Promise.all(jobs).then(function () {
         return { changed: changed > 0, rootId: rootId };
@@ -3314,6 +3404,7 @@
     ensurePlannerSharedFolder: ensurePlannerSharedFolder, ensureStudyAnexosFolder: ensureStudyAnexosFolder,
     placeFileInFolder: placeFileInFolder, placeSpreadsheetInAppFolder: placeSpreadsheetInAppFolder,
     uploadFileToFolder: uploadFileToFolder, driveFolderWebLink: driveFolderWebLink,
+    trashDriveFile: trashDriveFile, dedupeChildFoldersByName: dedupeChildFoldersByName,
     ensureDriveLayoutOnce: ensureDriveLayoutOnce, organizeDriveLayout: organizeDriveLayout,
     qsGet: qsGet, qsPatch: qsPatch, qsClearJoin: qsClearJoin, onRoute: onRoute, routeBack: routeBack,
     pickColor: pickColor, mountColorControl: mountColorControl, colorControlValue: colorControlValue,

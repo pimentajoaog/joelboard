@@ -97,7 +97,7 @@ function loadData(){
   var ranges=want.map(function(t){return 'ranges='+encodeURIComponent(t);}).join('&');
   JB.api('GET', ssUrl('/values:batchGet?'+ranges+'&valueRenderOption=UNFORMATTED_VALUE')).then(function(res){
     var by={}; (res.valueRanges||[]).forEach(function(vr,i){ by[want[i]]=vr.values||[]; });
-    return ensureMateriasSchema(by).then(function(){ return ensureModulosSchema(by); }).then(function(){ return ensureFocoSchema(by); }).then(function(){ DATA=buildStudy(by); return migrateAulaCounts(); }).then(function(){ matSyncAllConcluido(true); show(); });
+    return ensureMateriasSchema(by).then(function(){ return ensureModulosSchema(by); }).then(function(){ return ensureFocoSchema(by); }).then(function(){ DATA=buildStudy(by); return migrateAulaCounts(); }).then(function(){ matSyncAllConcluido(true); show(); studyMergeDriveTree(); });
   }).catch(function(e){ var m=String(e.message||''); if(m.indexOf('403')>-1||m.indexOf('404')>-1||m.indexOf('PERMISSION')>-1){ JB.clearSheetId('study'); bootSheet(); return; } loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro: '+esc(e.message)+'</div></div>'); });
 }
 function ensureMateriasSchema(by){
@@ -314,7 +314,8 @@ function studyNoteImages(matId, modId){
   return {
     upload:function(file){ return studyUploadNoteImage(file, matId||(evtMaterias&&evtMaterias[0])||'', modId||''); },
     load:studyLoadNoteImage,
-    replace:studyReplaceNoteImage
+    replace:studyReplaceNoteImage,
+    remove:function(fileId){ return studyTrashDriveFile(fileId); }
   };
 }
 function destroyEvtEd(){ if(_evtEd){ _evtEd.destroy(); _evtEd=null; } }
@@ -359,7 +360,9 @@ function saveEvt(){
     var e;
     if(editingEvt){ e=(DATA.eventos||[]).find(function(x){return x.id===editingEvt;}); if(!e) return; }
     else { e={id:uuid()}; DATA.eventos.push(e); }
+    var prev=e.notas||'';
     e.titulo=titulo; e.tipo=evtTipo; e.data=data; e.hora=($('evtHora').value||''); e.materiaIds=evtMaterias.slice(); e.concluido=concl; e.notas=notas;
+    studyTrashRemovedImages(prev, notas);
     closeEvt(); render(); toast('✓ Salvo');
     if(editingEvt){ saveEvtRow(e); } else {
       JB.api('POST', ssUrl('/values/Eventos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[evtRowVals(e)] }).catch(function(){ toast('Erro ao salvar'); });
@@ -449,7 +452,7 @@ function modSave(m){ findRow('Modulos',3,m.id).then(function(row){ if(row<0) ret
 function addModulo(matId){ var inp=$('detModInput'); if(!inp) return; var nome=(inp.value||'').trim(); if(!nome) return; var mod={ id:uuid(), materiaId:matId, nome:nome, feito:false, notas:'' }; DATA.modulos=DATA.modulos||[]; DATA.modulos.push(mod); inp.value=''; renderMaterias(); JB.api('POST', ssUrl('/values/Modulos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[modRowVals(mod)] }).catch(studyWriteErr); setTimeout(function(){ var i=$('detModInput'); if(i) i.focus(); },30); }
 function toggleModulo(id){ var m=modulo(id); if(!m) return; m.feito=!m.feito; var subj=mat(m.materiaId); if(subj) matSyncConcluido(subj, { allowClear:true }); modSave(m); if(matNote===id){ var btn=document.querySelector('.modnote-chk'); var head=document.querySelector('.modnote-head'); if(btn){ btn.classList.toggle('on', m.feito); btn.textContent=m.feito?'✓':''; } if(head) head.classList.toggle('done', m.feito); return; } renderMaterias(); }
 function renameModulo(id){ var m=modulo(id); if(!m) return; var inp=$('modNoteName'); var nome=inp?String(inp.value||'').trim():''; if(!nome){ if(inp) inp.value=m.nome; return; } if(nome===m.nome) return; m.nome=nome; modSave(m); }
-function saveModNotes(m, v){ v=String(v==null?'':v); if(v.length>NOTE_CHAR_LIMIT){ v=v.slice(0,NOTE_CHAR_LIMIT); toast('Nota limitada a 50 mil caracteres'); } m.notas=v; modSave(m); }
+function saveModNotes(m, v){ v=String(v==null?'':v); if(v.length>NOTE_CHAR_LIMIT){ v=v.slice(0,NOTE_CHAR_LIMIT); toast('Nota limitada a 50 mil caracteres'); } var prev=m.notas||''; m.notas=v; studyTrashRemovedImages(prev, v); modSave(m); }
 function removeModulo(id){ if(matNote===id){ destroyModEd(); matNote=null; } DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.id!==id;}); renderMaterias(); deleteSheetRow('Modulos',3,id); }
 function openEvtForMat(matId){ openEvt(null); evtMaterias=[matId]; renderEvtMateria(); }
 function matDetailHtml(matId){
@@ -613,40 +616,149 @@ function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab
 function saveConfig(k,v){ DATA.config=DATA.config||{}; DATA.config[k]=v; JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var vals=res.values||[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]}); } return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]}); }).catch(studyWriteErr); }
 function studyFolders(){ try{ var v=JSON.parse((DATA.config&&DATA.config.studyFolders)||'{}'); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } }
 function saveFolders(sf){ saveConfig('studyFolders', JSON.stringify(sf)); }
-function ensureRoot(){
-  var sf=studyFolders();
-  if(sf.root) return Promise.resolve(sf.root);
-  var ensure = (JB.ensureStudyAnexosFolder
-    ? JB.ensureStudyAnexosFolder()
-    : JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:'Joelboard Study — Anexos', mimeType:'application/vnd.google-apps.folder' }).then(function(f){ return f.id; }));
-  return ensure.then(function(id){ sf.root=id; saveFolders(sf); return id; });
+var _studyFolderEnsures={};
+var _studyAnexosDeduped=false;
+var _studyDriveMerged=false;
+function studyMergeDriveTree(){
+  if(_studyDriveMerged || JB.isGhost && JB.isGhost()) return;
+  _studyDriveMerged=true;
+  var chain=Promise.resolve();
+  if(JB.ensureJoelboardRoot && JB.dedupeChildFoldersByName){
+    chain=JB.ensureJoelboardRoot().then(function(rootId){
+      return JB.dedupeChildFoldersByName(rootId).then(function(){
+        return JB.ensureAppFolder('study').then(function(studyId){
+          var sid=JB.getSheetId('study');
+          var place=sid&&JB.placeFileInFolder?JB.placeFileInFolder(sid, studyId):Promise.resolve();
+          return place.then(function(){
+            return JB.dedupeChildFoldersByName(studyId).then(function(){
+              return ensureRoot().then(function(anexosId){
+                return JB.dedupeChildFoldersByName(anexosId);
+              });
+            });
+          });
+        });
+      });
+    });
+  } else {
+    chain=ensureRoot();
+  }
+  chain.catch(function(){});
 }
-function ensureSub(matId){ return ensureRoot().then(function(root){ if(!matId) return root; var sf=studyFolders(); sf.subs=sf.subs||{}; if(sf.subs[matId]) return sf.subs[matId]; var m=mat(matId); return JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:(m?m.nome:'Matéria'), mimeType:'application/vnd.google-apps.folder', parents:[root] }).then(function(f){ sf.subs[matId]=f.id; saveFolders(sf); return f.id; }); }); }
+function studyTrashDriveFile(fileId){
+  fileId=String(fileId||'').trim();
+  if(!fileId) return Promise.resolve(null);
+  if(JB.trashDriveFile) return JB.trashDriveFile(fileId);
+  return JB.api('PATCH','https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(fileId)+'?fields=id',{ trashed:true }).catch(function(){ return null; });
+}
+function studyFileIdsFromHtml(html){
+  var ids={}, re=/data-jb-file\s*=\s*["']([a-zA-Z0-9_-]{10,})["']/gi, m;
+  while((m=re.exec(String(html||'')))) ids[m[1]]=1;
+  return ids;
+}
+function studyTrashRemovedImages(prevHtml, nextHtml){
+  var prev=studyFileIdsFromHtml(prevHtml), next=studyFileIdsFromHtml(nextHtml);
+  Object.keys(prev).forEach(function(id){
+    if(!next[id]) studyTrashDriveFile(id);
+  });
+}
+function studyEscDriveName(name){
+  return String(name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+function studyUniqueFileName(folderId, name){
+  name=String(name||'image.png').trim()||'image.png';
+  var base=name, ext='';
+  var dot=name.lastIndexOf('.');
+  if(dot>0){ base=name.slice(0,dot); ext=name.slice(dot); }
+  function exists(candidate){
+    var q="'"+folderId+"' in parents and trashed=false and name='"+studyEscDriveName(candidate)+"'";
+    return JB.api('GET','https://www.googleapis.com/drive/v3/files?q='+encodeURIComponent(q)+'&fields=files(id)&pageSize=1')
+      .then(function(res){ return !!(res.files&&res.files.length); }, function(){ return false; });
+  }
+  function next(i){
+    var candidate=i<=0?name:(base+'('+i+')'+ext);
+    return exists(candidate).then(function(taken){ return taken?next(i+1):candidate; });
+  }
+  return next(0);
+}
+function ensureRoot(){
+  var key='root';
+  if(_studyFolderEnsures[key]) return _studyFolderEnsures[key];
+  _studyFolderEnsures[key]=Promise.resolve().then(function(){
+    var sf=studyFolders();
+    if(sf.root) return sf.root;
+    var ensure = (JB.ensureStudyAnexosFolder
+      ? JB.ensureStudyAnexosFolder()
+      : JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:'Joelboard Study — Anexos', mimeType:'application/vnd.google-apps.folder' }).then(function(f){ return f.id; }));
+    return ensure.then(function(id){ sf=studyFolders(); sf.root=id; saveFolders(sf); return id; });
+  }).then(function(rootId){
+    if(_studyAnexosDeduped||!JB.dedupeChildFoldersByName) return rootId;
+    _studyAnexosDeduped=true;
+    return JB.dedupeChildFoldersByName(rootId).then(function(){ return rootId; }, function(){ return rootId; });
+  }).finally(function(){ delete _studyFolderEnsures[key]; });
+  return _studyFolderEnsures[key];
+}
+function ensureSub(matId){
+  if(!matId) return ensureRoot();
+  var key='mat:'+matId;
+  if(_studyFolderEnsures[key]) return _studyFolderEnsures[key];
+  _studyFolderEnsures[key]=ensureRoot().then(function(root){
+    var sf=studyFolders(); sf.subs=sf.subs||{};
+    if(sf.subs[matId]) return sf.subs[matId];
+    var m=mat(matId);
+    var name=(m&&m.nome)?m.nome:'Matéria';
+    var make = JB.ensureFolder
+      ? JB.ensureFolder({ name:name, parentId:root, cacheKey:'study:mat:'+matId })
+      : JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:name, mimeType:'application/vnd.google-apps.folder', parents:[root] }).then(function(f){ return f.id; });
+    return make.then(function(id){
+      sf=studyFolders(); sf.subs=sf.subs||{}; sf.subs[matId]=id; saveFolders(sf);
+      return id;
+    });
+  }).finally(function(){ delete _studyFolderEnsures[key]; });
+  return _studyFolderEnsures[key];
+}
 function ensureModSub(matId, modId){
-  return ensureSub(matId).then(function(matFolder){
-    if(!modId) return matFolder;
+  if(!modId) return ensureSub(matId);
+  var key='mod:'+modId;
+  if(_studyFolderEnsures[key]) return _studyFolderEnsures[key];
+  _studyFolderEnsures[key]=ensureSub(matId).then(function(matFolder){
     var sf=studyFolders();
     sf.modSubs=sf.modSubs||{};
     if(sf.modSubs[modId]) return sf.modSubs[modId];
     var mo=(typeof modulo==='function')?modulo(modId):null;
     if(!mo && DATA && DATA.modulos) mo=(DATA.modulos||[]).find(function(x){ return x.id===modId; });
     var name=(mo&&mo.nome)?mo.nome:'Módulo';
-    return JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:name, mimeType:'application/vnd.google-apps.folder', parents:[matFolder] }).then(function(f){
-      sf.modSubs[modId]=f.id;
-      saveFolders(sf);
-      return f.id;
+    var make = JB.ensureFolder
+      ? JB.ensureFolder({ name:name, parentId:matFolder, cacheKey:'study:mod:'+modId })
+      : JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:name, mimeType:'application/vnd.google-apps.folder', parents:[matFolder] }).then(function(f){ return f.id; });
+    return make.then(function(id){
+      sf=studyFolders(); sf.modSubs=sf.modSubs||{}; sf.modSubs[modId]=id; saveFolders(sf);
+      if(JB.dedupeChildFoldersByName) JB.dedupeChildFoldersByName(matFolder).catch(function(){});
+      return id;
     });
-  });
+  }).finally(function(){ delete _studyFolderEnsures[key]; });
+  return _studyFolderEnsures[key];
 }
 var _imgUrlCache={};
 function studyUploadNoteImage(file, matId, modId){
   if(!file) return Promise.reject(new Error('no_file'));
   if(file.size>10*1024*1024) return Promise.reject(new Error('too_big'));
   if(!(file.name||'').trim()){
-    try{ file=new File([file],'print.png',{ type:file.type||'image/png' }); }catch(_){}
+    try{ file=new File([file],'image.png',{ type:file.type||'image/png' }); }catch(_){}
+  }
+  if(!matId && modId){
+    var mo=(typeof modulo==='function')?modulo(modId):null;
+    if(mo&&mo.materiaId) matId=mo.materiaId;
   }
   var folderP = modId ? ensureModSub(matId, modId) : ensureSub(matId);
-  return folderP.then(function(folderId){ return uploadFile(file, folderId); }).then(function(f){
+  return folderP.then(function(folderId){
+    return studyUniqueFileName(folderId, file.name||'image.png').then(function(uname){
+      var named=file;
+      if(uname!==file.name){
+        try{ named=new File([file], uname, { type:file.type||'image/png' }); }catch(_){ named=file; }
+      }
+      return uploadFile(named, folderId);
+    });
+  }).then(function(f){
     if(!f||!f.id) throw new Error('upload_failed');
     try{ _imgUrlCache[f.id]=URL.createObjectURL(file); }catch(_){}
     return { id:f.id, name:f.name||file.name||'imagem' };
@@ -708,7 +820,15 @@ function doUpload(file){
   if(!uploadCtx) return; var ctx=uploadCtx;
   var matId = ctx.kind==='mat' ? ctx.id : (function(){ var e=(DATA.eventos||[]).find(function(x){return x.id===ctx.id;}); return (e&&e.materiaIds&&e.materiaIds[0])?e.materiaIds[0]:''; })();
   toast('Enviando '+file.name+'…');
-  ensureSub(matId).then(function(folderId){ return uploadFile(file, folderId); }).then(function(f){
+  ensureSub(matId).then(function(folderId){
+    return studyUniqueFileName(folderId, file.name||'arquivo').then(function(uname){
+      var named=file;
+      if(uname!==file.name){
+        try{ named=new File([file], uname, { type:file.type||'application/octet-stream' }); }catch(_){ named=file; }
+      }
+      return uploadFile(named, folderId);
+    });
+  }).then(function(f){
     var a={ id:uuid(), materiaId:matId, eventoId:(ctx.kind==='evt'?ctx.id:''), nome:(f.name||file.name), url:(f.webViewLink||''), fileId:(f.id||'') };
     DATA.anexos=DATA.anexos||[]; DATA.anexos.push(a);
     JB.api('POST', ssUrl('/values/Anexos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[anexoRowVals(a)] }).catch(function(){ toast('Anexado, mas erro ao salvar o link'); });
@@ -727,7 +847,26 @@ function openLinkPicker(evtId){ linkEvtId=evtId; var have={}; evtAnexos(evtId).f
   $('linkOverlay').classList.add('open'); }
 function closeLink(){ $('linkOverlay').classList.remove('open'); }
 function linkExisting(srcId){ var src=(DATA.anexos||[]).find(function(a){return a.id===srcId;}); if(!src||!linkEvtId) return; var a={ id:uuid(), materiaId:src.materiaId, eventoId:linkEvtId, nome:src.nome, url:src.url, fileId:src.fileId }; JB.persist({ run: function(){ return JB.api('POST', ssUrl('/values/Anexos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[anexoRowVals(a)] }); }, onSuccess: function(){ DATA.anexos.push(a); closeLink(); renderEvtAnexos(linkEvtId); renderCal(); toast('✓ Vinculado'); }, onError: studyWriteErr }); }
-function removeAnexo(id,kind,ctxId){ JB.confirm('Remover anexo?','O arquivo continua no seu Google Drive.', function(){ JB.persist({ run: function(){ return findRow('Anexos',5,id).then(function(row){ if(row<0) return; return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Anexos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] }); }); }, onSuccess: function(){ DATA.anexos=(DATA.anexos||[]).filter(function(a){return a.id!==id;}); if(kind==='mat') renderMatAnexos(ctxId); else renderEvtAnexos(ctxId); renderMaterias(); renderCal(); }, onError: studyWriteErr }); }, { yes:'Remover', no:'Cancelar', danger:true }); }
+function removeAnexo(id,kind,ctxId){
+  var a=(DATA.anexos||[]).find(function(x){ return x.id===id; });
+  JB.confirm('Remover anexo?','O arquivo também será excluído do Google Drive.', function(){
+    JB.persist({
+      run: function(){
+        return findRow('Anexos',5,id).then(function(row){
+          if(row<0) return;
+          return JB.api('POST', ssUrl(':batchUpdate'), { requests:[{ deleteDimension:{ range:{ sheetId:studyGrid['Anexos'], dimension:'ROWS', startIndex:row-1, endIndex:row } } }] });
+        });
+      },
+      onSuccess: function(){
+        if(a&&a.fileId) studyTrashDriveFile(a.fileId);
+        DATA.anexos=(DATA.anexos||[]).filter(function(x){return x.id!==id;});
+        if(kind==='mat') renderMatAnexos(ctxId); else renderEvtAnexos(ctxId);
+        renderMaterias(); renderCal();
+      },
+      onError: studyWriteErr
+    });
+  }, { yes:'Remover', no:'Cancelar', danger:true });
+}
 function fmtT(x){ var m=Math.floor(x/60),s=x%60; return m+':'+(s<10?'0':'')+s; }
 function focoTipo(f){ return (f&&f.tipo)==='pausa'?'pausa':'foco'; }
 function studyMin(matId){ return (DATA.focos||[]).filter(function(f){return f.materiaId===matId && focoTipo(f)==='foco';}).reduce(function(a,f){return a+(f.min||0);},0); }

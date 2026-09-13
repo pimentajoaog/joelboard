@@ -323,13 +323,11 @@ body.recipes-shelf .foot{ display:none; }
 }
 
 /* ---- recipe search, only inside an open book ---- */
-.book-tools{
-  display:flex; align-items:center; gap:8px; flex-wrap:nowrap;
-  margin:0 0 14px;
+.book-tools{ display:block; margin:0 0 10px; }
+.book-tools .jb-search{
+  width:min(340px, 100%); margin:0 0 0 auto;
 }
-.book-tools .jb-search{ flex:1 1 auto; min-width:0; margin-bottom:0; }
 .book-tools .jb-search.focus{ margin-bottom:0; }
-.book-tools .btn{ flex:0 0 auto; padding:9px 14px; font-size:12px; white-space:nowrap; }
 
 .view-toggle{ display:flex; gap:6px; }
 .vbtn{
@@ -348,83 +346,168 @@ body.recipes-shelf .foot{ display:none; }
 }
 
 /* ===== Open book spread (Páginas) ===== */
-body.recipes-book{ padding-bottom:34px; }
-body.recipes-book #app{ max-width:1280px; }
+body.recipes-book{ padding-bottom:26px; }
+body.recipes-book #app{ max-width:1400px; }
 body.recipes-book .foot{ display:none; }
+body.recipes-book .secbar{ margin-bottom:8px; }
+body.recipes-book .book-title-row{ margin-bottom:8px !important; }
 
 .spread-wrap{
-  position:relative; display:flex; align-items:stretch; justify-content:center;
-  gap:6px; margin:4px 0 10px; perspective:2200px; perspective-origin:50% 42%;
+  position:relative; display:flex; align-items:center; justify-content:center;
+  gap:10px; margin:2px 0 8px; perspective:2600px; perspective-origin:50% 44%;
   touch-action:pan-y; outline:none;
 }
+
+/* capa dura: as folhas ficam encaixadas dentro dela */
+.book-body{
+  position:relative; flex:0 1 auto; min-width:0;
+  width:min(100%, 1220px);
+  display:flex; padding:13px 13px 15px;
+  border-radius:14px 20px 20px 14px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--kc, var(--primary)) 74%, #000 26%) 0%,
+      color-mix(in srgb, var(--kc, var(--primary)) 58%, #000 42%) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.20),
+    inset 0 0 0 1px rgba(0,0,0,.30),
+    0 2px 0 color-mix(in srgb, var(--kc, var(--primary)) 40%, #000 60%),
+    0 34px 60px -18px rgba(0,0,0,.62),
+    0 10px 22px rgba(0,0,0,.28);
+  transform-style:preserve-3d;
+}
+/* miolo: pilha de folhas aparecendo por dentro da capa */
+.book-body::before,
+.book-body::after{
+  content:''; position:absolute; top:18px; bottom:20px; width:14px; z-index:0;
+  background:repeating-linear-gradient(90deg,
+    color-mix(in srgb, var(--surface) 84%, #fff 16%) 0 2px,
+    color-mix(in srgb, var(--surface2) 74%, #000 26%) 2px 3px);
+}
+.book-body::before{ left:13px; border-radius:4px 0 0 4px; }
+.book-body::after{ right:13px; border-radius:0 4px 4px 0; }
+/* marcador de fita */
+.book-ribbon{
+  position:absolute; top:-4px; right:56px; width:16px; height:56px; z-index:3;
+  background:linear-gradient(180deg,
+    color-mix(in srgb, var(--kc, var(--primary)) 88%, #fff 12%),
+    color-mix(in srgb, var(--kc, var(--primary)) 62%, #000 38%));
+  border-radius:3px 3px 0 0;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);
+  clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
+  pointer-events:none;
+}
+
 .spread{
   position:relative; display:flex; align-items:stretch; justify-content:center;
-  width:min(100%, 1080px); height:min(72vh, 660px); min-height:420px;
+  width:auto; flex:1; margin:0 7px; height:min(78vh, 760px); min-height:440px;
   transform-style:preserve-3d;
-  filter:drop-shadow(0 26px 48px rgba(0,0,0,.34));
 }
-.spread.is-intro{ animation:spreadOpen .42s cubic-bezier(.2,.8,.2,1) both; }
+.spread.is-intro{ animation:spreadOpen .46s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes spreadOpen{
-  from{ opacity:0; transform:rotateX(9deg) scale(.93); }
+  from{ opacity:0; transform:rotateX(11deg) scale(.94); }
   to{ opacity:1; transform:none; }
 }
+/* vinco central: sombra das duas folhas caindo para dentro + costura */
 .spread-gutter{
-  position:absolute; top:2%; bottom:2%; left:50%; width:26px; transform:translateX(-50%);
-  pointer-events:none; border-radius:4px;
+  position:absolute; top:0; bottom:0; left:50%; width:34px; transform:translateX(-50%);
+  pointer-events:none; z-index:2;
   background:linear-gradient(90deg,
     rgba(0,0,0,0) 0%,
-    rgba(0,0,0,.20) 34%,
-    rgba(0,0,0,.30) 50%,
-    rgba(0,0,0,.20) 66%,
+    rgba(0,0,0,.16) 26%,
+    rgba(0,0,0,.34) 48%,
+    rgba(0,0,0,.34) 52%,
+    rgba(0,0,0,.16) 74%,
     rgba(0,0,0,0) 100%);
+}
+.spread-gutter::after{
+  content:''; position:absolute; top:16px; bottom:16px; left:50%; width:1px; transform:translateX(-50%);
+  background:repeating-linear-gradient(180deg,
+    rgba(255,255,255,.16) 0 7px,
+    rgba(255,255,255,0) 7px 15px);
 }
 .leaf{
   position:relative; flex:1 1 0; min-width:0; display:flex; flex-direction:column;
   background:var(--surface);
-  border:1px solid var(--border);
-  padding:26px 24px 34px;
+  padding:28px 26px 36px;
+  border:0;
 }
 .leaf.is-left{
-  border-radius:20px 6px 6px 20px; border-right-width:0;
+  border-radius:8px 2px 2px 8px;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--kc, var(--primary)) 26%, var(--surface2)) 0 9px, var(--surface) 9px);
+    linear-gradient(270deg, color-mix(in srgb, #000 10%, var(--surface)) 0 2%, var(--surface) 16%);
+  box-shadow:inset -22px 0 30px -24px rgba(0,0,0,.85), inset 0 0 0 1px rgba(255,255,255,.03);
   transform-origin:right center;
 }
 .leaf.is-right{
-  border-radius:6px 20px 20px 6px; border-left-width:0;
+  border-radius:2px 8px 8px 2px;
   background:
-    linear-gradient(270deg, color-mix(in srgb, var(--kc, var(--primary)) 26%, var(--surface2)) 0 9px, var(--surface) 9px);
+    linear-gradient(90deg, color-mix(in srgb, #000 10%, var(--surface)) 0 2%, var(--surface) 16%);
+  box-shadow:inset 22px 0 30px -24px rgba(0,0,0,.85), inset 0 0 0 1px rgba(255,255,255,.03);
   transform-origin:left center;
 }
 .leaf.is-solo{
-  border-radius:20px; max-width:640px;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--kc, var(--primary)) 26%, var(--surface2)) 0 9px, var(--surface) 9px);
+  border-radius:8px;
+  background:var(--surface);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
 }
-.leaf.is-blank{ background:var(--surface2); opacity:.5; }
-.leaf-end{
-  margin:auto; color:var(--muted); font-family:var(--font-display); font-size:15px;
-  letter-spacing:2px; text-transform:uppercase; opacity:.6;
-}
+.leaf.is-blank{ background:color-mix(in srgb, var(--surface) 88%, #000 12%); }
 .leaf-body{
   flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
-  padding-right:4px; scrollbar-width:thin;
+  padding-right:6px; scrollbar-width:thin;
 }
 .leaf-body::-webkit-scrollbar{ width:6px; }
 .leaf-body::-webkit-scrollbar-thumb{ background:var(--border); border-radius:999px; }
 
-/* a página vira: só as folhas giram, o texto não é escalado */
-.spread.turn-fwd .leaf.is-right,
-.spread.turn-fwd .leaf.is-solo{ animation:leafFwd .4s cubic-bezier(.2,.8,.2,1) both; }
-.spread.turn-back .leaf.is-left,
-.spread.turn-back .leaf.is-solo{ animation:leafBack .4s cubic-bezier(.2,.8,.2,1) both; }
-@keyframes leafFwd{
-  from{ transform:rotateY(-24deg); opacity:.25; }
-  to{ transform:none; opacity:1; }
+/* última folha */
+.leaf-end-wrap{ height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+.leaf-end{
+  color:var(--muted); font-family:var(--font-display); font-size:17px;
+  letter-spacing:3px; text-transform:uppercase; opacity:.5;
 }
-@keyframes leafBack{
-  from{ transform:rotateY(24deg); opacity:.25; }
-  to{ transform:none; opacity:1; }
+.leaf-end-rule{
+  width:58px; height:1px; background:var(--border);
+}
+.leaf-add{
+  background:var(--surface2); border:1px dashed var(--border); color:var(--text);
+  border-radius:999px; padding:11px 20px; font-size:13px; font-weight:800;
+  cursor:pointer; font-family:inherit;
+  transition:border-color .15s ease, color .15s ease, transform .12s ease;
+}
+.leaf-add:hover{ border-color:var(--primary); color:var(--primary); border-style:solid; }
+.leaf-add:active{ transform:scale(.97); }
+.leaf-end-hint{ text-align:center; max-width:210px; }
+
+/* página virando de verdade: papel gira sobre o vinco com frente e verso */
+.page-turn{
+  position:absolute; top:0; bottom:0; width:50%; z-index:6;
+  pointer-events:none; transform-style:preserve-3d;
+}
+.page-turn.is-fwd{ right:0; transform-origin:left center; animation:ptFwd .62s cubic-bezier(.46,.03,.34,1) both; }
+.page-turn.is-back{ left:0; transform-origin:right center; animation:ptBack .62s cubic-bezier(.46,.03,.34,1) both; }
+.page-turn.is-solo{ width:100%; }
+@keyframes ptFwd{
+  from{ transform:rotateY(0deg); }
+  to{ transform:rotateY(-176deg); }
+}
+@keyframes ptBack{
+  from{ transform:rotateY(0deg); }
+  to{ transform:rotateY(176deg); }
+}
+.pt-face{
+  position:absolute; inset:0; backface-visibility:hidden; border-radius:2px 8px 8px 2px;
+  background:linear-gradient(90deg,
+    color-mix(in srgb, #000 12%, var(--surface)) 0 3%,
+    var(--surface) 22%,
+    color-mix(in srgb, var(--surface) 92%, #fff 8%) 100%);
+  box-shadow:0 14px 30px rgba(0,0,0,.45);
+}
+.pt-back{
+  transform:rotateY(180deg); border-radius:8px 2px 2px 8px;
+  background:linear-gradient(270deg,
+    color-mix(in srgb, #000 12%, var(--surface)) 0 3%,
+    var(--surface) 22%,
+    color-mix(in srgb, var(--surface) 94%, #fff 6%) 100%);
 }
 
 .leaf-hero{
@@ -563,18 +646,25 @@ button.step-num{ cursor:pointer; }
 .search-hit b{ display:block; font-size:14px; }
 .search-hit span{ font-size:11px; color:var(--muted); font-weight:700; }
 
+.rc-online-row{
+  padding-bottom:14px; border-bottom:1px solid var(--border);
+}
+.rc-online-row .btn{ width:100%; }
+
 .modal-wide{ max-width:520px; }
 
 /* Uma página por vez: o spread vira folha única */
 @media (max-width:720px){
-  .spread-wrap{ gap:4px; }
-  .spread{ width:100%; height:min(74vh, 620px); min-height:380px; }
+  .spread-wrap{ gap:6px; }
+  .book-body{ padding:10px 10px 12px; border-radius:12px 14px 14px 12px; }
+  .book-body::before{ left:10px; } .book-body::after{ right:10px; }
+  .book-ribbon{ right:34px; width:13px; height:46px; }
+  .spread{ margin:0 5px; height:min(76vh, 660px); min-height:400px; }
   .spread-gutter{ display:none; }
   .leaf{ padding:22px 18px 30px; }
   .leaf.is-left, .leaf.is-right, .leaf.is-solo{
-    border-radius:18px; border-width:1px; max-width:none;
-    background:
-      linear-gradient(90deg, color-mix(in srgb, var(--kc, var(--primary)) 26%, var(--surface2)) 0 8px, var(--surface) 8px);
+    border-radius:6px; background:var(--surface);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
   }
   .spread-arrow{ width:34px; height:76px; font-size:20px; }
   .leaf-title{ font-size:19px; }
@@ -583,13 +673,13 @@ button.step-num{ cursor:pointer; }
 
 @media (max-width:420px){
   body.recipes-book{ padding-left:10px; padding-right:10px; }
-  .spread-arrow{ width:28px; height:64px; font-size:18px; }
+  .spread-arrow{ width:27px; height:64px; font-size:18px; }
   .leaf{ padding:20px 14px 28px; }
+  .book-ribbon{ display:none; }
 }
 
 @media (prefers-reduced-motion: reduce){
   .book-slot, .recipec, .detail, .spread.is-intro{ animation:none; }
-  .spread.turn-fwd .leaf.is-right, .spread.turn-fwd .leaf.is-solo,
-  .spread.turn-back .leaf.is-left, .spread.turn-back .leaf.is-solo{ animation:none; }
-  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow{ transition:none; }
+  .page-turn{ display:none; }
+  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add{ transition:none; }
 }

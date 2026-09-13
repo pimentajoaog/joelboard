@@ -771,11 +771,11 @@ function renderBook() {
     + '<button type="button" class="btn ghost" onclick="openBookModal(\'' + escAttr(book.id) + '\')">Editar</button>'
     + toggle
     + '</div></div>'
-    + '<div style="margin-bottom:14px"><span style="font-size:28px;margin-right:8px">' + esc(book.icon) + '</span>'
+    + '<div class="book-title-row" style="margin-bottom:14px"><span style="font-size:28px;margin-right:8px">' + esc(book.icon) + '</span>'
     + '<span style="font-family:var(--font-display);font-weight:800;font-size:22px">' + esc(book.name) + '</span></div>';
   if (!total) {
-    return head + '<div class="empty">Este livro está vazio. Toque em + para adicionar uma receita, ou busque online.</div>'
-      + '<button class="btn ghost" onclick="openSearch(\'' + escAttr(book.id) + '\')">🔎 Buscar e salvar aqui</button>';
+    return head + '<div class="empty">Este livro está vazio. Comece pela primeira receita — do zero ou buscando online.</div>'
+      + '<button class="btn" style="display:block;margin:0 auto" onclick="openRecipeModal(null)">+ Nova receita</button>';
   }
   var tools = '<div class="book-tools">'
     + '<div class="jb-search">'
@@ -785,7 +785,6 @@ function renderBook() {
     + '<button type="button" class="jb-search-clear" id="bookSearchClear" onclick="clearBookSearch()" aria-label="Limpar busca"'
     + ' style="display:' + (bookQuery ? 'flex' : 'none') + '">✕</button>'
     + '</div>'
-    + '<button type="button" class="btn ghost" onclick="openSearch(\'' + escAttr(book.id) + '\')">🔎 Online</button>'
     + '</div>';
   if (!list.length) {
     return head + tools + '<div class="empty">Nada com “' + esc(bookQuery) + '” neste livro.</div>';
@@ -818,34 +817,49 @@ function renderCards(list, book) {
 }
 
 /* ---- open book spread (Páginas) ---- */
+/* O livro tem uma folha final "fim" depois das receitas. */
+function spreadPageCount(list) { return list.length + 1; }
+
+function spreadLeafAt(list, i, side) {
+  if (i < 0 || i > list.length) return blankLeaf(side);
+  if (i === list.length) return endLeaf(side);
+  return recipeFullLeaf(list[i], side);
+}
+
 function renderSpread(list, book) {
   var step = spreadStep();
-  if (flipIndex >= list.length) flipIndex = list.length - 1;
+  var total = spreadPageCount(list);
+  if (flipIndex >= total) flipIndex = total - 1;
   if (flipIndex < 0) flipIndex = 0;
   flipIndex = Math.floor(flipIndex / step) * step;
   var kc = esc(book.color || '#e07a5f');
   var leaves;
-  if (spreadMode === 'recipe' && wideSpread()) {
+  if (spreadMode === 'recipe' && wideSpread() && flipIndex < list.length) {
     var r = list[flipIndex];
     leaves = recipeHeadLeaf(r, 'left') + recipeStepsLeaf(r, 'right');
   } else if (step === 2) {
-    var a = list[flipIndex];
-    var b = list[flipIndex + 1];
-    leaves = recipeFullLeaf(a, 'left') + (b ? recipeFullLeaf(b, 'right') : endLeaf('right'));
+    leaves = spreadLeafAt(list, flipIndex, 'left') + spreadLeafAt(list, flipIndex + 1, 'right');
+  } else if (wideSpread()) {
+    leaves = spreadLeafAt(list, flipIndex, 'left') + blankLeaf('right');
   } else {
-    leaves = recipeFullLeaf(list[flipIndex], 'solo');
+    leaves = spreadLeafAt(list, flipIndex, 'solo');
   }
-  var lastStart = Math.max(0, (Math.ceil(list.length / step) - 1) * step);
+  var lastStart = Math.max(0, (Math.ceil(total / step) - 1) * step);
   var atStart = flipIndex <= 0;
   var atEnd = flipIndex >= lastStart;
-  var turn = _turnDir > 0 ? ' turn-fwd' : (_turnDir < 0 ? ' turn-back' : '');
-  _turnDir = 0;
   var intro = _spreadIntro ? ' is-intro' : '';
   _spreadIntro = false;
+  _turnDir = 0;
   return '<div class="spread-wrap" id="flipWrap" style="--kc:' + kc + '">'
     + '<button type="button" class="spread-arrow is-prev" onclick="flipPrev()" aria-label="Página anterior"'
     + (atStart ? ' disabled' : '') + '>‹</button>'
-    + '<div class="spread' + intro + turn + '">' + leaves + '<span class="spread-gutter" aria-hidden="true"></span></div>'
+    + '<div class="book-body">'
+    + '<span class="book-ribbon" aria-hidden="true"></span>'
+    + '<div class="spread' + intro + '" id="spreadStage">'
+    + leaves
+    + '<span class="spread-gutter" aria-hidden="true"></span>'
+    + '</div>'
+    + '</div>'
     + '<button type="button" class="spread-arrow is-next" onclick="flipNext()" aria-label="Próxima página"'
     + (atEnd ? ' disabled' : '') + '>›</button>'
     + '</div>';
@@ -947,10 +961,22 @@ function recipeStepsLeaf(r, side) {
     + '</div>';
 }
 
+/* Última folha: mantém o "fim" e oferece criar a próxima receita. */
 function endLeaf(side) {
-  return '<div class="leaf is-' + side + ' is-blank" aria-hidden="true">'
-    + '<div class="leaf-body"><div class="leaf-end">fim</div></div>'
+  return '<div class="leaf is-' + side + ' is-end">'
+    + '<div class="leaf-body">'
+    + '<div class="leaf-end-wrap">'
+    + '<div class="leaf-end">fim</div>'
+    + '<div class="leaf-end-rule" aria-hidden="true"></div>'
+    + '<button type="button" class="leaf-add" onclick="openRecipeModal(null)">+ Nova receita</button>'
+    + '<div class="rg leaf-end-hint">Escreva do zero ou busque online.</div>'
+    + '</div>'
+    + '</div>'
     + '</div>';
+}
+
+function blankLeaf(side) {
+  return '<div class="leaf is-' + side + ' is-blank" aria-hidden="true"><div class="leaf-body"></div></div>';
 }
 
 function recipePageLabel(r) {
@@ -967,15 +993,38 @@ function flipPrev() {
   _turnDir = -1;
   render();
   bindFlipGesture();
+  playPageTurn(-1);
 }
 function flipNext() {
   var list = visibleRecipes(openBookId);
   var step = spreadStep();
-  if (flipIndex + step >= list.length) return;
+  if (flipIndex + step >= spreadPageCount(list)) return;
   flipIndex += step;
   _turnDir = 1;
   render();
   bindFlipGesture();
+  playPageTurn(1);
+}
+
+function reducedMotion() {
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { return false; }
+}
+
+/* Folha de papel que gira sobre o vinco, revelando a página nova por baixo. */
+function playPageTurn(dir) {
+  if (reducedMotion()) return;
+  var stage = $('spreadStage');
+  if (!stage) return;
+  var old = stage.querySelector('.page-turn');
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+  var el = document.createElement('div');
+  el.className = 'page-turn ' + (dir > 0 ? 'is-fwd' : 'is-back') + (wideSpread() ? '' : ' is-solo');
+  el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = '<span class="pt-face pt-front"></span><span class="pt-face pt-back"></span>';
+  stage.appendChild(el);
+  var drop = function () { if (el.parentNode) el.parentNode.removeChild(el); };
+  el.addEventListener('animationend', drop);
+  setTimeout(drop, 1000);
 }
 function bindFlipGesture() {
   var el = $('flipWrap');
@@ -1293,9 +1342,17 @@ function openRecipeModal(id) {
   paintStepLines();
   var del = $('recipeDelBtn');
   if (del) del.style.display = r ? '' : 'none';
+  var online = $('recipeOnlineRow');
+  if (online) online.style.display = r ? 'none' : '';
   $('recipeOverlay').classList.add('open');
 }
 function closeRecipeModal() { $('recipeOverlay').classList.remove('open'); }
+/* Atalho do "Nova receita": importa pronto em vez de digitar tudo. */
+function searchFromRecipeModal() {
+  var bid = openBookId || '';
+  closeRecipeModal();
+  openSearch(bid);
+}
 
 function paintIngLines() {
   var el = $('recipeIngList');

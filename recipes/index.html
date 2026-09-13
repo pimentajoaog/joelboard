@@ -51,6 +51,10 @@
 <div class="overlay" id="recipeOverlay" onclick="if(event.target===this)closeRecipeModal()">
   <div class="modal modal-wide">
     <div class="mh"><div class="mt" id="recipeModalTitle">Nova receita</div><button class="x" onclick="closeRecipeModal()">✕</button></div>
+    <div class="fg rc-online-row" id="recipeOnlineRow">
+      <button type="button" class="btn ghost" onclick="searchFromRecipeModal()">🔎 Buscar receita online</button>
+      <div class="rg">Traz ingredientes e passos prontos. Ou preencha à mão abaixo.</div>
+    </div>
     <div class="fg"><label class="fl">Ícone</label><div id="recipeIconWrap"></div></div>
     <div class="fg"><label class="fl">Título</label><input class="field" id="recipeTitle" placeholder="ex.: Brownie de caneca"></div>
     <div class="fg row2">

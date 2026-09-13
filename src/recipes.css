@@ -340,13 +340,12 @@ body.recipes-shelf .foot{ display:none; }
 .book-stack.is-cards, .book-stack.is-empty{
   width:100%; max-width:1220px; margin:0 auto;
 }
-/* A placa fica por trás da capa; ao abrir o menu sobe pra não ser cortada. */
+/* A placa fica atrás da capa. Só o painel aberto sobe de z-index. */
 .book-crest{
   display:flex; align-items:flex-end; align-self:flex-start;
   padding:0 18px; margin:0 0 -20px; z-index:1; position:relative;
   overflow:visible;
 }
-.book-stack.is-open-menu .book-crest{ z-index:8; }
 .book-plaque{
   display:inline-flex; align-items:center; gap:8px;
   max-width:min(340px, 72vw);
@@ -385,19 +384,23 @@ body.recipes-shelf .foot{ display:none; }
   background:rgba(0,0,0,.4);
   box-shadow:0 0 0 2px rgba(255,255,255,.16);
 }
-/* Sempre abre pra baixo, dentro do livro — abrir pra cima/lado cortava no topo. */
+/* Painel sobe da placa. O livro desce (--book-menu-shift) pra caber sem clipar. */
 .book-menu-panel{
-  position:absolute; left:0; top:calc(100% + 14px);
+  position:absolute; left:18px; bottom:100%; margin-bottom:8px;
   min-width:min(260px, 78vw); padding:12px;
   display:flex; flex-direction:column; gap:10px;
   background:var(--surface); border:1px solid var(--border); border-radius:16px;
   box-shadow:0 16px 40px rgba(0,0,0,.42);
-  opacity:0; transform:translateY(-4px) scale(.96); transform-origin:top left;
+  opacity:0; transform:translateY(6px) scale(.96); transform-origin:bottom left;
   pointer-events:none; transition:opacity .16s ease, transform .16s ease;
   z-index:12;
 }
-.book-menu.is-open .book-menu-panel{
+.book-stack.is-open-menu .book-menu-panel{
   opacity:1; transform:none; pointer-events:auto;
+}
+.spread-wrap, .book-stack.is-cards, .book-stack.is-empty{
+  margin-top:var(--book-menu-shift, 0px);
+  transition:margin-top .2s ease;
 }
 .book-menu-panel .view-toggle{ width:100%; }
 .book-menu-panel .vbtn{ flex:1; text-align:center; }
@@ -967,7 +970,7 @@ button.step-num{ cursor:pointer; }
 @media (prefers-reduced-motion: reduce){
   .book-slot, .recipec, .detail, .book-body.is-intro{ animation:none; }
   .page-turn{ display:none; }
-  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-menu-panel, .book-menu-btn{ transition:none; }
+  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-menu-panel, .book-menu-btn, .spread-wrap, .book-stack.is-cards, .book-stack.is-empty{ transition:none; }
   .ck-t{ transition:none; }
   .ing-list li.just-on::after, .step-list li.just-on::after{ display:none; }
   li.just-on .ichk, li.just-on .step-num{ animation:none; }

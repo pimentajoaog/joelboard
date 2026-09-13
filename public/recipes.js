@@ -657,6 +657,7 @@ function render() {
   if (view === 'book' && bookViewMode === 'flip') {
     setTimeout(bindFlipGesture, 0);
   }
+  if (view === 'book') layoutBookMenu();
 }
 
 function bookShelfFit(count) {
@@ -966,27 +967,41 @@ function refocusBookSearch() {
 }
 
 var _bookMenuOpen = false;
-function syncBookMenuOpen() {
-  var stack = document.querySelector('.book-stack');
-  if (stack) stack.classList.toggle('is-open-menu', _bookMenuOpen);
-  var menu = document.querySelector('.book-menu');
-  if (!menu) return;
-  menu.classList.toggle('is-open', _bookMenuOpen);
-  var btn = menu.querySelector('.book-menu-btn');
-  if (btn) btn.setAttribute('aria-expanded', _bookMenuOpen ? 'true' : 'false');
+function bookMenuShiftEl() {
+  return document.querySelector('#main .spread-wrap') || document.querySelector('#main .book-stack');
 }
+function layoutBookMenu() {
+  var stack = document.querySelector('.book-stack');
+  var menu = document.querySelector('.book-menu');
+  var btn = menu && menu.querySelector('.book-menu-btn');
+  var panel = document.querySelector('.book-menu-panel');
+  var shiftEl = bookMenuShiftEl();
+  if (stack) stack.classList.toggle('is-open-menu', _bookMenuOpen);
+  if (menu) menu.classList.toggle('is-open', _bookMenuOpen);
+  if (btn) btn.setAttribute('aria-expanded', _bookMenuOpen ? 'true' : 'false');
+  if (!shiftEl) return;
+  if (!_bookMenuOpen || !panel) {
+    shiftEl.style.setProperty('--book-menu-shift', '0px');
+    return;
+  }
+  /* O painel cresce pra cima da placa; o livro desce o tanto que o painel precisa. */
+  var gap = 8;
+  var h = panel.offsetHeight || 0;
+  shiftEl.style.setProperty('--book-menu-shift', Math.max(0, h + gap) + 'px');
+}
+function syncBookMenuOpen() { layoutBookMenu(); }
 function toggleBookMenu(e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
   _bookMenuOpen = !_bookMenuOpen;
-  syncBookMenuOpen();
+  layoutBookMenu();
 }
 function closeBookMenu() {
   if (!_bookMenuOpen) return;
   _bookMenuOpen = false;
-  syncBookMenuOpen();
+  layoutBookMenu();
 }
 
-/* Placa encaixada na capa + ⋯ dentro dela. */
+/* Placa encaixada na capa; o painel é irmão dela pra poder ficar acima do livro. */
 function bookCrest(book) {
   var kc = esc(book.color || '#e07a5f');
   var open = _bookMenuOpen ? ' is-open' : '';
@@ -998,7 +1013,10 @@ function bookCrest(book) {
     + '<button type="button" class="book-menu-btn" onclick="toggleBookMenu(event)"'
     + ' aria-expanded="' + (_bookMenuOpen ? 'true' : 'false') + '"'
     + ' aria-label="Ferramentas do livro" title="Ferramentas">⋯</button>'
-    + '<div class="book-menu-panel" role="menu">'
+    + '</div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="book-menu-panel" role="menu" onclick="event.stopPropagation()">'
     + '<div class="view-toggle">'
     + '<button type="button" class="vbtn' + (bookViewMode === 'flip' ? ' on' : '') + '" onclick="setBookView(\'flip\')">Páginas</button>'
     + '<button type="button" class="vbtn' + (bookViewMode === 'cards' ? ' on' : '') + '" onclick="setBookView(\'cards\')">Cards</button>'
@@ -1010,9 +1028,6 @@ function bookCrest(book) {
     + ' onfocus="JB.searchFocus(this)" onblur="JB.searchBlur(this)">'
     + '<button type="button" class="jb-search-clear" id="bookSearchClear" onclick="clearBookSearch()" aria-label="Limpar busca"'
     + ' style="display:' + (bookQuery ? 'flex' : 'none') + '">✕</button>'
-    + '</div>'
-    + '</div>'
-    + '</div>'
     + '</div>'
     + '</div>';
 }
@@ -1403,9 +1418,14 @@ function bindSpreadResize() {
   var wasWide = wideSpread();
   window.addEventListener('resize', function () {
     var now = wideSpread();
-    if (now === wasWide) return;
-    wasWide = now;
-    if (view === 'book' && bookViewMode === 'flip') render();
+    if (now !== wasWide) {
+      wasWide = now;
+      if (view === 'book' && bookViewMode === 'flip') {
+        render();
+        return;
+      }
+    }
+    if (view === 'book' && _bookMenuOpen) layoutBookMenu();
   });
 }
 
@@ -2351,7 +2371,7 @@ function guessIcon(cat) {
 /* ---- lifecycle ---- */
 document.addEventListener('click', function (e) {
   clearBookPeek();
-  if (!e.target.closest || !e.target.closest('.book-menu')) closeBookMenu();
+  if (!e.target.closest || !e.target.closest('.book-menu, .book-menu-panel')) closeBookMenu();
 });
 JB.onSessionExpired(function () {
   authDone = false;

@@ -6,7 +6,7 @@
   var MOFULL = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   var APP_ORDER = ['finance', 'fit', 'study', 'notas', 'planner'];
   var APP_META = {
-    finance: { label: 'Finance', color: 'var(--income, #34d399)', kind: 'conta', ink: '#34d399', bg: '#2a2f52' },
+    finance: { label: 'Finance', color: 'var(--finance, #2dd4bf)', kind: 'conta', ink: '#2dd4bf', bg: '#0f2a28' },
     fit: { label: 'Fit', color: 'var(--fit, #fb7185)', kind: 'treino', ink: '#fb7185', bg: '#3a2530' },
     study: { label: 'Study', color: 'var(--study, #a78bfa)', kind: 'prova', ink: '#a78bfa', bg: '#241f3a' },
     notas: { label: 'Notes', color: 'var(--notas, #f59e0b)', kind: 'prazo', ink: '#f59e0b', bg: '#33280f' },

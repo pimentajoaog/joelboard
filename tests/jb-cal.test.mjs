@@ -121,7 +121,7 @@ test('appsInDay lists every app that has an event that day', function () {
 
 test('compact row puts the calendar day in meta and the relative time in the flag', function () {
   var html = cal.eventRowHtml(
-    { date: '2026-10-10', title: 'Luz', app: 'finance', color: '#34d399' },
+    { date: '2026-10-10', title: 'Luz', app: 'finance', color: '#2dd4bf' },
     { compact: true, showDate: true }
   );
   assert.equal((html.match(/10 out/g) || []).length, 1);
@@ -287,7 +287,7 @@ test('groupByDay skips empty dates and keeps day order', function () {
   ], '2026-09-09');
   assert.equal(ag.map(function (g) { return g.date; }).join(','), '2026-09-09,2026-09-10,2026-09-07');
   var html = cal.dayBlocksHtml([
-    { date: '2026-09-09', title: 'Luz', app: 'finance', color: '#34d399' }
+    { date: '2026-09-09', title: 'Luz', app: 'finance', color: '#2dd4bf' }
   ], 'hint', { today: '2026-09-09' });
   assert.match(html, /jb-cal-dayblock/);
   assert.match(html, /Luz/);
@@ -305,7 +305,7 @@ test('agendaFirst paints Mini-like app blocks with the same per-app cap', functi
   };
   var finance = [];
   for (var i = 1; i <= 7; i++) {
-    finance.push({ app: 'finance', id: 'f' + i, date: '2026-09-0' + Math.min(9, i), title: 'Bill ' + i, color: '#34d399' });
+    finance.push({ app: 'finance', id: 'f' + i, date: '2026-09-0' + Math.min(9, i), title: 'Bill ' + i, color: '#2dd4bf' });
   }
   finance.push({ app: 'planner', id: 'p1', date: '2026-09-12', title: 'Chegada', color: '#2dd4bf' });
   var api = cal.mount(el, {
@@ -337,7 +337,7 @@ test('compact mount keeps app icons and the filter cluster', function () {
     querySelector: function () { return null; }
   };
   cal.mount(el, {
-    events: [{ app: 'finance', id: 'f1', date: '2026-09-09', title: 'Luz', color: '#34d399' }],
+    events: [{ app: 'finance', id: 'f1', date: '2026-09-09', title: 'Luz', color: '#2dd4bf' }],
     view: 'month', date: '2026-09-09', compact: true, views: ['day', 'week', 'month']
   });
   assert.match(store.html, /jb-cal compact/);

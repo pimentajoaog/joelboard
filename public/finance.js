@@ -1562,7 +1562,7 @@ function renderGoals() {
 }
 function mountGoalColor(hex) {
   const el = document.getElementById('goalColor'); if (!el) return;
-  const v = /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : '#818cf8';
+  const v = /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : '#2dd4bf';
   if (JB.mountColorControl) {
     JB.mountColorControl(el, { value: v, title: 'Cor da meta' });
     return;
@@ -1571,18 +1571,18 @@ function mountGoalColor(hex) {
 }
 function goalColorValue() {
   const el = document.getElementById('goalColor');
-  if (!el) return '#818cf8';
+  if (!el) return '#2dd4bf';
   if (JB.colorControlValue) {
     const h = JB.colorControlValue(el);
     if (h) return h;
   }
-  return el.getAttribute('data-hex') || '#818cf8';
+  return el.getAttribute('data-hex') || '#2dd4bf';
 }
 function openGoal() {
   closeFab(); editing={type:null,id:null};
   document.getElementById('goalTitle').textContent=t('goal.add'); document.getElementById('goalDel').style.display='none'; document.getElementById('goalSave').textContent=t('goal.save');
   document.getElementById('goalName').value=''; document.getElementById('goalTarget').value=''; document.getElementById('goalCurrent').value=''; JB.dpSet('goalDeadline','');
-  mountGoalColor('#818cf8');
+  mountGoalColor('#2dd4bf');
   document.getElementById('goalOverlay').classList.add('open');
 }
 function editGoal(id) {
@@ -1590,7 +1590,7 @@ function editGoal(id) {
   editing={type:'goals',id:id};
   document.getElementById('goalTitle').textContent=t('goal.edit'); document.getElementById('goalDel').style.display='block'; document.getElementById('goalSave').textContent=t('goal.update');
   document.getElementById('goalName').value=g.name; document.getElementById('goalTarget').value=g.target; document.getElementById('goalCurrent').value=g.current; JB.dpSet('goalDeadline', g.deadline||'');
-  mountGoalColor(/^#[0-9a-fA-F]{6}$/.test(g.color)?g.color:'#818cf8');
+  mountGoalColor(/^#[0-9a-fA-F]{6}$/.test(g.color)?g.color:'#2dd4bf');
   document.getElementById('goalOverlay').classList.add('open');
 }
 function submitGoal() {

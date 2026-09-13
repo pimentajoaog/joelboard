@@ -27,7 +27,7 @@ var JB_DATACOLS = { transactions:6, budget:2, goals:5, recurring:7, allocations:
 var JB_COLS = {
   transactions: function(d,id){ return [d.date, d.description, d.category, parseFloat(d.amount), d.type, (d.pending===true||d.pending==='true'), id]; },
   budget: function(d,id){ return [d.category, parseFloat(d.budget), id]; },
-  goals: function(d,id){ return [d.name, parseFloat(d.target), parseFloat(d.current)||0, d.deadline||'', d.color||'#818cf8', id]; },
+  goals: function(d,id){ return [d.name, parseFloat(d.target), parseFloat(d.current)||0, d.deadline||'', d.color||'#2dd4bf', id]; },
   recurring: function(d,id){ var c=parseInt(d.installments,10), has=c&&c>0; return [d.name, parseFloat(d.amount), parseInt(d.dueDay,10)||1, d.frequency||'Monthly', d.category, has?c:'', d.startMonth||'', id]; },
   allocations: function(d,id){ var c=parseInt(d.installments,10), has=c&&c>0; return [d.goalId, parseFloat(d.amount), has?c:'', d.startMonth, id]; },
   bundles: function(d,id){ return [d.name, d.payee||'', JSON.stringify(d.items||[]), id]; },
@@ -267,7 +267,7 @@ function jbBody(rows){ return (rows || []).slice(1); }
 function jbBuildData(t){
   var transactions = jbBody(t.Transactions).filter(function(r){ return r[1]; }).map(function(r){ return { id:r[6], date:jbDate(r[0]), description:r[1], category:r[2], amount:jbNum(r[3]), type:r[4], pending:jbBool(r[5]) }; });
   var budget = jbBody(t.Budget).filter(function(r){ return r[0]; }).map(function(r){ return { id:r[2], category:r[0], budget:jbNum(r[1]) }; });
-  var goals = jbBody(t.Goals).filter(function(r){ return r[0]; }).map(function(r){ return { id:r[5], name:r[0], target:jbNum(r[1]), current:jbNum(r[2]), deadline:(typeof r[3]==='number'?jbDate(r[3]):(r[3]?String(r[3]):'')), color:r[4] || '#818cf8' }; });
+  var goals = jbBody(t.Goals).filter(function(r){ return r[0]; }).map(function(r){ return { id:r[5], name:r[0], target:jbNum(r[1]), current:jbNum(r[2]), deadline:(typeof r[3]==='number'?jbDate(r[3]):(r[3]?String(r[3]):'')), color:r[4] || '#2dd4bf' }; });
   var recurring = jbBody(t.Recurring).filter(function(r){ return r[0]; }).map(function(r){ return { id:r[7], name:r[0], amount:jbNum(r[1]), dueDay:jbNum(r[2])||1, frequency:r[3]||'Monthly', category:r[4], installments:jbNum(r[5])||0, startMonth:jbMonth(r[6]) }; });
   var allocations = jbBody(t.Allocations).filter(function(r){ return r[0]; }).map(function(r){ return { id:r[4], goalId:r[0], amount:jbNum(r[1]), installments:jbNum(r[2])||0, startMonth:jbMonth(r[3]) }; });
   var bundles = jbBody(t.Bundles).filter(function(r){ return r[0]; }).map(function(r){ var items=[]; try{ items=JSON.parse(r[2]||'[]'); }catch(e){ items=[]; } return { id:r[3], name:r[0], payee:r[1]||'', items:items }; });

@@ -63,10 +63,15 @@ function createSheet(){
   var title='💪 Joelboard Fit — '+(JB.email()?JB.email().split('@')[0]:'Pessoal');
   JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets',{ properties:{title:title}, sheets:FIT_TABS.map(function(t){return {properties:{title:t[0]}};}) })
     .then(function(ss){ JB.setSheetId('fit',ss.spreadsheetId);
+      var place = (JB.placeSpreadsheetInAppFolder
+        ? JB.placeSpreadsheetInAppFolder(ss.spreadsheetId, 'fit')
+        : Promise.resolve());
       var data=FIT_TABS.map(function(t){return {range:t[0]+'!A1',values:[t[1]]};});
       data.push({range:'Exercicios!A2',values:STARTER.map(function(e){return [e[0],e[1],uuid()];})});
       data.push({range:'Config!A2',values:[['unit','kg'],['tags',JSON.stringify(DEFAULT_TAGS)]]});
-      return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+ss.spreadsheetId+'/values:batchUpdate',{valueInputOption:'RAW',data:data});
+      return place.then(function(){
+        return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+ss.spreadsheetId+'/values:batchUpdate',{valueInputOption:'RAW',data:data});
+      });
     }).then(bootSheet).catch(function(e){ loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro ao criar: '+esc(e.message)+'</div></div>'); });
 }
 

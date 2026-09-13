@@ -464,14 +464,21 @@ function plCreateCollabSpreadsheet(p, days, events, inviteEmail) {
       if (sh.properties && sh.properties.title) grid[sh.properties.title] = sh.properties.sheetId;
     });
     if (grid['Meta'] != null) collabGrids[sid] = grid;
+    var place = (JB.ensurePlannerSharedFolder
+      ? JB.ensurePlannerSharedFolder().then(function (folderId) {
+          return JB.placeFileInFolder ? JB.placeFileInFolder(sid, folderId) : null;
+        })
+      : Promise.resolve());
     var data = PL_COLLAB_TABS.map(function (t) { return { range: t[0] + '!A1', values: [t[1]] }; });
     data.push({ range: 'Meta!A2', values: [metaVals] });
     if (dayVals.length) data.push({ range: 'Dias!A2', values: dayVals });
     if (evtVals.length) data.push({ range: 'Eventos!A2', values: evtVals });
     data.push({ range: 'Membros!A2', values: members });
-    return JB.api('POST', plCollabUrl(sid, '/values:batchUpdate'), { valueInputOption: 'RAW', data: data }).then(function () {
-      return plAppendRegistry({ titulo: p.titulo, sheetId: sid, papel: 'owner', owner: em, planoId: p.id, atualizado: new Date().toISOString() }).then(function () {
-        return sid;
+    return place.then(function () {
+      return JB.api('POST', plCollabUrl(sid, '/values:batchUpdate'), { valueInputOption: 'RAW', data: data }).then(function () {
+        return plAppendRegistry({ titulo: p.titulo, sheetId: sid, papel: 'owner', owner: em, planoId: p.id, atualizado: new Date().toISOString() }).then(function () {
+          return sid;
+        });
       });
     });
   });

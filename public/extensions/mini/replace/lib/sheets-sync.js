@@ -281,10 +281,46 @@ var JB_SHEETS = (function () {
       var data = ALL_TABS.map(function (t) {
         return { range: t + '!A1', values: [hdrForTab(t)] };
       });
-      return api('POST', ssUrl('/' + id + '/values:batchUpdate'), {
-        valueInputOption: 'RAW',
-        data: data
-      }).then(function () { return setSheetId(id).then(function () { return { id: id }; }); });
+      return placeSheetInMiniFolder(id).catch(function () { return id; }).then(function () {
+        return api('POST', ssUrl('/' + id + '/values:batchUpdate'), {
+          valueInputOption: 'RAW',
+          data: data
+        }).then(function () { return setSheetId(id).then(function () { return { id: id }; }); });
+      });
+    });
+  }
+
+  function placeSheetInMiniFolder(fileId) {
+    function driveGet(q) {
+      return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&pageSize=3');
+    }
+    function driveCreate(name, parentId) {
+      var body = { name: name, mimeType: 'application/vnd.google-apps.folder' };
+      if (parentId) body.parents = [parentId];
+      return api('POST', 'https://www.googleapis.com/drive/v3/files?fields=id', body).then(function (f) { return f.id; });
+    }
+    function ensureNamed(name, parentId) {
+      var q = "mimeType='application/vnd.google-apps.folder' and trashed=false and name='" + String(name).replace(/'/g, "\\'") + "'";
+      if (parentId) q += " and '" + parentId + "' in parents";
+      else q += " and 'root' in parents";
+      return driveGet(q).then(function (res) {
+        var files = res.files || [];
+        if (files.length) return files[0].id;
+        return driveCreate(name, parentId);
+      });
+    }
+    return ensureNamed('Joelboard', '').then(function (rootId) {
+      return ensureNamed('Mini', rootId);
+    }).then(function (miniId) {
+      return api('GET', 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?fields=parents').then(function (meta) {
+        var parents = meta.parents || [];
+        if (parents.indexOf(miniId) >= 0) return fileId;
+        var url = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId)
+          + '?addParents=' + encodeURIComponent(miniId)
+          + (parents.length ? ('&removeParents=' + encodeURIComponent(parents.join(','))) : '')
+          + '&fields=id';
+        return api('PATCH', url, {}).then(function () { return fileId; });
+      });
     });
   }
 

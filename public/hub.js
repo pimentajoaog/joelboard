@@ -775,16 +775,21 @@ function miniEnsureReplaceSheet() {
       ]
     }).then(function (ss) {
       JB.setSheetId('mini-replace', ss.spreadsheetId);
-      return JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets/' + ss.spreadsheetId + '/values:batchUpdate', {
-        valueInputOption: 'RAW',
-        data: [
-          { range: 'Replace!A1', values: [['Nome', 'Trigger', 'Text', 'Enabled', 'ID']] },
-          { range: 'ReplaceVars!A1', values: [['Chave', 'Valor']] },
-          { range: 'ReplaceSettings!A1', values: [['Chave', 'Valor']] },
-          { range: 'ReplaceSites!A1', values: [['Host']] }
-        ]
-      }).then(function () {
-        return JB.sheetTabs(ss.spreadsheetId).then(function (grid) { return { id: ss.spreadsheetId, grid: grid }; });
+      var place = (JB.placeSpreadsheetInAppFolder
+        ? JB.placeSpreadsheetInAppFolder(ss.spreadsheetId, 'mini')
+        : Promise.resolve());
+      return place.then(function () {
+        return JB.api('POST', 'https://sheets.googleapis.com/v4/spreadsheets/' + ss.spreadsheetId + '/values:batchUpdate', {
+          valueInputOption: 'RAW',
+          data: [
+            { range: 'Replace!A1', values: [['Nome', 'Trigger', 'Text', 'Enabled', 'ID']] },
+            { range: 'ReplaceVars!A1', values: [['Chave', 'Valor']] },
+            { range: 'ReplaceSettings!A1', values: [['Chave', 'Valor']] },
+            { range: 'ReplaceSites!A1', values: [['Host']] }
+          ]
+        }).then(function () {
+          return JB.sheetTabs(ss.spreadsheetId).then(function (grid) { return { id: ss.spreadsheetId, grid: grid }; });
+        });
       });
     });
   });

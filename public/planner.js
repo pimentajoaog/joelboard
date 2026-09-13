@@ -253,9 +253,14 @@ function createPersonalPlannerSpreadsheet(){
   return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets',{ properties:{title:title}, sheets:PL_TABS.map(function(t){return {properties:{title:t[0]}};}) })
     .then(function(ss){
       JB.setSheetId('planner',ss.spreadsheetId);
+      var place = (JB.placeSpreadsheetInAppFolder
+        ? JB.placeSpreadsheetInAppFolder(ss.spreadsheetId, 'planner')
+        : Promise.resolve());
       var data=PL_TABS.map(function(t){return {range:t[0]+'!A1',values:[t[1]]};});
-      return JB.api('POST',plSheetUrl(ss.spreadsheetId,'/values:batchUpdate'),{valueInputOption:'RAW',data:data}).then(function(){
-        return JB.sheetTabs(ss.spreadsheetId).then(function(grid){ plannerGrid=grid; return grid; });
+      return place.then(function(){
+        return JB.api('POST',plSheetUrl(ss.spreadsheetId,'/values:batchUpdate'),{valueInputOption:'RAW',data:data}).then(function(){
+          return JB.sheetTabs(ss.spreadsheetId).then(function(grid){ plannerGrid=grid; return grid; });
+        });
       });
     });
 }

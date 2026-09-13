@@ -557,13 +557,22 @@ function ncCreateCollabSpreadsheet(n, items, inviteEmail, marcacao) {
       if (sh.properties && sh.properties.title) grid[sh.properties.title] = sh.properties.sheetId;
     });
     if (grid['Meta'] != null) collabGrids[sid] = grid;
+    var placeFolder = n.preset
+      ? (JB.ensureNotesKitSharedFolder ? JB.ensureNotesKitSharedFolder() : Promise.resolve(''))
+      : (JB.ensureNotesSharedFolder ? JB.ensureNotesSharedFolder() : Promise.resolve(''));
+    var place = placeFolder.then(function (folderId) {
+      if (!folderId || !JB.placeFileInFolder) return;
+      return JB.placeFileInFolder(sid, folderId);
+    });
     var data = NC_COLLAB_TABS.map(function (t) { return { range: t[0] + '!A1', values: [t[1]] }; });
     data.push({ range: 'Meta!A2', values: [metaVals] });
     if (itemVals.length) data.push({ range: 'Itens!A2', values: itemVals });
     data.push({ range: 'Membros!A2', values: members });
-    return JB.api('POST', ncCollabUrl(sid, '/values:batchUpdate'), { valueInputOption: 'RAW', data: data }).then(function () {
-      return ncAppendRegistry({ titulo: n.titulo, sheetId: sid, papel: 'owner', owner: em, listaId: n.id, atualizado: new Date().toISOString() }).then(function () {
-        return sid;
+    return place.then(function () {
+      return JB.api('POST', ncCollabUrl(sid, '/values:batchUpdate'), { valueInputOption: 'RAW', data: data }).then(function () {
+        return ncAppendRegistry({ titulo: n.titulo, sheetId: sid, papel: 'owner', owner: em, listaId: n.id, atualizado: new Date().toISOString() }).then(function () {
+          return sid;
+        });
       });
     });
   });

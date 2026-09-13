@@ -78,8 +78,13 @@ function createSheet(){
   var title='📚 Joelboard Study — '+(JB.email()?JB.email().split('@')[0]:'Pessoal');
   JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets',{ properties:{title:title}, sheets:STUDY_TABS.map(function(t){return {properties:{title:t[0]}};}) })
     .then(function(ss){ JB.setSheetId('study',ss.spreadsheetId);
+      var place = (JB.placeSpreadsheetInAppFolder
+        ? JB.placeSpreadsheetInAppFolder(ss.spreadsheetId, 'study')
+        : Promise.resolve());
       var data=STUDY_TABS.map(function(t){return {range:t[0]+'!A1',values:[t[1]]};});
-      return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+ss.spreadsheetId+'/values:batchUpdate',{valueInputOption:'RAW',data:data});
+      return place.then(function(){
+        return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets/'+ss.spreadsheetId+'/values:batchUpdate',{valueInputOption:'RAW',data:data});
+      });
     }).then(bootSheet).catch(function(e){ loadingHtml('<div class="gate"><div class="gs" style="color:var(--primary)">Erro ao criar: '+esc(e.message)+'</div></div>'); });
 }
 
@@ -305,9 +310,9 @@ function studyEditor(cb){
   if(typeof cb==='function') cb(ed);
   return Promise.resolve(ed);
 }
-function studyNoteImages(matId){
+function studyNoteImages(matId, modId){
   return {
-    upload:function(file){ return studyUploadNoteImage(file, matId||(evtMaterias&&evtMaterias[0])||''); },
+    upload:function(file){ return studyUploadNoteImage(file, matId||(evtMaterias&&evtMaterias[0])||'', modId||''); },
     load:studyLoadNoteImage,
     replace:studyReplaceNoteImage
   };
@@ -481,7 +486,7 @@ function mountModEd(){
   if(!host||!x) return;
   studyEditor(function(ed){
     if(!ed||!ed.mount||$('modNoteEd')!==host) return;
-    _modEd=ed.mount(host, { value:x.notas||'', placeholder:'Escreva suas anotações…', autosaveMs:20000, onSave:function(v, meta){ saveModNotes(x, v); if(meta&&meta.manual) toast('✓ Notas salvas'); }, images:studyNoteImages(x.materiaId) });
+    _modEd=ed.mount(host, { value:x.notas||'', placeholder:'Escreva suas anotações…', autosaveMs:20000, onSave:function(v, meta){ saveModNotes(x, v); if(meta&&meta.manual) toast('✓ Notas salvas'); }, images:studyNoteImages(x.materiaId, x.id) });
   });
 }
 function matCardHtml(m, doneStyle){
@@ -608,16 +613,40 @@ function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab
 function saveConfig(k,v){ DATA.config=DATA.config||{}; DATA.config[k]=v; JB.api('GET', ssUrl('/values/Config?valueRenderOption=UNFORMATTED_VALUE')).then(function(res){ var vals=res.values||[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[0])===k) return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Config!B'+(i+1))+'?valueInputOption=RAW'), {values:[[v]]}); } return JB.api('POST', ssUrl('/values/Config:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:[[k,v]]}); }).catch(studyWriteErr); }
 function studyFolders(){ try{ var v=JSON.parse((DATA.config&&DATA.config.studyFolders)||'{}'); return (v&&typeof v==='object')?v:{}; }catch(e){ return {}; } }
 function saveFolders(sf){ saveConfig('studyFolders', JSON.stringify(sf)); }
-function ensureRoot(){ var sf=studyFolders(); if(sf.root) return Promise.resolve(sf.root); return JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:'Joelboard Study — Anexos', mimeType:'application/vnd.google-apps.folder' }).then(function(f){ sf.root=f.id; saveFolders(sf); return f.id; }); }
+function ensureRoot(){
+  var sf=studyFolders();
+  if(sf.root) return Promise.resolve(sf.root);
+  var ensure = (JB.ensureStudyAnexosFolder
+    ? JB.ensureStudyAnexosFolder()
+    : JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:'Joelboard Study — Anexos', mimeType:'application/vnd.google-apps.folder' }).then(function(f){ return f.id; }));
+  return ensure.then(function(id){ sf.root=id; saveFolders(sf); return id; });
+}
 function ensureSub(matId){ return ensureRoot().then(function(root){ if(!matId) return root; var sf=studyFolders(); sf.subs=sf.subs||{}; if(sf.subs[matId]) return sf.subs[matId]; var m=mat(matId); return JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:(m?m.nome:'Matéria'), mimeType:'application/vnd.google-apps.folder', parents:[root] }).then(function(f){ sf.subs[matId]=f.id; saveFolders(sf); return f.id; }); }); }
+function ensureModSub(matId, modId){
+  return ensureSub(matId).then(function(matFolder){
+    if(!modId) return matFolder;
+    var sf=studyFolders();
+    sf.modSubs=sf.modSubs||{};
+    if(sf.modSubs[modId]) return sf.modSubs[modId];
+    var mo=(typeof modulo==='function')?modulo(modId):null;
+    if(!mo && DATA && DATA.modulos) mo=(DATA.modulos||[]).find(function(x){ return x.id===modId; });
+    var name=(mo&&mo.nome)?mo.nome:'Módulo';
+    return JB.api('POST','https://www.googleapis.com/drive/v3/files?fields=id',{ name:name, mimeType:'application/vnd.google-apps.folder', parents:[matFolder] }).then(function(f){
+      sf.modSubs[modId]=f.id;
+      saveFolders(sf);
+      return f.id;
+    });
+  });
+}
 var _imgUrlCache={};
-function studyUploadNoteImage(file, matId){
+function studyUploadNoteImage(file, matId, modId){
   if(!file) return Promise.reject(new Error('no_file'));
   if(file.size>10*1024*1024) return Promise.reject(new Error('too_big'));
   if(!(file.name||'').trim()){
     try{ file=new File([file],'print.png',{ type:file.type||'image/png' }); }catch(_){}
   }
-  return ensureSub(matId).then(function(folderId){ return uploadFile(file, folderId); }).then(function(f){
+  var folderP = modId ? ensureModSub(matId, modId) : ensureSub(matId);
+  return folderP.then(function(folderId){ return uploadFile(file, folderId); }).then(function(f){
     if(!f||!f.id) throw new Error('upload_failed');
     try{ _imgUrlCache[f.id]=URL.createObjectURL(file); }catch(_){}
     return { id:f.id, name:f.name||file.name||'imagem' };

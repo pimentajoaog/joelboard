@@ -245,7 +245,7 @@ const I18N = {
     'sheet.created':'✓ Sheet ready!', 'sheet.linkErr':'Could not open that sheet — check the link and that you have access.',
     'settled.badge':'✓ All settled this month', 'ph.search':'Search transactions…',
     'set.tabData':'Data', 'export.hint':'Save a full backup of all your data as a CSV in your Google Drive.',
-    'export.btn':'Export backup', 'export.working':'Exporting…', 'export.done':'✓ Backup saved to your Drive', 'export.open':'Open file',
+    'export.btn':'Export backup', 'export.working':'Exporting…', 'export.done':'✓ Backup saved to your Drive', 'export.doneLocal':'✓ Backup ready to download', 'export.open':'Open file',
     'tour.start':'Take a quick tour', 'tour.step': v => 'Step ' + v.n + ' of ' + v.total,
     'tour.next':'Next', 'tour.back':'Back', 'tour.done':'Got it', 'tour.skip':'Skip tour',
     'tour.welcomeT':'Welcome! 👋', 'tour.welcomeB':'A quick tour of the five sections — you can skip anytime.',
@@ -521,7 +521,7 @@ const I18N = {
     'sheet.created':'✓ Planilha pronta!', 'sheet.linkErr':'Não consegui abrir essa planilha — verifique o link e se você tem acesso.',
     'settled.badge':'✓ Tudo quitado este mês', 'ph.search':'Buscar lançamentos…',
     'set.tabData':'Dados', 'export.hint':'Salve um backup completo de todos os seus dados em CSV no seu Google Drive.',
-    'export.btn':'Exportar backup', 'export.working':'Exportando…', 'export.done':'✓ Backup salvo no seu Drive', 'export.open':'Abrir arquivo',
+    'export.btn':'Exportar backup', 'export.working':'Exportando…', 'export.done':'✓ Backup salvo no seu Drive', 'export.doneLocal':'✓ Backup pronto para baixar', 'export.open':'Abrir arquivo',
     'tour.start':'Fazer um tour rápido', 'tour.step': v => 'Passo ' + v.n + ' de ' + v.total,
     'tour.next':'Avançar', 'tour.back':'Voltar', 'tour.done':'Entendi', 'tour.skip':'Pular tour',
     'tour.welcomeT':'Bem-vindo(a)! 👋', 'tour.welcomeB':'Um tour rápido pelas cinco seções — pode pular quando quiser.',
@@ -2367,7 +2367,15 @@ function exportBackup_() {
   const btn = document.getElementById('exportBtn'), link = document.getElementById('exportLink');
   btn.disabled = true; btn.textContent = t('export.working'); link.style.display = 'none';
   jbRun('exportBackup')
-    .then(r => { btn.disabled = false; applyStaticI18n(); link.href = r.url; link.textContent = t('export.open'); link.style.display = 'inline-block'; showToast(t('export.done')); })
+    .then(r => {
+      btn.disabled = false; applyStaticI18n();
+      link.href = r.url;
+      link.textContent = t('export.open');
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.style.display = 'inline-block';
+      showToast(r.drive ? t('export.done') : t('export.doneLocal'));
+    })
     .catch(e => { btn.disabled = false; applyStaticI18n(); showToast(t('err.prefix') + e.message, 'error'); });
 }
 

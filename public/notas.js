@@ -178,9 +178,14 @@ function createPersonalNotasSpreadsheet(){
   return JB.api('POST','https://sheets.googleapis.com/v4/spreadsheets',{ properties:{title:title}, sheets:NOTAS_TABS.map(function(t){return {properties:{title:t[0]}};}) })
     .then(function(ss){
       JB.setSheetId('notas',ss.spreadsheetId);
+      var place = (JB.placeSpreadsheetInAppFolder
+        ? JB.placeSpreadsheetInAppFolder(ss.spreadsheetId, 'notes')
+        : Promise.resolve());
       var data=NOTAS_TABS.map(function(t){return {range:t[0]+'!A1',values:[t[1]]};});
-      return JB.api('POST',notasSheetUrl(ss.spreadsheetId,'/values:batchUpdate'),{valueInputOption:'RAW',data:data}).then(function(){
-        return JB.sheetTabs(ss.spreadsheetId).then(function(grid){ notasGrid=grid; return grid; });
+      return place.then(function(){
+        return JB.api('POST',notasSheetUrl(ss.spreadsheetId,'/values:batchUpdate'),{valueInputOption:'RAW',data:data}).then(function(){
+          return JB.sheetTabs(ss.spreadsheetId).then(function(grid){ notasGrid=grid; return grid; });
+        });
       });
     });
 }

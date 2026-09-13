@@ -1401,16 +1401,10 @@
     return (t ? Promise.resolve(t) : requestToken(false)).then(function (tok) { return attempt(tok, true); });
   }
   function fbEnsureFolder(){
-    var cached = lg(FB_FOLDER_KEY);
-    if (cached) return Promise.resolve(cached);
-    var q = "mimeType='application/vnd.google-apps.folder' and trashed=false and name='Joelboard Feedback — Anexos'";
-    return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&pageSize=1')
-      .then(function (res) {
-        var files = res.files || [];
-        if (files.length) { ls(FB_FOLDER_KEY, files[0].id); return files[0].id; }
-        return api('POST', 'https://www.googleapis.com/drive/v3/files?fields=id', { name: 'Joelboard Feedback — Anexos', mimeType: 'application/vnd.google-apps.folder' })
-          .then(function (f) { ls(FB_FOLDER_KEY, f.id); return f.id; });
-      });
+    return ensureAppFolder('feedback').then(function (id) {
+      ls(FB_FOLDER_KEY, id);
+      return id;
+    });
   }
   function fbShareAnyone(fileId){
     return api('POST', 'https://www.googleapis.com/drive/v3/files/' + fileId + '/permissions', { role: 'reader', type: 'anyone' });
@@ -2237,7 +2231,8 @@
       } : null,
       skins: p.skins && typeof p.skins === 'object' ? Object.assign({}, p.skins) : {},
       modes: p.modes && typeof p.modes === 'object' ? Object.assign({}, p.modes) : {},
-      tours: p.tours && typeof p.tours === 'object' ? Object.assign({}, p.tours) : {}
+      tours: p.tours && typeof p.tours === 'object' ? Object.assign({}, p.tours) : {},
+      driveLayoutVersion: Number(p.driveLayoutVersion) || 0
     };
   }
   function planPrefsMerge(localSnap, remoteRaw){
@@ -2304,7 +2299,8 @@
       profile: snap.profile,
       skins: skins,
       modes: modes,
-      tours: tours
+      tours: tours,
+      driveLayoutVersion: Number(lg(DRIVE_LAYOUT_VER_KEY) || 0) || 0
     };
   }
   function applyPrefsPatch(patch){
@@ -2362,23 +2358,261 @@
     var t = cachedToken();
     return (t ? Promise.resolve(t) : tokenForApi()).then(function (tok) { return attempt(tok, true); });
   }
+  /* ---- Drive layout: Joelboard/ → app folders ---- */
+  var DRIVE_FOLDERS_KEY = 'jb_drive_folders';
+  var DRIVE_LAYOUT_VER_KEY = 'jb_drive_layout_v';
+  var DRIVE_LAYOUT_NOTICE_KEY = 'jb_drive_layout_notice';
+  var DRIVE_LAYOUT_VERSION = 1;
+  var DRIVE_ROOT_NAME = 'Joelboard';
+  var DRIVE_APP_NAMES = {
+    finance: 'Finance', notes: 'Notes', notas: 'Notes', planner: 'Planner',
+    study: 'Study', fit: 'Fit', mini: 'Mini', feedback: 'Feedback'
+  };
+  var driveLayoutOnce = null;
+
+  function driveEscName(name) {
+    return String(name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  }
+  function driveFoldersCache() {
+    try {
+      var v = JSON.parse(lg(DRIVE_FOLDERS_KEY) || '{}');
+      return (v && typeof v === 'object') ? v : {};
+    } catch (_) { return {}; }
+  }
+  function saveDriveFoldersCache(map) {
+    ls(DRIVE_FOLDERS_KEY, JSON.stringify(map || {}));
+  }
+  function driveFolderWebLink(id) {
+    return id ? ('https://drive.google.com/drive/folders/' + id) : 'https://drive.google.com/drive/my-drive';
+  }
+  function ensureFolder(opts) {
+    opts = opts || {};
+    var name = String(opts.name || '').trim();
+    if (!name) return Promise.reject(new Error('folder_name'));
+    if (isGhost()) return Promise.reject(new Error('ghost'));
+    var parentId = opts.parentId ? String(opts.parentId) : '';
+    var cacheKey = opts.cacheKey || '';
+    var cache = driveFoldersCache();
+    if (cacheKey && cache[cacheKey]) return Promise.resolve(cache[cacheKey]);
+    var q = "mimeType='application/vnd.google-apps.folder' and trashed=false and name='" + driveEscName(name) + "'";
+    if (parentId) q += " and '" + parentId + "' in parents";
+    else q += " and 'root' in parents";
+    return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&pageSize=5')
+      .then(function (res) {
+        var files = res.files || [];
+        if (files.length) {
+          if (cacheKey) { cache[cacheKey] = files[0].id; saveDriveFoldersCache(cache); }
+          return files[0].id;
+        }
+        var body = { name: name, mimeType: 'application/vnd.google-apps.folder' };
+        if (parentId) body.parents = [parentId];
+        return api('POST', 'https://www.googleapis.com/drive/v3/files?fields=id', body).then(function (f) {
+          if (cacheKey) { cache[cacheKey] = f.id; saveDriveFoldersCache(cache); }
+          return f.id;
+        });
+      });
+  }
+  function moveFile(fileId, newParentId) {
+    if (!fileId || !newParentId) return Promise.resolve({ id: fileId, moved: false });
+    if (isGhost()) return Promise.resolve({ id: fileId, moved: false });
+    return api('GET', 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?fields=parents')
+      .then(function (meta) {
+        var parents = meta.parents || [];
+        if (parents.indexOf(newParentId) >= 0) return { id: fileId, moved: false };
+        var remove = parents.join(',');
+        var url = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId)
+          + '?addParents=' + encodeURIComponent(newParentId)
+          + (remove ? ('&removeParents=' + encodeURIComponent(remove)) : '')
+          + '&fields=id,parents';
+        return api('PATCH', url, {}).then(function () { return { id: fileId, moved: true }; });
+      });
+  }
+  function ensureJoelboardRoot() {
+    return ensureFolder({ name: DRIVE_ROOT_NAME, cacheKey: 'root' });
+  }
+  function ensureAppFolder(appKey) {
+    var key = String(appKey || '').toLowerCase();
+    if (key === 'notas') key = 'notes';
+    var folderName = DRIVE_APP_NAMES[key];
+    if (!folderName) return Promise.reject(new Error('unknown_app'));
+    return ensureJoelboardRoot().then(function (rootId) {
+      return ensureFolder({ name: folderName, parentId: rootId, cacheKey: 'app:' + key });
+    });
+  }
+  function ensureNotesSharedFolder() {
+    return ensureAppFolder('notes').then(function (notesId) {
+      return ensureFolder({ name: 'Compartilhadas', parentId: notesId, cacheKey: 'notes:shared' });
+    });
+  }
+  function ensureNotesKitSharedFolder() {
+    return ensureAppFolder('notes').then(function (notesId) {
+      return ensureFolder({ name: 'Kits', parentId: notesId, cacheKey: 'notes:kits' }).then(function (kitsId) {
+        return ensureFolder({ name: 'Compartilhados', parentId: kitsId, cacheKey: 'notes:kits:shared' });
+      });
+    });
+  }
+  function ensurePlannerSharedFolder() {
+    return ensureAppFolder('planner').then(function (plannerId) {
+      return ensureFolder({ name: 'Compartilhados', parentId: plannerId, cacheKey: 'planner:shared' });
+    });
+  }
+  function ensureStudyAnexosFolder() {
+    return ensureAppFolder('study').then(function (studyId) {
+      return ensureFolder({ name: 'Anexos', parentId: studyId, cacheKey: 'study:anexos' });
+    });
+  }
+  function placeFileInFolder(fileId, folderId) {
+    return moveFile(fileId, folderId).then(function (r) {
+      return (r && r.id) || fileId;
+    }, function () { return fileId; });
+  }
+  function placeSpreadsheetInAppFolder(spreadsheetId, appKey) {
+    return ensureAppFolder(appKey).then(function (folderId) {
+      return placeFileInFolder(spreadsheetId, folderId);
+    });
+  }
+  function uploadFileToFolder(fileOrBlob, name, folderId) {
+    var file = fileOrBlob;
+    if (file && name && typeof File !== 'undefined') {
+      try {
+        if (!(file instanceof File) || file.name !== name) {
+          file = new File([fileOrBlob], name, { type: (fileOrBlob && fileOrBlob.type) || 'text/csv' });
+        }
+      } catch (_) {}
+    }
+    return fbDriveUpload(file, folderId);
+  }
+  function showDriveOrganizedNotice(rootId) {
+    if (typeof document === 'undefined' || !document.body) return;
+    if (document.getElementById('jbDriveNotice')) return;
+    var lang = (document.documentElement.lang || '').toLowerCase().indexOf('en') === 0 ? 'en' : 'pt';
+    var msg = lang === 'en'
+      ? 'Your Joelboard files have been organized in Drive.'
+      : 'Seus arquivos Joelboard foram organizados no Drive.';
+    var btn = lang === 'en' ? 'Check it out' : 'Conferir';
+    var bar = document.createElement('div');
+    bar.id = 'jbDriveNotice';
+    bar.className = 'jb-drive-notice';
+    bar.innerHTML = '<span class="jb-drive-notice-msg"></span>'
+      + '<a class="jb-drive-notice-btn" target="_blank" rel="noopener"></a>'
+      + '<button type="button" class="jb-drive-notice-x" aria-label="OK">×</button>';
+    bar.querySelector('.jb-drive-notice-msg').textContent = msg;
+    var a = bar.querySelector('.jb-drive-notice-btn');
+    a.textContent = btn;
+    a.href = driveFolderWebLink(rootId);
+    document.body.appendChild(bar);
+    requestAnimationFrame(function () { bar.classList.add('show'); });
+    function dismiss() {
+      bar.classList.remove('show');
+      setTimeout(function () { if (bar.parentNode) bar.parentNode.removeChild(bar); }, 280);
+    }
+    bar.querySelector('.jb-drive-notice-x').onclick = dismiss;
+    a.addEventListener('click', function () { setTimeout(dismiss, 400); });
+  }
+  function organizeDriveLayout() {
+    if (isGhost() || !isSignedIn()) return Promise.resolve({ changed: false, rootId: '' });
+    var changed = 0;
+    function bump() { changed++; }
+    function tryMove(id, folderId) {
+      if (!id || !folderId) return Promise.resolve();
+      return moveFile(id, folderId).then(function (r) {
+        if (r && r.moved) bump();
+      }, function () {});
+    }
+    return ensureJoelboardRoot().then(function (rootId) {
+      var jobs = [];
+      [
+        ['finance', 'finance'],
+        ['notas', 'notes'],
+        ['planner', 'planner'],
+        ['study', 'study'],
+        ['fit', 'fit'],
+        ['mini-replace', 'mini']
+      ].forEach(function (pair) {
+        var sid = getSheetId(pair[0]);
+        if (!sid && pair[0] === 'mini-replace') sid = lg('jb_sheet_mini_replace') || '';
+        if (!sid) return;
+        jobs.push(ensureAppFolder(pair[1]).then(function (fid) { return tryMove(sid, fid); }));
+      });
+      var prefsId = lg(PREFS_FILE_KEY);
+      if (prefsId) jobs.push(tryMove(prefsId, rootId));
+      jobs.push(ensureAppFolder('feedback').then(function (feedbackId) {
+        var oldFb = lg(FB_FOLDER_KEY);
+        if (oldFb && oldFb !== feedbackId) {
+          return tryMove(oldFb, rootId).then(function () { ls(FB_FOLDER_KEY, feedbackId); });
+        }
+        ls(FB_FOLDER_KEY, feedbackId);
+        return null;
+      }));
+      jobs.push(ensureAppFolder('study').then(function (studyId) {
+        var q = "mimeType='application/vnd.google-apps.folder' and trashed=false and name='Joelboard Study — Anexos' and 'root' in parents";
+        return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&pageSize=3')
+          .then(function (res) {
+            var files = res.files || [];
+            if (!files.length) return ensureStudyAnexosFolder();
+            var legacyId = files[0].id;
+            return moveFile(legacyId, studyId).then(function (r) {
+              return api('PATCH', 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(legacyId) + '?fields=id', { name: 'Anexos' })
+                .then(function () {
+                  var cache = driveFoldersCache();
+                  cache['study:anexos'] = legacyId;
+                  cache['app:study'] = studyId;
+                  saveDriveFoldersCache(cache);
+                  if (r && r.moved) bump();
+                  return legacyId;
+                }, function () {
+                  return ensureStudyAnexosFolder();
+                });
+            }, function () { return ensureStudyAnexosFolder(); });
+          }, function () { return ensureStudyAnexosFolder(); });
+      }));
+      return Promise.all(jobs).then(function () {
+        return { changed: changed > 0, rootId: rootId };
+      });
+    });
+  }
+  function ensureDriveLayoutOnce() {
+    if (isGhost() || !isSignedIn()) return Promise.resolve(null);
+    if (lg(DRIVE_LAYOUT_VER_KEY) === String(DRIVE_LAYOUT_VERSION)) return Promise.resolve({ skipped: true });
+    if (driveLayoutOnce) return driveLayoutOnce;
+    driveLayoutOnce = organizeDriveLayout().then(function (result) {
+      ls(DRIVE_LAYOUT_VER_KEY, String(DRIVE_LAYOUT_VERSION));
+      try { schedulePrefsPush(); } catch (_) {}
+      if (result && result.changed && !lg(DRIVE_LAYOUT_NOTICE_KEY)) {
+        ls(DRIVE_LAYOUT_NOTICE_KEY, '1');
+        showDriveOrganizedNotice(result.rootId);
+      }
+      return result;
+    }).catch(function () {
+      return null;
+    }).finally(function () {
+      driveLayoutOnce = null;
+    });
+    return driveLayoutOnce;
+  }
+
   function ensurePrefsFile(){
     if (isGhost()) return Promise.reject(new Error('ghost'));
     var cached = lg(PREFS_FILE_KEY);
     if (cached) return Promise.resolve(cached);
+    function createInRoot(rootId) {
+      var boundary = 'jbprefs' + Date.now();
+      var metaObj = { name: PREFS_FILE_NAME, mimeType: 'application/json' };
+      if (rootId) metaObj.parents = [rootId];
+      var meta = JSON.stringify(metaObj);
+      var empty = JSON.stringify(normalizePrefsBlob(null));
+      var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta
+        + '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + empty
+        + '\r\n--' + boundary + '--';
+      return prefsAuthFetch('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', body, 'multipart/related; boundary=' + boundary)
+        .then(function (f) { ls(PREFS_FILE_KEY, f.id); return f.id; });
+    }
     var q = "trashed=false and name='" + PREFS_FILE_NAME.replace(/'/g, "\\'") + "'";
     return api('GET', 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)&pageSize=1&spaces=drive')
       .then(function (res) {
         var files = res.files || [];
         if (files.length) { ls(PREFS_FILE_KEY, files[0].id); return files[0].id; }
-        var boundary = 'jbprefs' + Date.now();
-        var meta = JSON.stringify({ name: PREFS_FILE_NAME, mimeType: 'application/json' });
-        var empty = JSON.stringify(normalizePrefsBlob(null));
-        var body = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta
-          + '\r\n--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + empty
-          + '\r\n--' + boundary + '--';
-        return prefsAuthFetch('POST', 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', body, 'multipart/related; boundary=' + boundary)
-          .then(function (f) { ls(PREFS_FILE_KEY, f.id); return f.id; });
+        return ensureJoelboardRoot().then(createInRoot, function () { return createInRoot(''); });
       });
   }
   function pullAccountPrefs(){
@@ -2390,6 +2624,10 @@
           var patch = planPrefsMerge(snapshotLocalPrefs(), remote);
           applyPrefsPatch(patch);
           var norm = normalizePrefsBlob(remote);
+          if (norm.driveLayoutVersion >= DRIVE_LAYOUT_VERSION) {
+            ls(DRIVE_LAYOUT_VER_KEY, String(DRIVE_LAYOUT_VERSION));
+            if (!lg(DRIVE_LAYOUT_NOTICE_KEY)) ls(DRIVE_LAYOUT_NOTICE_KEY, '1');
+          }
           var remoteEmpty = !(norm.profile && norm.profile.nome)
             && !Object.keys(norm.tours).length
             && !PREFS_APPS.some(function (a) { return norm.skins[a] && norm.skins[a] !== 'default'; })
@@ -3071,19 +3309,32 @@
     onProfileChange: onProfileChange, paintAcct: paintAcct, pickProfileIcon: pickProfileIcon, prepareProfileEditor: prepareProfileEditor, saveProfileValues: saveProfileValues, openProfile: openProfile, closeProfile: closeProfile, saveProfile: saveProfile, ensureProfile: ensureProfile,
     chooseProfile: chooseProfile, profileStartFresh: profileStartFresh, writeCollabMemberProfile: writeCollabMemberProfile,
     pullAccountPrefs: pullAccountPrefs, pushAccountPrefs: pushAccountPrefs, schedulePrefsPush: schedulePrefsPush, markTourDone: markTourDone,
+    ensureFolder: ensureFolder, moveFile: moveFile, ensureJoelboardRoot: ensureJoelboardRoot, ensureAppFolder: ensureAppFolder,
+    ensureNotesSharedFolder: ensureNotesSharedFolder, ensureNotesKitSharedFolder: ensureNotesKitSharedFolder,
+    ensurePlannerSharedFolder: ensurePlannerSharedFolder, ensureStudyAnexosFolder: ensureStudyAnexosFolder,
+    placeFileInFolder: placeFileInFolder, placeSpreadsheetInAppFolder: placeSpreadsheetInAppFolder,
+    uploadFileToFolder: uploadFileToFolder, driveFolderWebLink: driveFolderWebLink,
+    ensureDriveLayoutOnce: ensureDriveLayoutOnce, organizeDriveLayout: organizeDriveLayout,
     qsGet: qsGet, qsPatch: qsPatch, qsClearJoin: qsClearJoin, onRoute: onRoute, routeBack: routeBack,
     pickColor: pickColor, mountColorControl: mountColorControl, colorControlValue: colorControlValue,
     resolveColor: resolveColor, tintChipStyle: tintChipStyle
   };
   onAuthRestored(function () {
     if (isGhost() || !isSignedIn()) return;
-    pullAccountPrefs();
+    pullAccountPrefs().then(function () { ensureDriveLayoutOnce(); });
   });
   whenReady(function () {
     if (isGhost()) return;
-    if (isSignedIn()) { pullAccountPrefs(); return; }
+    if (isSignedIn()) {
+      pullAccountPrefs().then(function () { ensureDriveLayoutOnce(); });
+      return;
+    }
     if (hasSession() && email()) {
-      ensureToken(false).then(function () { if (isSignedIn()) pullAccountPrefs(); }).catch(function () {});
+      ensureToken(false).then(function () {
+        if (isSignedIn()) {
+          pullAccountPrefs().then(function () { ensureDriveLayoutOnce(); });
+        }
+      }).catch(function () {});
     }
   });
   bootGhost();

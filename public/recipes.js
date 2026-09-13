@@ -105,7 +105,7 @@ function toggleCheck(recipeId, ingId) {
 function stepIsDone(recipeId, stepId) { return isChecked(recipeId, stepId); }
 function toggleStepCheck(recipeId, stepId) {
   toggleCheck(recipeId, stepId);
-  render();
+  applyCheck(recipeId, stepId);
 }
 function doneCount(recipeId, rows) {
   var n = 0;
@@ -123,7 +123,73 @@ function resetRecipeChecks(recipeId) {
   if (!m[recipeId]) return;
   delete m[recipeId];
   saveChecks(m);
-  render();
+  var rows = checkRows(recipeId);
+  if (!rows.length) { render(); return; }
+  rows.forEach(function (li) { paintCheckRow(li, false); });
+  paintTally(recipeId);
+  syncResetBtns(recipeId);
+}
+
+/* Marcar item não pode re-renderizar a folha: o risco é desenhado uma vez só,
+   e um render novo repetiria a animação em tudo que já estava marcado. */
+function checkRows(recipeId, itemId) {
+  var want = recipeId + '|' + (itemId || '');
+  var all = document.querySelectorAll('li[data-chk]');
+  var out = [];
+  for (var i = 0; i < all.length; i++) {
+    var k = all[i].getAttribute('data-chk') || '';
+    if (itemId ? k === want : k.indexOf(want) === 0) out.push(all[i]);
+  }
+  return out;
+}
+
+function paintCheckRow(li, on) {
+  li.classList.toggle('on', on);
+  li.classList.remove('just-on');
+  if (on) {
+    void li.offsetWidth;
+    li.classList.add('just-on');
+    clearTimeout(li._rcPen);
+    li._rcPen = setTimeout(function () { li.classList.remove('just-on'); }, 800);
+  }
+  var btn = li.querySelector('.ichk, .step-num');
+  if (!btn) return;
+  btn.classList.toggle('on', on);
+  btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  var n = btn.getAttribute('data-n');
+  if (n) btn.textContent = on ? '✓' : n;
+}
+
+function paintTally(recipeId) {
+  var ings = ingsFor(recipeId);
+  var steps = stepsFor(recipeId);
+  var vals = {};
+  vals[recipeId + '|ing'] = ings.length ? doneCount(recipeId, ings) + '/' + ings.length : '';
+  vals[recipeId + '|step'] = steps.length ? doneCount(recipeId, steps) + '/' + steps.length : '';
+  var els = document.querySelectorAll('[data-tally]');
+  for (var i = 0; i < els.length; i++) {
+    var v = vals[els[i].getAttribute('data-tally') || ''];
+    if (v) els[i].textContent = v;
+  }
+}
+
+function syncResetBtns(recipeId) {
+  var has = hasAnyChecks(recipeId);
+  var els = document.querySelectorAll('[data-reset]');
+  for (var i = 0; i < els.length; i++) {
+    if (els[i].getAttribute('data-reset') !== recipeId) continue;
+    els[i].disabled = !has;
+    els[i].classList.toggle('is-dim', !has);
+  }
+}
+
+function applyCheck(recipeId, itemId) {
+  var rows = checkRows(recipeId, itemId);
+  if (!rows.length) { render(); return; }
+  var on = isChecked(recipeId, itemId);
+  rows.forEach(function (li) { paintCheckRow(li, on); });
+  paintTally(recipeId);
+  syncResetBtns(recipeId);
 }
 
 function recipesSignOut() { JB.signOut(); location.href = '/'; }
@@ -1067,6 +1133,7 @@ function leafActions(r) {
     + ' title="Editar receita" aria-label="Editar receita">✏</button>'
     + '<button type="button" class="leaf-act' + (has ? '' : ' is-dim') + '"'
     + (has ? '' : ' disabled')
+    + ' data-reset="' + esc(r.id) + '"'
     + ' onclick="resetRecipeChecks(\'' + escAttr(r.id) + '\')"'
     + ' title="Limpar checks" aria-label="Limpar checks">↺</button>'
     + '<button type="button" class="leaf-act" onclick="scheduleRecipe(\'' + escAttr(r.id) + '\')"'
@@ -1080,15 +1147,15 @@ function miseSection(r) {
   var rows = ings.map(function (ing) {
     var on = isChecked(r.id, ing.id);
     var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
-    return '<li class="' + (on ? 'on' : '') + '">'
+    return '<li class="' + (on ? 'on' : '') + '" data-chk="' + esc(r.id + '|' + ing.id) + '">'
       + '<button type="button" class="ichk' + (on ? ' on' : '') + '"'
       + ' onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\')"'
       + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
-      + '<span>' + esc(label) + '</span></li>';
+      + '<span><span class="ck-t">' + esc(label) + '</span></span></li>';
   }).join('');
   var shot = recipeShot(r);
   return '<div class="leaf-sec' + (shot ? ' has-shot' : '') + '">'
-    + '<h3>Mise en place' + (ings.length ? '<em>' + done + '/' + ings.length + '</em>' : '') + '</h3>'
+    + '<h3>Mise en place' + (ings.length ? '<em data-tally="' + esc(r.id + '|ing') + '">' + done + '/' + ings.length + '</em>' : '') + '</h3>'
     + '<div class="mise-wrap">'
     + '<div class="mise-col">'
     + (rows ? '<ul class="ing-list">' + rows + '</ul>' : '<div class="rg">Nenhum ingrediente.</div>')
@@ -1103,15 +1170,15 @@ function stepsSection(r) {
   var done = doneCount(r.id, steps);
   var rows = steps.map(function (st, i) {
     var on = stepIsDone(r.id, st.id);
-    return '<li class="' + (on ? 'on' : '') + '">'
-      + '<button type="button" class="step-num' + (on ? ' on' : '') + '"'
+    return '<li class="' + (on ? 'on' : '') + '" data-chk="' + esc(r.id + '|' + st.id) + '">'
+      + '<button type="button" class="step-num' + (on ? ' on' : '') + '" data-n="' + (i + 1) + '"'
       + ' onclick="toggleStepCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(st.id) + '\')"'
       + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="Passo ' + (i + 1) + '">'
       + (on ? '✓' : (i + 1)) + '</button>'
-      + '<span>' + esc(st.text) + '</span></li>';
+      + '<span><span class="ck-t">' + esc(st.text) + '</span></span></li>';
   }).join('');
   return '<div class="leaf-sec">'
-    + '<h3>Passo a passo' + (steps.length ? '<em>' + done + '/' + steps.length + '</em>' : '') + '</h3>'
+    + '<h3>Passo a passo' + (steps.length ? '<em data-tally="' + esc(r.id + '|step') + '">' + done + '/' + steps.length + '</em>' : '') + '</h3>'
     + (rows ? '<ul class="step-list">' + rows + '</ul>' : '<div class="rg">Nenhum passo.</div>')
     + '</div>';
 }
@@ -1316,9 +1383,10 @@ function renderDetail() {
   var ingHtml = ings.map(function (ing) {
     var on = isChecked(r.id, ing.id);
     var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
-    return '<li class="' + (on ? 'on' : '') + '">'
-      + '<button type="button" class="ichk' + (on ? ' on' : '') + '" onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\')"></button>'
-      + '<span>' + esc(label) + '</span></li>';
+    return '<li class="' + (on ? 'on' : '') + '" data-chk="' + esc(r.id + '|' + ing.id) + '">'
+      + '<button type="button" class="ichk' + (on ? ' on' : '') + '" onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\')"'
+      + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
+      + '<span><span class="ck-t">' + esc(label) + '</span></span></li>';
   }).join('');
   var stepHtml = steps.map(function (st, i) {
     return '<li><span class="step-num">' + (i + 1) + '</span><span>' + esc(st.text) + '</span></li>';
@@ -1340,6 +1408,7 @@ function renderDetail() {
     + '<button class="btn" onclick="openRecipeModal(\'' + escAttr(r.id) + '\')">✏ Editar</button>'
     + '<button class="btn ghost' + (hasAnyChecks(r.id) ? '' : ' is-dim') + '"'
     + (hasAnyChecks(r.id) ? '' : ' disabled')
+    + ' data-reset="' + esc(r.id) + '"'
     + ' onclick="resetRecipeChecks(\'' + escAttr(r.id) + '\')">↺ Limpar checks</button>'
     + '<button class="btn ghost" onclick="scheduleRecipe(\'' + escAttr(r.id) + '\')">📅 Agendar</button>'
     + '</div></div>';
@@ -1347,7 +1416,7 @@ function renderDetail() {
 
 function toggleIngCheck(recipeId, ingId) {
   toggleCheck(recipeId, ingId);
-  render();
+  applyCheck(recipeId, ingId);
 }
 
 /* ---- icon picker ---- */

@@ -482,7 +482,10 @@ function bookSpineDims(b, i) {
   var u = Math.abs(h);
   return {
     w: 36 + (u % 4) * 5,
-    h: 168 + ((u >> 2) % 5) * 14
+    h: 168 + ((u >> 2) % 5) * 14,
+    /* Prateleira-style lean: -3..3deg (some land on 0 = straight) */
+    tilt: ((i * 17 + 3) % 7) - 3,
+    curved: (u % 5) === 0 || (u % 5) === 3
   };
 }
 
@@ -509,7 +512,7 @@ function onBookActivate(id) {
 function syncShelfPeek() {
   var row = document.querySelector('.bookcase-row');
   if (!row) return;
-  row.querySelectorAll('.book-spine').forEach(function (el) {
+  row.querySelectorAll('.book-slot').forEach(function (el) {
     var on = el.getAttribute('data-id') === _peekBookId;
     el.classList.toggle('is-peek', on);
     el.setAttribute('aria-expanded', on ? 'true' : 'false');
@@ -518,7 +521,7 @@ function syncShelfPeek() {
 
 function clearBookPeek(ev) {
   if (!_peekBookId) return;
-  if (ev && ev.target && ev.target.closest && ev.target.closest('.book-spine')) return;
+  if (ev && ev.target && ev.target.closest && ev.target.closest('.book-slot')) return;
   _peekBookId = null;
   syncShelfPeek();
 }
@@ -533,21 +536,30 @@ function renderShelf() {
     var d = bookSpineDims(b, i);
     var n = countInBook(b.id);
     var peeked = _peekBookId === b.id;
-    return '<div role="button" tabindex="0" class="book-spine' + (peeked ? ' is-peek' : '') + '"'
+    var cls = 'book-slot' + (peeked ? ' is-peek' : '') + (d.curved ? ' is-curved' : '');
+    return '<div role="button" tabindex="0" class="' + cls + '"'
       + ' data-id="' + esc(b.id) + '"'
-      + ' style="--kc:' + esc(b.color || '#e07a5f') + ';--bw:' + d.w + 'px;--bh:' + d.h + 'px;--jb-i:' + i + '"'
+      + ' style="--kc:' + esc(b.color || '#e07a5f') + ';--bw:' + d.w + 'px;--bh:' + d.h + 'px;--tilt:' + d.tilt + 'deg;--jb-i:' + i + '"'
       + ' aria-label="' + esc(b.name) + ', ' + n + ' receita' + (n === 1 ? '' : 's') + '"'
       + ' aria-expanded="' + (peeked ? 'true' : 'false') + '"'
       + ' onclick="onBookActivate(\'' + escAttr(b.id) + '\')"'
       + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();onBookActivate(\'' + escAttr(b.id) + '\')}"'
       + '>'
+      + '<div class="book-pop">'
+      + '<div class="book-spine-face">'
       + '<span class="book-spine-ico" aria-hidden="true">' + esc(b.icon || '📖') + '</span>'
       + '<span class="book-spine-title">' + esc(b.name) + '</span>'
-      + '<span class="book-spine-peek" onclick="event.stopPropagation()">'
-      + '<strong>' + esc(b.name) + '</strong>'
-      + '<span>' + n + ' receita' + (n === 1 ? '' : 's') + '</span>'
+      + '</div>'
+      + '<div class="book-spread" aria-hidden="true">'
+      + '<div class="book-cover-flap"><span>' + esc(b.icon || '📖') + '</span></div>'
+      + '<div class="book-pages">'
+      + '<div class="book-page is-left"><div class="book-page-lines"></div></div>'
+      + '<div class="book-page is-right"><div class="book-page-lines"></div></div>'
+      + '</div>'
+      + '<div class="book-page-edge"></div>'
+      + '</div>'
       + '<button type="button" class="book-edit" onclick="event.stopPropagation();openBookModal(\'' + escAttr(b.id) + '\')">Editar</button>'
-      + '</span>'
+      + '</div>'
       + '</div>';
   }).join('');
   return '<div class="searchbar"><input class="field" id="homeSearch" placeholder="Buscar livros…" value="' + esc(homeQuery)

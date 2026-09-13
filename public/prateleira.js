@@ -634,6 +634,8 @@ function boot() {
         refreshMissingPosters();
         initPrateleiraAutoRefresh();
         JB.watchSheet(APP, refreshPrateleiraQuiet);
+        // After UI is up: optional one-time Drive grant to move the sheet into Joelboard/.
+        offerPrateleiraDrivePlace();
       })
       .catch(handleBootErr);
   });
@@ -652,18 +654,23 @@ function handleBootErr(e) {
   loadingHtml(gateHtml('Erro', esc(m), '<button class="btn ghost" onclick="boot()">Tentar de novo</button>'));
 }
 
-function placePrateleiraDrive() {
+function placePrateleiraDrive(opts) {
+  opts = opts || {};
   if (!JB.placePrateleiraInJoelboard || (JB.isGhost && JB.isGhost())) return Promise.resolve(null);
   var id = JB.getSheetId(APP) || (JB.prateleiraSheetId && JB.prateleiraSheetId()) || PRATELEIRA_SHARED_SHEET;
   if (!id) return Promise.resolve(null);
   if (!JB.getSheetId(APP)) JB.setSheetId(APP, id);
-  return JB.placePrateleiraInJoelboard(id, '', { interactive: true }).then(function (r) {
+  return JB.placePrateleiraInJoelboard(id, '', { interactive: !!opts.interactive }).then(function (r) {
     if (!r) return r;
     if (r.mode === 'moved') JB.toast('Prateleira movida para a pasta Joelboard');
     else if (r.mode === 'already') { /* already in Joelboard/ */ }
     else if (r.mode === 'shortcut' && r.created) JB.toast('Atalho da Prateleira criado na pasta Joelboard');
     else if (r.mode === 'failed' && r.reason === 'drive_file_scope') {
       JB.toast('Não deu pra mover a Prateleira no Drive — autorize quando pedir, ou mova “Julioelboard” pra pasta Joelboard na mão');
+    } else if (r.mode === 'failed' && r.reason === 'auth_timeout') {
+      JB.toast('Autorização do Drive demorou demais — tente de novo em Ajustes, ou mova a planilha na mão');
+    } else if (r.mode === 'failed' && r.reason === 'auth_failed') {
+      JB.toast('Não deu pra autorizar o Drive — tente de novo ou mova “Julioelboard” pra pasta Joelboard na mão');
     } else if (r.mode === 'failed') {
       JB.toast('Não deu pra organizar a Prateleira no Drive');
     }
@@ -682,13 +689,18 @@ function resolveSheet() {
     return ensureTabs(grid).then(function (g) {
       sheetGrid = g;
       JB.setSheetId(APP, id);
-      return placePrateleiraDrive().then(function () { return ensureHeaders(); });
+      // Never block first paint on interactive Drive consent — that was hanging boot forever.
+      return placePrateleiraDrive({ interactive: false }).then(function () { return ensureHeaders(); });
     });
   }).catch(function (e) {
     if (String((e && e.message) || '') === 'JB_NEED_SHEET') throw e;
     if (isAuthErr(e)) throw e;
     throw new Error(sheetAccessErr(e));
   });
+}
+
+function offerPrateleiraDrivePlace() {
+  placePrateleiraDrive({ interactive: true });
 }
 
 function ensureTabs(grid) {
@@ -2023,7 +2035,7 @@ function createSharedSheet() {
       Assistidos: ss.sheets[1].properties.sheetId,
       Perfil: ss.sheets[2].properties.sheetId
     };
-    return placePrateleiraDrive().then(function () {
+    return placePrateleiraDrive({ interactive: true }).then(function () {
       return ensureHeaders().then(function () {
         document.getElementById('sheetInfo').textContent = 'ID: ' + ss.spreadsheetId;
         document.getElementById('sheetIdIn').value = ss.spreadsheetId;
@@ -2042,7 +2054,7 @@ function saveSheetId() {
     JB.setSheetId(APP, id);
     document.getElementById('sheetIdIn').value = id;
     document.getElementById('sheetInfo').textContent = 'ID: ' + id;
-    return placePrateleiraDrive().then(function () {
+    return placePrateleiraDrive({ interactive: true }).then(function () {
       JB.toast('✓ Planilha vinculada');
       closePrateleiraSet();
       boot();

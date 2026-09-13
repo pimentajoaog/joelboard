@@ -18,6 +18,7 @@ vm.runInContext(
     + 'this.jbOAuthAuthUrl=jbOAuthAuthUrl;'
     + 'this.jbOAuthRedirectPrompt=jbOAuthRedirectPrompt;'
     + 'this.jbOAuthHasAppScopes=jbOAuthHasAppScopes;'
+    + 'this.jbOAuthHasDriveScope=jbOAuthHasDriveScope;'
     + 'this.takeOAuthReturn=takeOAuthReturn;',
   ctx
 );
@@ -75,6 +76,10 @@ test('jbOAuthHasAppScopes requires Sheets and Drive', function () {
   assert.equal(ctx.jbOAuthHasAppScopes(''), null);
   assert.equal(ctx.jbOAuthHasAppScopes('email profile openid'), false);
   assert.equal(ctx.jbOAuthHasAppScopes('email https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file'), true);
+  assert.equal(ctx.jbOAuthHasAppScopes('email https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive'), true);
+  assert.equal(ctx.jbOAuthHasDriveScope('https://www.googleapis.com/auth/drive'), true);
+  assert.equal(ctx.jbOAuthHasDriveScope('https://www.googleapis.com/auth/drive.file'), true);
+  assert.equal(ctx.jbOAuthHasDriveScope('email profile'), false);
 });
 
 test('takeOAuthReturn saves the token and rejects a bad state', function () {

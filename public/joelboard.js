@@ -296,10 +296,15 @@
     if (p === 'select_account') return 'select_account consent';
     return 'consent';
   }
+  function jbOAuthHasDriveScope(granted){
+    granted = String(granted || '').replace(/\+/g, ' ');
+    // Full Drive (/auth/drive) subsumes drive.file; Google may return only the broader scope.
+    return /https:\/\/www\.googleapis\.com\/auth\/drive(?:\.file)?(?:\s|$)/.test(granted);
+  }
   function jbOAuthHasAppScopes(granted){
     granted = String(granted || '').replace(/\+/g, ' ');
     if (!granted) return null;
-    return granted.indexOf('spreadsheets') > -1 && granted.indexOf('drive.file') > -1;
+    return granted.indexOf('spreadsheets') > -1 && jbOAuthHasDriveScope(granted);
   }
   function authPopupUnreliable(){
     var standalone = false;
@@ -307,7 +312,8 @@
     return jbAuthPopupUnreliable(navigator.userAgent || '', { standalone: standalone, touchPoints: navigator.maxTouchPoints });
   }
   function oauthRedirectUri(){ return location.origin + '/oauth.html'; }
-  function startOAuthRedirect(prompt){
+  function startOAuthRedirect(prompt, opts){
+    opts = opts || {};
     var state = 'jb' + Math.random().toString(36).slice(2) + Date.now().toString(36);
     if (!/^\/oauth\.html/i.test(location.pathname)) ss(AUTH_REDIR, location.pathname + location.search);
     else if (!sg(AUTH_REDIR)) ss(AUTH_REDIR, '/');
@@ -315,7 +321,7 @@
     location.assign(jbOAuthAuthUrl({
       clientId: CLIENT_ID,
       redirectUri: oauthRedirectUri(),
-      scope: SCOPES,
+      scope: opts.scope || SCOPES,
       state: state,
       prompt: jbOAuthRedirectPrompt(prompt),
       loginHint: email() || ''
@@ -2697,9 +2703,18 @@
       .then(function () { return true; }, function () { return false; });
   }
 
+  var DRIVE_MOVE_SCOPES = SCOPES + ' https://www.googleapis.com/auth/drive';
+  var DRIVE_MOVE_TIMEOUT_MS = 120000;
+
   /** One-time broader Drive scope so we can move sheets the app did not create (Prateleira). */
   function requestDriveMoveScope() {
     if (isGhost()) return Promise.reject(new Error('ghost'));
+    // Phones / PWA: GIS popups die as orphan Google tabs — redirect, then retry place on return.
+    if (authPopupUnreliable()) {
+      startOAuthRedirect('consent', { scope: DRIVE_MOVE_SCOPES });
+      return new Promise(function () { /* navigates away */ });
+    }
+    cancelSilentAuth('drive_move_scope');
     return new Promise(function (resolve, reject) {
       ensureClient(function () {
         if (!tokenClient) {
@@ -2709,9 +2724,13 @@
         var prevCb = tokenClient.callback;
         var prevErr = tokenClient.error_callback;
         var settled = false;
+        var timer = setTimeout(function () {
+          done(new Error('auth_timeout'));
+        }, DRIVE_MOVE_TIMEOUT_MS);
         function done(err, tok) {
           if (settled) return;
           settled = true;
+          clearTimeout(timer);
           try {
             tokenClient.callback = prevCb;
             tokenClient.error_callback = prevErr;
@@ -2731,7 +2750,7 @@
         try {
           tokenClient.requestAccessToken({
             prompt: 'consent',
-            scope: SCOPES + ' https://www.googleapis.com/auth/drive'
+            scope: DRIVE_MOVE_SCOPES
           });
         } catch (e) {
           done(e || new Error('auth_failed'));
@@ -2792,12 +2811,19 @@
             + 'Posso pedir acesso completo ao Drive só desta vez para colocar ela na pasta Joelboard.';
           return new Promise(function (resolve) {
             confirm(title, msg, function () {
+              // Keep UI responsive: auth popup / redirect must not leave callers waiting forever.
               requestDriveMoveScope().then(function () {
                 return tryPlace(rootId, name).then(resolve, function () {
                   resolve({ mode: 'failed', id: sheetId, reason: 'move_failed', name: name });
                 });
-              }, function () {
-                resolve({ mode: 'failed', id: sheetId, reason: 'auth_failed', name: name });
+              }, function (err) {
+                var reason = String((err && err.message) || '');
+                resolve({
+                  mode: 'failed',
+                  id: sheetId,
+                  reason: reason === 'auth_timeout' ? 'auth_timeout' : 'auth_failed',
+                  name: name
+                });
               });
             }, {
               yes: 'Autorizar e mover',

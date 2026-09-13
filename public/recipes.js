@@ -2121,9 +2121,10 @@ function deleteSheetRow(tab, rowNum) {
   });
 }
 
-/* ---- search / TheMealDB ---- */
+/* ---- search / online recipes (Spoonacular → Foodashi → TheMealDB) ---- */
 var SEARCH_BY_KEY = 'jb_recipes_search_by';
 var searchBy = 'name'; /* name | ingredient */
+var searchProvider = 'themealdb';
 
 function loadSearchByPref() {
   try {
@@ -2134,6 +2135,11 @@ function loadSearchByPref() {
 function saveSearchByPref() {
   try { localStorage.setItem(SEARCH_BY_KEY, searchBy); } catch (_) {}
 }
+function providerLabel(name) {
+  if (name === 'spoonacular') return 'Spoonacular';
+  if (name === 'foodashi') return 'Foodashi';
+  return 'TheMealDB';
+}
 function paintSearchBy() {
   var host = $('searchByToggle');
   if (host) {
@@ -2143,9 +2149,12 @@ function paintSearchBy() {
   }
   var hint = $('searchHint');
   if (hint) {
-    hint.textContent = searchBy === 'ingredient'
-      ? 'Fonte: TheMealDB · busca por ingrediente (inglês).'
-      : 'Fonte: TheMealDB · busca pelo nome da receita (inglês).';
+    var src = providerLabel(searchProvider);
+    var mode = searchBy === 'ingredient' ? 'ingrediente' : 'nome da receita';
+    var extra = searchProvider === 'spoonacular'
+      ? ' · <a href="https://spoonacular.com/food-api" target="_blank" rel="noopener">spoonacular</a>'
+      : '';
+    hint.innerHTML = 'Fonte: ' + esc(src) + ' · busca por ' + mode + ' (inglês).' + extra;
   }
   var q = $('searchQ');
   if (q) {
@@ -2161,10 +2170,18 @@ function setSearchBy(mode) {
   if ($('searchResults')) $('searchResults').innerHTML = '';
 }
 
+function refreshSearchProvider() {
+  return fetch('/api/recipes?ping=1').then(function (r) { return r.json(); }).then(function (j) {
+    if (j && j.primary) searchProvider = j.primary;
+    paintSearchBy();
+  }).catch(function () { paintSearchBy(); });
+}
+
 function openSearch(bookId) {
   _searchImportBookId = bookId || openBookId || (DATA.cookbooks[0] && DATA.cookbooks[0].id) || '';
   loadSearchByPref();
   paintSearchBy();
+  refreshSearchProvider();
   if ($('searchQ')) $('searchQ').value = '';
   if ($('searchResults')) $('searchResults').innerHTML = '';
   $('searchOverlay').classList.add('open');
@@ -2181,6 +2198,10 @@ function runSearch() {
   fetch(url).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
     .then(function (pack) {
       if (!pack.ok) throw new Error((pack.j && pack.j.error) || 'Busca falhou');
+      if (pack.j.provider) {
+        searchProvider = pack.j.provider;
+        paintSearchBy();
+      }
       var results = pack.j.results || [];
       if (!el) return;
       if (!results.length) {
@@ -2190,9 +2211,12 @@ function runSearch() {
         return;
       }
       el.innerHTML = results.map(function (m) {
-        return '<button type="button" class="search-hit" onclick="importMeal(\'' + escAttr(m.sourceId) + '\')">'
+        var src = m.source || searchProvider || 'themealdb';
+        var meta = [m.area, m.category].filter(Boolean).join(' · ');
+        if (!meta && searchBy === 'ingredient') meta = 'contém o ingrediente';
+        return '<button type="button" class="search-hit" onclick="importMeal(\'' + escAttr(src) + '\',\'' + escAttr(m.sourceId) + '\')">'
           + (m.image ? '<img src="' + esc(m.image) + '" alt="">' : '<div style="width:56px;height:56px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:24px">🍽️</div>')
-          + '<div><b>' + esc(m.title) + '</b><span>' + esc([m.area, m.category].filter(Boolean).join(' · ') || (searchBy === 'ingredient' ? 'contém o ingrediente' : '')) + '</span></div>'
+          + '<div><b>' + esc(m.title) + '</b><span>' + esc(meta) + '</span></div>'
           + '</button>';
       }).join('');
     }).catch(function (e) {
@@ -2200,13 +2224,17 @@ function runSearch() {
     });
 }
 
-function importMeal(sourceId) {
+function importMeal(source, sourceId) {
   if (!_searchImportBookId) {
     toast('Crie um livro antes de importar');
     return;
   }
+  /* assinatura antiga: importMeal(id) */
+  if (sourceId == null) { sourceId = source; source = 'themealdb'; }
   toast('Importando…');
-  fetch('/api/recipes?id=' + encodeURIComponent(sourceId)).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+  var url = '/api/recipes?id=' + encodeURIComponent(sourceId)
+    + '&source=' + encodeURIComponent(source || 'themealdb');
+  fetch(url).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
     .then(function (pack) {
       if (!pack.ok || !pack.j.meal) throw new Error((pack.j && pack.j.error) || 'Detalhe indisponível');
       var m = pack.j.meal;
@@ -2214,7 +2242,8 @@ function importMeal(sourceId) {
       var created = todayISO();
       var order = recipesInBook(_searchImportBookId).length;
       var icon = guessIcon(m.category);
-      var row = [id, _searchImportBookId, m.title, icon, m.image || '', '', '', '', String(order), 'themealdb', String(m.sourceId || sourceId), created];
+      var src = m.source || source || 'themealdb';
+      var row = [id, _searchImportBookId, m.title, icon, m.image || '', '', '', '', String(order), src, String(m.sourceId || sourceId), created];
       return JB.api('POST', ssUrl('/values/Recipes!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
         .then(function () {
           var ings = (m.ingredients || []).map(function (x, i) {

@@ -1,7 +1,14 @@
-/* Tests for TheMealDB recipes proxy helpers. © 2026 Joel Soluções LTDA. */
+/* Tests for recipe search proxy helpers. © 2026 Joel Soluções LTDA. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { recipesApiKey, proxyRecipesRequest, ingredientQueryVariants } from '../lib/recipes-proxy.mjs';
+import {
+  recipesApiKey,
+  spoonacularApiKey,
+  foodashiApiKey,
+  recipesProviderChain,
+  ingredientQueryVariants,
+  proxyRecipesRequest
+} from '../lib/recipes-proxy.mjs';
 
 test('recipesApiKey falls back to free test key 1', function () {
   var auth = recipesApiKey({});
@@ -15,11 +22,30 @@ test('recipesApiKey prefers THEMEALDB_KEY', function () {
   assert.equal(auth.source, 'THEMEALDB_KEY');
 });
 
-test('proxyRecipesRequest ping', async function () {
-  var res = await proxyRecipesRequest('/api/recipes?ping=1', {});
+test('recipesProviderChain orders Spoonacular then Foodashi then TheMealDB', function () {
+  assert.deepEqual(recipesProviderChain({}), ['themealdb']);
+  assert.deepEqual(recipesProviderChain({ SPOONACULAR_KEY: 's' }), ['spoonacular', 'themealdb']);
+  assert.deepEqual(recipesProviderChain({ FOODASHI_KEY: 'f' }), ['foodashi', 'themealdb']);
+  assert.deepEqual(
+    recipesProviderChain({ SPOONACULAR_KEY: 's', FOODASHI_KEY: 'f' }),
+    ['spoonacular', 'foodashi', 'themealdb']
+  );
+});
+
+test('spoonacular and foodashi key helpers', function () {
+  assert.equal(spoonacularApiKey({}).key, '');
+  assert.equal(foodashiApiKey({}).key, '');
+  assert.equal(spoonacularApiKey({ SPOONACULAR_API_KEY: 'x' }).key, 'x');
+  assert.equal(foodashiApiKey({ FOODASHI_API_KEY: 'y' }).key, 'y');
+});
+
+test('proxyRecipesRequest ping reports chain', async function () {
+  var res = await proxyRecipesRequest('/api/recipes?ping=1', { SPOONACULAR_KEY: 's' });
   assert.equal(res.status, 200);
   var body = JSON.parse(res.body);
   assert.equal(body.ok, true);
+  assert.equal(body.primary, 'spoonacular');
+  assert.deepEqual(body.chain, ['spoonacular', 'themealdb']);
 });
 
 test('proxyRecipesRequest requires q or id', async function () {
@@ -39,9 +65,11 @@ test('proxyRecipesRequest search returns normalized results', async function () 
   var body = JSON.parse(res.body);
   assert.ok(Array.isArray(body.results));
   assert.equal(body.by, 'name');
+  assert.equal(body.provider, 'themealdb');
   if (body.results.length) {
     assert.ok(body.results[0].title);
     assert.ok(body.results[0].sourceId);
+    assert.equal(body.results[0].source, 'themealdb');
     assert.ok(Array.isArray(body.results[0].ingredients));
     assert.ok(Array.isArray(body.results[0].steps));
   }

@@ -61,7 +61,7 @@ textarea.field{ resize:vertical; min-height:64px; }
 .searchbar{ @apply mb-4; }
 .searchbar input{ width:100%; }
 
-/* ===== Bookcase shelf (spines → pop out + two-page open) ===== */
+/* ===== Bookcase shelf (spines → open book) ===== */
 #main{ overflow:visible; }
 body.recipes-shelf{ padding-bottom:72px; }
 body.recipes-shelf .foot{ display:none; }
@@ -69,9 +69,7 @@ body.recipes-shelf .foot{ display:none; }
 .bookcase{
   position:relative;
   margin:4px 0 8px;
-  perspective:680px;
-  perspective-origin:50% 100%;
-  min-height:calc(100vh - 160px);
+  min-height:calc(100vh - 170px);
   display:flex; flex-direction:column; justify-content:flex-end;
 }
 .bookcase-tools{
@@ -85,14 +83,17 @@ body.recipes-shelf .foot{ display:none; }
 .bookcase-row{
   display:flex; align-items:flex-end; justify-content:center;
   gap:8px; flex-wrap:nowrap;
+  overflow:visible;
+  padding:180px 16px 16px;
+  min-height:calc(320px + 180px);
+}
+.bookcase-row.is-scroll{
+  justify-content:flex-start;
   overflow-x:auto; overflow-y:hidden;
-  padding:150px 48px 16px; margin:0 -8px;
-  min-height:calc(320px + 150px);
-  scrollbar-width:thin; touch-action:pan-x;
+  touch-action:pan-x; scrollbar-width:thin;
   -webkit-overflow-scrolling:touch;
 }
-.bookcase-row.is-packed{ justify-content:flex-start; }
-.bookcase-row::-webkit-scrollbar{ height:6px; }
+.bookcase-row.is-scroll::-webkit-scrollbar{ height:6px; }
 .bookcase-ledge{
   height:16px; margin:0 4px; border-radius:2px 2px 8px 8px;
   background:
@@ -105,7 +106,7 @@ body.recipes-shelf .foot{ display:none; }
 }
 
 .book-slot{
-  --bw:70px; --bh:420px; --tilt:0deg; --spread:520px;
+  --bw:70px; --bh:420px; --tilt:0deg; --spread:480px; --ocx:0px; --lift:94px;
   position:relative;
   flex:0 0 auto;
   width:var(--bw);
@@ -115,39 +116,30 @@ body.recipes-shelf .foot{ display:none; }
   z-index:1;
   transform:rotate(var(--tilt));
   transform-origin:50% 100%;
-  transform-style:preserve-3d;
-  transition:width .42s cubic-bezier(.2,.85,.2,1);
   animation:rcFade .4s cubic-bezier(.2,.8,.2,1) both;
   animation-delay:calc(var(--jb-i, 0) * 45ms);
   -webkit-tap-highlight-color:transparent;
   user-select:none;
 }
-.book-slot.is-curved .book-spine-face{
-  border-radius:4px 12px 3px 2px;
-}
-.book-slot.is-curved .book-spine-face::before{
-  background:
-    radial-gradient(120% 80% at 0% 50%, color-mix(in srgb, #fff 16%, transparent), transparent 55%),
-    linear-gradient(180deg, color-mix(in srgb, #fff 12%, transparent), transparent 28%, transparent 72%, color-mix(in srgb, #000 18%, transparent));
-}
 
+/* The book itself: grows in place (no scaling) so text stays sharp */
 .book-pop{
   position:absolute; left:0; bottom:0;
   display:flex; align-items:stretch;
   width:var(--bw); height:var(--bh);
-  transform:translate3d(0, 0, 0) rotateX(0deg) scale(1);
-  transform-origin:12% 100%;
-  transform-style:preserve-3d;
+  transform:translate(0, 0);
   transition:
-    transform .42s cubic-bezier(.16,.84,.22,1),
-    width .42s cubic-bezier(.16,.84,.22,1);
-  will-change:transform, width;
+    width .42s cubic-bezier(.16,.84,.22,1),
+    height .42s cubic-bezier(.16,.84,.22,1),
+    transform .42s cubic-bezier(.16,.84,.22,1);
 }
+
 .book-spine-face{
   position:relative; z-index:3;
   flex:0 0 var(--bw); width:var(--bw); height:100%;
   border-radius:3px 4px 2px 2px;
   display:flex; flex-direction:column; align-items:center;
+  overflow:hidden;
   padding:16px 0 18px;
   color:#fff;
   background:
@@ -161,7 +153,11 @@ body.recipes-shelf .foot{ display:none; }
     inset -2px 0 0 color-mix(in srgb, #000 25%, transparent),
     inset 2px 0 0 color-mix(in srgb, #fff 18%, transparent),
     2px 4px 10px rgba(0,0,0,.28);
-  transition:box-shadow .34s ease;
+  transition:
+    flex-basis .42s cubic-bezier(.16,.84,.22,1),
+    width .42s cubic-bezier(.16,.84,.22,1),
+    opacity .18s ease,
+    box-shadow .34s ease;
 }
 .book-spine-face::before{
   content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
@@ -171,6 +167,8 @@ body.recipes-shelf .foot{ display:none; }
   content:''; position:absolute; left:18%; right:18%; bottom:22px; height:2px; border-radius:1px;
   background:color-mix(in srgb, #fff 35%, transparent); opacity:.55; pointer-events:none;
 }
+.book-slot.is-curved .book-spine-face{ border-radius:4px 12px 3px 2px; }
+
 .book-spine-ico{
   position:relative; z-index:1;
   font-size:clamp(18px, calc(var(--bh) * .05), 26px); line-height:1; margin-bottom:12px;
@@ -191,146 +189,145 @@ body.recipes-shelf .foot{ display:none; }
   max-height:100%;
 }
 
-/* Two-page spread — left + gutter + right */
-.book-spread{
+/* Open book: two leaves fanned from the gutter, covers behind */
+.book-open{
   position:relative; z-index:2;
-  display:flex; align-items:stretch;
-  flex:0 0 auto;
-  width:0; max-width:0; opacity:0;
-  overflow:hidden;
-  pointer-events:none;
-  transform:rotateY(-28deg) translateZ(-20px);
-  transform-origin:left center;
-  transform-style:preserve-3d;
-  transition:
-    width .42s cubic-bezier(.16,.84,.22,1),
-    max-width .42s cubic-bezier(.16,.84,.22,1),
-    opacity .2s ease .04s,
-    transform .42s cubic-bezier(.16,.84,.22,1);
+  flex:1 1 auto;
+  width:0; min-width:0; height:100%;
+  display:flex; align-items:stretch; justify-content:center;
+  opacity:0;
+  perspective:1500px;
+  perspective-origin:50% 45%;
+  transition:opacity .2s ease .04s;
 }
-.book-pages{
-  position:relative;
-  display:flex; align-items:stretch;
-  width:var(--spread); height:100%;
-  min-width:var(--spread);
-  border-radius:0 5px 4px 0;
-  overflow:hidden;
-  box-shadow:10px 16px 28px rgba(0,0,0,.38);
-}
-.book-page{
+.book-leaf{
   position:relative;
   flex:1 1 50%;
   min-width:0;
-  background:
-    linear-gradient(90deg, #e8e0d2 0%, #f7f1e6 8%, #fbf7f0 100%);
+  transform-style:preserve-3d;
+  background:linear-gradient(180deg, #fdfaf3, #f6efe2 78%, #ece3d2);
+  transition:transform .42s cubic-bezier(.16,.84,.22,1);
 }
-.book-page.is-left{
-  background:
-    linear-gradient(90deg, #cfc6b4 0%, #efe6d6 18%, #f7f1e6 100%);
-  box-shadow:inset -14px 0 18px rgba(0,0,0,.08);
+.book-leaf.is-left{
+  transform-origin:100% 50%;
+  transform:rotateY(38deg);
+  border-radius:5px 1px 2px 7px;
+  box-shadow:inset -18px 0 22px rgba(94,78,56,.16);
 }
-.book-page.is-right{
-  background:
-    linear-gradient(90deg, #fbf7f0 0%, #f3ece0 82%, #e4dbcb 100%);
-  box-shadow:inset 14px 0 18px rgba(0,0,0,.05);
+.book-leaf.is-right{
+  transform-origin:0% 50%;
+  transform:rotateY(-38deg);
+  border-radius:1px 5px 7px 2px;
+  box-shadow:inset 18px 0 22px rgba(94,78,56,.16);
 }
-.book-gutter{
-  flex:0 0 11px; width:11px;
+/* cover board peeking behind the outer edge */
+.book-leaf::before{
+  content:''; position:absolute; z-index:-1;
+  top:-7px; bottom:-9px;
   background:
-    linear-gradient(90deg,
-      #b7aa94 0%,
-      #8d806c 42%,
-      #6f6454 50%,
-      #8d806c 58%,
-      #b7aa94 100%);
-  box-shadow:inset 0 0 8px rgba(0,0,0,.18);
+    linear-gradient(180deg,
+      color-mix(in srgb, #fff 10%, var(--kc, var(--primary))),
+      var(--kc, var(--primary)) 45%,
+      color-mix(in srgb, #000 22%, var(--kc, var(--primary))));
+  transform:translateZ(-10px);
+  box-shadow:0 14px 26px rgba(0,0,0,.4);
 }
+.book-leaf.is-left::before{ left:-9px; right:0; border-radius:6px 0 0 8px; }
+.book-leaf.is-right::before{ left:0; right:-9px; border-radius:0 6px 8px 0; }
+/* page stack thickness along the bottom */
+.book-leaf::after{
+  content:''; position:absolute; left:1px; right:1px; bottom:-7px; height:8px;
+  background:repeating-linear-gradient(180deg, #fdfaf3 0 2px, #e3dac9 2px 3px);
+  box-shadow:0 3px 6px rgba(0,0,0,.22);
+}
+.book-leaf.is-left::after{ border-radius:0 0 3px 7px; }
+.book-leaf.is-right::after{ border-radius:0 0 7px 3px; }
 .book-page-lines{
-  position:absolute; inset:18px 12px 20px;
+  position:absolute; inset:20px 14px 22px;
   background:repeating-linear-gradient(
     180deg,
     transparent 0 13px,
-    color-mix(in srgb, #8a7a62 22%, transparent) 13px 14px
+    color-mix(in srgb, #8a7a62 20%, transparent) 13px 14px
   );
-  opacity:.55; pointer-events:none;
+  opacity:.5; pointer-events:none;
   border-radius:2px;
 }
-.book-page-edge{
-  position:absolute; right:-6px; top:4px; bottom:4px; width:6px; z-index:1;
-  border-radius:0 2px 2px 0;
-  background:
-    repeating-linear-gradient(90deg,
-      #f7f1e6 0 1px,
-      #e8e0d2 1px 2px,
-      #f3ece0 2px 3px);
-  box-shadow:2px 0 4px rgba(0,0,0,.18);
-  opacity:0;
-  transition:opacity .28s ease;
+
+/* Title sits above the open book (the spine is hidden once it opens) */
+.book-openlabel{
+  position:absolute; left:50%; top:-52px; z-index:5;
+  transform:translate(-50%, 8px);
+  display:flex; align-items:center; gap:8px;
+  max-width:min(88vw, 420px);
+  padding:8px 14px;
+  border-radius:999px;
+  background:color-mix(in srgb, var(--kc, var(--primary)) 18%, var(--surface));
+  border:1px solid color-mix(in srgb, var(--kc, var(--primary)) 45%, var(--border));
+  box-shadow:0 10px 24px rgba(0,0,0,.35);
+  opacity:0; pointer-events:none;
+  transition:opacity .2s ease, transform .3s cubic-bezier(.16,.84,.22,1);
+}
+.bol-ico{ font-size:20px; line-height:1; }
+.bol-name{
+  font-family:var(--font-display);
+  font-weight:800; font-size:17px; letter-spacing:-.2px;
+  color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 
 .book-head-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
-/* Pop out of the shelf into the screen + open two pages */
+/* ---- open state ---- */
 .book-slot.is-peek,
-.book-slot.is-open{
-  z-index:20;
-  width:calc(var(--bw) + var(--spread));
-}
+.book-slot.is-open{ z-index:30; }
 .book-slot.is-peek .book-pop,
 .book-slot.is-open .book-pop{
   width:calc(var(--bw) + var(--spread));
-  transform:translate3d(18px, -96px, 210px) rotateX(24deg) rotateY(-10deg) scale(1.3);
+  height:calc(var(--bh) + 26px);
+  transform:translate(var(--ocx, 0px), calc(-1 * var(--lift)));
 }
 .book-slot.is-peek .book-pop::after,
 .book-slot.is-open .book-pop::after{
-  content:''; position:absolute; left:6%; right:10%; bottom:-22px; height:36px; z-index:-1;
+  content:''; position:absolute; left:4%; right:4%; bottom:-26px; height:40px; z-index:-1;
   background:radial-gradient(ellipse at center, rgba(0,0,0,.5), transparent 72%);
   pointer-events:none;
 }
 .book-slot.is-peek .book-spine-face,
 .book-slot.is-open .book-spine-face{
-  box-shadow:
-    inset -2px 0 0 color-mix(in srgb, #000 25%, transparent),
-    inset 2px 0 0 color-mix(in srgb, #fff 18%, transparent),
-    0 14px 22px rgba(0,0,0,.4);
+  flex-basis:0; width:0; opacity:0; box-shadow:none;
 }
-.book-slot.is-peek .book-spread,
-.book-slot.is-open .book-spread{
-  width:var(--spread); max-width:var(--spread); opacity:1;
-  overflow:visible;
-  pointer-events:none;
-  transform:rotateY(-6deg) translateZ(12px);
-}
-.book-slot.is-peek .book-page-edge,
-.book-slot.is-open .book-page-edge{ opacity:1; }
+.book-slot.is-peek .book-open,
+.book-slot.is-open .book-open{ width:100%; opacity:1; }
+.book-slot.is-peek .book-leaf.is-left,
+.book-slot.is-open .book-leaf.is-left{ transform:rotateY(11deg); }
+.book-slot.is-peek .book-leaf.is-right,
+.book-slot.is-open .book-leaf.is-right{ transform:rotateY(-11deg); }
+.book-slot.is-peek .book-openlabel,
+.book-slot.is-open .book-openlabel{ opacity:1; transform:translate(-50%, 0); }
 
 @media (hover:hover) and (pointer:fine){
-  .book-slot:hover{
-    z-index:20;
-    width:calc(var(--bw) + var(--spread));
-  }
+  .book-slot:hover{ z-index:30; }
   .book-slot:hover .book-pop{
     width:calc(var(--bw) + var(--spread));
-    transform:translate3d(18px, -96px, 210px) rotateX(24deg) rotateY(-10deg) scale(1.3);
+    height:calc(var(--bh) + 26px);
+    transform:translate(var(--ocx, 0px), calc(-1 * var(--lift)));
   }
   .book-slot:hover .book-pop::after{
-    content:''; position:absolute; left:6%; right:10%; bottom:-22px; height:36px; z-index:-1;
+    content:''; position:absolute; left:4%; right:4%; bottom:-26px; height:40px; z-index:-1;
     background:radial-gradient(ellipse at center, rgba(0,0,0,.5), transparent 72%);
     pointer-events:none;
   }
-  .book-slot:hover .book-spine-face{
-    box-shadow:
-      inset -2px 0 0 color-mix(in srgb, #000 25%, transparent),
-      inset 2px 0 0 color-mix(in srgb, #fff 18%, transparent),
-      0 14px 22px rgba(0,0,0,.4);
-  }
-  .book-slot:hover .book-spread{
-    width:var(--spread); max-width:var(--spread); opacity:1;
-    overflow:visible;
-    pointer-events:none;
-    transform:rotateY(-6deg) translateZ(12px);
-  }
-  .book-slot:hover .book-page-edge{ opacity:1; }
+  .book-slot:hover .book-spine-face{ flex-basis:0; width:0; opacity:0; box-shadow:none; }
+  .book-slot:hover .book-open{ width:100%; opacity:1; }
+  .book-slot:hover .book-leaf.is-left{ transform:rotateY(11deg); }
+  .book-slot:hover .book-leaf.is-right{ transform:rotateY(-11deg); }
+  .book-slot:hover .book-openlabel{ opacity:1; transform:translate(-50%, 0); }
+}
+
+@media (max-width:620px){
+  .bookcase-row{ padding:150px 8px 12px; }
+  .book-openlabel{ top:-46px; padding:6px 12px; }
+  .bol-name{ font-size:15px; }
 }
 
 .view-toggle{ display:flex; gap:6px; }
@@ -480,5 +477,5 @@ body.recipes-shelf .foot{ display:none; }
 
 @media (prefers-reduced-motion: reduce){
   .book-slot, .recipec, .detail, .flip-page.turn-in{ animation:none; }
-  .flip-page, .book-slot, .book-pop, .book-spread, .recipec{ transition:none; }
+  .flip-page, .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec{ transition:none; }
 }

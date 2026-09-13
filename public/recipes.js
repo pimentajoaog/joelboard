@@ -518,20 +518,51 @@ function layoutShelf() {
   var n = slots.length;
   if (!n) return;
   var gap = 8;
-  var avail = row.clientWidth;
-  var minW = 46;
+  var avail = Math.max(240, row.clientWidth - 32);
+  var minW = 42;
   var w = parseFloat(slots[0].style.getPropertyValue('--bw')) || 70;
   var need = n * w + (n - 1) * gap;
   if (need > avail) {
     w = Math.max(minW, Math.floor((avail - (n - 1) * gap) / n));
-    slots.forEach(function (el) {
-      el.style.setProperty('--bw', w + 'px');
-    });
+    slots.forEach(function (el) { el.style.setProperty('--bw', w + 'px'); });
+    need = n * w + (n - 1) * gap;
   }
-  row.classList.toggle('is-packed', need > avail);
+  row.classList.toggle('is-scroll', need > avail);
+  var maxSpread = Math.max(260, Math.min(640, row.clientWidth - w - 48));
+  slots.forEach(function (el) {
+    var h = parseFloat(el.style.getPropertyValue('--bh')) || 380;
+    el.style.setProperty('--spread', Math.round(Math.min(maxSpread, Math.max(280, h * 1.16))) + 'px');
+  });
+}
+
+/* Keep the opened book inside the shelf bounds instead of overflowing sideways */
+function centerOpenBook(el) {
+  if (!el) return;
+  var box = el.closest('.bookcase');
+  if (!box) return;
+  var cs = getComputedStyle(el);
+  var bw = parseFloat(cs.getPropertyValue('--bw')) || el.offsetWidth;
+  var spread = parseFloat(cs.getPropertyValue('--spread')) || 420;
+  var open = bw + spread;
+  var slot = el.getBoundingClientRect();
+  var bounds = box.getBoundingClientRect();
+  var pad = 12;
+  var dx = -(open - bw) / 2;
+  var left = slot.left + dx;
+  var right = left + open;
+  if (left < bounds.left + pad) dx += (bounds.left + pad) - left;
+  else if (right > bounds.right - pad) dx -= right - (bounds.right - pad);
+  el.style.setProperty('--ocx', Math.round(dx) + 'px');
 }
 
 function bindShelfLayout() {
+  var row = document.querySelector('.bookcase-row');
+  if (row) {
+    row.querySelectorAll('.book-slot').forEach(function (el) {
+      el.addEventListener('mouseenter', function () { centerOpenBook(el); });
+      el.addEventListener('focus', function () { centerOpenBook(el); });
+    });
+  }
   if (bindShelfLayout._on) return;
   bindShelfLayout._on = true;
   window.addEventListener('resize', function () {
@@ -564,6 +595,7 @@ function syncShelfPeek() {
   if (!row) return;
   row.querySelectorAll('.book-slot').forEach(function (el) {
     var on = el.getAttribute('data-id') === _peekBookId;
+    if (on) centerOpenBook(el);
     el.classList.toggle('is-peek', on);
     el.setAttribute('aria-expanded', on ? 'true' : 'false');
   });
@@ -596,17 +628,17 @@ function renderShelf() {
       + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();onBookActivate(\'' + escAttr(b.id) + '\')}"'
       + '>'
       + '<div class="book-pop">'
+      + '<div class="book-openlabel" aria-hidden="true">'
+      + '<span class="bol-ico">' + esc(b.icon || '📖') + '</span>'
+      + '<span class="bol-name">' + esc(b.name) + '</span>'
+      + '</div>'
       + '<div class="book-spine-face">'
       + '<span class="book-spine-ico" aria-hidden="true">' + esc(b.icon || '📖') + '</span>'
       + '<span class="book-spine-title">' + esc(b.name) + '</span>'
       + '</div>'
-      + '<div class="book-spread" aria-hidden="true">'
-      + '<div class="book-pages">'
-      + '<div class="book-page is-left"><div class="book-page-lines"></div></div>'
-      + '<div class="book-gutter"></div>'
-      + '<div class="book-page is-right"><div class="book-page-lines"></div></div>'
-      + '</div>'
-      + '<div class="book-page-edge"></div>'
+      + '<div class="book-open" aria-hidden="true">'
+      + '<div class="book-leaf is-left"><span class="book-page-lines"></span></div>'
+      + '<div class="book-leaf is-right"><span class="book-page-lines"></span></div>'
       + '</div>'
       + '</div>'
       + '</div>';

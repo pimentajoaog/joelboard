@@ -1,6 +1,6 @@
 # Joelboard
 
-Personal productivity suite by **Joel Soluções LTDA** — Finance, Fit, Study, Notes, Planner, and Chrome Mini extensions, unified under one Hub with shared Google login and design system.
+Personal productivity suite by **Joel Soluções LTDA** — Finance, Fit, Study, Notes, Planner, Recipes, and Chrome Mini extensions, unified under one Hub with shared Google login and design system.
 
 **Live:** [joelboard.vercel.app](https://joelboard.vercel.app)
 

@@ -338,8 +338,7 @@ body.recipes-shelf .foot{ display:none; }
   overflow:visible;
 }
 .book-stack.is-cards, .book-stack.is-empty{
-  width:100%; max-width:1220px;
-  margin-left:auto; margin-right:auto;
+  width:100%; max-width:1220px; margin:0 auto;
 }
 /* A placa fica atrás da capa. Só o painel aberto sobe de z-index. */
 .book-crest{
@@ -371,7 +370,6 @@ body.recipes-shelf .foot{ display:none; }
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   min-width:0; flex:1;
 }
-.book-menu{ position:relative; flex:none; margin-left:2px; overflow:visible; }
 .book-menu-btn{
   width:30px; height:30px; border-radius:999px; cursor:pointer; font-family:inherit;
   font-size:16px; font-weight:800; line-height:1; letter-spacing:.4px;
@@ -381,32 +379,10 @@ body.recipes-shelf .foot{ display:none; }
   transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
 }
 .book-menu-btn:hover{ background:rgba(0,0,0,.34); transform:scale(1.04); }
-.book-menu.is-open .book-menu-btn{
-  background:rgba(0,0,0,.4);
-  box-shadow:0 0 0 2px rgba(255,255,255,.16);
-}
-/* Painel sobe da placa. O livro desce (--book-menu-shift) pra caber sem clipar. */
-.book-menu-panel{
-  position:absolute; left:18px; bottom:100%; margin-bottom:8px;
-  min-width:min(260px, 78vw); padding:12px;
-  display:flex; flex-direction:column; gap:10px;
-  background:var(--surface); border:1px solid var(--border); border-radius:16px;
-  box-shadow:0 16px 40px rgba(0,0,0,.42);
-  opacity:0; transform:translateY(6px) scale(.96); transform-origin:bottom left;
-  pointer-events:none; transition:opacity .16s ease, transform .16s ease;
-  z-index:12;
-}
-.book-stack.is-open-menu .book-menu-panel{
-  opacity:1; transform:none; pointer-events:auto;
-}
-.spread-wrap, .book-stack.is-cards, .book-stack.is-empty{
-  margin-top:var(--book-menu-shift, 2px);
-  transition:margin-top .2s ease;
-}
-.book-menu-panel .view-toggle{ width:100%; }
-.book-menu-panel .vbtn{ flex:1; text-align:center; }
-.book-menu-edit{ width:100%; }
-.book-menu-panel .jb-search{ width:100%; margin:0; }
+#bookToolsOverlay .view-toggle{ width:100%; margin:0 0 12px; }
+#bookToolsOverlay .vbtn{ flex:1; text-align:center; }
+#bookToolsOverlay .book-menu-edit{ width:100%; margin:0 0 12px; }
+#bookToolsOverlay .jb-search{ width:100%; margin:0; }
 
 /* Faixa de capa falsa quando não há book-body (cards / vazio) */
 .book-ledge{
@@ -478,7 +454,7 @@ body.recipes-shelf .foot{ display:none; }
   .bol-name{ font-size:15px; }
 }
 
-/* ---- recipe search lives in .book-menu-panel now ---- */
+/* ---- recipe search lives in Ferramentas ---- */
 .view-toggle{ display:flex; gap:6px; }
 .vbtn{
   background:var(--surface2); border:1px solid var(--border); color:var(--muted);
@@ -503,8 +479,7 @@ body.recipes-book .secbar{ margin-bottom:10px; }
 
 .spread-wrap{
   position:relative; display:flex; align-items:center; justify-content:center;
-  gap:10px; margin-right:0; margin-bottom:8px; margin-left:0;
-  perspective:2600px; perspective-origin:50% 44%;
+  gap:10px; margin:2px 0 8px; perspective:2600px; perspective-origin:50% 44%;
   touch-action:pan-y; outline:none; overflow:visible;
 }
 
@@ -972,7 +947,7 @@ button.step-num{ cursor:pointer; }
 @media (prefers-reduced-motion: reduce){
   .book-slot, .recipec, .detail, .book-body.is-intro{ animation:none; }
   .page-turn{ display:none; }
-  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-menu-panel, .book-menu-btn, .spread-wrap, .book-stack.is-cards, .book-stack.is-empty{ transition:none; }
+  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-menu-btn{ transition:none; }
   .ck-t{ transition:none; }
   .ing-list li.just-on::after, .step-list li.just-on::after{ display:none; }
   li.just-on .ichk, li.just-on .step-num{ animation:none; }

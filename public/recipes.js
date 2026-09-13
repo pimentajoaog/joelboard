@@ -657,7 +657,7 @@ function render() {
   if (view === 'book' && bookViewMode === 'flip') {
     setTimeout(bindFlipGesture, 0);
   }
-  if (view === 'book') layoutBookMenu();
+  if (view === 'book') paintBookTools();
 }
 
 function bookShelfFit(count) {
@@ -947,14 +947,12 @@ function visibleRecipes(bookId) {
 function onBookSearch(v) {
   bookQuery = v;
   flipIndex = 0;
-  _bookMenuOpen = true;
   render();
   refocusBookSearch();
 }
 function clearBookSearch() {
   bookQuery = '';
   flipIndex = 0;
-  _bookMenuOpen = true;
   render();
   refocusBookSearch();
 }
@@ -966,76 +964,46 @@ function refocusBookSearch() {
   try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {}
 }
 
-var _bookMenuOpen = false;
-function bookMenuShiftEl() {
-  return document.querySelector('#main .spread-wrap') || document.querySelector('#main .book-stack');
-}
-function layoutBookMenu() {
-  var stack = document.querySelector('.book-stack');
-  var menu = document.querySelector('.book-menu');
-  var btn = menu && menu.querySelector('.book-menu-btn');
-  var panel = document.querySelector('.book-menu-panel');
-  var shiftEl = bookMenuShiftEl();
-  if (stack) stack.classList.toggle('is-open-menu', _bookMenuOpen);
-  if (menu) menu.classList.toggle('is-open', _bookMenuOpen);
-  if (btn) btn.setAttribute('aria-expanded', _bookMenuOpen ? 'true' : 'false');
-  if (!shiftEl) return;
-  if (!_bookMenuOpen || !panel) {
-    shiftEl.style.setProperty('--book-menu-shift', '0px');
-    return;
-  }
-  /* O painel cresce pra cima da placa; o livro desce o tanto que o painel precisa. */
-  var gap = 8;
-  var h = panel.offsetHeight || 0;
-  if (!h && !layoutBookMenu._retry) {
-    layoutBookMenu._retry = true;
-    requestAnimationFrame(function () {
-      layoutBookMenu._retry = false;
-      layoutBookMenu();
+function paintBookTools() {
+  var host = $('bookToolsView');
+  if (host) {
+    host.querySelectorAll('.vbtn').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-view') === bookViewMode);
     });
-    return;
   }
-  shiftEl.style.setProperty('--book-menu-shift', Math.max(0, h + gap) + 'px');
+  var edit = $('bookToolsEdit');
+  if (edit) {
+    edit.onclick = function () {
+      closeBookTools();
+      if (openBookId) openBookModal(openBookId);
+    };
+  }
+  var search = $('bookSearch');
+  if (search && search.value !== bookQuery) search.value = bookQuery;
+  var clear = $('bookSearchClear');
+  if (clear) clear.style.display = bookQuery ? 'flex' : 'none';
 }
-function syncBookMenuOpen() { layoutBookMenu(); }
-function toggleBookMenu(e) {
+function openBookTools(e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
-  _bookMenuOpen = !_bookMenuOpen;
-  layoutBookMenu();
+  paintBookTools();
+  var ov = $('bookToolsOverlay');
+  if (ov) ov.classList.add('open');
+  setTimeout(function () { if ($('bookSearch')) $('bookSearch').focus(); }, 50);
 }
-function closeBookMenu() {
-  if (!_bookMenuOpen) return;
-  _bookMenuOpen = false;
-  layoutBookMenu();
+function closeBookTools() {
+  var ov = $('bookToolsOverlay');
+  if (ov) ov.classList.remove('open');
 }
 
-/* Placa encaixada na capa; o painel é irmão dela pra poder ficar acima do livro. */
+/* Placa encaixada na capa. Ferramentas vão pra um sheet — o popover no livro não rolou. */
 function bookCrest(book) {
   var kc = esc(book.color || '#e07a5f');
-  var open = _bookMenuOpen ? ' is-open' : '';
   return '<div class="book-crest" style="--kc:' + kc + '">'
     + '<div class="book-plaque" title="' + escAttr(book.name) + '">'
     + '<span class="book-plaque-ico" aria-hidden="true">' + esc(book.icon || '📖') + '</span>'
     + '<span class="book-plaque-name">' + esc(book.name) + '</span>'
-    + '<div class="book-menu' + open + '" onclick="event.stopPropagation()">'
-    + '<button type="button" class="book-menu-btn" onclick="toggleBookMenu(event)"'
-    + ' aria-expanded="' + (_bookMenuOpen ? 'true' : 'false') + '"'
+    + '<button type="button" class="book-menu-btn" onclick="openBookTools(event)"'
     + ' aria-label="Ferramentas do livro" title="Ferramentas">⋯</button>'
-    + '</div>'
-    + '</div>'
-    + '</div>'
-    + '<div class="book-menu-panel" role="menu" onclick="event.stopPropagation()">'
-    + '<div class="view-toggle">'
-    + '<button type="button" class="vbtn' + (bookViewMode === 'flip' ? ' on' : '') + '" onclick="setBookView(\'flip\')">Páginas</button>'
-    + '<button type="button" class="vbtn' + (bookViewMode === 'cards' ? ' on' : '') + '" onclick="setBookView(\'cards\')">Cards</button>'
-    + '</div>'
-    + '<button type="button" class="btn ghost book-menu-edit" onclick="openBookModal(\'' + escAttr(book.id) + '\')">Editar livro</button>'
-    + '<div class="jb-search">'
-    + '<input class="field jb-search-input" id="bookSearch" type="search" placeholder="Buscar receita…"'
-    + ' value="' + esc(bookQuery) + '" oninput="onBookSearch(this.value)"'
-    + ' onfocus="JB.searchFocus(this)" onblur="JB.searchBlur(this)">'
-    + '<button type="button" class="jb-search-clear" id="bookSearchClear" onclick="clearBookSearch()" aria-label="Limpar busca"'
-    + ' style="display:' + (bookQuery ? 'flex' : 'none') + '">✕</button>'
     + '</div>'
     + '</div>';
 }
@@ -1047,10 +1015,9 @@ function renderBook() {
   var list = visibleRecipes(book.id);
   var head = '<div class="secbar"><button class="back" onclick="goShelf()">← Estante</button></div>';
   var kc = esc(book.color || '#e07a5f');
-  var stackOpen = _bookMenuOpen ? ' is-open-menu' : '';
   if (!total) {
     return head
-      + '<div class="book-stack is-empty' + stackOpen + '" style="--kc:' + kc + '">'
+      + '<div class="book-stack is-empty" style="--kc:' + kc + '">'
       + bookCrest(book)
       + '<div class="book-ledge" aria-hidden="true"></div>'
       + '<div class="empty">Este livro está vazio. Comece pela primeira receita — do zero ou buscando online.</div>'
@@ -1059,7 +1026,7 @@ function renderBook() {
   }
   if (!list.length) {
     return head
-      + '<div class="book-stack is-empty' + stackOpen + '" style="--kc:' + kc + '">'
+      + '<div class="book-stack is-empty" style="--kc:' + kc + '">'
       + bookCrest(book)
       + '<div class="book-ledge" aria-hidden="true"></div>'
       + '<div class="empty">Nada com “' + esc(bookQuery) + '” neste livro.</div>'
@@ -1067,7 +1034,7 @@ function renderBook() {
   }
   if (bookViewMode === 'cards') {
     return head
-      + '<div class="book-stack is-cards' + stackOpen + '" style="--kc:' + kc + '">'
+      + '<div class="book-stack is-cards" style="--kc:' + kc + '">'
       + bookCrest(book)
       + '<div class="book-ledge" aria-hidden="true"></div>'
       + renderCards(list, book)
@@ -1136,7 +1103,7 @@ function renderSpread(list, book) {
   return '<div class="spread-wrap" id="flipWrap" style="--kc:' + kc + '">'
     + '<button type="button" class="spread-arrow is-prev" onclick="flipPrev()" aria-label="Página anterior"'
     + (atStart ? ' disabled' : '') + '>‹</button>'
-    + '<div class="book-stack' + (_bookMenuOpen ? ' is-open-menu' : '') + '">'
+    + '<div class="book-stack">'
     + bookCrest(book)
     + '<div class="book-body' + intro + '">'
     + '<span class="book-ribbon" aria-hidden="true"></span>'
@@ -1426,14 +1393,9 @@ function bindSpreadResize() {
   var wasWide = wideSpread();
   window.addEventListener('resize', function () {
     var now = wideSpread();
-    if (now !== wasWide) {
-      wasWide = now;
-      if (view === 'book' && bookViewMode === 'flip') {
-        render();
-        return;
-      }
-    }
-    if (view === 'book' && _bookMenuOpen) layoutBookMenu();
+    if (now === wasWide) return;
+    wasWide = now;
+    if (view === 'book' && bookViewMode === 'flip') render();
   });
 }
 
@@ -2377,10 +2339,7 @@ function guessIcon(cat) {
 }
 
 /* ---- lifecycle ---- */
-document.addEventListener('click', function (e) {
-  clearBookPeek();
-  if (!e.target.closest || !e.target.closest('.book-menu, .book-menu-panel')) closeBookMenu();
-});
+document.addEventListener('click', clearBookPeek);
 JB.onSessionExpired(function () {
   authDone = false;
   showSignIn(true);

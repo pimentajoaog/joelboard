@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const sharedPath = path.join(root, '..', 'public', 'extensions', 'replace', 'lib', 'shared.js');
+const sharedPath = path.join(root, '..', 'public', 'extensions', 'mini', 'replace', 'lib', 'shared.js');
 
 const context = {
   chrome: {

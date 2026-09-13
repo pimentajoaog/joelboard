@@ -92,22 +92,6 @@
   </div>
 </div>
 
-<div class="overlay" id="bookToolsOverlay" onclick="if(event.target===this)closeBookTools()">
-  <div class="modal">
-    <div class="mh"><div class="mt">Ferramentas</div><button class="x" onclick="closeBookTools()">✕</button></div>
-    <div class="view-toggle" id="bookToolsView" role="group" aria-label="Modo de leitura">
-      <button type="button" class="vbtn" data-view="flip" onclick="setBookView('flip')">Páginas</button>
-      <button type="button" class="vbtn" data-view="cards" onclick="setBookView('cards')">Cards</button>
-    </div>
-    <button type="button" class="btn ghost book-menu-edit" id="bookToolsEdit">Editar livro</button>
-    <div class="jb-search">
-      <input class="field jb-search-input" id="bookSearch" type="search" placeholder="Buscar receita…"
-        oninput="onBookSearch(this.value)" onfocus="JB.searchFocus(this)" onblur="JB.searchBlur(this)">
-      <button type="button" class="jb-search-clear" id="bookSearchClear" onclick="clearBookSearch()" aria-label="Limpar busca" style="display:none">✕</button>
-    </div>
-  </div>
-</div>
-
 <div class="overlay" id="searchOverlay" onclick="if(event.target===this)closeSearch()">
   <div class="modal modal-wide">
     <div class="mh"><div class="mt">Buscar receitas</div><button class="x" onclick="closeSearch()">✕</button></div>

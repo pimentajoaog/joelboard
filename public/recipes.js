@@ -235,6 +235,7 @@ function toggleFlipPref() {
 
 /* ---- boot / sheet ---- */
 function startRecipes() {
+  bindBookSearchEsc();
   loadViewPref();
   loadSpreadPref();
   if (JB.isGhost && JB.isGhost()) {
@@ -657,7 +658,6 @@ function render() {
   if (view === 'book' && bookViewMode === 'flip') {
     setTimeout(bindFlipGesture, 0);
   }
-  if (view === 'book') paintBookTools();
 }
 
 function bookShelfFit(count) {
@@ -920,6 +920,7 @@ function openBook(id) {
   openRecipeId = null;
   flipIndex = 0;
   bookQuery = '';
+  _bookSearchOpen = false;
   view = 'book';
   _spreadIntro = true;
   render();
@@ -930,6 +931,7 @@ function goShelf() {
   openRecipeId = null;
   _peekBookId = null;
   bookQuery = '';
+  _bookSearchOpen = false;
   render();
 }
 
@@ -944,66 +946,111 @@ function visibleRecipes(bookId) {
   if (!q) return all;
   return all.filter(function (r) { return recipeMatches(r, q); });
 }
+var _bookSearchOpen = false;
+
 function onBookSearch(v) {
   bookQuery = v;
   flipIndex = 0;
+  _bookSearchOpen = true;
   render();
   refocusBookSearch();
 }
 function clearBookSearch() {
   bookQuery = '';
   flipIndex = 0;
+  _bookSearchOpen = true;
   render();
   refocusBookSearch();
 }
-/* render() rebuilds #main, so put the caret back where the user left it */
 function refocusBookSearch() {
   var el = $('bookSearch');
   if (!el) return;
   el.focus();
   try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {}
 }
-
-function paintBookTools() {
-  var host = $('bookToolsView');
-  if (host) {
-    host.querySelectorAll('.vbtn').forEach(function (b) {
-      b.classList.toggle('on', b.getAttribute('data-view') === bookViewMode);
-    });
-  }
-  var edit = $('bookToolsEdit');
-  if (edit) {
-    edit.onclick = function () {
-      closeBookTools();
-      if (openBookId) openBookModal(openBookId);
-    };
-  }
-  var search = $('bookSearch');
-  if (search && search.value !== bookQuery) search.value = bookQuery;
-  var clear = $('bookSearchClear');
-  if (clear) clear.style.display = bookQuery ? 'flex' : 'none';
+function toggleBookView() {
+  setBookView(bookViewMode === 'flip' ? 'cards' : 'flip');
 }
-function openBookTools(e) {
+function paintBookSearchChrome() {
+  var crest = document.querySelector('.book-crest');
+  var slot = document.querySelector('.book-find-slot');
+  var btn = document.querySelector('.book-find-btn');
+  if (crest) crest.classList.toggle('is-finding', _bookSearchOpen);
+  if (slot) slot.classList.toggle('is-open', _bookSearchOpen);
+  if (btn) {
+    btn.classList.toggle('is-on', _bookSearchOpen);
+    btn.setAttribute('aria-expanded', _bookSearchOpen ? 'true' : 'false');
+  }
+}
+function toggleBookSearch(e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
-  paintBookTools();
-  var ov = $('bookToolsOverlay');
-  if (ov) ov.classList.add('open');
-  setTimeout(function () { if ($('bookSearch')) $('bookSearch').focus(); }, 50);
+  if (_bookSearchOpen) {
+    closeBookSearch();
+    return;
+  }
+  _bookSearchOpen = true;
+  paintBookSearchChrome();
+  setTimeout(refocusBookSearch, 40);
 }
-function closeBookTools() {
-  var ov = $('bookToolsOverlay');
-  if (ov) ov.classList.remove('open');
+function closeBookSearch() {
+  if (!_bookSearchOpen) return;
+  _bookSearchOpen = false;
+  var el = $('bookSearch');
+  if (el) el.blur();
+  paintBookSearchChrome();
 }
 
-/* Placa encaixada na capa. Ferramentas vão pra um sheet — o popover no livro não rolou. */
+function bindBookSearchEsc() {
+  if (bindBookSearchEsc._on) return;
+  bindBookSearchEsc._on = true;
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || !_bookSearchOpen || view !== 'book') return;
+    if (document.querySelector('.overlay.open')) return;
+    e.preventDefault();
+    closeBookSearch();
+  });
+}
+
+function plaqueSvg(kind) {
+  if (kind === 'page') {
+    return '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 2.4h5.1c.9 0 1.4.3 2 .8l.3.3c.5.5 1 .8 1.9.8H13.2v9.3H9.4c-.8 0-1.4-.3-2-.8l-.2-.2c-.6-.5-1.2-.8-2-.8H3.2z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/></svg>';
+  }
+  if (kind === 'cards') {
+    return '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.2" y="2.2" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.35"/><rect x="8.8" y="2.2" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.35"/><rect x="2.2" y="8.8" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.35"/><rect x="8.8" y="8.8" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.35"/></svg>';
+  }
+  if (kind === 'pencil') {
+    return '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.1 3.1l2.8 2.8-7.4 7.4H2.7v-2.8zM11.3 1.9l.9-.9c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4l-.9.9z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/></svg>';
+  }
+  return '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.2 10.2L13.4 13.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+}
+
 function bookCrest(book) {
   var kc = esc(book.color || '#e07a5f');
-  return '<div class="book-crest" style="--kc:' + kc + '">'
-    + '<div class="book-plaque" title="' + escAttr(book.name) + '">'
+  var flip = bookViewMode === 'flip';
+  var findOn = _bookSearchOpen;
+  var modeLabel = flip ? 'Páginas — mudar para cards' : 'Cards — mudar para páginas';
+  return '<div class="book-crest' + (findOn ? ' is-finding' : '') + '" style="--kc:' + kc + '">'
+    + '<div class="book-plaque">'
     + '<span class="book-plaque-ico" aria-hidden="true">' + esc(book.icon || '📖') + '</span>'
     + '<span class="book-plaque-name">' + esc(book.name) + '</span>'
-    + '<button type="button" class="book-menu-btn" onclick="openBookTools(event)"'
-    + ' aria-label="Ferramentas do livro" title="Ferramentas">⋯</button>'
+    + '<div class="book-tools">'
+    + '<button type="button" class="book-tool book-mode' + (flip ? ' is-flip' : ' is-cards') + '" onclick="toggleBookView()"'
+    + ' title="' + modeLabel + '" aria-label="' + modeLabel + '">'
+    + '<span class="book-mode-ico is-page">' + plaqueSvg('page') + '</span>'
+    + '<span class="book-mode-ico is-grid">' + plaqueSvg('cards') + '</span>'
+    + '</button>'
+    + '<button type="button" class="book-tool" onclick="openBookModal(\'' + escAttr(book.id) + '\')"'
+    + ' title="Editar livro" aria-label="Editar livro">' + plaqueSvg('pencil') + '</button>'
+    + '<button type="button" class="book-tool book-find-btn' + (findOn ? ' is-on' : '') + (bookQuery ? ' has-q' : '') + '"'
+    + ' onclick="toggleBookSearch(event)" title="Buscar receita" aria-label="Buscar receita"'
+    + ' aria-expanded="' + (findOn ? 'true' : 'false') + '">' + plaqueSvg('search') + '</button>'
+    + '</div>'
+    + '</div>'
+    + '<div class="book-find-slot' + (findOn ? ' is-open' : '') + '">'
+    + '<input class="book-find-input" id="bookSearch" type="search" placeholder="Buscar…" value="' + esc(bookQuery) + '"'
+    + ' oninput="onBookSearch(this.value)" onclick="event.stopPropagation()">'
+    + '<button type="button" class="book-find-clear" onclick="clearBookSearch()" aria-label="Limpar busca"'
+    + ' style="display:' + (bookQuery ? 'flex' : 'none') + '">✕</button>'
     + '</div>'
     + '</div>';
 }

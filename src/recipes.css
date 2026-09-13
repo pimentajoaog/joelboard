@@ -545,12 +545,11 @@ body.recipes-book .book-title-row{ margin-bottom:8px !important; }
 }
 .leaf-sec h3 em{ font-style:normal; color:var(--primary); font-size:11px; }
 .leaf-edit{
-  position:absolute; top:10px; right:12px; z-index:2;
+  position:absolute; top:10px; left:12px; z-index:2;
   width:30px; height:30px; border-radius:999px; cursor:pointer; font-family:inherit; font-size:13px;
   background:var(--surface2); border:1px solid var(--border); color:var(--muted);
 }
 .leaf-edit:hover{ color:var(--primary); border-color:var(--primary); }
-.leaf.is-right .leaf-edit{ right:12px; }
 .leaf-folio{
   position:absolute; bottom:10px; font-size:11px; font-weight:700; color:var(--muted); opacity:.7;
 }

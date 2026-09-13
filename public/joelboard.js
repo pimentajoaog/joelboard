@@ -106,6 +106,60 @@
         }
       };
     }
+    if (app === 'recipes') {
+      return {
+        grid: { Cookbooks: 0, Recipes: 1, Ingredients: 2, Steps: 3, Settings: 4 },
+        data: {
+          cookbooks: [
+            { id: 'ghost-cb1', name: 'Rápido', icon: '🍳', color: '#e07a5f', order: 0, created: iso },
+            { id: 'ghost-cb2', name: 'Doces', icon: '🧁', color: '#f472b6', order: 1, created: iso },
+            { id: 'ghost-cb3', name: 'Sopas', icon: '🍲', color: '#34d399', order: 2, created: iso }
+          ],
+          recipes: [
+            { id: 'ghost-r1', cookbookId: 'ghost-cb1', title: 'Macarrão de alho', icon: '🍝', imageUrl: '', servings: '2', minutes: '20', notes: 'Clássico de segunda.', order: 0, source: '', sourceId: '', created: iso },
+            { id: 'ghost-r2', cookbookId: 'ghost-cb1', title: 'Omelete de queijo', icon: '🍳', imageUrl: '', servings: '1', minutes: '10', notes: '', order: 1, source: '', sourceId: '', created: iso },
+            { id: 'ghost-r3', cookbookId: 'ghost-cb1', title: 'Arroz de forno', icon: '🍚', imageUrl: '', servings: '4', minutes: '45', notes: '', order: 2, source: '', sourceId: '', created: iso },
+            { id: 'ghost-r4', cookbookId: 'ghost-cb2', title: 'Brigadeiro', icon: '🍫', imageUrl: '', servings: '20', minutes: '30', notes: '', order: 0, source: '', sourceId: '', created: iso },
+            { id: 'ghost-r5', cookbookId: 'ghost-cb2', title: 'Pudim da vó', icon: '🍮', imageUrl: '', servings: '8', minutes: '90', notes: '', order: 1, source: '', sourceId: '', created: iso },
+            { id: 'ghost-r6', cookbookId: 'ghost-cb3', title: 'Caldo verde', icon: '🥬', imageUrl: '', servings: '4', minutes: '40', notes: '', order: 0, source: '', sourceId: '', created: iso }
+          ],
+          ingredients: [
+            { id: 'ghost-ri1', recipeId: 'ghost-r1', text: 'espaguete', qty: '250', unit: 'g', order: 0 },
+            { id: 'ghost-ri2', recipeId: 'ghost-r1', text: 'dentes de alho', qty: '4', unit: '', order: 1 },
+            { id: 'ghost-ri3', recipeId: 'ghost-r1', text: 'azeite', qty: '3', unit: 'colheres', order: 2 },
+            { id: 'ghost-ri4', recipeId: 'ghost-r1', text: 'salsinha', qty: '', unit: '', order: 3 },
+            { id: 'ghost-ri5', recipeId: 'ghost-r2', text: 'ovos', qty: '3', unit: '', order: 0 },
+            { id: 'ghost-ri6', recipeId: 'ghost-r2', text: 'queijo ralado', qty: '50', unit: 'g', order: 1 },
+            { id: 'ghost-ri7', recipeId: 'ghost-r3', text: 'arroz cozido', qty: '3', unit: 'xícaras', order: 0 },
+            { id: 'ghost-ri8', recipeId: 'ghost-r3', text: 'creme de leite', qty: '1', unit: 'lata', order: 1 },
+            { id: 'ghost-ri9', recipeId: 'ghost-r3', text: 'mussarela', qty: '200', unit: 'g', order: 2 },
+            { id: 'ghost-ri10', recipeId: 'ghost-r4', text: 'leite condensado', qty: '1', unit: 'lata', order: 0 },
+            { id: 'ghost-ri11', recipeId: 'ghost-r4', text: 'chocolate em pó', qty: '4', unit: 'colheres', order: 1 },
+            { id: 'ghost-ri12', recipeId: 'ghost-r4', text: 'manteiga', qty: '1', unit: 'colher', order: 2 },
+            { id: 'ghost-ri13', recipeId: 'ghost-r5', text: 'leite', qty: '500', unit: 'ml', order: 0 },
+            { id: 'ghost-ri14', recipeId: 'ghost-r5', text: 'açúcar', qty: '1', unit: 'xícara', order: 1 },
+            { id: 'ghost-ri15', recipeId: 'ghost-r6', text: 'batatas', qty: '3', unit: '', order: 0 },
+            { id: 'ghost-ri16', recipeId: 'ghost-r6', text: 'couve fatiada', qty: '1', unit: 'maço', order: 1 },
+            { id: 'ghost-ri17', recipeId: 'ghost-r6', text: 'linguiça', qty: '1', unit: '', order: 2 }
+          ],
+          steps: [
+            { id: 'ghost-rs1', recipeId: 'ghost-r1', text: 'Cozinhe o macarrão al dente.', order: 0 },
+            { id: 'ghost-rs2', recipeId: 'ghost-r1', text: 'Doure o alho no azeite em fogo baixo.', order: 1 },
+            { id: 'ghost-rs3', recipeId: 'ghost-r1', text: 'Misture tudo com um pouco da água do cozimento.', order: 2 },
+            { id: 'ghost-rs4', recipeId: 'ghost-r2', text: 'Bata os ovos com sal.', order: 0 },
+            { id: 'ghost-rs5', recipeId: 'ghost-r2', text: 'Cozinhe em fogo baixo e recheie com queijo.', order: 1 },
+            { id: 'ghost-rs6', recipeId: 'ghost-r3', text: 'Misture arroz, creme de leite e metade do queijo.', order: 0 },
+            { id: 'ghost-rs7', recipeId: 'ghost-r3', text: 'Cubra com o resto do queijo e asse 25 min.', order: 1 },
+            { id: 'ghost-rs8', recipeId: 'ghost-r4', text: 'Cozinhe tudo mexendo até desgrudar da panela.', order: 0 },
+            { id: 'ghost-rs9', recipeId: 'ghost-r4', text: 'Espere esfriar e enrole nas mãos untadas.', order: 1 },
+            { id: 'ghost-rs10', recipeId: 'ghost-r5', text: 'Caramelize o açúcar na forma.', order: 0 },
+            { id: 'ghost-rs11', recipeId: 'ghost-r5', text: 'Asse em banho-maria por 1 hora.', order: 1 },
+            { id: 'ghost-rs12', recipeId: 'ghost-r6', text: 'Cozinhe as batatas e bata com o caldo.', order: 0 },
+            { id: 'ghost-rs13', recipeId: 'ghost-r6', text: 'Junte a couve e a linguiça em rodelas.', order: 1 }
+          ]
+        }
+      };
+    }
     return { grid: {}, data: null };
   }
   function ghostFixture(app) { return jbGhostFixture(app, jbTodayYmd()); }

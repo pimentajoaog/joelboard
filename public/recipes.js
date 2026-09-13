@@ -157,6 +157,15 @@ function toggleFlipPref() {
 function startRecipes() {
   loadViewPref();
   loadSpreadPref();
+  if (JB.isGhost && JB.isGhost()) {
+    authDone = true;
+    var fx = JB.ghostFixture && JB.ghostFixture('recipes');
+    recipesGrid = (fx && fx.grid) || {};
+    DATA = (fx && fx.data) || { cookbooks: [], recipes: [], ingredients: [], steps: [] };
+    showApp();
+    render();
+    return;
+  }
   if (JB.cachedToken && JB.cachedToken()) {
     authDone = true;
     bootSheet();
@@ -619,8 +628,9 @@ function bindShelfLayout() {
   var row = document.querySelector('.bookcase-row');
   if (row) {
     row.querySelectorAll('.book-slot').forEach(function (el) {
-      el.addEventListener('mouseenter', function () { centerOpenBook(el); });
-      el.addEventListener('focus', function () { centerOpenBook(el); });
+      fillBookPeek(el);
+      el.addEventListener('mouseenter', function () { centerOpenBook(el); fillBookPeek(el); });
+      el.addEventListener('focus', function () { centerOpenBook(el); fillBookPeek(el); });
     });
   }
   if (bindShelfLayout._on) return;
@@ -655,10 +665,66 @@ function syncShelfPeek() {
   if (!row) return;
   row.querySelectorAll('.book-slot').forEach(function (el) {
     var on = el.getAttribute('data-id') === _peekBookId;
-    if (on) centerOpenBook(el);
+    if (on) { centerOpenBook(el); fillBookPeek(el); }
     el.classList.toggle('is-peek', on);
     el.setAttribute('aria-expanded', on ? 'true' : 'false');
   });
+}
+
+/* ---- estante: espiada em duas páginas de verdade do livro ---- */
+/* Sorteia duas receitas a cada abertura; a última página vira "fim". */
+function fillBookPeek(el) {
+  if (!el) return;
+  var left = el.querySelector('.book-leaf.is-left .book-page');
+  var right = el.querySelector('.book-leaf.is-right .book-page');
+  if (!left && !right) return;
+  var pick = pickPeekPair(el.getAttribute('data-id'));
+  if (left) left.innerHTML = peekPageHtml(pick[0], 1);
+  if (right) right.innerHTML = peekPageHtml(pick[1], 2);
+}
+
+function pickPeekPair(bookId) {
+  var list = recipesInBook(bookId).slice();
+  for (var i = list.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = list[i]; list[i] = list[j]; list[j] = t;
+  }
+  return [list[0] || null, list[1] || null];
+}
+
+function peekPageHtml(r, folio) {
+  if (!r) return '<div class="bp-end">fim</div>';
+  var picks = [];
+  var ings = ingsFor(r.id);
+  var steps = stepsFor(r.id);
+  if (ings.length) picks.push('ings');
+  if (steps.length) picks.push('steps');
+  var kind = picks.length ? picks[Math.floor(Math.random() * picks.length)] : '';
+  var body = '';
+  if (kind === 'ings') {
+    body = '<div class="bp-label">Mise en place</div>'
+      + '<div class="bp-lines">' + ings.slice(0, 5).map(function (ing) {
+        var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
+        return '<div class="bp-line"><i class="bp-box"></i><span>' + esc(label) + '</span></div>';
+      }).join('') + '</div>';
+  } else if (kind === 'steps') {
+    body = '<div class="bp-label">Passo a passo</div>'
+      + '<div class="bp-lines">' + steps.slice(0, 4).map(function (st, i) {
+        return '<div class="bp-line"><i class="bp-num">' + (i + 1) + '</i><span>' + esc(st.text) + '</span></div>';
+      }).join('') + '</div>';
+  } else {
+    body = '<div class="bp-label">Receita</div>'
+      + '<div class="bp-lines"><div class="bp-line"><span>' + esc(r.notes || 'Sem ingredientes ainda.') + '</span></div></div>';
+  }
+  var meta = [];
+  if (r.minutes) meta.push(esc(r.minutes) + ' min');
+  if (r.servings) meta.push(esc(r.servings) + ' porções');
+  return '<div class="bp-head"><span class="bp-ico">' + esc(r.icon || '🍽️') + '</span>'
+    + '<span class="bp-title">' + esc(r.title) + '</span></div>'
+    + (meta.length ? '<div class="bp-meta">' + meta.join(' · ') + '</div>' : '')
+    + '<div class="bp-rule"></div>'
+    + body
+    + '<div class="bp-folio">' + folio + '</div>';
 }
 
 function clearBookPeek(ev) {
@@ -693,8 +759,8 @@ function renderShelf() {
       + '<span class="book-spine-title">' + esc(b.name) + '</span>'
       + '</div>'
       + '<div class="book-open" aria-hidden="true">'
-      + '<div class="book-leaf is-left"><span class="book-page-lines"></span></div>'
-      + '<div class="book-leaf is-right"><span class="book-page-lines"></span></div>'
+      + '<div class="book-leaf is-left"><span class="book-page-lines"></span><div class="book-page"></div></div>'
+      + '<div class="book-leaf is-right"><span class="book-page-lines"></span><div class="book-page"></div></div>'
       + '</div>'
       + '</div>'
       + '</div>';

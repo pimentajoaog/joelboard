@@ -960,23 +960,57 @@ button.step-num{ cursor:pointer; }
 }
 .part-edit-head{ display:grid; grid-template-columns:1fr 36px; gap:6px; margin-bottom:10px; }
 .part-edit-add{ width:auto; margin:0 0 10px; font-size:12px; }
+.leaf-parts{
+  display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  margin-top:14px;
+}
 .leaf-part{
-  margin-top:14px; padding:8px 10px 6px;
-  border-radius:10px;
+  display:flex; flex-direction:column;
+  margin:0; padding:0; min-width:0;
+  border-radius:10px; overflow:hidden;
   background:color-mix(in srgb, #000 28%, var(--surface2));
   border:1px solid color-mix(in srgb, #000 32%, var(--border));
 }
+.leaf-part.is-open{ grid-column:1 / -1; }
+.leaf-part-head{
+  flex:1; width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+  position:relative;
+  padding:8px 22px 8px 10px; margin:0; border:0; background:transparent;
+  color:inherit; cursor:pointer; text-align:left; font:inherit;
+}
+.leaf-part-head::after{
+  content:''; position:absolute; right:10px; top:13px;
+  width:6px; height:6px;
+  border-right:1.5px solid var(--muted);
+  border-bottom:1.5px solid var(--muted);
+  transform:rotate(45deg);
+}
+.leaf-part.is-open .leaf-part-head::after{
+  top:15px; transform:rotate(-135deg);
+}
+.leaf-part-head:hover{ background:color-mix(in srgb, #fff 4%, transparent); }
 .leaf-part-name{
   font-family:var(--font-display); font-weight:800; font-size:13px;
-  letter-spacing:-.15px; color:var(--text); margin:0 0 4px;
-  text-transform:none;
+  letter-spacing:-.15px; color:var(--text); margin:0;
+  text-transform:none; line-height:1.2;
 }
+.leaf-part-meta{
+  display:flex; flex-wrap:wrap; gap:6px 10px;
+  font-size:10px; font-weight:800; letter-spacing:.3px; text-transform:uppercase;
+  color:var(--muted);
+}
+.leaf-part-meta em{ font-style:normal; color:var(--primary); }
+.leaf-part-body{ display:none; padding:0 8px 8px; }
+.leaf-part.is-open .leaf-part-body{ display:block; }
 .leaf-part .leaf-sec{ margin-top:8px; }
 .leaf-part .leaf-sec h3{ font-size:10px; margin-bottom:6px; padding-bottom:4px; }
 .leaf-part .ing-list, .leaf-part .step-list{ gap:6px; }
 .leaf-part .ing-list li, .leaf-part .step-list li{
   padding:8px 10px; border-radius:9px;
   background:color-mix(in srgb, #000 16%, var(--surface));
+}
+@container (max-width: 280px){
+  .leaf-parts{ grid-template-columns:1fr; }
 }
 
 .search-by{ margin:10px 0 12px; }

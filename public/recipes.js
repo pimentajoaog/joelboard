@@ -20,6 +20,7 @@ var _searchImportBookId = null;
 var _ingDraft = [];
 var _stepDraft = [];
 var _partDraft = [];
+var _openPartKey = '';
 var _recipeImgFile = null;
 var _recipeImgLocalUrl = '';
 var CHECK_KEY = 'jb_recipes_checks';
@@ -1290,7 +1291,27 @@ function leafChrome(r) {
   return '<div class="leaf-chrome">' + leafActions(r) + '</div>';
 }
 
+function partOpenKey(recipeId, partId) {
+  return String(recipeId || '') + '|' + String(partId || '');
+}
+function paintPartOpenState() {
+  var all = document.querySelectorAll('.leaf-part[data-part-key]');
+  for (var i = 0; i < all.length; i++) {
+    var on = (all[i].getAttribute('data-part-key') || '') === _openPartKey;
+    all[i].classList.toggle('is-open', on);
+    var head = all[i].querySelector('.leaf-part-head');
+    if (head) head.setAttribute('aria-expanded', on ? 'true' : 'false');
+  }
+}
+function toggleRecipePart(recipeId, partId, ev) {
+  if (ev) ev.stopPropagation();
+  var key = partOpenKey(recipeId, partId);
+  _openPartKey = _openPartKey === key ? '' : key;
+  paintPartOpenState();
+}
 function jumpRecipePart(recipeId, partId) {
+  _openPartKey = partOpenKey(recipeId, partId);
+  paintPartOpenState();
   var el = document.getElementById('rc-part-' + recipeId + '-' + partId);
   if (!el) return;
   var body = el.closest('.leaf-body');
@@ -1358,7 +1379,9 @@ function stepsSection(r) {
 }
 
 function recipePartsHtml(r) {
-  return partsFor(r.id).map(function (p) { return partSection(r, p); }).join('');
+  var list = partsFor(r.id);
+  if (!list.length) return '';
+  return '<div class="leaf-parts">' + list.map(function (p) { return partSection(r, p); }).join('') + '</div>';
 }
 
 function partSection(r, p) {
@@ -1366,6 +1389,11 @@ function partSection(r, p) {
   var steps = stepsFor(r.id, p.id);
   var ingDone = doneCount(r.id, ings);
   var stepDone = doneCount(r.id, steps);
+  var key = partOpenKey(r.id, p.id);
+  var open = _openPartKey === key;
+  var meta = [];
+  if (ings.length) meta.push('<span>Mise <em data-tally="' + esc(r.id + '|ing|' + p.id) + '">' + ingDone + '/' + ings.length + '</em></span>');
+  if (steps.length) meta.push('<span>Passos <em data-tally="' + esc(r.id + '|step|' + p.id) + '">' + stepDone + '/' + steps.length + '</em></span>');
   var ingRows = ings.map(function (ing) {
     var on = isChecked(r.id, ing.id);
     var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
@@ -1384,8 +1412,13 @@ function partSection(r, p) {
       + (on ? '✓' : (i + 1)) + '</button>'
       + '<span><span class="ck-t">' + esc(st.text) + '</span></span></li>';
   }).join('');
-  return '<div class="leaf-part" id="rc-part-' + esc(r.id) + '-' + esc(p.id) + '">'
-    + '<h3 class="leaf-part-name">' + esc(p.name || 'Parte') + '</h3>'
+  return '<div class="leaf-part' + (open ? ' is-open' : '') + '" id="rc-part-' + esc(r.id) + '-' + esc(p.id) + '" data-part-key="' + esc(key) + '">'
+    + '<button type="button" class="leaf-part-head" onclick="toggleRecipePart(\'' + escAttr(r.id) + '\',\'' + escAttr(p.id) + '\',event)"'
+    + ' aria-expanded="' + (open ? 'true' : 'false') + '">'
+    + '<span class="leaf-part-name">' + esc(p.name || 'Parte') + '</span>'
+    + (meta.length ? '<span class="leaf-part-meta">' + meta.join('') + '</span>' : '')
+    + '</button>'
+    + '<div class="leaf-part-body">'
     + '<div class="leaf-sec">'
     + '<h3>Mise en place' + (ings.length ? '<em data-tally="' + esc(r.id + '|ing|' + p.id) + '">' + ingDone + '/' + ings.length + '</em>' : '') + '</h3>'
     + (ingRows ? '<ul class="ing-list">' + ingRows + '</ul>' : '<div class="rg">Nenhum ingrediente.</div>')
@@ -1393,6 +1426,7 @@ function partSection(r, p) {
     + '<div class="leaf-sec">'
     + '<h3>Passo a passo' + (steps.length ? '<em data-tally="' + esc(r.id + '|step|' + p.id) + '">' + stepDone + '/' + steps.length + '</em>' : '') + '</h3>'
     + (stepRows ? '<ul class="step-list">' + stepRows + '</ul>' : '<div class="rg">Nenhum passo.</div>')
+    + '</div>'
     + '</div>'
     + '</div>';
 }

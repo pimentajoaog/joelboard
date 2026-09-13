@@ -139,8 +139,11 @@
             { id: 'ghost-ri13', recipeId: 'ghost-r5', text: 'leite', qty: '500', unit: 'ml', order: 0 },
             { id: 'ghost-ri14', recipeId: 'ghost-r5', text: 'açúcar', qty: '1', unit: 'xícara', order: 1 },
             { id: 'ghost-ri20', recipeId: 'ghost-r5', text: 'calda', qty: '', unit: '', order: 2 },
+            { id: 'ghost-ri21', recipeId: 'ghost-r5', text: 'cobertura', qty: '', unit: '', order: 3 },
             { id: 'ghost-ri18', recipeId: 'ghost-r5', text: 'açúcar', qty: '1', unit: 'xícara', order: 0, partId: 'ghost-pt1' },
             { id: 'ghost-ri19', recipeId: 'ghost-r5', text: 'água', qty: '1/2', unit: 'xícara', order: 1, partId: 'ghost-pt1' },
+            { id: 'ghost-ri22', recipeId: 'ghost-r5', text: 'chocolate em pó', qty: '2', unit: 'colheres', order: 0, partId: 'ghost-pt2' },
+            { id: 'ghost-ri23', recipeId: 'ghost-r5', text: 'creme de leite', qty: '1/2', unit: 'caixa', order: 1, partId: 'ghost-pt2' },
             { id: 'ghost-ri15', recipeId: 'ghost-r6', text: 'batatas', qty: '3', unit: '', order: 0 },
             { id: 'ghost-ri16', recipeId: 'ghost-r6', text: 'couve fatiada', qty: '1', unit: 'maço', order: 1 },
             { id: 'ghost-ri17', recipeId: 'ghost-r6', text: 'linguiça', qty: '1', unit: '', order: 2 }
@@ -158,6 +161,7 @@
             { id: 'ghost-rs10', recipeId: 'ghost-r5', text: 'Caramelize o açúcar na forma.', order: 0 },
             { id: 'ghost-rs11', recipeId: 'ghost-r5', text: 'Asse em banho-maria por 1 hora.', order: 1 },
             { id: 'ghost-rs14', recipeId: 'ghost-r5', text: 'Derreta o açúcar até dourar e junte a água com cuidado.', order: 0, partId: 'ghost-pt1' },
+            { id: 'ghost-rs15', recipeId: 'ghost-r5', text: 'Misture o chocolate no creme e cubra o pudim frio.', order: 0, partId: 'ghost-pt2' },
             { id: 'ghost-rs12', recipeId: 'ghost-r6', text: 'Cozinhe as batatas e bata com o caldo.', order: 0 },
             { id: 'ghost-rs13', recipeId: 'ghost-r6', text: 'Junte a couve e a linguiça em rodelas.', order: 1 }
           ],
@@ -166,7 +170,8 @@
             { id: 'ghost-rp2', recipeId: 'ghost-r4', date: jbGhostYmdFrom(today, 5), created: iso }
           ],
           parts: [
-            { id: 'ghost-pt1', recipeId: 'ghost-r5', name: 'Calda', order: 0, sourceIngId: 'ghost-ri20' }
+            { id: 'ghost-pt1', recipeId: 'ghost-r5', name: 'Calda', order: 0, sourceIngId: 'ghost-ri20' },
+            { id: 'ghost-pt2', recipeId: 'ghost-r5', name: 'Cobertura', order: 1, sourceIngId: 'ghost-ri21' }
           ]
         }
       };

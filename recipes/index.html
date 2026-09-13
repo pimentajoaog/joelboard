@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!-- Joelboard Recipes. © 2026 Joel Soluções LTDA. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Joelboard Recipes</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/joelboard.css">
+<script src="/skin-boot.js"></script>
+<link rel="stylesheet" href="/themes.css">
+<meta name="theme-color" content="#0d0f18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Recipes">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Chakra+Petch:wght@500;600;700&family=Cormorant+Garamond:wght@500;600&family=Darker+Grotesque:wght@500;700;900&family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/recipes.css">
+</head>
+<body>
+<div id="loading"></div>
+
+<div id="app">
+  <div class="header">
+    <div class="hl"><a class="hub-home" href="/" title="Voltar ao Joelboard" aria-label="Voltar ao Joelboard"><img src="/icon-192.png" alt="Joelboard"></a><h1>Recipes</h1></div>
+    <div class="acct"><span id="acctEmail"></span><button class="lnk" onclick="openSettings()" title="Ajustes">⚙</button><button class="lnk" onclick="recipesSignOut()">Sair</button></div>
+  </div>
+  <div id="main"></div>
+  <div class="foot">© 2026 Joel Soluções LTDA · <a href="/privacy.html">Privacidade</a> · <a href="/aviso.html">Aviso legal</a></div>
+</div>
+
+<button class="door" onclick="location.href='/'" title="Voltar ao Joelboard" aria-label="Voltar ao Joelboard">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg>
+</button>
+<button class="fab" id="fab" onclick="fabAction()" title="Novo">+</button>
+
+<div class="overlay" id="bookOverlay" onclick="if(event.target===this)closeBookModal()">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="bookModalTitle">Novo livro</div><button class="x" onclick="closeBookModal()">✕</button></div>
+    <div class="fg"><label class="fl">Ícone</label><div id="bookIconWrap"></div></div>
+    <div class="fg"><label class="fl">Nome</label><input class="field" id="bookName" placeholder="ex.: Doces da vovó"></div>
+    <div class="fg"><label class="fl">Cor</label><div id="bookColorWrap" class="color-row"></div></div>
+    <button class="btn-primary" onclick="saveBookModal()">Salvar</button>
+    <button class="del" id="bookDelBtn" onclick="deleteBookModal()" style="display:none">Excluir livro</button>
+  </div>
+</div>
+
+<div class="overlay" id="recipeOverlay" onclick="if(event.target===this)closeRecipeModal()">
+  <div class="modal modal-wide">
+    <div class="mh"><div class="mt" id="recipeModalTitle">Nova receita</div><button class="x" onclick="closeRecipeModal()">✕</button></div>
+    <div class="fg"><label class="fl">Ícone</label><div id="recipeIconWrap"></div></div>
+    <div class="fg"><label class="fl">Título</label><input class="field" id="recipeTitle" placeholder="ex.: Brownie de caneca"></div>
+    <div class="fg row2">
+      <div><label class="fl">Porções</label><input class="field" id="recipeServings" placeholder="2"></div>
+      <div><label class="fl">Minutos</label><input class="field" id="recipeMinutes" type="number" inputmode="numeric" placeholder="20"></div>
+    </div>
+    <div class="fg"><label class="fl">Imagem (URL, opcional)</label><input class="field" id="recipeImage" placeholder="https://…"></div>
+    <div class="fg"><label class="fl">Notas</label><textarea class="field" id="recipeNotes" rows="2" placeholder="Dicas, variações…"></textarea></div>
+    <div class="fg"><label class="fl">Ingredientes</label><div id="recipeIngList" class="edit-lines"></div><button type="button" class="btn ghost" onclick="addIngLine()">+ Ingrediente</button></div>
+    <div class="fg"><label class="fl">Passos</label><div id="recipeStepList" class="edit-lines"></div><button type="button" class="btn ghost" onclick="addStepLine()">+ Passo</button></div>
+    <button class="btn-primary" onclick="saveRecipeModal()">Salvar</button>
+    <button class="del" id="recipeDelBtn" onclick="deleteRecipeModal()" style="display:none">Excluir receita</button>
+  </div>
+</div>
+
+<div class="overlay" id="searchOverlay" onclick="if(event.target===this)closeSearch()">
+  <div class="modal modal-wide">
+    <div class="mh"><div class="mt">Buscar receitas</div><button class="x" onclick="closeSearch()">✕</button></div>
+    <div class="fg"><input class="field" id="searchQ" placeholder="ex.: pasta, chicken, brownie…" onkeydown="if(event.key==='Enter')runSearch()"></div>
+    <button class="btn-primary" onclick="runSearch()">Buscar</button>
+    <div class="rg" style="margin:10px 0 0">Fonte: TheMealDB (catálogo em inglês).</div>
+    <div id="searchResults" class="search-results"></div>
+  </div>
+</div>
+
+<div class="overlay" id="iconOverlay" onclick="if(event.target===this)closeIconPicker()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Escolher ícone</div><button class="x" onclick="closeIconPicker()">✕</button></div>
+    <div id="iconPickBody"></div>
+  </div>
+</div>
+
+<div class="overlay" id="setOverlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>
+    <div class="set-tabs">
+      <button class="set-tab active" data-st="tema" onclick="switchSet('tema')">Tema</button>
+      <button class="set-tab" data-st="prefs" onclick="switchSet('prefs')">Preferências</button>
+      <button class="set-tab" data-st="sobre" onclick="switchSet('sobre')">Sobre</button>
+    </div>
+    <div class="set-pane" data-pane="tema">
+      <div class="fg"><label class="fl">Tema do app</label><div id="setSkins"></div></div>
+    </div>
+    <div class="set-pane" data-pane="prefs" style="display:none">
+      <div class="fg"><button class="tg" id="setFlipPref" onclick="toggleFlipPref()">Abrir livros em páginas</button><div class="rg">Desligado = grade de cards (estilo Notes).</div></div>
+    </div>
+    <div class="set-pane" data-pane="sobre" style="display:none">
+      <div class="fg"><button class="btn ghost" style="width:100%" onclick="JB.feedback('Joelboard Recipes')">💬 Enviar feedback</button></div>
+      <div class="fg"><button class="del" style="width:100%" onclick="recipesSignOut()">Sair</button></div>
+      <div class="rg" style="text-align:center;font-size:11px;margin-top:4px">Joelboard Recipes</div>
+    </div>
+    <button class="btn-primary" onclick="closeSettings()">Pronto</button>
+  </div>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="/joelboard.js"></script>
+<script src="/recipes.js"></script>
+</body>
+</html>

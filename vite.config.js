@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import { proxyGamesRequest } from './lib/games-proxy.mjs';
 import { proxyMusicRequest } from './lib/music-proxy.mjs';
 import { proxyTmdbRequest } from './lib/tmdb-proxy.mjs';
+import { proxyRecipesRequest } from './lib/recipes-proxy.mjs';
 import { applyApiCors, guardNodeApi } from './lib/api-guard.mjs';
 
 export default defineConfig(({ mode }) => {
@@ -70,6 +71,33 @@ export default defineConfig(({ mode }) => {
     }
   }
 
+  async function handleRecipesApi(req, res) {
+    if (req.method === 'OPTIONS') {
+      var optAccess = guardNodeApi(req, res);
+      if (!optAccess) return;
+      preflight(req, res, optAccess);
+      return;
+    }
+    if (req.method !== 'GET') {
+      res.statusCode = 405;
+      res.end(JSON.stringify({ error: 'Method not allowed' }));
+      return;
+    }
+    var access = guardNodeApi(req, res);
+    if (!access) return;
+    try {
+      var recipesResult = await proxyRecipesRequest(req.url.replace(/^\/api\/recipes/, '/api/recipes'), env);
+      applyApiCors(res, access);
+      res.statusCode = recipesResult.status;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(recipesResult.body);
+    } catch (_) {
+      res.statusCode = 502;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: 'Recipes proxy failed' }));
+    }
+  }
+
   async function handleGamesApi(req, res) {
     if (req.method === 'OPTIONS') {
       var optAccess = guardNodeApi(req, res);
@@ -109,6 +137,7 @@ export default defineConfig(({ mode }) => {
           notas: 'notas/index.html',
           planner: 'planner/index.html',
           prateleira: 'prateleira/index.html',
+          recipes: 'recipes/index.html',
           movies: 'movies/index.html',
           mini: 'mini/index.html',
           miniReplaceAuth: 'mini/replace-auth.html'
@@ -132,6 +161,10 @@ export default defineConfig(({ mode }) => {
           if (!req.url) return next();
           if (req.url.indexOf('/api/tmdb') === 0) {
             await handleTmdbApi(req, res);
+            return;
+          }
+          if (req.url.indexOf('/api/recipes') === 0) {
+            await handleRecipesApi(req, res);
             return;
           }
           if (req.url.indexOf('/api/music') === 0) {

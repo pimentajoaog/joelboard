@@ -16,9 +16,9 @@ var HUB_NEWS_DEFAULT=[
   { app:'notas', kind:'correcao', text:'Duplicatas fantasma em listas corrigidas; Remover duplicatas no menu ⋯ de cada lista.' }
 ];
 var HUB_NEWS=HUB_NEWS_DEFAULT.slice();
-var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notes', planner:'Planner', mini:'Mini', hub:'Hub', study:'Study' };
+var HUB_NEWS_LABEL={ fit:'Fit', finance:'Finance', notas:'Notes', planner:'Planner', recipes:'Recipes', mini:'Mini', hub:'Hub', study:'Study' };
 var HUB_NEWS_KIND={ novo:'Novo', correcao:'Correção' };
-var HUB_NEWS_APPS=['hub','finance','fit','study','notas','planner','mini'];
+var HUB_NEWS_APPS=['hub','finance','fit','study','notas','planner','recipes','mini'];
 var _hubNewsIgnoreEnv=false;
 
 function hubNewsCleanId(raw){

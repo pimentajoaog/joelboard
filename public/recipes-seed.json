@@ -1,0 +1,78 @@
+{
+  "cookbooks": [
+    { "id": "seed-rapido", "name": "Rápido", "icon": "⚡", "color": "#e07a5f", "order": 0 },
+    { "id": "seed-doces", "name": "Doces", "icon": "🧁", "color": "#f472b6", "order": 1 },
+    { "id": "seed-favoritos", "name": "Favoritos", "icon": "❤️", "color": "#fb7185", "order": 2 }
+  ],
+  "recipes": [
+    {
+      "id": "seed-ovo",
+      "cookbookId": "seed-rapido",
+      "title": "Ovos mexidos cremosos",
+      "icon": "🍳",
+      "imageUrl": "",
+      "servings": "1",
+      "minutes": "10",
+      "notes": "Bom com pão torrado e café.",
+      "order": 0,
+      "ingredients": [
+        { "text": "Ovos", "qty": "2", "unit": "" },
+        { "text": "Manteiga", "qty": "1", "unit": "colher" },
+        { "text": "Sal", "qty": "", "unit": "a gosto" },
+        { "text": "Pimenta", "qty": "", "unit": "a gosto" }
+      ],
+      "steps": [
+        { "text": "Bata os ovos levemente com um garfo." },
+        { "text": "Derreta a manteiga em fogo baixo." },
+        { "text": "Despeje os ovos e mexa sem parar até cremosos." },
+        { "text": "Tempere e sirva na hora." }
+      ]
+    },
+    {
+      "id": "seed-macarrao",
+      "cookbookId": "seed-rapido",
+      "title": "Macarrão alho e óleo",
+      "icon": "🍝",
+      "imageUrl": "",
+      "servings": "2",
+      "minutes": "20",
+      "notes": "",
+      "order": 1,
+      "ingredients": [
+        { "text": "Espaguete", "qty": "200", "unit": "g" },
+        { "text": "Alho", "qty": "3", "unit": "dentes" },
+        { "text": "Azeite", "qty": "3", "unit": "colheres" },
+        { "text": "Pimenta calabresa", "qty": "", "unit": "a gosto" },
+        { "text": "Salsinha", "qty": "", "unit": "a gosto" }
+      ],
+      "steps": [
+        { "text": "Cozinhe o macarrão al dente." },
+        { "text": "Doure o alho no azeite (não queime)." },
+        { "text": "Misture o macarrão escorrido, pimenta e salsinha." }
+      ]
+    },
+    {
+      "id": "seed-brownie",
+      "cookbookId": "seed-doces",
+      "title": "Brownie de caneca",
+      "icon": "🍫",
+      "imageUrl": "",
+      "servings": "1",
+      "minutes": "5",
+      "notes": "Micro-ondas ~90s — ajuste à potência.",
+      "order": 0,
+      "ingredients": [
+        { "text": "Farinha de trigo", "qty": "2", "unit": "colheres" },
+        { "text": "Açúcar", "qty": "2", "unit": "colheres" },
+        { "text": "Cacau em pó", "qty": "1", "unit": "colher" },
+        { "text": "Leite", "qty": "2", "unit": "colheres" },
+        { "text": "Óleo", "qty": "1", "unit": "colher" }
+      ],
+      "steps": [
+        { "text": "Misture tudo numa caneca grande." },
+        { "text": "Micro-ondas 70–90 segundos." },
+        { "text": "Deixe esfriar um pouco e aproveite." }
+      ]
+    }
+  ]
+}

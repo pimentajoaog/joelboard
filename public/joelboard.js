@@ -2470,7 +2470,7 @@
   var DRIVE_ROOT_NAME = 'Joelboard';
   var DRIVE_APP_NAMES = {
     finance: 'Finance', notes: 'Notes', notas: 'Notes', planner: 'Planner',
-    study: 'Study', fit: 'Fit', mini: 'Mini', feedback: 'Feedback'
+    study: 'Study', fit: 'Fit', recipes: 'Recipes', mini: 'Mini', feedback: 'Feedback'
   };
   var driveLayoutOnce = null;
   var ensureFolderInflight = {};
@@ -3146,6 +3146,10 @@
     if (app === 'planner') {
       return '<div class="jb-skel-wrap"><div class="jb-skel jb-skel-title"></div>'
         + skelRow(3, 'jb-skel-card') + '<div class="jb-skel-hint">Carregando planos…</div></div>';
+    }
+    if (app === 'recipes') {
+      return '<div class="jb-skel-wrap"><div class="jb-skel jb-skel-title"></div>'
+        + skelRow(4, 'jb-skel-card') + '<div class="jb-skel-hint">Carregando receitas…</div></div>';
     }
     return '<div class="jb-skel-wrap">' + skelRow(3) + '<div class="jb-skel-hint">Carregando…</div></div>';
   }

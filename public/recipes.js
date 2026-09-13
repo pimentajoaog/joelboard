@@ -987,6 +987,14 @@ function layoutBookMenu() {
   /* O painel cresce pra cima da placa; o livro desce o tanto que o painel precisa. */
   var gap = 8;
   var h = panel.offsetHeight || 0;
+  if (!h && !layoutBookMenu._retry) {
+    layoutBookMenu._retry = true;
+    requestAnimationFrame(function () {
+      layoutBookMenu._retry = false;
+      layoutBookMenu();
+    });
+    return;
+  }
   shiftEl.style.setProperty('--book-menu-shift', Math.max(0, h + gap) + 'px');
 }
 function syncBookMenuOpen() { layoutBookMenu(); }

@@ -338,7 +338,8 @@ body.recipes-shelf .foot{ display:none; }
   overflow:visible;
 }
 .book-stack.is-cards, .book-stack.is-empty{
-  width:100%; max-width:1220px; margin:0 auto;
+  width:100%; max-width:1220px;
+  margin-left:auto; margin-right:auto;
 }
 /* A placa fica atrás da capa. Só o painel aberto sobe de z-index. */
 .book-crest{
@@ -399,7 +400,7 @@ body.recipes-shelf .foot{ display:none; }
   opacity:1; transform:none; pointer-events:auto;
 }
 .spread-wrap, .book-stack.is-cards, .book-stack.is-empty{
-  margin-top:var(--book-menu-shift, 0px);
+  margin-top:var(--book-menu-shift, 2px);
   transition:margin-top .2s ease;
 }
 .book-menu-panel .view-toggle{ width:100%; }
@@ -502,7 +503,8 @@ body.recipes-book .secbar{ margin-bottom:10px; }
 
 .spread-wrap{
   position:relative; display:flex; align-items:center; justify-content:center;
-  gap:10px; margin:2px 0 8px; perspective:2600px; perspective-origin:50% 44%;
+  gap:10px; margin-right:0; margin-bottom:8px; margin-left:0;
+  perspective:2600px; perspective-origin:50% 44%;
   touch-action:pan-y; outline:none; overflow:visible;
 }
 

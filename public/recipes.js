@@ -10,6 +10,7 @@ var openRecipeId = null;
 var flipIndex = 0;
 var bookViewMode = 'flip';
 var homeQuery = '';
+var _peekBookId = null;
 var _editBookId = null;
 var _editRecipeId = null;
 var _iconCtx = null;
@@ -467,11 +468,59 @@ function render() {
     fab.title = view === 'shelf' ? 'Novo livro' : 'Nova receita';
   }
   patchRoute();
-  var grid = main.querySelector('.shelf-grid, .recipes-grid');
+  var grid = main.querySelector('.bookcase-row, .recipes-grid');
   if (grid && JB.staggerChildren) JB.staggerChildren(grid, view);
   if (view === 'book' && bookViewMode === 'flip') {
     setTimeout(bindFlipGesture, 0);
   }
+}
+
+function bookSpineDims(b, i) {
+  var h = 0;
+  var s = String(b.id || b.name || i);
+  for (var n = 0; n < s.length; n++) h = ((h << 5) - h + s.charCodeAt(n)) | 0;
+  var u = Math.abs(h);
+  return {
+    w: 36 + (u % 4) * 5,
+    h: 168 + ((u >> 2) % 5) * 14
+  };
+}
+
+function fineHoverShelf() {
+  try {
+    return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  } catch (_) {
+    return true;
+  }
+}
+
+function onBookActivate(id) {
+  if (!fineHoverShelf()) {
+    if (_peekBookId !== id) {
+      _peekBookId = id;
+      syncShelfPeek();
+      return;
+    }
+  }
+  _peekBookId = null;
+  openBook(id);
+}
+
+function syncShelfPeek() {
+  var row = document.querySelector('.bookcase-row');
+  if (!row) return;
+  row.querySelectorAll('.book-spine').forEach(function (el) {
+    var on = el.getAttribute('data-id') === _peekBookId;
+    el.classList.toggle('is-peek', on);
+    el.setAttribute('aria-expanded', on ? 'true' : 'false');
+  });
+}
+
+function clearBookPeek(ev) {
+  if (!_peekBookId) return;
+  if (ev && ev.target && ev.target.closest && ev.target.closest('.book-spine')) return;
+  _peekBookId = null;
+  syncShelfPeek();
 }
 
 function renderShelf() {
@@ -480,25 +529,40 @@ function renderShelf() {
     if (!q) return true;
     return norm(b.name).indexOf(q) > -1;
   });
-  var cards = books.map(function (b, i) {
-    return '<div class="bookc" style="--kc:' + esc(b.color) + ';--jb-i:' + i + '" onclick="openBook(\'' + escAttr(b.id) + '\')">'
-      + '<button type="button" class="book-edit" onclick="event.stopPropagation();openBookModal(\'' + escAttr(b.id) + '\')" title="Editar">✏</button>'
-      + '<div class="book-spine"></div>'
-      + '<div class="book-ico">' + esc(b.icon || '📖') + '</div>'
-      + '<div class="book-title">' + esc(b.name) + '</div>'
-      + '<div class="book-meta">' + countInBook(b.id) + ' receita' + (countInBook(b.id) === 1 ? '' : 's') + '</div>'
+  var spines = books.map(function (b, i) {
+    var d = bookSpineDims(b, i);
+    var n = countInBook(b.id);
+    var peeked = _peekBookId === b.id;
+    return '<div role="button" tabindex="0" class="book-spine' + (peeked ? ' is-peek' : '') + '"'
+      + ' data-id="' + esc(b.id) + '"'
+      + ' style="--kc:' + esc(b.color || '#e07a5f') + ';--bw:' + d.w + 'px;--bh:' + d.h + 'px;--jb-i:' + i + '"'
+      + ' aria-label="' + esc(b.name) + ', ' + n + ' receita' + (n === 1 ? '' : 's') + '"'
+      + ' aria-expanded="' + (peeked ? 'true' : 'false') + '"'
+      + ' onclick="onBookActivate(\'' + escAttr(b.id) + '\')"'
+      + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();onBookActivate(\'' + escAttr(b.id) + '\')}"'
+      + '>'
+      + '<span class="book-spine-ico" aria-hidden="true">' + esc(b.icon || '📖') + '</span>'
+      + '<span class="book-spine-title">' + esc(b.name) + '</span>'
+      + '<span class="book-spine-peek" onclick="event.stopPropagation()">'
+      + '<strong>' + esc(b.name) + '</strong>'
+      + '<span>' + n + ' receita' + (n === 1 ? '' : 's') + '</span>'
+      + '<button type="button" class="book-edit" onclick="event.stopPropagation();openBookModal(\'' + escAttr(b.id) + '\')">Editar</button>'
+      + '</span>'
       + '</div>';
   }).join('');
   return '<div class="searchbar"><input class="field" id="homeSearch" placeholder="Buscar livros…" value="' + esc(homeQuery)
-    + '" oninput="homeQuery=this.value;render()" onfocus="JB.searchFocus&&JB.searchFocus(this)"></div>'
+    + '" oninput="homeQuery=this.value;_peekBookId=null;render()" onfocus="JB.searchFocus&&JB.searchFocus(this)"></div>'
     + '<div class="secbar"><div class="sect">Seus livros</div>'
     + '<button class="btn ghost" onclick="openSearch()">🔎 Buscar online</button></div>'
-    + (cards ? '<div class="shelf-grid">' + cards + '</div>' : '<div class="empty">Nenhum livro ainda. Toque em + para criar o primeiro.</div>');
+    + (spines
+      ? '<div class="bookcase"><div class="bookcase-row">' + spines + '</div><div class="bookcase-ledge" aria-hidden="true"></div></div>'
+      : '<div class="empty">Nenhum livro ainda. Toque em + para criar o primeiro.</div>');
 }
 
 function norm(s) { return String(s || '').trim().toLowerCase(); }
 
 function openBook(id) {
+  _peekBookId = null;
   openBookId = id;
   openRecipeId = null;
   flipIndex = 0;
@@ -509,6 +573,7 @@ function goShelf() {
   view = 'shelf';
   openBookId = null;
   openRecipeId = null;
+  _peekBookId = null;
   render();
 }
 
@@ -1061,6 +1126,7 @@ function guessIcon(cat) {
 }
 
 /* ---- lifecycle ---- */
+document.addEventListener('click', clearBookPeek);
 JB.onSessionExpired(function () {
   authDone = false;
   showSignIn(true);

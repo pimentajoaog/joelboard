@@ -374,8 +374,10 @@ body.recipes-book .book-title-row{ margin-bottom:8px !important; }
     0 2px 0 color-mix(in srgb, var(--kc, var(--primary)) 40%, #000 60%),
     0 34px 60px -18px rgba(0,0,0,.62),
     0 10px 22px rgba(0,0,0,.28);
-  transform-style:preserve-3d;
 }
+/* o livro inteiro (capa + folhas) inclina junto; sem preserve-3d aqui,
+   senão o plano da capa corta as páginas ao abrir */
+.book-body.is-intro{ animation:spreadOpen .46s cubic-bezier(.2,.8,.2,1) both; }
 /* miolo: pilha de folhas aparecendo por dentro da capa */
 .book-body::before,
 .book-body::after{
@@ -398,12 +400,13 @@ body.recipes-book .book-title-row{ margin-bottom:8px !important; }
   pointer-events:none;
 }
 
+/* perspectiva própria: a folha que vira ganha profundidade sem disputar
+   z com as páginas paradas (era isso que piscava) */
 .spread{
   position:relative; display:flex; align-items:stretch; justify-content:center;
   width:auto; flex:1; margin:0 7px; height:min(78vh, 760px); min-height:440px;
-  transform-style:preserve-3d;
+  perspective:1700px; perspective-origin:50% 50%;
 }
-.spread.is-intro{ animation:spreadOpen .46s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes spreadOpen{
   from{ opacity:0; transform:rotateX(11deg) scale(.94); }
   to{ opacity:1; transform:none; }
@@ -481,18 +484,21 @@ body.recipes-book .book-title-row{ margin-bottom:8px !important; }
 /* página virando de verdade: papel gira sobre o vinco com frente e verso */
 .page-turn{
   position:absolute; top:0; bottom:0; width:50%; z-index:6;
-  pointer-events:none; transform-style:preserve-3d;
+  pointer-events:none; transform-style:preserve-3d; will-change:transform, opacity;
 }
 .page-turn.is-fwd{ right:0; transform-origin:left center; animation:ptFwd .62s cubic-bezier(.46,.03,.34,1) both; }
 .page-turn.is-back{ left:0; transform-origin:right center; animation:ptBack .62s cubic-bezier(.46,.03,.34,1) both; }
 .page-turn.is-solo{ width:100%; }
+/* some no fim da curva: a folha "assenta" na pilha em vez de sumir de repente */
 @keyframes ptFwd{
-  from{ transform:rotateY(0deg); }
-  to{ transform:rotateY(-176deg); }
+  0%{ transform:rotateY(0deg); opacity:1; }
+  86%{ opacity:1; }
+  100%{ transform:rotateY(-172deg); opacity:0; }
 }
 @keyframes ptBack{
-  from{ transform:rotateY(0deg); }
-  to{ transform:rotateY(176deg); }
+  0%{ transform:rotateY(0deg); opacity:1; }
+  86%{ opacity:1; }
+  100%{ transform:rotateY(172deg); opacity:0; }
 }
 .pt-face{
   position:absolute; inset:0; backface-visibility:hidden; border-radius:2px 8px 8px 2px;
@@ -679,7 +685,7 @@ button.step-num{ cursor:pointer; }
 }
 
 @media (prefers-reduced-motion: reduce){
-  .book-slot, .recipec, .detail, .spread.is-intro{ animation:none; }
+  .book-slot, .recipec, .detail, .book-body.is-intro{ animation:none; }
   .page-turn{ display:none; }
   .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add{ transition:none; }
 }

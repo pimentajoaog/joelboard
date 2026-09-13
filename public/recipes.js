@@ -853,9 +853,9 @@ function renderSpread(list, book) {
   return '<div class="spread-wrap" id="flipWrap" style="--kc:' + kc + '">'
     + '<button type="button" class="spread-arrow is-prev" onclick="flipPrev()" aria-label="Página anterior"'
     + (atStart ? ' disabled' : '') + '>‹</button>'
-    + '<div class="book-body">'
+    + '<div class="book-body' + intro + '">'
     + '<span class="book-ribbon" aria-hidden="true"></span>'
-    + '<div class="spread' + intro + '" id="spreadStage">'
+    + '<div class="spread" id="spreadStage">'
     + leaves
     + '<span class="spread-gutter" aria-hidden="true"></span>'
     + '</div>'

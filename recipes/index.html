@@ -96,8 +96,12 @@
   <div class="modal modal-wide">
     <div class="mh"><div class="mt">Buscar receitas</div><button class="x" onclick="closeSearch()">✕</button></div>
     <div class="fg"><input class="field" id="searchQ" placeholder="ex.: pasta, chicken, brownie…" onkeydown="if(event.key==='Enter')runSearch()"></div>
+    <div class="view-toggle search-by" id="searchByToggle" role="group" aria-label="Buscar por">
+      <button type="button" class="vbtn on" data-by="name" onclick="setSearchBy('name')">Nome</button>
+      <button type="button" class="vbtn" data-by="ingredient" onclick="setSearchBy('ingredient')">Ingrediente</button>
+    </div>
     <button class="btn-primary" onclick="runSearch()">Buscar</button>
-    <div class="rg" style="margin:10px 0 0">Fonte: TheMealDB · busca por nome e ingrediente (inglês).</div>
+    <div class="rg" id="searchHint" style="margin:10px 0 0">Fonte: TheMealDB · busca pelo nome da receita (inglês).</div>
     <div id="searchResults" class="search-results"></div>
   </div>
 </div>

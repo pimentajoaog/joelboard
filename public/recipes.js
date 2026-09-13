@@ -2122,8 +2122,49 @@ function deleteSheetRow(tab, rowNum) {
 }
 
 /* ---- search / TheMealDB ---- */
+var SEARCH_BY_KEY = 'jb_recipes_search_by';
+var searchBy = 'name'; /* name | ingredient */
+
+function loadSearchByPref() {
+  try {
+    var v = localStorage.getItem(SEARCH_BY_KEY);
+    searchBy = (v === 'ingredient') ? 'ingredient' : 'name';
+  } catch (_) { searchBy = 'name'; }
+}
+function saveSearchByPref() {
+  try { localStorage.setItem(SEARCH_BY_KEY, searchBy); } catch (_) {}
+}
+function paintSearchBy() {
+  var host = $('searchByToggle');
+  if (host) {
+    host.querySelectorAll('.vbtn').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-by') === searchBy);
+    });
+  }
+  var hint = $('searchHint');
+  if (hint) {
+    hint.textContent = searchBy === 'ingredient'
+      ? 'Fonte: TheMealDB · busca por ingrediente (inglês).'
+      : 'Fonte: TheMealDB · busca pelo nome da receita (inglês).';
+  }
+  var q = $('searchQ');
+  if (q) {
+    q.placeholder = searchBy === 'ingredient'
+      ? 'ex.: eggs, chicken, tomato…'
+      : 'ex.: pasta, chicken, brownie…';
+  }
+}
+function setSearchBy(mode) {
+  searchBy = mode === 'ingredient' ? 'ingredient' : 'name';
+  saveSearchByPref();
+  paintSearchBy();
+  if ($('searchResults')) $('searchResults').innerHTML = '';
+}
+
 function openSearch(bookId) {
   _searchImportBookId = bookId || openBookId || (DATA.cookbooks[0] && DATA.cookbooks[0].id) || '';
+  loadSearchByPref();
+  paintSearchBy();
   if ($('searchQ')) $('searchQ').value = '';
   if ($('searchResults')) $('searchResults').innerHTML = '';
   $('searchOverlay').classList.add('open');
@@ -2136,19 +2177,22 @@ function runSearch() {
   if (!q) { toast('Digite algo para buscar'); return; }
   var el = $('searchResults');
   if (el) el.innerHTML = '<div class="rg">Buscando…</div>';
-  fetch('/api/recipes?q=' + encodeURIComponent(q)).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+  var url = '/api/recipes?q=' + encodeURIComponent(q) + '&by=' + encodeURIComponent(searchBy);
+  fetch(url).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
     .then(function (pack) {
       if (!pack.ok) throw new Error((pack.j && pack.j.error) || 'Busca falhou');
       var results = pack.j.results || [];
       if (!el) return;
       if (!results.length) {
-        el.innerHTML = '<div class="empty">Nada encontrado. Tente em inglês (ex.: pasta, chicken).</div>';
+        el.innerHTML = '<div class="empty">Nada encontrado. Tente em inglês'
+          + (searchBy === 'ingredient' ? ' (ex.: eggs, chicken).' : ' (ex.: pasta, chicken).')
+          + '</div>';
         return;
       }
       el.innerHTML = results.map(function (m) {
         return '<button type="button" class="search-hit" onclick="importMeal(\'' + escAttr(m.sourceId) + '\')">'
           + (m.image ? '<img src="' + esc(m.image) + '" alt="">' : '<div style="width:56px;height:56px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:24px">🍽️</div>')
-          + '<div><b>' + esc(m.title) + '</b><span>' + esc([m.area, m.category].filter(Boolean).join(' · ')) + '</span></div>'
+          + '<div><b>' + esc(m.title) + '</b><span>' + esc([m.area, m.category].filter(Boolean).join(' · ') || (searchBy === 'ingredient' ? 'contém o ingrediente' : '')) + '</span></div>'
           + '</button>';
       }).join('');
     }).catch(function (e) {

@@ -810,6 +810,8 @@ button.step-num{ cursor:pointer; }
   border-radius:8px; height:36px; cursor:pointer;
 }
 
+.search-by{ margin:10px 0 12px; }
+.search-by .vbtn{ flex:1; text-align:center; }
 .search-results{ margin-top:14px; display:flex; flex-direction:column; gap:10px; max-height:min(48vh,380px); overflow-y:auto; }
 .search-hit{
   display:flex; gap:12px; align-items:center; background:var(--surface2); border:1px solid var(--border);

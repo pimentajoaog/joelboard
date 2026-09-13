@@ -34,10 +34,11 @@ test('ingredientQueryVariants adds a simple English singular', function () {
 });
 
 test('proxyRecipesRequest search returns normalized results', async function () {
-  var res = await proxyRecipesRequest('/api/recipes?q=Arrabiata', {});
+  var res = await proxyRecipesRequest('/api/recipes?q=Arrabiata&by=name', {});
   assert.equal(res.status, 200);
   var body = JSON.parse(res.body);
   assert.ok(Array.isArray(body.results));
+  assert.equal(body.by, 'name');
   if (body.results.length) {
     assert.ok(body.results[0].title);
     assert.ok(body.results[0].sourceId);
@@ -46,12 +47,23 @@ test('proxyRecipesRequest search returns normalized results', async function () 
   }
 });
 
-test('proxyRecipesRequest eggs merges name and ingredient hits', async function () {
-  var res = await proxyRecipesRequest('/api/recipes?q=eggs', {});
+test('proxyRecipesRequest name mode keeps eggs to title hits', async function () {
+  var res = await proxyRecipesRequest('/api/recipes?q=eggs&by=name', {});
   assert.equal(res.status, 200);
   var body = JSON.parse(res.body);
-  assert.ok(Array.isArray(body.results));
-  assert.ok(body.results.length > 2, 'expected ingredient filter to expand beyond title matches');
+  assert.equal(body.by, 'name');
+  assert.ok(body.results.length <= 5);
+  assert.ok(body.results.every(function (m) {
+    return /egg/i.test(m.title);
+  }));
+});
+
+test('proxyRecipesRequest ingredient mode expands eggs beyond titles', async function () {
+  var res = await proxyRecipesRequest('/api/recipes?q=eggs&by=ingredient', {});
+  assert.equal(res.status, 200);
+  var body = JSON.parse(res.body);
+  assert.equal(body.by, 'ingredient');
+  assert.ok(body.results.length > 5, 'ingredient filter should return many meals');
   var ids = body.results.map(function (m) { return m.sourceId; });
-  assert.equal(ids.length, new Set(ids).size, 'results should be unique by sourceId');
+  assert.equal(ids.length, new Set(ids).size);
 });

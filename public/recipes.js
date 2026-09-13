@@ -153,8 +153,8 @@ function bootSheet() {
     app: APP,
     namePart: 'Joelboard',
     requiredTabs: RECIPES_TABS.map(function (t) { return t[0]; })
-  }).then(function (grid) {
-    recipesGrid = grid || {};
+  }).then(function (ctx) {
+    recipesGrid = (ctx && ctx.grid) || {};
     return ensureTabs().then(loadAll);
   }).catch(function (e) {
     var m = String((e && e.message) || '');
@@ -242,11 +242,16 @@ function ensureTabs() {
   return JB.api('POST', ssUrl(':batchUpdate'), {
     requests: missing.map(function (t) { return { addSheet: { properties: { title: t[0] } } }; })
   }).then(function (res) {
-    (res.replies || []).forEach(function (rep, i) {
-      if (rep && rep.addSheet) recipesGrid[missing[i][0]] = rep.addSheet.properties.sheetId;
+    (res.replies || []).forEach(function (rep) {
+      if (rep && rep.addSheet) recipesGrid[rep.addSheet.properties.title] = rep.addSheet.properties.sheetId;
     });
     var data = missing.map(function (t) { return { range: t[0] + '!A1', values: [t[1]] }; });
     return JB.api('POST', ssUrl('/values:batchUpdate'), { valueInputOption: 'RAW', data: data });
+  }).then(function () {}).catch(function () {
+    // Tabs may already exist (race / stale grid) — refresh titles from the sheet.
+    return JB.sheetTabs(JB.getSheetId(APP)).then(function (grid) {
+      recipesGrid = grid || recipesGrid;
+    });
   });
 }
 

@@ -637,12 +637,14 @@ body.recipes-book .book-title-row{ margin-bottom:8px !important; }
   background:var(--surface2); border:1px solid var(--border);
 }
 .leaf-shot img{ display:block; width:100%; height:100%; object-fit:cover; aspect-ratio:16/10; }
-/* folha larga o bastante: ingredientes de um lado, foto do outro */
+/* folha larga o bastante: foto de um lado, ingredientes do outro.
+   A foto vem depois no HTML (empilhada fica embaixo), então sobe pra esquerda. */
 @container (min-width: 400px){
   .leaf-sec.has-shot .mise-wrap{
     grid-template-columns:minmax(0,1fr) minmax(0,1fr);
     align-items:start;
   }
+  .leaf-sec.has-shot .leaf-shot{ order:-1; }
   .leaf-sec.has-shot .leaf-shot img{ aspect-ratio:4/5; max-height:320px; }
 }
 .leaf-edit{

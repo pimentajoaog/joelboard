@@ -265,9 +265,11 @@ body.recipes-shelf .foot{ display:none; }
   color:#9a8260; white-space:nowrap; overflow:hidden;
 }
 .bp-rule{ height:1px; background:rgba(120,100,72,.28); flex:none; }
+.bp-sec{ display:flex; flex-direction:column; gap:4px; min-height:0; }
+.bp-sec + .bp-sec{ margin-top:8px; }
 .bp-label{
   font-size:8px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
-  color:#a58c68; margin-top:1px;
+  color:#a58c68;
 }
 .bp-lines{ display:flex; flex-direction:column; gap:4px; min-height:0; overflow:hidden; }
 .bp-line{

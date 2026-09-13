@@ -695,27 +695,25 @@ function pickPeekPair(bookId) {
 
 function peekPageHtml(r, folio) {
   if (!r) return '<div class="bp-end">fim</div>';
-  var picks = [];
   var ings = ingsFor(r.id);
   var steps = stepsFor(r.id);
-  if (ings.length) picks.push('ings');
-  if (steps.length) picks.push('steps');
-  var kind = picks.length ? picks[Math.floor(Math.random() * picks.length)] : '';
   var body = '';
-  if (kind === 'ings') {
-    body = '<div class="bp-label">Mise en place</div>'
-      + '<div class="bp-lines">' + ings.slice(0, 5).map(function (ing) {
+  if (ings.length) {
+    body += '<div class="bp-sec"><div class="bp-label">Mise en place</div>'
+      + '<div class="bp-lines">' + ings.slice(0, 6).map(function (ing) {
         var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
         return '<div class="bp-line"><i class="bp-box"></i><span>' + esc(label) + '</span></div>';
-      }).join('') + '</div>';
-  } else if (kind === 'steps') {
-    body = '<div class="bp-label">Passo a passo</div>'
-      + '<div class="bp-lines">' + steps.slice(0, 4).map(function (st, i) {
+      }).join('') + '</div></div>';
+  }
+  if (steps.length) {
+    body += '<div class="bp-sec"><div class="bp-label">Passo a passo</div>'
+      + '<div class="bp-lines">' + steps.slice(0, 5).map(function (st, i) {
         return '<div class="bp-line"><i class="bp-num">' + (i + 1) + '</i><span>' + esc(st.text) + '</span></div>';
-      }).join('') + '</div>';
-  } else {
-    body = '<div class="bp-label">Receita</div>'
-      + '<div class="bp-lines"><div class="bp-line"><span>' + esc(r.notes || 'Sem ingredientes ainda.') + '</span></div></div>';
+      }).join('') + '</div></div>';
+  }
+  if (!body) {
+    body = '<div class="bp-sec"><div class="bp-label">Receita</div>'
+      + '<div class="bp-lines"><div class="bp-line"><span>' + esc(r.notes || 'Sem ingredientes ainda.') + '</span></div></div></div>';
   }
   var meta = [];
   if (r.minutes) meta.push(esc(r.minutes) + ' min');

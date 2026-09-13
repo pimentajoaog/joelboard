@@ -946,12 +946,14 @@ function visibleRecipes(bookId) {
 function onBookSearch(v) {
   bookQuery = v;
   flipIndex = 0;
+  _bookMenuOpen = true;
   render();
   refocusBookSearch();
 }
 function clearBookSearch() {
   bookQuery = '';
   flipIndex = 0;
+  _bookMenuOpen = true;
   render();
   refocusBookSearch();
 }
@@ -963,27 +965,45 @@ function refocusBookSearch() {
   try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {}
 }
 
-function renderBook() {
-  var book = bookById(openBookId);
-  if (!book) return '<div class="empty">Livro não encontrado.</div><button class="back" onclick="goShelf()">← Estante</button>';
-  var total = countInBook(book.id);
-  var list = visibleRecipes(book.id);
-  var toggle = '<div class="view-toggle">'
+var _bookMenuOpen = false;
+function toggleBookMenu(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  _bookMenuOpen = !_bookMenuOpen;
+  var menu = document.querySelector('.book-menu');
+  if (!menu) return;
+  menu.classList.toggle('is-open', _bookMenuOpen);
+  var btn = menu.querySelector('.book-menu-btn');
+  if (btn) btn.setAttribute('aria-expanded', _bookMenuOpen ? 'true' : 'false');
+}
+function closeBookMenu() {
+  if (!_bookMenuOpen) return;
+  _bookMenuOpen = false;
+  var menu = document.querySelector('.book-menu');
+  if (!menu) return;
+  menu.classList.remove('is-open');
+  var btn = menu.querySelector('.book-menu-btn');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+/* Placa no topo do livro + bolha com modo / editar / busca. */
+function bookCrest(book) {
+  var kc = esc(book.color || '#e07a5f');
+  var open = _bookMenuOpen ? ' is-open' : '';
+  return '<div class="book-crest" style="--kc:' + kc + '">'
+    + '<div class="book-plaque" title="' + escAttr(book.name) + '">'
+    + '<span class="book-plaque-ico" aria-hidden="true">' + esc(book.icon || '📖') + '</span>'
+    + '<span class="book-plaque-name">' + esc(book.name) + '</span>'
+    + '</div>'
+    + '<div class="book-menu' + open + '" onclick="event.stopPropagation()">'
+    + '<button type="button" class="book-menu-btn" onclick="toggleBookMenu(event)"'
+    + ' aria-expanded="' + (_bookMenuOpen ? 'true' : 'false') + '"'
+    + ' aria-label="Ferramentas do livro" title="Ferramentas">⋯</button>'
+    + '<div class="book-menu-panel" role="menu">'
+    + '<div class="view-toggle">'
     + '<button type="button" class="vbtn' + (bookViewMode === 'flip' ? ' on' : '') + '" onclick="setBookView(\'flip\')">Páginas</button>'
     + '<button type="button" class="vbtn' + (bookViewMode === 'cards' ? ' on' : '') + '" onclick="setBookView(\'cards\')">Cards</button>'
-    + '</div>';
-  var head = '<div class="secbar"><button class="back" onclick="goShelf()">← Estante</button>'
-    + '<div class="book-head-actions">'
-    + '<button type="button" class="btn ghost" onclick="openBookModal(\'' + escAttr(book.id) + '\')">Editar</button>'
-    + toggle
-    + '</div></div>'
-    + '<div class="book-title-row" style="margin-bottom:14px"><span style="font-size:28px;margin-right:8px">' + esc(book.icon) + '</span>'
-    + '<span style="font-family:var(--font-display);font-weight:800;font-size:22px">' + esc(book.name) + '</span></div>';
-  if (!total) {
-    return head + '<div class="empty">Este livro está vazio. Comece pela primeira receita — do zero ou buscando online.</div>'
-      + '<button class="btn" style="display:block;margin:0 auto" onclick="openRecipeModal(null)">+ Nova receita</button>';
-  }
-  var tools = '<div class="book-tools">'
+    + '</div>'
+    + '<button type="button" class="btn ghost book-menu-edit" onclick="openBookModal(\'' + escAttr(book.id) + '\')">Editar livro</button>'
     + '<div class="jb-search">'
     + '<input class="field jb-search-input" id="bookSearch" type="search" placeholder="Buscar receita…"'
     + ' value="' + esc(bookQuery) + '" oninput="onBookSearch(this.value)"'
@@ -991,12 +1011,41 @@ function renderBook() {
     + '<button type="button" class="jb-search-clear" id="bookSearchClear" onclick="clearBookSearch()" aria-label="Limpar busca"'
     + ' style="display:' + (bookQuery ? 'flex' : 'none') + '">✕</button>'
     + '</div>'
+    + '</div>'
+    + '</div>'
     + '</div>';
-  if (!list.length) {
-    return head + tools + '<div class="empty">Nada com “' + esc(bookQuery) + '” neste livro.</div>';
+}
+
+function renderBook() {
+  var book = bookById(openBookId);
+  if (!book) return '<div class="empty">Livro não encontrado.</div><button class="back" onclick="goShelf()">← Estante</button>';
+  var total = countInBook(book.id);
+  var list = visibleRecipes(book.id);
+  var head = '<div class="secbar"><button class="back" onclick="goShelf()">← Estante</button></div>';
+  var kc = esc(book.color || '#e07a5f');
+  if (!total) {
+    return head
+      + '<div class="book-stack is-empty" style="--kc:' + kc + '">'
+      + bookCrest(book)
+      + '<div class="empty">Este livro está vazio. Comece pela primeira receita — do zero ou buscando online.</div>'
+      + '<button class="btn" style="display:block;margin:0 auto" onclick="openRecipeModal(null)">+ Nova receita</button>'
+      + '</div>';
   }
-  if (bookViewMode === 'cards') return head + tools + renderCards(list, book);
-  return head + tools + renderSpread(list, book);
+  if (!list.length) {
+    return head
+      + '<div class="book-stack is-empty" style="--kc:' + kc + '">'
+      + bookCrest(book)
+      + '<div class="empty">Nada com “' + esc(bookQuery) + '” neste livro.</div>'
+      + '</div>';
+  }
+  if (bookViewMode === 'cards') {
+    return head
+      + '<div class="book-stack is-cards" style="--kc:' + kc + '">'
+      + bookCrest(book)
+      + renderCards(list, book)
+      + '</div>';
+  }
+  return head + renderSpread(list, book);
 }
 
 function setBookView(mode) {
@@ -1059,11 +1108,14 @@ function renderSpread(list, book) {
   return '<div class="spread-wrap" id="flipWrap" style="--kc:' + kc + '">'
     + '<button type="button" class="spread-arrow is-prev" onclick="flipPrev()" aria-label="Página anterior"'
     + (atStart ? ' disabled' : '') + '>‹</button>'
+    + '<div class="book-stack">'
+    + bookCrest(book)
     + '<div class="book-body' + intro + '">'
     + '<span class="book-ribbon" aria-hidden="true"></span>'
     + '<div class="spread" id="spreadStage">'
     + leaves
     + '<span class="spread-gutter" aria-hidden="true"></span>'
+    + '</div>'
     + '</div>'
     + '</div>'
     + '<button type="button" class="spread-arrow is-next" onclick="flipNext()" aria-label="Próxima página"'
@@ -2292,7 +2344,10 @@ function guessIcon(cat) {
 }
 
 /* ---- lifecycle ---- */
-document.addEventListener('click', clearBookPeek);
+document.addEventListener('click', function (e) {
+  clearBookPeek();
+  if (!e.target.closest || !e.target.closest('.book-menu')) closeBookMenu();
+});
 JB.onSessionExpired(function () {
   authDone = false;
   showSignIn(true);

@@ -2680,163 +2680,6 @@
       return createDriveShortcut(tid, parentId, name);
     });
   }
-  /** Shared Julioelboard Prateleira workbook (hardcoded — not app-created). */
-  var PRATELEIRA_SHEET_ID = '1Dw2WXmeBTqic1whtVe4fwSBM-UJ8VDBTCIJspxHYCAo';
-  var PRATELEIRA_SHEET_NAMES = ['Julioelboard', 'Julioelboard Prateleira'];
-
-  function prateleiraSheetId() {
-    return getSheetId('prateleira') || PRATELEIRA_SHEET_ID;
-  }
-
-  function fetchSpreadsheetTitle(sheetId) {
-    if (!sheetId) return Promise.resolve('');
-    return api('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(sheetId)
-      + '?fields=properties.title')
-      .then(function (meta) {
-        return String((meta && meta.properties && meta.properties.title) || '').trim();
-      }, function () { return ''; });
-  }
-
-  function driveFileAccessible(fileId) {
-    if (!fileId) return Promise.resolve(false);
-    return api('GET', 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?fields=id,name,parents')
-      .then(function () { return true; }, function () { return false; });
-  }
-
-  var DRIVE_MOVE_SCOPES = SCOPES + ' https://www.googleapis.com/auth/drive';
-  var DRIVE_MOVE_TIMEOUT_MS = 120000;
-
-  /** One-time broader Drive scope so we can move sheets the app did not create (Prateleira). */
-  function requestDriveMoveScope() {
-    if (isGhost()) return Promise.reject(new Error('ghost'));
-    // Phones / PWA: GIS popups die as orphan Google tabs — redirect, then retry place on return.
-    if (authPopupUnreliable()) {
-      startOAuthRedirect('consent', { scope: DRIVE_MOVE_SCOPES });
-      return new Promise(function () { /* navigates away */ });
-    }
-    cancelSilentAuth('drive_move_scope');
-    return new Promise(function (resolve, reject) {
-      ensureClient(function () {
-        if (!tokenClient) {
-          reject(new Error('auth_failed'));
-          return;
-        }
-        var prevCb = tokenClient.callback;
-        var prevErr = tokenClient.error_callback;
-        var settled = false;
-        var timer = setTimeout(function () {
-          done(new Error('auth_timeout'));
-        }, DRIVE_MOVE_TIMEOUT_MS);
-        function done(err, tok) {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          try {
-            tokenClient.callback = prevCb;
-            tokenClient.error_callback = prevErr;
-          } catch (_) {}
-          if (err) reject(err);
-          else resolve(tok);
-        }
-        tokenClient.callback = function (r) {
-          if (r && r.access_token) {
-            saveToken(r.access_token, r.expires_in);
-            done(null, r.access_token);
-          } else done(new Error('auth_failed'));
-        };
-        tokenClient.error_callback = function (err) {
-          done(new Error((err && (err.type || err.message)) || 'auth_failed'));
-        };
-        try {
-          tokenClient.requestAccessToken({
-            prompt: 'consent',
-            scope: DRIVE_MOVE_SCOPES
-          });
-        } catch (e) {
-          done(e || new Error('auth_failed'));
-        }
-      });
-    });
-  }
-
-  /**
-   * Move Prateleira into Joelboard/ when Drive can see the file; otherwise shortcut.
-   * opts.interactive — if Drive can't see the file yet, ask for a one-time full Drive grant and retry.
-   */
-  function placePrateleiraInJoelboard(sheetId, title, opts) {
-    opts = opts || {};
-    sheetId = sheetId || prateleiraSheetId();
-    if (!sheetId || isGhost()) return Promise.resolve(null);
-    var preferredName = String(title || '').trim();
-
-    function finishName() {
-      if (preferredName) return Promise.resolve(preferredName);
-      return fetchSpreadsheetTitle(sheetId).then(function (t) {
-        return t || PRATELEIRA_SHEET_NAMES[0];
-      });
-    }
-
-    function tryPlace(rootId, name) {
-      return moveFile(sheetId, rootId).then(function (r) {
-        if (r && r.moved) return { mode: 'moved', id: sheetId, parentId: rootId, name: name };
-        return { mode: 'already', id: sheetId, parentId: rootId, name: name };
-      }, function () {
-        return ensureDriveShortcut(sheetId, rootId, name).then(function (sc) {
-          if (sc && sc.id) {
-            return {
-              mode: 'shortcut',
-              id: sc.id,
-              parentId: rootId,
-              targetId: sheetId,
-              created: !!sc.created,
-              name: name
-            };
-          }
-          return { mode: 'failed', id: sheetId, reason: 'drive_file_scope' };
-        }, function () {
-          return { mode: 'failed', id: sheetId, reason: 'drive_file_scope' };
-        });
-      });
-    }
-
-    return ensureJoelboardRoot().then(function (rootId) {
-      return finishName().then(function (name) {
-        return driveFileAccessible(sheetId).then(function (ok) {
-          if (ok) return tryPlace(rootId, name);
-          if (!opts.interactive) {
-            return { mode: 'failed', id: sheetId, reason: 'drive_file_scope', name: name };
-          }
-          var title = 'Organizar Prateleira';
-          var msg = 'A planilha “' + name + '” já existia antes do Joelboard, então o Google não deixa movê-la com a permissão atual.\n\n'
-            + 'Posso pedir acesso completo ao Drive só desta vez para colocar ela na pasta Joelboard.';
-          return new Promise(function (resolve) {
-            confirm(title, msg, function () {
-              // Keep UI responsive: auth popup / redirect must not leave callers waiting forever.
-              requestDriveMoveScope().then(function () {
-                return tryPlace(rootId, name).then(resolve, function () {
-                  resolve({ mode: 'failed', id: sheetId, reason: 'move_failed', name: name });
-                });
-              }, function (err) {
-                var reason = String((err && err.message) || '');
-                resolve({
-                  mode: 'failed',
-                  id: sheetId,
-                  reason: reason === 'auth_timeout' ? 'auth_timeout' : 'auth_failed',
-                  name: name
-                });
-              });
-            }, {
-              yes: 'Autorizar e mover',
-              no: 'Agora não',
-              onNo: function () {
-                resolve({ mode: 'skipped', id: sheetId, reason: 'user_declined', name: name });
-              }
-            });
-          });
-        });
-      });
-    }, function () { return null; });
-  }
   function uploadFileToFolder(fileOrBlob, name, folderId) {
     var file = fileOrBlob;
     if (file && name && typeof File !== 'undefined') {
@@ -3115,12 +2958,6 @@
       }));
       jobs.push(migrateOwnedCollabSheets().then(function (n) { if (n) bump(); }));
       jobs.push(migrateJoinedCollabShortcuts().then(function (n) { if (n) bump(); }));
-      var pratId = prateleiraSheetId();
-      if (pratId) {
-        jobs.push(placePrateleiraInJoelboard(pratId, '', { interactive: false }).then(function (r) {
-          if (r && (r.mode === 'moved' || (r.mode === 'shortcut' && r.created))) bump();
-        }, function () {}));
-      }
       return Promise.all(jobs).then(function () {
         return { changed: changed > 0, rootId: rootId };
       });
@@ -3869,9 +3706,6 @@
     ensurePlannerSharedFolder: ensurePlannerSharedFolder, ensureStudyAnexosFolder: ensureStudyAnexosFolder,
     placeFileInFolder: placeFileInFolder, placeSpreadsheetInAppFolder: placeSpreadsheetInAppFolder,
     createDriveShortcut: createDriveShortcut, ensureDriveShortcut: ensureDriveShortcut,
-    placePrateleiraInJoelboard: placePrateleiraInJoelboard,
-    prateleiraSheetId: prateleiraSheetId,
-    PRATELEIRA_SHEET_ID: PRATELEIRA_SHEET_ID,
     uploadFileToFolder: uploadFileToFolder, driveFolderWebLink: driveFolderWebLink,
     trashDriveFile: trashDriveFile, dedupeChildFoldersByName: dedupeChildFoldersByName,
     migrateOwnedCollabSheets: migrateOwnedCollabSheets,

@@ -19,6 +19,8 @@ var _bookColor = '#e07a5f';
 var _searchImportBookId = null;
 var _ingDraft = [];
 var _stepDraft = [];
+var _recipeImgFile = null;
+var _recipeImgLocalUrl = '';
 var CHECK_KEY = 'jb_recipes_checks';
 var VIEW_KEY = 'jb_recipes_view';
 var SPREAD_KEY = 'jb_recipes_spread';
@@ -1362,7 +1364,6 @@ function openRecipeModal(id) {
   $('recipeTitle').value = r ? r.title : '';
   $('recipeServings').value = r ? r.servings : '';
   $('recipeMinutes').value = r ? r.minutes : '';
-  $('recipeImage').value = r ? r.imageUrl : '';
   $('recipeNotes').value = r ? r.notes : '';
   _ingDraft = r ? ingsFor(r.id).map(function (x) {
     return { id: x.id, text: x.text, qty: x.qty, unit: x.unit };
@@ -1373,18 +1374,207 @@ function openRecipeModal(id) {
   paintIconWrap('recipe');
   paintIngLines();
   paintStepLines();
+  setRecipeImageValue(r ? r.imageUrl : '', null);
   var del = $('recipeDelBtn');
   if (del) del.style.display = r ? '' : 'none';
   var online = $('recipeOnlineRow');
   if (online) online.style.display = r ? 'none' : '';
   $('recipeOverlay').classList.add('open');
 }
-function closeRecipeModal() { $('recipeOverlay').classList.remove('open'); }
+function closeRecipeModal() {
+  $('recipeOverlay').classList.remove('open');
+  clearRecipeImgLocal();
+}
 /* Atalho do "Nova receita": importa pronto em vez de digitar tudo. */
 function searchFromRecipeModal() {
   var bid = openBookId || '';
   closeRecipeModal();
   openSearch(bid);
+}
+
+/* ---- recipe image attach (drag / paste / file / URL) ---- */
+function clearRecipeImgLocal() {
+  if (_recipeImgLocalUrl) {
+    try { URL.revokeObjectURL(_recipeImgLocalUrl); } catch (_) {}
+  }
+  _recipeImgLocalUrl = '';
+  _recipeImgFile = null;
+}
+function recipeImgEls() {
+  return {
+    wrap: $('recipeImgPick'),
+    hidden: $('recipeImage'),
+    preview: $('recipeImgPreview'),
+    previewWrap: $('recipeImgPreviewWrap'),
+    empty: $('recipeImgEmpty'),
+    urlRow: $('recipeImgUrlRow'),
+    url: $('recipeImageUrl'),
+    file: $('recipeImgFile')
+  };
+}
+function setRecipeImageValue(url, file) {
+  var el = recipeImgEls();
+  clearRecipeImgLocal();
+  _recipeImgFile = file || null;
+  url = String(url || '').trim();
+  if (el.hidden) el.hidden.value = file ? '' : url;
+  if (el.url) el.url.value = (!file && url && url.indexOf('data:') !== 0) ? url : '';
+  if (el.urlRow) el.urlRow.hidden = true;
+  if (file) {
+    _recipeImgLocalUrl = URL.createObjectURL(file);
+    paintRecipeImgPreview(_recipeImgLocalUrl);
+  } else if (url) {
+    paintRecipeImgPreview(url);
+  } else {
+    paintRecipeImgPreview('');
+  }
+}
+function paintRecipeImgPreview(src) {
+  var el = recipeImgEls();
+  if (!el.wrap) return;
+  var has = !!src;
+  el.wrap.classList.toggle('has-img', has);
+  if (el.previewWrap) el.previewWrap.hidden = !has;
+  if (el.preview) {
+    el.preview.removeAttribute('src');
+    if (src) el.preview.src = src;
+  }
+}
+function pickRecipeImgFile() {
+  var el = recipeImgEls();
+  if (el.file) { el.file.value = ''; el.file.click(); }
+}
+function onRecipeImgFile(inp) {
+  var f = inp && inp.files && inp.files[0];
+  if (f) acceptRecipeImageFile(f);
+}
+function toggleRecipeImgUrl() {
+  var el = recipeImgEls();
+  if (!el.urlRow) return;
+  var open = el.urlRow.hidden;
+  el.urlRow.hidden = !open;
+  if (open && el.url) { el.url.focus(); el.url.select(); }
+}
+function onRecipeImgUrl(v) {
+  v = String(v || '').trim();
+  clearRecipeImgLocal();
+  var el = recipeImgEls();
+  if (el.hidden) el.hidden.value = v;
+  paintRecipeImgPreview(v);
+}
+function clearRecipeImg() {
+  setRecipeImageValue('', null);
+  var el = recipeImgEls();
+  if (el.file) el.file.value = '';
+}
+function recipeImgDrag(ev, on) {
+  ev.preventDefault();
+  var wrap = $('recipeImgPick');
+  if (wrap) wrap.classList.toggle('is-drag', !!on);
+}
+function recipeImgDrop(ev) {
+  ev.preventDefault();
+  recipeImgDrag(ev, false);
+  var files = ev.dataTransfer && ev.dataTransfer.files;
+  var f = files && files[0];
+  if (f) acceptRecipeImageFile(f);
+}
+function acceptRecipeImageFile(file) {
+  if (!file || String(file.type || '').indexOf('image/') !== 0) {
+    toast('Use uma imagem (JPG, PNG, WebP…)');
+    return;
+  }
+  if (file.size > 12 * 1024 * 1024) {
+    toast('Imagem grande demais (máx. 12 MB)');
+    return;
+  }
+  setRecipeImageValue('', file);
+}
+function recipeImgFromClipboard(ev) {
+  var ov = $('recipeOverlay');
+  if (!ov || !ov.classList.contains('open')) return;
+  var items = (ev.clipboardData && ev.clipboardData.items) || [];
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type && items[i].type.indexOf('image/') === 0) {
+      var f = items[i].getAsFile();
+      if (f) {
+        ev.preventDefault();
+        acceptRecipeImageFile(f);
+        return;
+      }
+    }
+  }
+}
+document.addEventListener('paste', recipeImgFromClipboard);
+
+function compressRecipeImage(file) {
+  return new Promise(function (resolve, reject) {
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+      var max = 1400;
+      var w = img.naturalWidth || 1;
+      var h = img.naturalHeight || 1;
+      var scale = Math.min(1, max / Math.max(w, h));
+      var cw = Math.max(1, Math.round(w * scale));
+      var ch = Math.max(1, Math.round(h * scale));
+      var c = document.createElement('canvas');
+      c.width = cw; c.height = ch;
+      var ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, cw, ch);
+      c.toBlob(function (blob) {
+        if (!blob) return reject(new Error('Não deu para comprimir a imagem'));
+        var base = String(file.name || 'receita').replace(/\.[^.]+$/, '') || 'receita';
+        var name = base + '.jpg';
+        try { resolve(new File([blob], name, { type: 'image/jpeg' })); }
+        catch (_) { blob.name = name; resolve(blob); }
+      }, 'image/jpeg', 0.84);
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+      reject(new Error('Imagem inválida'));
+    };
+    img.src = url;
+  });
+}
+function fileToDataUrl(file) {
+  return new Promise(function (resolve, reject) {
+    var r = new FileReader();
+    r.onload = function () { resolve(String(r.result || '')); };
+    r.onerror = function () { reject(new Error('Falha ao ler a imagem')); };
+    r.readAsDataURL(file);
+  });
+}
+function driveRecipeImageUrl(fileId) {
+  return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(fileId) + '&sz=w1200';
+}
+function resolveRecipeImageUrl() {
+  var el = recipeImgEls();
+  var typed = ((el.hidden && el.hidden.value) || '').trim();
+  if (!_recipeImgFile) return Promise.resolve(typed);
+  toast('Enviando imagem…');
+  return compressRecipeImage(_recipeImgFile).then(function (ready) {
+    if (JB.isGhost && JB.isGhost()) {
+      return fileToDataUrl(ready).then(function (dataUrl) {
+        if (dataUrl.length > 45000) throw new Error('Imagem grande demais neste modo');
+        return dataUrl;
+      });
+    }
+    if (!JB.ensureAppFolder || !JB.uploadFileToFolder) throw new Error('Upload indisponível');
+    return JB.ensureAppFolder('recipes').then(function (folderId) {
+      var name = 'recipe-' + Date.now() + '-' + (ready.name || 'img.jpg');
+      return JB.uploadFileToFolder(ready, name, folderId);
+    }).then(function (f) {
+      if (!f || !f.id) throw new Error('Falha no upload');
+      return JB.api('POST',
+        'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(f.id) + '/permissions',
+        { role: 'reader', type: 'anyone' }
+      ).catch(function () { return null; }).then(function () {
+        return driveRecipeImageUrl(f.id);
+      });
+    });
+  });
 }
 
 function paintIngLines() {
@@ -1422,28 +1612,30 @@ function saveRecipeModal() {
     var cur = recipeById(_editRecipeId);
     if (cur) order = cur.order;
   }
-  var row = [
-    id, openBookId, title, _iconDraft || '🍽️',
-    (($('recipeImage') && $('recipeImage').value) || '').trim(),
-    (($('recipeServings') && $('recipeServings').value) || '').trim(),
-    (($('recipeMinutes') && $('recipeMinutes').value) || '').trim(),
-    (($('recipeNotes') && $('recipeNotes').value) || '').trim(),
-    String(order), _editRecipeId ? (recipeById(_editRecipeId).source || '') : 'manual',
-    _editRecipeId ? (recipeById(_editRecipeId).sourceId || '') : '', created
-  ];
-  var p = _editRecipeId
-    ? findRow('Recipes', 0, id).then(function (rn) {
-      if (rn < 0) throw new Error('Receita não encontrada');
-      return JB.api('PUT', ssUrl('/values/Recipes!A' + rn + ':L' + rn + '?valueInputOption=RAW'), { values: [row] })
+  resolveRecipeImageUrl().then(function (imageUrl) {
+    var row = [
+      id, openBookId, title, _iconDraft || '🍽️',
+      imageUrl || '',
+      (($('recipeServings') && $('recipeServings').value) || '').trim(),
+      (($('recipeMinutes') && $('recipeMinutes').value) || '').trim(),
+      (($('recipeNotes') && $('recipeNotes').value) || '').trim(),
+      String(order), _editRecipeId ? (recipeById(_editRecipeId).source || '') : 'manual',
+      _editRecipeId ? (recipeById(_editRecipeId).sourceId || '') : '', created
+    ];
+    var p = _editRecipeId
+      ? findRow('Recipes', 0, id).then(function (rn) {
+        if (rn < 0) throw new Error('Receita não encontrada');
+        return JB.api('PUT', ssUrl('/values/Recipes!A' + rn + ':L' + rn + '?valueInputOption=RAW'), { values: [row] })
+          .then(function () { return replaceRecipeChildren(id); });
+      })
+      : JB.api('POST', ssUrl('/values/Recipes!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
         .then(function () { return replaceRecipeChildren(id); });
-    })
-    : JB.api('POST', ssUrl('/values/Recipes!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
-      .then(function () { return replaceRecipeChildren(id); });
-  p.then(function () {
-    closeRecipeModal();
-    openRecipeId = id;
-    view = 'recipe';
-    return refreshQuiet();
+    return p.then(function () {
+      closeRecipeModal();
+      openRecipeId = id;
+      view = 'recipe';
+      return refreshQuiet();
+    });
   }).catch(function (e) { toast(e.message || 'Falha ao salvar'); });
 }
 

@@ -61,7 +61,29 @@
       <div><label class="fl">Porções</label><input class="field" id="recipeServings" placeholder="2"></div>
       <div><label class="fl">Minutos</label><input class="field" id="recipeMinutes" type="number" inputmode="numeric" placeholder="20"></div>
     </div>
-    <div class="fg"><label class="fl">Imagem (URL, opcional)</label><input class="field" id="recipeImage" placeholder="https://…"></div>
+    <div class="fg">
+      <label class="fl">Imagem <span style="font-weight:600;color:var(--muted)">(opcional)</span></label>
+      <div class="rc-img" id="recipeImgPick" tabindex="0"
+        ondragenter="recipeImgDrag(event,true)" ondragover="recipeImgDrag(event,true)"
+        ondragleave="recipeImgDrag(event,false)" ondrop="recipeImgDrop(event)">
+        <input type="hidden" id="recipeImage" value="">
+        <input type="file" id="recipeImgFile" accept="image/*" hidden onchange="onRecipeImgFile(this)">
+        <div class="rc-img-empty" id="recipeImgEmpty">
+          <div class="rc-img-prompt">Arraste ou cole uma imagem aqui</div>
+          <div class="rc-img-actions">
+            <button type="button" class="btn ghost" onclick="pickRecipeImgFile()">Escolher arquivo</button>
+            <button type="button" class="btn ghost" onclick="toggleRecipeImgUrl()">Usar URL</button>
+          </div>
+        </div>
+        <div class="rc-img-preview" id="recipeImgPreviewWrap" hidden>
+          <img id="recipeImgPreview" alt="">
+          <button type="button" class="rc-img-clear" onclick="clearRecipeImg()" aria-label="Remover imagem">✕</button>
+        </div>
+        <div class="rc-img-url" id="recipeImgUrlRow" hidden>
+          <input class="field" id="recipeImageUrl" placeholder="https://…" oninput="onRecipeImgUrl(this.value)">
+        </div>
+      </div>
+    </div>
     <div class="fg"><label class="fl">Notas</label><textarea class="field" id="recipeNotes" rows="2" placeholder="Dicas, variações…"></textarea></div>
     <div class="fg"><label class="fl">Ingredientes</label><div id="recipeIngList" class="edit-lines"></div><button type="button" class="btn ghost" onclick="addIngLine()">+ Ingrediente</button></div>
     <div class="fg"><label class="fl">Passos</label><div id="recipeStepList" class="edit-lines"></div><button type="button" class="btn ghost" onclick="addStepLine()">+ Passo</button></div>

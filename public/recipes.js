@@ -966,26 +966,27 @@ function refocusBookSearch() {
 }
 
 var _bookMenuOpen = false;
-function toggleBookMenu(e) {
-  if (e) { e.preventDefault(); e.stopPropagation(); }
-  _bookMenuOpen = !_bookMenuOpen;
+function syncBookMenuOpen() {
+  var stack = document.querySelector('.book-stack');
+  if (stack) stack.classList.toggle('is-open-menu', _bookMenuOpen);
   var menu = document.querySelector('.book-menu');
   if (!menu) return;
   menu.classList.toggle('is-open', _bookMenuOpen);
   var btn = menu.querySelector('.book-menu-btn');
   if (btn) btn.setAttribute('aria-expanded', _bookMenuOpen ? 'true' : 'false');
 }
+function toggleBookMenu(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  _bookMenuOpen = !_bookMenuOpen;
+  syncBookMenuOpen();
+}
 function closeBookMenu() {
   if (!_bookMenuOpen) return;
   _bookMenuOpen = false;
-  var menu = document.querySelector('.book-menu');
-  if (!menu) return;
-  menu.classList.remove('is-open');
-  var btn = menu.querySelector('.book-menu-btn');
-  if (btn) btn.setAttribute('aria-expanded', 'false');
+  syncBookMenuOpen();
 }
 
-/* Placa no topo do livro + bolha com modo / editar / busca. */
+/* Placa encaixada na capa + ⋯ dentro dela. */
 function bookCrest(book) {
   var kc = esc(book.color || '#e07a5f');
   var open = _bookMenuOpen ? ' is-open' : '';
@@ -993,7 +994,6 @@ function bookCrest(book) {
     + '<div class="book-plaque" title="' + escAttr(book.name) + '">'
     + '<span class="book-plaque-ico" aria-hidden="true">' + esc(book.icon || '📖') + '</span>'
     + '<span class="book-plaque-name">' + esc(book.name) + '</span>'
-    + '</div>'
     + '<div class="book-menu' + open + '" onclick="event.stopPropagation()">'
     + '<button type="button" class="book-menu-btn" onclick="toggleBookMenu(event)"'
     + ' aria-expanded="' + (_bookMenuOpen ? 'true' : 'false') + '"'
@@ -1013,6 +1013,7 @@ function bookCrest(book) {
     + '</div>'
     + '</div>'
     + '</div>'
+    + '</div>'
     + '</div>';
 }
 
@@ -1023,25 +1024,29 @@ function renderBook() {
   var list = visibleRecipes(book.id);
   var head = '<div class="secbar"><button class="back" onclick="goShelf()">← Estante</button></div>';
   var kc = esc(book.color || '#e07a5f');
+  var stackOpen = _bookMenuOpen ? ' is-open-menu' : '';
   if (!total) {
     return head
-      + '<div class="book-stack is-empty" style="--kc:' + kc + '">'
+      + '<div class="book-stack is-empty' + stackOpen + '" style="--kc:' + kc + '">'
       + bookCrest(book)
+      + '<div class="book-ledge" aria-hidden="true"></div>'
       + '<div class="empty">Este livro está vazio. Comece pela primeira receita — do zero ou buscando online.</div>'
       + '<button class="btn" style="display:block;margin:0 auto" onclick="openRecipeModal(null)">+ Nova receita</button>'
       + '</div>';
   }
   if (!list.length) {
     return head
-      + '<div class="book-stack is-empty" style="--kc:' + kc + '">'
+      + '<div class="book-stack is-empty' + stackOpen + '" style="--kc:' + kc + '">'
       + bookCrest(book)
+      + '<div class="book-ledge" aria-hidden="true"></div>'
       + '<div class="empty">Nada com “' + esc(bookQuery) + '” neste livro.</div>'
       + '</div>';
   }
   if (bookViewMode === 'cards') {
     return head
-      + '<div class="book-stack is-cards" style="--kc:' + kc + '">'
+      + '<div class="book-stack is-cards' + stackOpen + '" style="--kc:' + kc + '">'
       + bookCrest(book)
+      + '<div class="book-ledge" aria-hidden="true"></div>'
       + renderCards(list, book)
       + '</div>';
   }
@@ -1108,7 +1113,7 @@ function renderSpread(list, book) {
   return '<div class="spread-wrap" id="flipWrap" style="--kc:' + kc + '">'
     + '<button type="button" class="spread-arrow is-prev" onclick="flipPrev()" aria-label="Página anterior"'
     + (atStart ? ' disabled' : '') + '>‹</button>'
-    + '<div class="book-stack">'
+    + '<div class="book-stack' + (_bookMenuOpen ? ' is-open-menu' : '') + '">'
     + bookCrest(book)
     + '<div class="book-body' + intro + '">'
     + '<span class="book-ribbon" aria-hidden="true"></span>'

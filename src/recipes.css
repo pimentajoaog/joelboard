@@ -335,65 +335,66 @@ body.recipes-shelf .foot{ display:none; }
   position:relative; flex:0 1 auto; min-width:0;
   width:min(100%, 1220px);
   display:flex; flex-direction:column; align-items:stretch;
+  overflow:visible;
 }
 .book-stack.is-cards, .book-stack.is-empty{
   width:100%; max-width:1220px; margin:0 auto;
 }
+/* A placa fica por trás da capa; ao abrir o menu sobe pra não ser cortada. */
 .book-crest{
-  display:flex; align-items:flex-end; gap:10px;
-  padding:0 16px; margin:0 0 -8px; z-index:5; position:relative;
+  display:flex; align-items:flex-end; align-self:flex-start;
+  padding:0 18px; margin:0 0 -20px; z-index:1; position:relative;
+  overflow:visible;
 }
+.book-stack.is-open-menu .book-crest{ z-index:8; }
 .book-plaque{
   display:inline-flex; align-items:center; gap:8px;
-  max-width:min(300px, 58vw);
-  padding:9px 14px 11px;
-  border-radius:11px 11px 5px 5px;
+  max-width:min(340px, 72vw);
+  padding:8px 8px 18px 12px; /* base extra some por baixo da capa */
+  border-radius:12px 12px 6px 6px;
   background:
     linear-gradient(180deg,
       color-mix(in srgb, var(--kc, var(--primary)) 48%, #000 52%) 0%,
-      color-mix(in srgb, var(--kc, var(--primary)) 30%, #000 70%) 100%);
+      color-mix(in srgb, var(--kc, var(--primary)) 28%, #000 72%) 100%);
   color:#fff;
   border:1px solid color-mix(in srgb, var(--kc, var(--primary)) 22%, #000 78%);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.14),
-    0 1px 0 color-mix(in srgb, var(--kc, var(--primary)) 20%, #000 80%),
-    0 8px 18px rgba(0,0,0,.28);
+    0 1px 0 color-mix(in srgb, var(--kc, var(--primary)) 20%, #000 80%);
+  position:relative;
+  overflow:visible;
 }
-.book-plaque-ico{ font-size:18px; line-height:1; flex:none; }
+.book-plaque-ico{ font-size:17px; line-height:1; flex:none; }
 .book-plaque-name{
-  font-family:var(--font-display); font-weight:800; font-size:15px;
+  font-family:var(--font-display); font-weight:800; font-size:14px;
   letter-spacing:-.2px; line-height:1.15;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  min-width:0; flex:1;
 }
-.book-menu{ position:relative; flex:none; margin-bottom:2px; }
+.book-menu{ position:relative; flex:none; margin-left:2px; overflow:visible; }
 .book-menu-btn{
-  width:38px; height:38px; border-radius:999px; cursor:pointer; font-family:inherit;
-  font-size:20px; font-weight:800; line-height:1; letter-spacing:.5px;
-  color:#fff; border:1px solid color-mix(in srgb, var(--kc, var(--primary)) 22%, #000 78%);
-  background:
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--kc, var(--primary)) 44%, #000 56%),
-      color-mix(in srgb, var(--kc, var(--primary)) 26%, #000 74%));
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.14),
-    0 6px 14px rgba(0,0,0,.28);
-  transition:transform .15s ease, box-shadow .15s ease;
+  width:30px; height:30px; border-radius:999px; cursor:pointer; font-family:inherit;
+  font-size:16px; font-weight:800; line-height:1; letter-spacing:.4px;
+  color:#fff; border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.22);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
 }
-.book-menu-btn:hover{ transform:translateY(-1px); }
+.book-menu-btn:hover{ background:rgba(0,0,0,.34); transform:scale(1.04); }
 .book-menu.is-open .book-menu-btn{
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.14),
-    0 0 0 3px color-mix(in srgb, var(--kc, var(--primary)) 28%, transparent);
+  background:rgba(0,0,0,.4);
+  box-shadow:0 0 0 2px rgba(255,255,255,.16);
 }
+/* Sempre abre pra baixo, dentro do livro — abrir pra cima/lado cortava no topo. */
 .book-menu-panel{
-  position:absolute; left:0; top:calc(100% + 8px);
+  position:absolute; left:0; top:calc(100% + 14px);
   min-width:min(260px, 78vw); padding:12px;
   display:flex; flex-direction:column; gap:10px;
   background:var(--surface); border:1px solid var(--border); border-radius:16px;
-  box-shadow:0 16px 40px rgba(0,0,0,.38);
-  opacity:0; transform:translateY(-6px) scale(.96); transform-origin:top left;
+  box-shadow:0 16px 40px rgba(0,0,0,.42);
+  opacity:0; transform:translateY(-4px) scale(.96); transform-origin:top left;
   pointer-events:none; transition:opacity .16s ease, transform .16s ease;
-  z-index:8;
+  z-index:12;
 }
 .book-menu.is-open .book-menu-panel{
   opacity:1; transform:none; pointer-events:auto;
@@ -403,12 +404,16 @@ body.recipes-shelf .foot{ display:none; }
 .book-menu-edit{ width:100%; }
 .book-menu-panel .jb-search{ width:100%; margin:0; }
 
-@media (min-width:721px){
-  .book-menu-panel{
-    left:calc(100% + 8px); top:auto; bottom:0;
-    transform:translateX(-6px) scale(.96); transform-origin:left bottom;
-  }
-  .book-menu.is-open .book-menu-panel{ transform:none; }
+/* Faixa de capa falsa quando não há book-body (cards / vazio) */
+.book-ledge{
+  position:relative; z-index:2; height:22px; margin-top:0;
+  border-radius:14px 20px 0 0;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--kc, var(--primary)) 74%, #000 26%) 0%,
+      color-mix(in srgb, var(--kc, var(--primary)) 58%, #000 42%) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18);
+  pointer-events:none;
 }
 
 /* ---- open state ----
@@ -495,14 +500,15 @@ body.recipes-book .secbar{ margin-bottom:10px; }
 .spread-wrap{
   position:relative; display:flex; align-items:center; justify-content:center;
   gap:10px; margin:2px 0 8px; perspective:2600px; perspective-origin:50% 44%;
-  touch-action:pan-y; outline:none;
+  touch-action:pan-y; outline:none; overflow:visible;
 }
 
 /* capa dura: as folhas ficam encaixadas dentro dela */
 .book-body{
-  position:relative; flex:0 1 auto; min-width:0;
+  position:relative; flex:0 1 auto; min-width:0; z-index:2;
   width:100%;
   display:flex; padding:13px 13px 15px;
+  overflow:visible;
   border-radius:14px 20px 20px 14px;
   background:
     linear-gradient(180deg,

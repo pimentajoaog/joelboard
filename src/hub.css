@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{ --bg:#0d0f18; --surface:#1b1f32; --surface2:#252a40; --border:#2b3147; --primary:#818cf8; --income:#34d399; --finance:#2dd4bf; --fit:#fb7185; --study:#a78bfa; --notas:#f59e0b; --planner:#2dd4bf; --mini:#22d3ee; --text:#e7eaf3; --muted:#7b85a0; --radius:18px; --radius-sm:11px; --brand:var(--primary); --on-brand:#fff; --success: var(--income); }
+:root{ --bg:#0d0f18; --surface:#1b1f32; --surface2:#252a40; --border:#2b3147; --primary:#818cf8; --income:#34d399; --finance:#0d9488; --fit:#fb7185; --study:#a78bfa; --notas:#f59e0b; --planner:#2dd4bf; --mini:#22d3ee; --text:#e7eaf3; --muted:#7b85a0; --radius:18px; --radius-sm:11px; --brand:var(--primary); --on-brand:#fff; --success: var(--income); }
 
 *,::before,::after{ box-sizing:border-box; margin:0; padding:0; border-width:0; border-style:solid; border-color:var(--border); }
 button,input,select,textarea{ font-family:inherit; }
@@ -106,7 +106,7 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; }
 .nov-meta{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:5px; }
 .nov-app{ font-size:10px; font-weight:800; letter-spacing:.3px; text-transform:uppercase; border-radius:99px; padding:2px 8px; }
 .nov-app.fit{ background:rgba(251,113,133,0.16); color:var(--fit); }
-.nov-app.finance{ background:rgba(45,212,191,0.16); color:var(--finance); }
+.nov-app.finance{ background:rgba(13,148,136,0.16); color:var(--finance); }
 .nov-app.notas{ background:rgba(245,158,11,0.16); color:var(--notas); }
 .nov-app.planner{ background:rgba(45,212,191,0.16); color:var(--planner); }
 .nov-app.mini{ background:rgba(34,211,238,0.14); color:var(--mini); }
@@ -164,7 +164,7 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; }
 .fbbadge.feat{ background:rgba(129,140,248,0.16); color:var(--primary); }
 .fbbadge.fit{ background:rgba(251,113,133,0.16); color:var(--fit); }
 .fbbadge.hub{ background:rgba(129,140,248,0.16); color:var(--primary); }
-.fbbadge.finance{ background:rgba(45,212,191,0.16); color:var(--finance); }
+.fbbadge.finance{ background:rgba(13,148,136,0.16); color:var(--finance); }
 .fbbadge.study{ background:rgba(167,139,250,0.16); color:#a78bfa; }
 .fbmsg{ font-size:14px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
 .fbfoot{ display:flex; align-items:center; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }

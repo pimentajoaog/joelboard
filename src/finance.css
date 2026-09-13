@@ -6,9 +6,9 @@
 @tailwind components;
 @tailwind utilities;
 :root {
-  --brand: var(--primary); --on-brand: #042f2e; --success: var(--income);
+  --brand: var(--primary); --on-brand: #fff; --success: var(--income);
   --bg: #0d0f18; --surface: #151929; --surface2: #1b1f32; --border: #252840;
-  --primary: #2dd4bf; --finance: #2dd4bf; --income: #34d399; --expense: #f87171; --warning: #fbbf24; --savings: #22d3ee;
+  --primary: #0d9488; --finance: #0d9488; --income: #34d399; --expense: #f87171; --warning: #fbbf24; --savings: #22d3ee;
   --text: #e2e8f0; --muted: #64748b; --radius: 16px; --radius-sm: 10px;
   --shadow: none;
 }

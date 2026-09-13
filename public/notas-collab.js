@@ -398,14 +398,14 @@ function ncLooksLikeKit(n) {
 
 function ncMigrateCollabDriveFolders() {
   if (JB.isGhost && JB.isGhost()) return;
-  if (!JB.placeFileInFolder) return;
+  if (!JB.placeFileInFolder && !JB.ensureDriveShortcut) return;
   var me = String(ncEmail() || '').toLowerCase();
   var chain = Promise.resolve();
   (DATA.notas || []).forEach(function (n) {
     if (!n || !n.collabSheetId) return;
     var role = String(n.collabRole || '').toLowerCase();
     var owner = String(n.collabOwner || '').toLowerCase();
-    if (role !== 'owner' && !(me && owner === me)) return;
+    var isOwner = role === 'owner' || (!!me && owner === me);
     if (ncLooksLikeKit(n)) {
       n.preset = true;
       if (typeof saveConfig === 'function') saveConfig('preset_' + n.id, '1');
@@ -416,7 +416,11 @@ function ncMigrateCollabDriveFolders() {
         : (JB.ensureNotesSharedFolder ? JB.ensureNotesSharedFolder() : Promise.resolve(''));
       return ensure.then(function (folderId) {
         if (!folderId) return;
-        return JB.placeFileInFolder(n.collabSheetId, folderId);
+        if (isOwner) {
+          return JB.placeFileInFolder ? JB.placeFileInFolder(n.collabSheetId, folderId) : null;
+        }
+        if (!JB.ensureDriveShortcut) return null;
+        return JB.ensureDriveShortcut(n.collabSheetId, folderId, n.titulo || 'Lista compartilhada');
       });
     });
   });
@@ -909,6 +913,19 @@ function ncJoinCollab(sheetId) {
         listaId: String(ctx.metaRow[6]),
         atualizado: new Date().toISOString()
       });
+    }).then(function () {
+      if (!JB.ensureDriveShortcut) return;
+      var titulo = String(ctx.metaRow[0] || '').trim();
+      var listaId = String(ctx.metaRow[6] || '');
+      var probe = { id: listaId, titulo: titulo, preset: false };
+      var isKit = ncLooksLikeKit(probe);
+      var ensure = isKit
+        ? (JB.ensureNotesKitSharedFolder ? JB.ensureNotesKitSharedFolder() : Promise.resolve(''))
+        : (JB.ensureNotesSharedFolder ? JB.ensureNotesSharedFolder() : Promise.resolve(''));
+      return ensure.then(function (folderId) {
+        if (!folderId) return;
+        return JB.ensureDriveShortcut(sheetId, folderId, titulo || 'Lista compartilhada');
+      }).catch(function () {});
     }).then(function () { return ctx; });
   }).then(function (ctx) {
     if (typeof JB !== 'undefined' && JB.qsClearJoin) JB.qsClearJoin();

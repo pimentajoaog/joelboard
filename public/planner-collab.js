@@ -327,18 +327,23 @@ function plLoadCollabPlans() {
 
 function plMigrateCollabDriveFolders() {
   if (JB.isGhost && JB.isGhost()) return;
-  if (!JB.placeFileInFolder || !JB.ensurePlannerSharedFolder) return;
+  if (!JB.placeFileInFolder && !JB.ensureDriveShortcut) return;
+  if (!JB.ensurePlannerSharedFolder) return;
   var me = String(plEmail() || '').toLowerCase();
   var chain = Promise.resolve();
   (DATA.planos || []).forEach(function (p) {
     if (!p || !p.collabSheetId) return;
     var role = String(p.collabRole || '').toLowerCase();
     var owner = String(p.collabOwner || '').toLowerCase();
-    if (role !== 'owner' && !(me && owner === me)) return;
+    var isOwner = role === 'owner' || (!!me && owner === me);
     chain = chain.then(function () {
       return JB.ensurePlannerSharedFolder().then(function (folderId) {
         if (!folderId) return;
-        return JB.placeFileInFolder(p.collabSheetId, folderId);
+        if (isOwner) {
+          return JB.placeFileInFolder ? JB.placeFileInFolder(p.collabSheetId, folderId) : null;
+        }
+        if (!JB.ensureDriveShortcut) return null;
+        return JB.ensureDriveShortcut(p.collabSheetId, folderId, p.titulo || 'Plano compartilhado');
       });
     });
   });
@@ -710,6 +715,13 @@ function plJoinCollab(sheetId) {
         planoId: String(ctx.metaRow[7]),
         atualizado: new Date().toISOString()
       });
+    }).then(function () {
+      if (!JB.ensureDriveShortcut || !JB.ensurePlannerSharedFolder) return;
+      var titulo = String(ctx.metaRow[0] || '').trim();
+      return JB.ensurePlannerSharedFolder().then(function (folderId) {
+        if (!folderId) return;
+        return JB.ensureDriveShortcut(sheetId, folderId, titulo || 'Plano compartilhado');
+      }).catch(function () {});
     }).then(function () { return ctx; });
   }).then(function (ctx) {
     if (typeof JB !== 'undefined' && JB.qsClearJoin) JB.qsClearJoin();

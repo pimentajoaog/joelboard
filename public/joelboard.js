@@ -2460,7 +2460,7 @@
   var DRIVE_FOLDERS_KEY = 'jb_drive_folders';
   var DRIVE_LAYOUT_VER_KEY = 'jb_drive_layout_v';
   var DRIVE_LAYOUT_NOTICE_KEY = 'jb_drive_layout_notice';
-  var DRIVE_LAYOUT_VERSION = 3;
+  var DRIVE_LAYOUT_VERSION = 4;
   var DRIVE_ROOT_NAME = 'Joelboard';
   var DRIVE_APP_NAMES = {
     finance: 'Finance', notes: 'Notes', notas: 'Notes', planner: 'Planner',
@@ -2494,7 +2494,7 @@
     var out = [];
     function page(token) {
       var url = 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("'" + parentId + "' in parents and trashed=false")
-        + '&fields=nextPageToken,files(id,name,mimeType)&pageSize=100&spaces=drive';
+        + '&fields=nextPageToken,files(id,name,mimeType,shortcutDetails)&pageSize=100&spaces=drive';
       if (token) url += '&pageToken=' + encodeURIComponent(token);
       return api('GET', url).then(function (res) {
         out = out.concat(res.files || []);
@@ -2637,6 +2637,64 @@
       return placeFileInFolder(spreadsheetId, folderId);
     });
   }
+  function createDriveShortcut(targetId, parentId, name) {
+    if (!targetId || !parentId) return Promise.resolve(null);
+    if (isGhost()) return Promise.resolve(null);
+    var body = {
+      name: String(name || 'Atalho Joelboard').trim() || 'Atalho Joelboard',
+      mimeType: 'application/vnd.google-apps.shortcut',
+      parents: [parentId],
+      shortcutDetails: { targetId: String(targetId) }
+    };
+    return api('POST', 'https://www.googleapis.com/drive/v3/files?fields=id,name,shortcutDetails', body)
+      .then(function (f) {
+        if (!f) return null;
+        f.created = true;
+        return f;
+      }, function () { return null; });
+  }
+  function ensureDriveShortcut(targetId, parentId, name) {
+    if (!targetId || !parentId) return Promise.resolve(null);
+    if (isGhost()) return Promise.resolve(null);
+    var tid = String(targetId);
+    return listDriveChildren(parentId).then(function (files) {
+      var found = null;
+      (files || []).forEach(function (f) {
+        if (found || !f) return;
+        if (f.mimeType !== 'application/vnd.google-apps.shortcut') return;
+        var det = f.shortcutDetails || {};
+        if (String(det.targetId || '') === tid) found = f;
+      });
+      if (found) {
+        found.created = false;
+        return found;
+      }
+      return createDriveShortcut(tid, parentId, name);
+    }, function () {
+      return createDriveShortcut(tid, parentId, name);
+    });
+  }
+  /** Move Prateleira into Joelboard/ when owned; otherwise leave a shortcut there. */
+  function placePrateleiraInJoelboard(sheetId, title) {
+    if (!sheetId || isGhost()) return Promise.resolve(null);
+    var name = String(title || 'Julioelboard Prateleira').trim() || 'Julioelboard Prateleira';
+    return ensureJoelboardRoot().then(function (rootId) {
+      return moveFile(sheetId, rootId).then(function (r) {
+        if (r && r.moved) return { mode: 'moved', id: sheetId, parentId: rootId };
+        return { mode: 'already', id: sheetId, parentId: rootId };
+      }, function () {
+        return ensureDriveShortcut(sheetId, rootId, name).then(function (sc) {
+          return {
+            mode: 'shortcut',
+            id: sc && sc.id,
+            parentId: rootId,
+            targetId: sheetId,
+            created: !!(sc && sc.created)
+          };
+        });
+      });
+    }, function () { return null; });
+  }
   function uploadFileToFolder(fileOrBlob, name, folderId) {
     var file = fileOrBlob;
     if (file && name && typeof File !== 'undefined') {
@@ -2762,6 +2820,78 @@
     }
     return Promise.all(jobs).then(function () { return moved; }, function () { return moved; });
   }
+  function migrateJoinedCollabShortcuts() {
+    if (isGhost() || !isSignedIn()) return Promise.resolve(0);
+    var created = 0;
+    var kitTitles = defaultKitTitles();
+    function sheetValues(sid, tab) {
+      return api('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(sid)
+        + '/values/' + encodeURIComponent(tab) + '?valueRenderOption=UNFORMATTED_VALUE')
+        .then(function (res) { return res.values || []; }, function () { return []; });
+    }
+    function ensureJoined(sid, folderId, title) {
+      if (!sid || !folderId) return Promise.resolve();
+      return ensureDriveShortcut(sid, folderId, title || 'Lista compartilhada').then(function (sc) {
+        if (sc && sc.created) created++;
+      }, function () {});
+    }
+    var notesId = getSheetId('notas');
+    var plannerId = getSheetId('planner');
+    var jobs = [];
+    if (notesId) {
+      jobs.push(Promise.all([
+        sheetValues(notesId, 'Compartilhadas'),
+        sheetValues(notesId, 'Config')
+      ]).then(function (pair) {
+        var regs = (pair[0] || []).slice(1);
+        var cfg = {};
+        (pair[1] || []).slice(1).forEach(function (r) {
+          if (r && r[0] != null) cfg[String(r[0])] = r[1];
+        });
+        if (!regs.length) return null;
+        return Promise.all([
+          ensureNotesSharedFolder(),
+          ensureNotesKitSharedFolder()
+        ]).then(function (folders) {
+          var sharedId = folders[0], kitId = folders[1];
+          var chain = Promise.resolve();
+          regs.forEach(function (reg) {
+            if (isCollabRegistryOwner(reg)) return;
+            var sid = String(reg[1] || '');
+            var listaId = String(reg[4] || '');
+            var titulo = String(reg[0] || '').trim();
+            if (!sid) return;
+            var isKit = cfg['preset_' + listaId] === '1' || cfg['preset_' + listaId] === 1
+              || !!kitTitles[titulo.toLowerCase()];
+            chain = chain.then(function () {
+              return ensureJoined(sid, isKit ? kitId : sharedId, titulo || 'Lista compartilhada');
+            });
+          });
+          return chain;
+        });
+      }));
+    }
+    if (plannerId) {
+      jobs.push(sheetValues(plannerId, 'Compartilhadas').then(function (vals) {
+        var regs = (vals || []).slice(1);
+        if (!regs.length) return null;
+        return ensurePlannerSharedFolder().then(function (folderId) {
+          var chain = Promise.resolve();
+          regs.forEach(function (reg) {
+            if (isCollabRegistryOwner(reg)) return;
+            var sid = String(reg[1] || '');
+            var titulo = String(reg[0] || '').trim();
+            if (!sid) return;
+            chain = chain.then(function () {
+              return ensureJoined(sid, folderId, titulo || 'Plano compartilhado');
+            });
+          });
+          return chain;
+        });
+      }));
+    }
+    return Promise.all(jobs).then(function () { return created; }, function () { return created; });
+  }
   function organizeDriveLayout() {
     if (isGhost() || !isSignedIn()) return Promise.resolve({ changed: false, rootId: '' });
     var changed = 0;
@@ -2842,6 +2972,13 @@
         });
       }));
       jobs.push(migrateOwnedCollabSheets().then(function (n) { if (n) bump(); }));
+      jobs.push(migrateJoinedCollabShortcuts().then(function (n) { if (n) bump(); }));
+      var pratId = getSheetId('prateleira');
+      if (pratId) {
+        jobs.push(placePrateleiraInJoelboard(pratId).then(function (r) {
+          if (r && (r.mode === 'moved' || (r.mode === 'shortcut' && r.created))) bump();
+        }, function () {}));
+      }
       return Promise.all(jobs).then(function () {
         return { changed: changed > 0, rootId: rootId };
       });
@@ -3589,9 +3726,12 @@
     ensureNotesSharedFolder: ensureNotesSharedFolder, ensureNotesKitSharedFolder: ensureNotesKitSharedFolder,
     ensurePlannerSharedFolder: ensurePlannerSharedFolder, ensureStudyAnexosFolder: ensureStudyAnexosFolder,
     placeFileInFolder: placeFileInFolder, placeSpreadsheetInAppFolder: placeSpreadsheetInAppFolder,
+    createDriveShortcut: createDriveShortcut, ensureDriveShortcut: ensureDriveShortcut,
+    placePrateleiraInJoelboard: placePrateleiraInJoelboard,
     uploadFileToFolder: uploadFileToFolder, driveFolderWebLink: driveFolderWebLink,
     trashDriveFile: trashDriveFile, dedupeChildFoldersByName: dedupeChildFoldersByName,
     migrateOwnedCollabSheets: migrateOwnedCollabSheets,
+    migrateJoinedCollabShortcuts: migrateJoinedCollabShortcuts,
     ensureDriveLayoutOnce: ensureDriveLayoutOnce, organizeDriveLayout: organizeDriveLayout,
     qsGet: qsGet, qsPatch: qsPatch, qsClearJoin: qsClearJoin, onRoute: onRoute, routeBack: routeBack,
     pickColor: pickColor, mountColorControl: mountColorControl, colorControlValue: colorControlValue,

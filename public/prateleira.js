@@ -652,6 +652,13 @@ function handleBootErr(e) {
   loadingHtml(gateHtml('Erro', esc(m), '<button class="btn ghost" onclick="boot()">Tentar de novo</button>'));
 }
 
+function placePrateleiraDrive() {
+  if (!JB.placePrateleiraInJoelboard || (JB.isGhost && JB.isGhost())) return Promise.resolve(null);
+  var id = JB.getSheetId(APP);
+  if (!id) return Promise.resolve(null);
+  return JB.placePrateleiraInJoelboard(id, 'Julioelboard Prateleira').catch(function () { return null; });
+}
+
 function resolveSheet() {
   var id = (JB.getSheetId(APP) || '').trim();
   if (!id && PRATELEIRA_SHARED_SHEET) {
@@ -663,7 +670,7 @@ function resolveSheet() {
     return ensureTabs(grid).then(function (g) {
       sheetGrid = g;
       JB.setSheetId(APP, id);
-      return ensureHeaders();
+      return placePrateleiraDrive().then(function () { return ensureHeaders(); });
     });
   }).catch(function (e) {
     if (String((e && e.message) || '') === 'JB_NEED_SHEET') throw e;
@@ -2004,12 +2011,14 @@ function createSharedSheet() {
       Assistidos: ss.sheets[1].properties.sheetId,
       Perfil: ss.sheets[2].properties.sheetId
     };
-    return ensureHeaders().then(function () {
-      document.getElementById('sheetInfo').textContent = 'ID: ' + ss.spreadsheetId;
-      document.getElementById('sheetIdIn').value = ss.spreadsheetId;
-      JB.toast('Planilha criada — compartilhe com Julia');
-      closePrateleiraSet();
-      return boot();
+    return placePrateleiraDrive().then(function () {
+      return ensureHeaders().then(function () {
+        document.getElementById('sheetInfo').textContent = 'ID: ' + ss.spreadsheetId;
+        document.getElementById('sheetIdIn').value = ss.spreadsheetId;
+        JB.toast('Planilha criada — compartilhe com Julia');
+        closePrateleiraSet();
+        return boot();
+      });
     });
   }).catch(function (e) { handlePrateleiraErr(e); });
 }
@@ -2021,9 +2030,11 @@ function saveSheetId() {
     JB.setSheetId(APP, id);
     document.getElementById('sheetIdIn').value = id;
     document.getElementById('sheetInfo').textContent = 'ID: ' + id;
-    JB.toast('✓ Planilha vinculada');
-    closePrateleiraSet();
-    boot();
+    return placePrateleiraDrive().then(function () {
+      JB.toast('✓ Planilha vinculada');
+      closePrateleiraSet();
+      boot();
+    });
   }).catch(function (e) { handlePrateleiraErr(e, { sheet: true }); });
 }
 

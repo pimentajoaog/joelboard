@@ -61,21 +61,21 @@ textarea.field{ resize:vertical; min-height:64px; }
 .searchbar{ @apply mb-4; }
 .searchbar input{ width:100%; }
 
-/* ===== Bookcase shelf (spines → open pages on hover) ===== */
+/* ===== Bookcase shelf (spines → pop out + open pages) ===== */
 #main{ overflow:visible; }
 .bookcase{
   position:relative;
   margin:8px 0 28px;
-  perspective:1100px;
-  perspective-origin:50% 70%;
+  perspective:900px;
+  perspective-origin:50% 85%;
 }
-/* Padding lives inside the scrollport so lift/open is not clipped by overflow-x */
+/* Padding inside scrollport so pop-out is not clipped by overflow-x */
 .bookcase-row{
   display:flex; align-items:flex-end; justify-content:flex-start;
-  gap:6px; flex-wrap:nowrap;
+  gap:7px; flex-wrap:nowrap;
   overflow-x:auto; overflow-y:hidden;
-  padding:64px 28px 10px; margin:0 -8px;
-  min-height:calc(240px + 64px);
+  padding:88px 40px 14px; margin:0 -8px;
+  min-height:calc(250px + 88px);
   scrollbar-width:thin; touch-action:pan-x;
   -webkit-overflow-scrolling:touch;
 }
@@ -91,8 +91,9 @@ textarea.field{ resize:vertical; min-height:64px; }
   border-top-color:color-mix(in srgb, var(--text) 22%, var(--border));
 }
 
+/* Layout footprint stays spine-sized; the pop flies forward on hover */
 .book-slot{
-  --bw:40px; --bh:190px; --tilt:0deg; --spread:124px;
+  --bw:40px; --bh:190px; --tilt:0deg; --spread:132px;
   position:relative;
   flex:0 0 auto;
   width:var(--bw);
@@ -102,11 +103,8 @@ textarea.field{ resize:vertical; min-height:64px; }
   transform:rotate(var(--tilt));
   transform-origin:50% 100%;
   transform-style:preserve-3d;
-  transition:
-    transform .34s cubic-bezier(.2,.8,.2,1),
-    width .34s cubic-bezier(.2,.8,.2,1),
-    z-index 0s;
-  animation:rcEnter .4s cubic-bezier(.2,.8,.2,1) both;
+  transition:width .4s cubic-bezier(.2,.85,.2,1);
+  animation:rcFade .4s cubic-bezier(.2,.8,.2,1) both;
   animation-delay:calc(var(--jb-i, 0) * 45ms);
   -webkit-tap-highlight-color:transparent;
   user-select:none;
@@ -121,10 +119,16 @@ textarea.field{ resize:vertical; min-height:64px; }
 }
 
 .book-pop{
-  position:relative;
+  position:absolute; left:0; bottom:0;
   display:flex; align-items:stretch;
-  width:100%; height:100%;
+  width:var(--bw); height:var(--bh);
+  transform:translate3d(0, 0, 0) rotateX(0deg) scale(1);
+  transform-origin:20% 100%;
   transform-style:preserve-3d;
+  transition:
+    transform .4s cubic-bezier(.2,.85,.2,1),
+    width .4s cubic-bezier(.2,.85,.2,1);
+  will-change:transform, width;
 }
 .book-spine-face{
   position:relative; z-index:3;
@@ -174,59 +178,49 @@ textarea.field{ resize:vertical; min-height:64px; }
   max-height:100%;
 }
 
-/* Spread: cover flap + real paper pages (empty for now) */
+/* Open book: cover board + paper (Editar lives on the page) */
 .book-spread{
   position:relative; z-index:2;
   display:flex; align-items:stretch;
   flex:0 0 auto;
   width:0; max-width:0; opacity:0;
   overflow:hidden;
-  transform-origin:left center;
-  transform:rotateY(-72deg) translateZ(0);
-  transform-style:preserve-3d;
   pointer-events:none;
   transition:
-    width .34s cubic-bezier(.2,.8,.2,1),
-    max-width .34s cubic-bezier(.2,.8,.2,1),
-    opacity .22s ease,
-    transform .34s cubic-bezier(.2,.8,.2,1);
+    width .4s cubic-bezier(.2,.85,.2,1),
+    max-width .4s cubic-bezier(.2,.85,.2,1),
+    opacity .2s ease .05s;
 }
-.book-cover-flap{
-  position:absolute; left:0; top:0; bottom:0;
-  width:calc(var(--spread) * .52);
-  border-radius:0 5px 4px 0;
-  transform-origin:left center;
-  transform:rotateY(0deg);
-  transform-style:preserve-3d;
-  pointer-events:none;
-  background:
-    linear-gradient(135deg,
-      color-mix(in srgb, #fff 10%, var(--kc, var(--primary))),
-      var(--kc, var(--primary)) 42%,
-      color-mix(in srgb, #000 18%, var(--kc, var(--primary))));
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, #000 18%, transparent),
-    4px 0 14px rgba(0,0,0,.22);
-  transition:transform .38s cubic-bezier(.2,.8,.2,1);
-  z-index:4;
+.book-cover-face{
+  flex:0 0 42px; width:42px; height:100%;
+  border-radius:0 2px 2px 0;
   display:flex; align-items:center; justify-content:center;
+  background:
+    linear-gradient(160deg,
+      color-mix(in srgb, #fff 12%, var(--kc, var(--primary))),
+      var(--kc, var(--primary)) 45%,
+      color-mix(in srgb, #000 16%, var(--kc, var(--primary))));
+  box-shadow:
+    inset -3px 0 8px rgba(0,0,0,.18),
+    inset 0 0 0 1px color-mix(in srgb, #000 14%, transparent);
 }
-.book-cover-flap span{
-  font-size:28px; opacity:.92;
+.book-cover-face span{
+  font-size:22px;
   filter:drop-shadow(0 2px 2px rgba(0,0,0,.35));
-  transform:translateZ(1px);
 }
 .book-pages{
+  position:relative;
   display:flex; align-items:stretch;
-  width:var(--spread); height:100%;
-  margin-left:0;
+  flex:1 1 auto;
+  min-width:0; height:100%;
   border-radius:0 4px 3px 0;
   overflow:hidden;
-  box-shadow:6px 8px 20px rgba(0,0,0,.28);
+  box-shadow:8px 10px 22px rgba(0,0,0,.32);
 }
 .book-page{
   position:relative;
   flex:1 1 50%;
+  min-width:0;
   background:
     linear-gradient(90deg, #e8e0d2 0%, #f7f1e6 8%, #fbf7f0 100%);
   border-left:1px solid color-mix(in srgb, #8a7a62 28%, transparent);
@@ -237,6 +231,8 @@ textarea.field{ resize:vertical; min-height:64px; }
   box-shadow:inset -8px 0 12px rgba(0,0,0,.06);
 }
 .book-page.is-right{
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+  padding:10px 8px 12px;
   background:
     linear-gradient(90deg, #faf6ef 0%, #f3ece0 88%, #e4dbcb 100%);
   box-shadow:inset 8px 0 12px rgba(0,0,0,.05);
@@ -251,6 +247,7 @@ textarea.field{ resize:vertical; min-height:64px; }
   opacity:.55; pointer-events:none;
   border-radius:2px;
 }
+.book-page.is-right .book-page-lines{ inset:14px 10px 44px; }
 .book-page-edge{
   position:absolute; right:-5px; top:3px; bottom:3px; width:5px; z-index:1;
   border-radius:0 2px 2px 0;
@@ -264,77 +261,87 @@ textarea.field{ resize:vertical; min-height:64px; }
   transition:opacity .28s ease;
 }
 
+/* In-page button — visible whenever the spread is open */
 .book-edit{
-  position:absolute; top:8px; right:10px; z-index:6;
-  opacity:0; pointer-events:none;
-  transform:translateY(4px);
-  transition:opacity .2s ease, transform .2s ease;
-  background:color-mix(in srgb, var(--surface) 92%, transparent);
-  color:var(--primary);
-  border:1px solid var(--border);
-  border-radius:999px;
-  padding:4px 10px;
-  font-size:11px; font-weight:800; font-family:inherit;
+  position:relative; z-index:2;
+  flex:0 0 auto;
+  margin-top:auto;
+  appearance:none;
+  background:#fffdf8;
+  color:color-mix(in srgb, var(--kc, var(--primary)) 88%, #5c4033);
+  border:1.5px solid color-mix(in srgb, var(--kc, var(--primary)) 45%, #b8a88e);
+  border-radius:8px;
+  padding:6px 11px;
+  font-size:10px; font-weight:800; font-family:inherit;
+  letter-spacing:.02em;
   cursor:pointer;
-  box-shadow:0 6px 14px rgba(0,0,0,.25);
-  backdrop-filter:blur(6px);
+  box-shadow:0 1px 0 #efe6d6, 0 4px 10px rgba(0,0,0,.14);
+}
+.book-edit:hover{
+  background:#fff;
+  border-color:var(--kc, var(--primary));
 }
 
-/* Open + pop toward camera */
-.book-slot.is-open,
-.book-slot.is-peek{
+/* Pop out of the shelf into the screen + open */
+.book-slot.is-peek,
+.book-slot.is-open{
+  z-index:20;
+  /* widen hit area so pages + Editar stay under the cursor */
   width:calc(var(--bw) + var(--spread));
-  z-index:8;
-  transform:translateY(-16px) translateZ(42px) rotate(var(--tilt)) scale(1.045);
 }
-.book-slot.is-open .book-spine-face,
-.book-slot.is-peek .book-spine-face{
+.book-slot.is-peek .book-pop,
+.book-slot.is-open .book-pop{
+  width:calc(var(--bw) + var(--spread));
+  transform:translate3d(8px, -52px, 110px) rotateX(14deg) scale(1.16);
+}
+.book-slot.is-peek .book-pop::after,
+.book-slot.is-open .book-pop::after{
+  content:''; position:absolute; left:8%; right:8%; bottom:-18px; height:28px; z-index:-1;
+  background:radial-gradient(ellipse at center, rgba(0,0,0,.45), transparent 70%);
+  pointer-events:none;
+}
+.book-slot.is-peek .book-spine-face,
+.book-slot.is-open .book-spine-face{
   box-shadow:
     inset -2px 0 0 color-mix(in srgb, #000 25%, transparent),
     inset 2px 0 0 color-mix(in srgb, #fff 18%, transparent),
-    0 16px 28px rgba(0,0,0,.4);
+    0 10px 18px rgba(0,0,0,.35);
 }
-.book-slot.is-open .book-spread,
-.book-slot.is-peek .book-spread{
+.book-slot.is-peek .book-spread,
+.book-slot.is-open .book-spread{
   width:var(--spread); max-width:var(--spread); opacity:1;
   overflow:visible;
-  transform:rotateY(-12deg) translateZ(8px);
   pointer-events:auto;
 }
-.book-slot.is-open .book-cover-flap,
-.book-slot.is-peek .book-cover-flap{
-  transform:rotateY(-148deg);
-}
-.book-slot.is-open .book-page-edge,
-.book-slot.is-peek .book-page-edge{ opacity:1; }
-.book-slot.is-open .book-edit,
-.book-slot.is-peek .book-edit{
-  opacity:1; pointer-events:auto; transform:translateY(0);
-}
+.book-slot.is-peek .book-page-edge,
+.book-slot.is-open .book-page-edge{ opacity:1; }
 
 @media (hover:hover) and (pointer:fine){
   .book-slot:hover{
+    z-index:20;
     width:calc(var(--bw) + var(--spread));
-    z-index:8;
-    transform:translateY(-16px) translateZ(42px) rotate(var(--tilt)) scale(1.045);
+  }
+  .book-slot:hover .book-pop{
+    width:calc(var(--bw) + var(--spread));
+    transform:translate3d(8px, -52px, 110px) rotateX(14deg) scale(1.16);
+  }
+  .book-slot:hover .book-pop::after{
+    content:''; position:absolute; left:8%; right:8%; bottom:-18px; height:28px; z-index:-1;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,.45), transparent 70%);
+    pointer-events:none;
   }
   .book-slot:hover .book-spine-face{
     box-shadow:
       inset -2px 0 0 color-mix(in srgb, #000 25%, transparent),
       inset 2px 0 0 color-mix(in srgb, #fff 18%, transparent),
-      0 16px 28px rgba(0,0,0,.4);
+      0 10px 18px rgba(0,0,0,.35);
   }
   .book-slot:hover .book-spread{
     width:var(--spread); max-width:var(--spread); opacity:1;
     overflow:visible;
-    transform:rotateY(-12deg) translateZ(8px);
     pointer-events:auto;
   }
-  .book-slot:hover .book-cover-flap{ transform:rotateY(-148deg); }
   .book-slot:hover .book-page-edge{ opacity:1; }
-  .book-slot:hover .book-edit{
-    opacity:1; pointer-events:auto; transform:translateY(0);
-  }
 }
 
 .view-toggle{ display:flex; gap:6px; }
@@ -363,6 +370,10 @@ textarea.field{ resize:vertical; min-height:64px; }
 @keyframes pageIn{
   from{ transform:rotateY(18deg) translateX(18px); opacity:0; }
   to{ transform:none; opacity:1; }
+}
+@keyframes rcFade{
+  from{ opacity:0; }
+  to{ opacity:1; }
 }
 @keyframes rcEnter{
   from{ opacity:0; transform:translateY(10px) scale(.98); }
@@ -480,5 +491,5 @@ textarea.field{ resize:vertical; min-height:64px; }
 
 @media (prefers-reduced-motion: reduce){
   .book-slot, .recipec, .detail, .flip-page.turn-in{ animation:none; }
-  .flip-page, .book-slot, .book-spread, .book-cover-flap, .book-edit, .recipec{ transition:none; }
+  .flip-page, .book-slot, .book-pop, .book-spread, .book-edit, .recipec{ transition:none; }
 }

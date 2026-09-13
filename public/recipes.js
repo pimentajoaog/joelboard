@@ -9,7 +9,7 @@ var openBookId = null;
 var openRecipeId = null;
 var flipIndex = 0;
 var bookViewMode = 'flip';
-var homeQuery = '';
+var bookQuery = '';
 var _peekBookId = null;
 var _editBookId = null;
 var _editRecipeId = null;
@@ -609,11 +609,7 @@ function clearBookPeek(ev) {
 }
 
 function renderShelf() {
-  var q = norm(homeQuery);
-  var books = DATA.cookbooks.filter(function (b) {
-    if (!q) return true;
-    return norm(b.name).indexOf(q) > -1;
-  });
+  var books = DATA.cookbooks;
   var spines = books.map(function (b, i) {
     var d = bookSpineDims(b, i, books.length);
     var n = countInBook(b.id);
@@ -645,16 +641,10 @@ function renderShelf() {
   }).join('');
   return (spines
     ? '<div class="bookcase">'
-      + '<div class="bookcase-tools">'
-      + '<input class="field" id="homeSearch" placeholder="Buscar…" value="' + esc(homeQuery)
-      + '" oninput="homeQuery=this.value;_peekBookId=null;render()" onfocus="JB.searchFocus&&JB.searchFocus(this)">'
-      + '<button type="button" class="btn ghost" onclick="openSearch()">Online</button>'
-      + '</div>'
       + '<div class="bookcase-row" style="--n:' + books.length + '">' + spines + '</div>'
       + '<div class="bookcase-ledge" aria-hidden="true"></div>'
       + '</div>'
-    : '<div class="empty">Nenhum livro ainda. Toque em + para criar o primeiro.</div>'
-      + '<button class="btn ghost" onclick="openSearch()">🔎 Buscar online</button>');
+    : '<div class="empty">Nenhum livro ainda. Toque em + para criar o primeiro.</div>');
 }
 
 function norm(s) { return String(s || '').trim().toLowerCase(); }
@@ -664,6 +654,7 @@ function openBook(id) {
   openBookId = id;
   openRecipeId = null;
   flipIndex = 0;
+  bookQuery = '';
   view = 'book';
   render();
 }
@@ -672,13 +663,46 @@ function goShelf() {
   openBookId = null;
   openRecipeId = null;
   _peekBookId = null;
+  bookQuery = '';
   render();
+}
+
+function recipeMatches(r, q) {
+  if (norm(r.title).indexOf(q) > -1) return true;
+  if (norm(r.notes).indexOf(q) > -1) return true;
+  return ingsFor(r.id).some(function (x) { return norm(x.text).indexOf(q) > -1; });
+}
+function visibleRecipes(bookId) {
+  var all = recipesInBook(bookId);
+  var q = norm(bookQuery);
+  if (!q) return all;
+  return all.filter(function (r) { return recipeMatches(r, q); });
+}
+function onBookSearch(v) {
+  bookQuery = v;
+  flipIndex = 0;
+  render();
+  refocusBookSearch();
+}
+function clearBookSearch() {
+  bookQuery = '';
+  flipIndex = 0;
+  render();
+  refocusBookSearch();
+}
+/* render() rebuilds #main, so put the caret back where the user left it */
+function refocusBookSearch() {
+  var el = $('bookSearch');
+  if (!el) return;
+  el.focus();
+  try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {}
 }
 
 function renderBook() {
   var book = bookById(openBookId);
   if (!book) return '<div class="empty">Livro não encontrado.</div><button class="back" onclick="goShelf()">← Estante</button>';
-  var list = recipesInBook(book.id);
+  var total = countInBook(book.id);
+  var list = visibleRecipes(book.id);
   var toggle = '<div class="view-toggle">'
     + '<button type="button" class="vbtn' + (bookViewMode === 'flip' ? ' on' : '') + '" onclick="setBookView(\'flip\')">Páginas</button>'
     + '<button type="button" class="vbtn' + (bookViewMode === 'cards' ? ' on' : '') + '" onclick="setBookView(\'cards\')">Cards</button>'
@@ -690,12 +714,25 @@ function renderBook() {
     + '</div></div>'
     + '<div style="margin-bottom:14px"><span style="font-size:28px;margin-right:8px">' + esc(book.icon) + '</span>'
     + '<span style="font-family:var(--font-display);font-weight:800;font-size:22px">' + esc(book.name) + '</span></div>';
-  if (!list.length) {
+  if (!total) {
     return head + '<div class="empty">Este livro está vazio. Toque em + para adicionar uma receita, ou busque online.</div>'
       + '<button class="btn ghost" onclick="openSearch(\'' + escAttr(book.id) + '\')">🔎 Buscar e salvar aqui</button>';
   }
-  if (bookViewMode === 'cards') return head + renderCards(list, book);
-  return head + renderFlip(list, book);
+  var tools = '<div class="book-tools">'
+    + '<div class="jb-search">'
+    + '<input class="field jb-search-input" id="bookSearch" type="search" placeholder="Buscar receita…"'
+    + ' value="' + esc(bookQuery) + '" oninput="onBookSearch(this.value)"'
+    + ' onfocus="JB.searchFocus(this)" onblur="JB.searchBlur(this)">'
+    + '<button type="button" class="jb-search-clear" id="bookSearchClear" onclick="clearBookSearch()" aria-label="Limpar busca"'
+    + ' style="display:' + (bookQuery ? 'flex' : 'none') + '">✕</button>'
+    + '</div>'
+    + '<button type="button" class="btn ghost" onclick="openSearch(\'' + escAttr(book.id) + '\')">🔎 Online</button>'
+    + '</div>';
+  if (!list.length) {
+    return head + tools + '<div class="empty">Nada com “' + esc(bookQuery) + '” neste livro.</div>';
+  }
+  if (bookViewMode === 'cards') return head + tools + renderCards(list, book);
+  return head + tools + renderFlip(list, book);
 }
 
 function setBookView(mode) {
@@ -753,7 +790,7 @@ function flipPrev() {
   bindFlipGesture();
 }
 function flipNext() {
-  var list = recipesInBook(openBookId);
+  var list = visibleRecipes(openBookId);
   if (flipIndex >= list.length - 1) return;
   flipIndex++;
   render();
@@ -896,6 +933,15 @@ function closeBookModal() { $('bookOverlay').classList.remove('open'); }
 function paintBookColors() {
   var el = $('bookColorWrap');
   if (!el) return;
+  if (JB.mountColorControl) {
+    JB.mountColorControl(el, {
+      value: _bookColor,
+      title: 'Cor do livro',
+      presets: BOOK_COLORS,
+      onChange: function (h) { _bookColor = h; }
+    });
+    return;
+  }
   el.innerHTML = BOOK_COLORS.map(function (c) {
     return '<button type="button" class="color-sw' + (c === _bookColor ? ' on' : '') + '" style="background:' + c + '" onclick="pickBookColor(\'' + c + '\')"></button>';
   }).join('');
@@ -912,7 +958,8 @@ function saveBookModal() {
     var cur = bookById(_editBookId);
     if (cur) order = cur.order;
   }
-  var row = [id, name, _iconDraft || '📖', _bookColor, String(order), created];
+  var color = (JB.colorControlValue && JB.colorControlValue($('bookColorWrap'))) || _bookColor;
+  var row = [id, name, _iconDraft || '📖', color, String(order), created];
   var p = _editBookId
     ? findRow('Cookbooks', 0, id).then(function (rn) {
       if (rn < 0) throw new Error('Livro não encontrado');

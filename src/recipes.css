@@ -72,14 +72,6 @@ body.recipes-shelf .foot{ display:none; }
   min-height:calc(100vh - 170px);
   display:flex; flex-direction:column; justify-content:flex-end;
 }
-.bookcase-tools{
-  position:absolute; top:0; right:0; z-index:4;
-  display:flex; align-items:center; gap:8px;
-  width:min(320px, 100%);
-}
-.bookcase-tools .field{ flex:1; min-width:0; }
-.bookcase-tools .btn{ flex:none; padding:8px 12px; font-size:12px; }
-
 .bookcase-row{
   display:flex; align-items:flex-end; justify-content:center;
   gap:8px; flex-wrap:nowrap;
@@ -329,6 +321,15 @@ body.recipes-shelf .foot{ display:none; }
   .book-openlabel{ top:-46px; padding:6px 12px; }
   .bol-name{ font-size:15px; }
 }
+
+/* ---- recipe search, only inside an open book ---- */
+.book-tools{
+  display:flex; align-items:center; gap:8px; flex-wrap:nowrap;
+  margin:0 0 14px;
+}
+.book-tools .jb-search{ flex:1 1 auto; min-width:0; margin-bottom:0; }
+.book-tools .jb-search.focus{ margin-bottom:0; }
+.book-tools .btn{ flex:0 0 auto; padding:9px 14px; font-size:12px; white-space:nowrap; }
 
 .view-toggle{ display:flex; gap:6px; }
 .vbtn{

@@ -16,7 +16,7 @@ html,body{ overflow-x:hidden; }
 body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg); font-family:var(--font-body); padding:26px 18px 90px; }
 
 #loading{ @apply max-w-[480px] mx-auto; }
-#app{ @apply hidden max-w-[760px] mx-auto; }
+#app{ @apply hidden max-w-[1100px] mx-auto; }
 
 .header{ @apply flex items-center justify-between gap-3 mb-5; }
 .hl{ @apply flex items-center gap-2.5; }
@@ -61,27 +61,40 @@ textarea.field{ resize:vertical; min-height:64px; }
 .searchbar{ @apply mb-4; }
 .searchbar input{ width:100%; }
 
-/* ===== Bookcase shelf (spines → pop out + open pages) ===== */
+/* ===== Bookcase shelf (spines → pop out + two-page open) ===== */
 #main{ overflow:visible; }
+body.recipes-shelf{ padding-bottom:72px; }
+body.recipes-shelf .foot{ display:none; }
+
 .bookcase{
   position:relative;
-  margin:8px 0 28px;
-  perspective:900px;
-  perspective-origin:50% 85%;
+  margin:4px 0 8px;
+  perspective:680px;
+  perspective-origin:50% 100%;
+  min-height:calc(100vh - 160px);
+  display:flex; flex-direction:column; justify-content:flex-end;
 }
-/* Padding inside scrollport so pop-out is not clipped by overflow-x */
+.bookcase-tools{
+  position:absolute; top:0; right:0; z-index:4;
+  display:flex; align-items:center; gap:8px;
+  width:min(320px, 100%);
+}
+.bookcase-tools .field{ flex:1; min-width:0; }
+.bookcase-tools .btn{ flex:none; padding:8px 12px; font-size:12px; }
+
 .bookcase-row{
-  display:flex; align-items:flex-end; justify-content:flex-start;
-  gap:7px; flex-wrap:nowrap;
+  display:flex; align-items:flex-end; justify-content:center;
+  gap:8px; flex-wrap:nowrap;
   overflow-x:auto; overflow-y:hidden;
-  padding:88px 40px 14px; margin:0 -8px;
-  min-height:calc(250px + 88px);
+  padding:150px 48px 16px; margin:0 -8px;
+  min-height:calc(320px + 150px);
   scrollbar-width:thin; touch-action:pan-x;
   -webkit-overflow-scrolling:touch;
 }
+.bookcase-row.is-packed{ justify-content:flex-start; }
 .bookcase-row::-webkit-scrollbar{ height:6px; }
 .bookcase-ledge{
-  height:14px; margin:0 4px; border-radius:2px 2px 8px 8px;
+  height:16px; margin:0 4px; border-radius:2px 2px 8px 8px;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--text) 18%, var(--surface2)), var(--surface2));
   box-shadow:
@@ -91,26 +104,26 @@ textarea.field{ resize:vertical; min-height:64px; }
   border-top-color:color-mix(in srgb, var(--text) 22%, var(--border));
 }
 
-/* Layout footprint stays spine-sized; the pop flies forward on hover */
 .book-slot{
-  --bw:40px; --bh:190px; --tilt:0deg; --spread:132px;
+  --bw:70px; --bh:420px; --tilt:0deg; --spread:520px;
   position:relative;
   flex:0 0 auto;
   width:var(--bw);
   height:var(--bh);
+  min-height:320px;
   cursor:pointer;
   z-index:1;
   transform:rotate(var(--tilt));
   transform-origin:50% 100%;
   transform-style:preserve-3d;
-  transition:width .4s cubic-bezier(.2,.85,.2,1);
+  transition:width .42s cubic-bezier(.2,.85,.2,1);
   animation:rcFade .4s cubic-bezier(.2,.8,.2,1) both;
   animation-delay:calc(var(--jb-i, 0) * 45ms);
   -webkit-tap-highlight-color:transparent;
   user-select:none;
 }
 .book-slot.is-curved .book-spine-face{
-  border-radius:4px 10px 3px 2px;
+  border-radius:4px 12px 3px 2px;
 }
 .book-slot.is-curved .book-spine-face::before{
   background:
@@ -123,11 +136,11 @@ textarea.field{ resize:vertical; min-height:64px; }
   display:flex; align-items:stretch;
   width:var(--bw); height:var(--bh);
   transform:translate3d(0, 0, 0) rotateX(0deg) scale(1);
-  transform-origin:20% 100%;
+  transform-origin:12% 100%;
   transform-style:preserve-3d;
   transition:
-    transform .4s cubic-bezier(.2,.85,.2,1),
-    width .4s cubic-bezier(.2,.85,.2,1);
+    transform .42s cubic-bezier(.16,.84,.22,1),
+    width .42s cubic-bezier(.16,.84,.22,1);
   will-change:transform, width;
 }
 .book-spine-face{
@@ -135,7 +148,7 @@ textarea.field{ resize:vertical; min-height:64px; }
   flex:0 0 var(--bw); width:var(--bw); height:100%;
   border-radius:3px 4px 2px 2px;
   display:flex; flex-direction:column; align-items:center;
-  padding:10px 0 12px;
+  padding:16px 0 18px;
   color:#fff;
   background:
     linear-gradient(90deg,
@@ -155,12 +168,12 @@ textarea.field{ resize:vertical; min-height:64px; }
   background:linear-gradient(180deg, color-mix(in srgb, #fff 12%, transparent), transparent 28%, transparent 72%, color-mix(in srgb, #000 18%, transparent));
 }
 .book-spine-face::after{
-  content:''; position:absolute; left:18%; right:18%; bottom:18px; height:2px; border-radius:1px;
+  content:''; position:absolute; left:18%; right:18%; bottom:22px; height:2px; border-radius:1px;
   background:color-mix(in srgb, #fff 35%, transparent); opacity:.55; pointer-events:none;
 }
 .book-spine-ico{
   position:relative; z-index:1;
-  font-size:15px; line-height:1; margin-bottom:8px;
+  font-size:clamp(18px, calc(var(--bh) * .05), 26px); line-height:1; margin-bottom:12px;
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.35));
 }
 .book-spine-title{
@@ -170,15 +183,15 @@ textarea.field{ resize:vertical; min-height:64px; }
   writing-mode:vertical-rl;
   text-orientation:mixed;
   font-family:var(--font-display);
-  font-weight:800; font-size:12px; letter-spacing:.08em;
+  font-weight:800; font-size:clamp(13px, calc(var(--bh) * .038), 18px); letter-spacing:.1em;
   line-height:1.05; text-align:center;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  padding:0 2px;
+  padding:0 4px;
   text-shadow:0 1px 1px rgba(0,0,0,.35);
   max-height:100%;
 }
 
-/* Open book: cover board + paper (Editar lives on the page) */
+/* Two-page spread — left + gutter + right */
 .book-spread{
   position:relative; z-index:2;
   display:flex; align-items:stretch;
@@ -186,36 +199,23 @@ textarea.field{ resize:vertical; min-height:64px; }
   width:0; max-width:0; opacity:0;
   overflow:hidden;
   pointer-events:none;
+  transform:rotateY(-28deg) translateZ(-20px);
+  transform-origin:left center;
+  transform-style:preserve-3d;
   transition:
-    width .4s cubic-bezier(.2,.85,.2,1),
-    max-width .4s cubic-bezier(.2,.85,.2,1),
-    opacity .2s ease .05s;
-}
-.book-cover-face{
-  flex:0 0 42px; width:42px; height:100%;
-  border-radius:0 2px 2px 0;
-  display:flex; align-items:center; justify-content:center;
-  background:
-    linear-gradient(160deg,
-      color-mix(in srgb, #fff 12%, var(--kc, var(--primary))),
-      var(--kc, var(--primary)) 45%,
-      color-mix(in srgb, #000 16%, var(--kc, var(--primary))));
-  box-shadow:
-    inset -3px 0 8px rgba(0,0,0,.18),
-    inset 0 0 0 1px color-mix(in srgb, #000 14%, transparent);
-}
-.book-cover-face span{
-  font-size:22px;
-  filter:drop-shadow(0 2px 2px rgba(0,0,0,.35));
+    width .42s cubic-bezier(.16,.84,.22,1),
+    max-width .42s cubic-bezier(.16,.84,.22,1),
+    opacity .2s ease .04s,
+    transform .42s cubic-bezier(.16,.84,.22,1);
 }
 .book-pages{
   position:relative;
   display:flex; align-items:stretch;
-  flex:1 1 auto;
-  min-width:0; height:100%;
-  border-radius:0 4px 3px 0;
+  width:var(--spread); height:100%;
+  min-width:var(--spread);
+  border-radius:0 5px 4px 0;
   overflow:hidden;
-  box-shadow:8px 10px 22px rgba(0,0,0,.32);
+  box-shadow:10px 16px 28px rgba(0,0,0,.38);
 }
 .book-page{
   position:relative;
@@ -223,33 +223,40 @@ textarea.field{ resize:vertical; min-height:64px; }
   min-width:0;
   background:
     linear-gradient(90deg, #e8e0d2 0%, #f7f1e6 8%, #fbf7f0 100%);
-  border-left:1px solid color-mix(in srgb, #8a7a62 28%, transparent);
 }
 .book-page.is-left{
   background:
-    linear-gradient(90deg, #d9d0c0 0%, #f3ece0 14%, #faf6ef 100%);
-  box-shadow:inset -8px 0 12px rgba(0,0,0,.06);
+    linear-gradient(90deg, #cfc6b4 0%, #efe6d6 18%, #f7f1e6 100%);
+  box-shadow:inset -14px 0 18px rgba(0,0,0,.08);
 }
 .book-page.is-right{
-  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
-  padding:10px 8px 12px;
   background:
-    linear-gradient(90deg, #faf6ef 0%, #f3ece0 88%, #e4dbcb 100%);
-  box-shadow:inset 8px 0 12px rgba(0,0,0,.05);
+    linear-gradient(90deg, #fbf7f0 0%, #f3ece0 82%, #e4dbcb 100%);
+  box-shadow:inset 14px 0 18px rgba(0,0,0,.05);
+}
+.book-gutter{
+  flex:0 0 11px; width:11px;
+  background:
+    linear-gradient(90deg,
+      #b7aa94 0%,
+      #8d806c 42%,
+      #6f6454 50%,
+      #8d806c 58%,
+      #b7aa94 100%);
+  box-shadow:inset 0 0 8px rgba(0,0,0,.18);
 }
 .book-page-lines{
-  position:absolute; inset:14px 10px 16px;
+  position:absolute; inset:18px 12px 20px;
   background:repeating-linear-gradient(
     180deg,
-    transparent 0 11px,
-    color-mix(in srgb, #8a7a62 22%, transparent) 11px 12px
+    transparent 0 13px,
+    color-mix(in srgb, #8a7a62 22%, transparent) 13px 14px
   );
   opacity:.55; pointer-events:none;
   border-radius:2px;
 }
-.book-page.is-right .book-page-lines{ inset:14px 10px 44px; }
 .book-page-edge{
-  position:absolute; right:-5px; top:3px; bottom:3px; width:5px; z-index:1;
+  position:absolute; right:-6px; top:4px; bottom:4px; width:6px; z-index:1;
   border-radius:0 2px 2px 0;
   background:
     repeating-linear-gradient(90deg,
@@ -261,43 +268,23 @@ textarea.field{ resize:vertical; min-height:64px; }
   transition:opacity .28s ease;
 }
 
-/* In-page button — visible whenever the spread is open */
-.book-edit{
-  position:relative; z-index:2;
-  flex:0 0 auto;
-  margin-top:auto;
-  appearance:none;
-  background:#fffdf8;
-  color:color-mix(in srgb, var(--kc, var(--primary)) 88%, #5c4033);
-  border:1.5px solid color-mix(in srgb, var(--kc, var(--primary)) 45%, #b8a88e);
-  border-radius:8px;
-  padding:6px 11px;
-  font-size:10px; font-weight:800; font-family:inherit;
-  letter-spacing:.02em;
-  cursor:pointer;
-  box-shadow:0 1px 0 #efe6d6, 0 4px 10px rgba(0,0,0,.14);
-}
-.book-edit:hover{
-  background:#fff;
-  border-color:var(--kc, var(--primary));
-}
+.book-head-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
-/* Pop out of the shelf into the screen + open */
+/* Pop out of the shelf into the screen + open two pages */
 .book-slot.is-peek,
 .book-slot.is-open{
   z-index:20;
-  /* widen hit area so pages + Editar stay under the cursor */
   width:calc(var(--bw) + var(--spread));
 }
 .book-slot.is-peek .book-pop,
 .book-slot.is-open .book-pop{
   width:calc(var(--bw) + var(--spread));
-  transform:translate3d(8px, -52px, 110px) rotateX(14deg) scale(1.16);
+  transform:translate3d(18px, -96px, 210px) rotateX(24deg) rotateY(-10deg) scale(1.3);
 }
 .book-slot.is-peek .book-pop::after,
 .book-slot.is-open .book-pop::after{
-  content:''; position:absolute; left:8%; right:8%; bottom:-18px; height:28px; z-index:-1;
-  background:radial-gradient(ellipse at center, rgba(0,0,0,.45), transparent 70%);
+  content:''; position:absolute; left:6%; right:10%; bottom:-22px; height:36px; z-index:-1;
+  background:radial-gradient(ellipse at center, rgba(0,0,0,.5), transparent 72%);
   pointer-events:none;
 }
 .book-slot.is-peek .book-spine-face,
@@ -305,13 +292,14 @@ textarea.field{ resize:vertical; min-height:64px; }
   box-shadow:
     inset -2px 0 0 color-mix(in srgb, #000 25%, transparent),
     inset 2px 0 0 color-mix(in srgb, #fff 18%, transparent),
-    0 10px 18px rgba(0,0,0,.35);
+    0 14px 22px rgba(0,0,0,.4);
 }
 .book-slot.is-peek .book-spread,
 .book-slot.is-open .book-spread{
   width:var(--spread); max-width:var(--spread); opacity:1;
   overflow:visible;
-  pointer-events:auto;
+  pointer-events:none;
+  transform:rotateY(-6deg) translateZ(12px);
 }
 .book-slot.is-peek .book-page-edge,
 .book-slot.is-open .book-page-edge{ opacity:1; }
@@ -323,23 +311,24 @@ textarea.field{ resize:vertical; min-height:64px; }
   }
   .book-slot:hover .book-pop{
     width:calc(var(--bw) + var(--spread));
-    transform:translate3d(8px, -52px, 110px) rotateX(14deg) scale(1.16);
+    transform:translate3d(18px, -96px, 210px) rotateX(24deg) rotateY(-10deg) scale(1.3);
   }
   .book-slot:hover .book-pop::after{
-    content:''; position:absolute; left:8%; right:8%; bottom:-18px; height:28px; z-index:-1;
-    background:radial-gradient(ellipse at center, rgba(0,0,0,.45), transparent 70%);
+    content:''; position:absolute; left:6%; right:10%; bottom:-22px; height:36px; z-index:-1;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,.5), transparent 72%);
     pointer-events:none;
   }
   .book-slot:hover .book-spine-face{
     box-shadow:
       inset -2px 0 0 color-mix(in srgb, #000 25%, transparent),
       inset 2px 0 0 color-mix(in srgb, #fff 18%, transparent),
-      0 10px 18px rgba(0,0,0,.35);
+      0 14px 22px rgba(0,0,0,.4);
   }
   .book-slot:hover .book-spread{
     width:var(--spread); max-width:var(--spread); opacity:1;
     overflow:visible;
-    pointer-events:auto;
+    pointer-events:none;
+    transform:rotateY(-6deg) translateZ(12px);
   }
   .book-slot:hover .book-page-edge{ opacity:1; }
 }
@@ -491,5 +480,5 @@ textarea.field{ resize:vertical; min-height:64px; }
 
 @media (prefers-reduced-motion: reduce){
   .book-slot, .recipec, .detail, .flip-page.turn-in{ animation:none; }
-  .flip-page, .book-slot, .book-pop, .book-spread, .book-edit, .recipec{ transition:none; }
+  .flip-page, .book-slot, .book-pop, .book-spread, .recipec{ transition:none; }
 }

@@ -459,6 +459,7 @@ function render() {
   var main = $('main');
   if (!main) return;
   if (JB.paintAcct) JB.paintAcct();
+  document.body.classList.toggle('recipes-shelf', view === 'shelf');
   if (view === 'shelf') main.innerHTML = renderShelf();
   else if (view === 'book') main.innerHTML = renderBook();
   else if (view === 'recipe') main.innerHTML = renderDetail();
@@ -470,23 +471,72 @@ function render() {
   patchRoute();
   var grid = main.querySelector('.bookcase-row, .recipes-grid');
   if (grid && JB.staggerChildren) JB.staggerChildren(grid, view);
+  if (view === 'shelf') {
+    layoutShelf();
+    bindShelfLayout();
+  }
   if (view === 'book' && bookViewMode === 'flip') {
     setTimeout(bindFlipGesture, 0);
   }
 }
 
-function bookSpineDims(b, i) {
+function bookShelfFit(count) {
+  var n = Math.max(count, 1);
+  var t = Math.min(1, (n - 1) / 7);
+  var vh = window.innerHeight || 800;
+  var maxH = Math.min(520, Math.round(vh * 0.58));
+  var minH = 320;
+  var maxW = 86;
+  var minW = 48;
+  var h = Math.round(maxH - t * (maxH - minH));
+  return {
+    w: Math.round(maxW - t * (maxW - minW)),
+    h: h,
+    spread: Math.round(h * 1.24)
+  };
+}
+
+function bookSpineDims(b, i, count) {
+  var fit = bookShelfFit(count);
   var h = 0;
   var s = String(b.id || b.name || i);
   for (var n = 0; n < s.length; n++) h = ((h << 5) - h + s.charCodeAt(n)) | 0;
   var u = Math.abs(h);
   return {
-    w: 36 + (u % 4) * 5,
-    h: 168 + ((u >> 2) % 5) * 14,
-    /* Prateleira-style lean: -3..3deg (some land on 0 = straight) */
+    w: Math.max(46, fit.w + (u % 5) - 2),
+    h: Math.max(320, fit.h + ((u >> 3) % 5) * 8 - 16),
+    spread: fit.spread,
     tilt: ((i * 17 + 3) % 7) - 3,
     curved: (u % 5) === 0 || (u % 5) === 3
   };
+}
+
+function layoutShelf() {
+  var row = document.querySelector('.bookcase-row');
+  if (!row) return;
+  var slots = row.querySelectorAll('.book-slot');
+  var n = slots.length;
+  if (!n) return;
+  var gap = 8;
+  var avail = row.clientWidth;
+  var minW = 46;
+  var w = parseFloat(slots[0].style.getPropertyValue('--bw')) || 70;
+  var need = n * w + (n - 1) * gap;
+  if (need > avail) {
+    w = Math.max(minW, Math.floor((avail - (n - 1) * gap) / n));
+    slots.forEach(function (el) {
+      el.style.setProperty('--bw', w + 'px');
+    });
+  }
+  row.classList.toggle('is-packed', need > avail);
+}
+
+function bindShelfLayout() {
+  if (bindShelfLayout._on) return;
+  bindShelfLayout._on = true;
+  window.addEventListener('resize', function () {
+    if (view === 'shelf') layoutShelf();
+  });
 }
 
 function fineHoverShelf() {
@@ -533,13 +583,13 @@ function renderShelf() {
     return norm(b.name).indexOf(q) > -1;
   });
   var spines = books.map(function (b, i) {
-    var d = bookSpineDims(b, i);
+    var d = bookSpineDims(b, i, books.length);
     var n = countInBook(b.id);
     var peeked = _peekBookId === b.id;
     var cls = 'book-slot' + (peeked ? ' is-peek' : '') + (d.curved ? ' is-curved' : '');
     return '<div role="button" tabindex="0" class="' + cls + '"'
       + ' data-id="' + esc(b.id) + '"'
-      + ' style="--kc:' + esc(b.color || '#e07a5f') + ';--bw:' + d.w + 'px;--bh:' + d.h + 'px;--tilt:' + d.tilt + 'deg;--jb-i:' + i + '"'
+      + ' style="--kc:' + esc(b.color || '#e07a5f') + ';--bw:' + d.w + 'px;--bh:' + d.h + 'px;--spread:' + d.spread + 'px;--tilt:' + d.tilt + 'deg;--jb-i:' + i + '"'
       + ' aria-label="' + esc(b.name) + ', ' + n + ' receita' + (n === 1 ? '' : 's') + '"'
       + ' aria-expanded="' + (peeked ? 'true' : 'false') + '"'
       + ' onclick="onBookActivate(\'' + escAttr(b.id) + '\')"'
@@ -550,27 +600,29 @@ function renderShelf() {
       + '<span class="book-spine-ico" aria-hidden="true">' + esc(b.icon || '📖') + '</span>'
       + '<span class="book-spine-title">' + esc(b.name) + '</span>'
       + '</div>'
-      + '<div class="book-spread">'
-      + '<div class="book-cover-face" aria-hidden="true"><span>' + esc(b.icon || '📖') + '</span></div>'
+      + '<div class="book-spread" aria-hidden="true">'
       + '<div class="book-pages">'
-      + '<div class="book-page is-left" aria-hidden="true"><div class="book-page-lines"></div></div>'
-      + '<div class="book-page is-right">'
-      + '<div class="book-page-lines" aria-hidden="true"></div>'
-      + '<button type="button" class="book-edit" onclick="event.stopPropagation();openBookModal(\'' + escAttr(b.id) + '\')">Editar</button>'
+      + '<div class="book-page is-left"><div class="book-page-lines"></div></div>'
+      + '<div class="book-gutter"></div>'
+      + '<div class="book-page is-right"><div class="book-page-lines"></div></div>'
       + '</div>'
-      + '</div>'
-      + '<div class="book-page-edge" aria-hidden="true"></div>'
+      + '<div class="book-page-edge"></div>'
       + '</div>'
       + '</div>'
       + '</div>';
   }).join('');
-  return '<div class="searchbar"><input class="field" id="homeSearch" placeholder="Buscar livros…" value="' + esc(homeQuery)
-    + '" oninput="homeQuery=this.value;_peekBookId=null;render()" onfocus="JB.searchFocus&&JB.searchFocus(this)"></div>'
-    + '<div class="secbar"><div class="sect">Seus livros</div>'
-    + '<button class="btn ghost" onclick="openSearch()">🔎 Buscar online</button></div>'
-    + (spines
-      ? '<div class="bookcase"><div class="bookcase-row">' + spines + '</div><div class="bookcase-ledge" aria-hidden="true"></div></div>'
-      : '<div class="empty">Nenhum livro ainda. Toque em + para criar o primeiro.</div>');
+  return (spines
+    ? '<div class="bookcase">'
+      + '<div class="bookcase-tools">'
+      + '<input class="field" id="homeSearch" placeholder="Buscar…" value="' + esc(homeQuery)
+      + '" oninput="homeQuery=this.value;_peekBookId=null;render()" onfocus="JB.searchFocus&&JB.searchFocus(this)">'
+      + '<button type="button" class="btn ghost" onclick="openSearch()">Online</button>'
+      + '</div>'
+      + '<div class="bookcase-row" style="--n:' + books.length + '">' + spines + '</div>'
+      + '<div class="bookcase-ledge" aria-hidden="true"></div>'
+      + '</div>'
+    : '<div class="empty">Nenhum livro ainda. Toque em + para criar o primeiro.</div>'
+      + '<button class="btn ghost" onclick="openSearch()">🔎 Buscar online</button>');
 }
 
 function norm(s) { return String(s || '').trim().toLowerCase(); }
@@ -599,7 +651,11 @@ function renderBook() {
     + '<button type="button" class="vbtn' + (bookViewMode === 'flip' ? ' on' : '') + '" onclick="setBookView(\'flip\')">Páginas</button>'
     + '<button type="button" class="vbtn' + (bookViewMode === 'cards' ? ' on' : '') + '" onclick="setBookView(\'cards\')">Cards</button>'
     + '</div>';
-  var head = '<div class="secbar"><button class="back" onclick="goShelf()">← Estante</button>' + toggle + '</div>'
+  var head = '<div class="secbar"><button class="back" onclick="goShelf()">← Estante</button>'
+    + '<div class="book-head-actions">'
+    + '<button type="button" class="btn ghost" onclick="openBookModal(\'' + escAttr(book.id) + '\')">Editar</button>'
+    + toggle
+    + '</div></div>'
     + '<div style="margin-bottom:14px"><span style="font-size:28px;margin-right:8px">' + esc(book.icon) + '</span>'
     + '<span style="font-family:var(--font-display);font-weight:800;font-size:22px">' + esc(book.name) + '</span></div>';
   if (!list.length) {

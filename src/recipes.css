@@ -99,6 +99,8 @@ body.recipes-shelf .foot{ display:none; }
 
 .book-slot{
   --bw:70px; --bh:420px; --tilt:0deg; --spread:480px; --ocx:0px; --lift:94px;
+  /* escala da tinta na espiada: acompanha a altura do livro, com piso e teto */
+  --pgs:clamp(9px, calc(var(--bh) * .03), 14px);
   position:relative;
   flex:0 0 auto;
   width:var(--bw);
@@ -108,6 +110,7 @@ body.recipes-shelf .foot{ display:none; }
   z-index:1;
   transform:rotate(var(--tilt));
   transform-origin:50% 100%;
+  transition:transform .42s cubic-bezier(.16,.84,.22,1);
   animation:rcFade .4s cubic-bezier(.2,.8,.2,1) both;
   animation-delay:calc(var(--jb-i, 0) * 45ms);
   -webkit-tap-highlight-color:transparent;
@@ -248,50 +251,59 @@ body.recipes-shelf .foot{ display:none; }
 /* espiada: duas páginas reais do livro, sorteadas a cada abertura.
    Papel é creme fixo, então a tinta é marrom (não segue o tema). */
 .book-page{
-  position:absolute; inset:18px 13px 16px; overflow:hidden;
-  display:flex; flex-direction:column; gap:5px;
+  position:absolute;
+  inset:calc(var(--pgs) * 1.5) calc(var(--pgs) * 1.15) calc(var(--pgs) * 1.3);
+  overflow:hidden;
+  display:flex; flex-direction:column; gap:.42em;
+  font-size:var(--pgs);
   text-align:left; pointer-events:none;
   opacity:0; transition:opacity .16s ease .14s;
 }
-.bp-head{ display:flex; align-items:baseline; gap:5px; min-width:0; }
-.bp-ico{ flex:none; font-size:11px; line-height:1.1; }
+.bp-head{ display:flex; align-items:baseline; gap:.4em; min-width:0; }
+.bp-ico{ flex:none; font-size:.86em; line-height:1.1; }
 .bp-title{
-  font-family:var(--font-display); font-weight:800; font-size:12.5px; line-height:1.15;
+  font-family:var(--font-display); font-weight:800; font-size:1.32em; line-height:1.15;
   color:#3d2f21; letter-spacing:-.2px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .bp-meta{
-  font-size:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+  font-size:.68em; line-height:1.3; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
   color:#9a8260; white-space:nowrap; overflow:hidden;
 }
 .bp-rule{ height:1px; background:rgba(120,100,72,.28); flex:none; }
-.bp-sec{ display:flex; flex-direction:column; gap:4px; min-height:0; }
-.bp-sec + .bp-sec{ margin-top:8px; }
+.bp-sec{ display:flex; flex-direction:column; gap:.34em; min-height:0; }
+.bp-sec + .bp-sec{ margin-top:.7em; }
 .bp-label{
-  font-size:8px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+  font-size:.68em; line-height:1.3; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
   color:#a58c68;
 }
-.bp-lines{ display:flex; flex-direction:column; gap:4px; min-height:0; overflow:hidden; }
+.bp-lines{ display:flex; flex-direction:column; gap:.34em; min-height:0; overflow:hidden; }
 .bp-line{
-  display:flex; align-items:center; gap:5px; min-width:0;
-  font-size:9.5px; line-height:1.3; color:#5b4932;
+  display:flex; align-items:center; gap:.45em; min-width:0;
+  line-height:1.35; color:#5b4932;
 }
 .bp-line span{ min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .bp-box{
-  flex:none; width:6px; height:6px; border-radius:2px;
+  flex:none; width:.62em; height:.62em; border-radius:2px;
   border:1px solid rgba(120,100,72,.55);
 }
 .bp-num{
-  flex:none; width:10px; height:10px; border-radius:999px;
+  flex:none; width:1.7em; height:1.7em; border-radius:999px;
   background:rgba(120,100,72,.2); color:#5b4932;
-  font-size:6.5px; font-weight:800; font-style:normal;
+  font-size:.62em; font-weight:800; font-style:normal;
   display:flex; align-items:center; justify-content:center;
 }
+/* corte da lista: “mais N” convidando a abrir o livro */
+.bp-more{
+  font-size:.82em; line-height:1.35; font-weight:700; color:#a58c68;
+  padding-left:1.1em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
 .bp-end{
-  margin:auto; font-family:var(--font-display); font-size:11px;
+  margin:auto; font-family:var(--font-display); font-size:1.05em;
   letter-spacing:.22em; text-transform:uppercase; color:#a58c68;
 }
-.bp-folio{ margin-top:auto; font-size:7.5px; font-weight:700; color:#ab9573; }
+.bp-folio{ margin-top:auto; font-size:.64em; line-height:1.3; font-weight:700; color:#ab9573; }
 .book-leaf.is-right .bp-folio{ text-align:right; }
 
 /* Title sits above the open book (the spine is hidden once it opens) */
@@ -318,9 +330,11 @@ body.recipes-shelf .foot{ display:none; }
 
 .book-head-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
-/* ---- open state ---- */
+/* ---- open state ----
+   O livro endireita e as folhas assentam no plano da tela: texto girado em 3D
+   é rasterizado e volta embaçado, então nada de rotação quando está aberto. */
 .book-slot.is-peek,
-.book-slot.is-open{ z-index:30; }
+.book-slot.is-open{ z-index:30; transform:rotate(0deg); }
 .book-slot.is-peek .book-pop,
 .book-slot.is-open .book-pop{
   width:calc(var(--bw) + var(--spread));
@@ -340,16 +354,16 @@ body.recipes-shelf .foot{ display:none; }
 .book-slot.is-peek .book-open,
 .book-slot.is-open .book-open{ width:100%; opacity:1; }
 .book-slot.is-peek .book-leaf.is-left,
-.book-slot.is-open .book-leaf.is-left{ transform:rotateY(11deg); }
+.book-slot.is-open .book-leaf.is-left{ transform:rotateY(0deg); }
 .book-slot.is-peek .book-leaf.is-right,
-.book-slot.is-open .book-leaf.is-right{ transform:rotateY(-11deg); }
+.book-slot.is-open .book-leaf.is-right{ transform:rotateY(0deg); }
 .book-slot.is-peek .book-openlabel,
 .book-slot.is-open .book-openlabel{ opacity:1; transform:translate(-50%, 0); }
 .book-slot.is-peek .book-page,
 .book-slot.is-open .book-page{ opacity:1; }
 
 @media (hover:hover) and (pointer:fine){
-  .book-slot:hover{ z-index:30; }
+  .book-slot:hover{ z-index:30; transform:rotate(0deg); }
   .book-slot:hover .book-pop{
     width:calc(var(--bw) + var(--spread));
     height:calc(var(--bh) + 26px);
@@ -362,8 +376,8 @@ body.recipes-shelf .foot{ display:none; }
   }
   .book-slot:hover .book-spine-face{ flex-basis:0; width:0; opacity:0; box-shadow:none; }
   .book-slot:hover .book-open{ width:100%; opacity:1; }
-  .book-slot:hover .book-leaf.is-left{ transform:rotateY(11deg); }
-  .book-slot:hover .book-leaf.is-right{ transform:rotateY(-11deg); }
+  .book-slot:hover .book-leaf.is-left{ transform:rotateY(0deg); }
+  .book-slot:hover .book-leaf.is-right{ transform:rotateY(0deg); }
   .book-slot:hover .book-openlabel{ opacity:1; transform:translate(-50%, 0); }
   .book-slot:hover .book-page{ opacity:1; }
 }
@@ -372,10 +386,6 @@ body.recipes-shelf .foot{ display:none; }
   .bookcase-row{ padding:150px 8px 12px; }
   .book-openlabel{ top:-46px; padding:6px 12px; }
   .bol-name{ font-size:15px; }
-  .book-page{ inset:14px 10px 12px; gap:4px; }
-  .bp-title{ font-size:11px; }
-  .bp-line{ font-size:8.5px; }
-  .bp-label, .bp-meta{ font-size:7px; }
 }
 
 /* ---- recipe search, only inside an open book ---- */

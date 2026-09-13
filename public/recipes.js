@@ -679,9 +679,10 @@ function fillBookPeek(el) {
   var right = el.querySelector('.book-leaf.is-right .book-page');
   if (!left && !right) return;
   var pick = pickPeekPair(el.getAttribute('data-id'));
+  var budget = peekLineBudget(el);
   /* Livro vazio: folha em branco e só um "fim", nunca dois. */
-  if (left) left.innerHTML = pick[0] ? peekPageHtml(pick[0], 1) : '';
-  if (right) right.innerHTML = peekPageHtml(pick[1], 2);
+  if (left) left.innerHTML = pick[0] ? peekPageHtml(pick[0], 1, budget) : '';
+  if (right) right.innerHTML = peekPageHtml(pick[1], 2, budget);
 }
 
 function pickPeekPair(bookId) {
@@ -693,23 +694,51 @@ function pickPeekPair(bookId) {
   return [list[0] || null, list[1] || null];
 }
 
-function peekPageHtml(r, folio) {
+/* Quantas linhas cabem na folha. Espelha a escala de .book-page no CSS
+   (--pgs = clamp(9px, --bh * .03, 14px)); mexeu lá, mexa aqui.
+   8.4em cobre título, tempo, régua, rótulos, fólio e as linhas de "mais N". */
+function peekLineBudget(el) {
+  var bh = parseFloat(getComputedStyle(el).getPropertyValue('--bh')) || 420;
+  var fs = Math.min(14, Math.max(9, bh * 0.03));
+  var paper = bh + 26 - fs * 2.8;
+  return Math.max(3, Math.floor((paper - fs * 8.4) / (fs * 1.69)));
+}
+
+/* Divide as linhas entre os dois blocos e devolve a sobra pro maior. */
+function peekSplit(nIngs, nSteps, budget) {
+  if (!nIngs) return [0, Math.min(nSteps, budget)];
+  if (!nSteps) return [Math.min(nIngs, budget), 0];
+  var a = Math.min(nIngs, Math.max(2, Math.round(budget * 0.55)));
+  var b = Math.min(nSteps, budget - a);
+  return [Math.min(nIngs, budget - b), b];
+}
+
+function peekLines(items, cap, render) {
+  var cut = items.length > cap;
+  var show = cut ? Math.max(1, cap - 1) : items.length;
+  var html = items.slice(0, show).map(render).join('');
+  if (cut) html += '<div class="bp-more">… mais ' + (items.length - show) + '</div>';
+  return html;
+}
+
+function peekPageHtml(r, folio, budget) {
   if (!r) return '<div class="bp-end">fim</div>';
   var ings = ingsFor(r.id);
   var steps = stepsFor(r.id);
+  var cap = peekSplit(ings.length, steps.length, budget || 8);
   var body = '';
-  if (ings.length) {
+  if (cap[0]) {
     body += '<div class="bp-sec"><div class="bp-label">Mise en place</div>'
-      + '<div class="bp-lines">' + ings.slice(0, 6).map(function (ing) {
+      + '<div class="bp-lines">' + peekLines(ings, cap[0], function (ing) {
         var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
         return '<div class="bp-line"><i class="bp-box"></i><span>' + esc(label) + '</span></div>';
-      }).join('') + '</div></div>';
+      }) + '</div></div>';
   }
-  if (steps.length) {
+  if (cap[1]) {
     body += '<div class="bp-sec"><div class="bp-label">Passo a passo</div>'
-      + '<div class="bp-lines">' + steps.slice(0, 5).map(function (st, i) {
+      + '<div class="bp-lines">' + peekLines(steps, cap[1], function (st, i) {
         return '<div class="bp-line"><i class="bp-num">' + (i + 1) + '</i><span>' + esc(st.text) + '</span></div>';
-      }).join('') + '</div></div>';
+      }) + '</div></div>';
   }
   if (!body) {
     body = '<div class="bp-sec"><div class="bp-label">Receita</div>'

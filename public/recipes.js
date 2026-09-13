@@ -1,7 +1,7 @@
 /* Joelboard Recipes — app logic. © 2026 Joel Soluções LTDA.
    Classic global script; loads after /joelboard.js. */
 var APP = 'recipes';
-var DATA = { cookbooks: [], recipes: [], ingredients: [], steps: [], plans: [] };
+var DATA = { cookbooks: [], recipes: [], ingredients: [], steps: [], plans: [], parts: [] };
 var recipesGrid = {};
 var authDone = false;
 var view = 'shelf'; /* shelf | book | recipe */
@@ -19,6 +19,7 @@ var _bookColor = '#e07a5f';
 var _searchImportBookId = null;
 var _ingDraft = [];
 var _stepDraft = [];
+var _partDraft = [];
 var _recipeImgFile = null;
 var _recipeImgLocalUrl = '';
 var CHECK_KEY = 'jb_recipes_checks';
@@ -31,8 +32,9 @@ var _spreadIntro = true;
 var RECIPES_TABS = [
   ['Cookbooks', ['ID', 'Nome', 'Icone', 'Cor', 'Ordem', 'Criado']],
   ['Recipes', ['ID', 'CookbookID', 'Titulo', 'Icone', 'ImageUrl', 'Porcoes', 'Minutos', 'Notas', 'Ordem', 'Source', 'SourceID', 'Criado']],
-  ['Ingredients', ['ID', 'RecipeID', 'Texto', 'Qtd', 'Unidade', 'Ordem']],
-  ['Steps', ['ID', 'RecipeID', 'Texto', 'Ordem']],
+  ['Ingredients', ['ID', 'RecipeID', 'Texto', 'Qtd', 'Unidade', 'Ordem', 'PartID']],
+  ['Steps', ['ID', 'RecipeID', 'Texto', 'Ordem', 'PartID']],
+  ['Parts', ['ID', 'RecipeID', 'Nome', 'Ordem']],
   ['Plans', ['ID', 'RecipeID', 'Data', 'Criado']],
   ['Settings', ['Chave', 'Valor']]
 ];
@@ -161,11 +163,16 @@ function paintCheckRow(li, on) {
 }
 
 function paintTally(recipeId) {
-  var ings = ingsFor(recipeId);
-  var steps = stepsFor(recipeId);
   var vals = {};
-  vals[recipeId + '|ing'] = ings.length ? doneCount(recipeId, ings) + '/' + ings.length : '';
-  vals[recipeId + '|step'] = steps.length ? doneCount(recipeId, steps) + '/' + steps.length : '';
+  function put(key, rows) {
+    vals[key] = rows.length ? doneCount(recipeId, rows) + '/' + rows.length : '';
+  }
+  put(recipeId + '|ing', ingsFor(recipeId));
+  put(recipeId + '|step', stepsFor(recipeId));
+  partsFor(recipeId).forEach(function (p) {
+    put(recipeId + '|ing|' + p.id, ingsFor(recipeId, p.id));
+    put(recipeId + '|step|' + p.id, stepsFor(recipeId, p.id));
+  });
   var els = document.querySelectorAll('[data-tally]');
   for (var i = 0; i < els.length; i++) {
     var v = vals[els[i].getAttribute('data-tally') || ''];
@@ -242,8 +249,9 @@ function startRecipes() {
     authDone = true;
     var fx = JB.ghostFixture && JB.ghostFixture('recipes');
     recipesGrid = (fx && fx.grid) || {};
-    DATA = (fx && fx.data) || { cookbooks: [], recipes: [], ingredients: [], steps: [], plans: [] };
+    DATA = (fx && fx.data) || { cookbooks: [], recipes: [], ingredients: [], steps: [], plans: [], parts: [] };
     if (!DATA.plans) DATA.plans = [];
+    if (!DATA.parts) DATA.parts = [];
     showApp();
     render();
     return;
@@ -415,10 +423,10 @@ function seedIntoSheet() {
         'seed', '', created
       ]);
       (r.ingredients || []).forEach(function (ing, ii) {
-        ings.push([uuid(), r.id, ing.text || '', ing.qty || '', ing.unit || '', String(ii)]);
+        ings.push([uuid(), r.id, ing.text || '', ing.qty || '', ing.unit || '', String(ii), '']);
       });
       (r.steps || []).forEach(function (st, si) {
-        steps.push([uuid(), r.id, st.text || '', String(si)]);
+        steps.push([uuid(), r.id, st.text || '', String(si), '']);
       });
     });
     var data = [];
@@ -432,39 +440,36 @@ function seedIntoSheet() {
 }
 
 function loadAll() {
-  var tabs = ['Cookbooks', 'Recipes', 'Ingredients', 'Steps', 'Plans'];
-  return JB.api('GET', ssUrl('/values:batchGet?ranges=' + tabs.map(encodeURIComponent).join('&ranges=') + '&valueRenderOption=UNFORMATTED_VALUE'))
-    .then(function (res) {
-      var vr = res.valueRanges || [];
-      DATA.cookbooks = parseCookbooks(vr[0] && vr[0].values);
-      DATA.recipes = parseRecipes(vr[1] && vr[1].values);
-      DATA.ingredients = parseIngredients(vr[2] && vr[2].values);
-      DATA.steps = parseSteps(vr[3] && vr[3].values);
-      DATA.plans = parsePlans(vr[4] && vr[4].values);
-      showApp();
-      render();
-      if (!window._rcTabSync) {
-        window._rcTabSync = 1;
-        JB.onTabVisible(refreshQuiet);
-        JB.watchSheet(APP, refreshQuiet);
-      }
-      if (JB.onRoute) JB.onRoute(applyRoute);
-      applyRoute();
-    }).catch(function (e) {
-      var m = String(e.message || '');
-      if (m.indexOf('403') > -1 || m.indexOf('404') > -1) {
-        JB.clearSheetId(APP);
-        bootSheet();
-        return;
-      }
-      loadingHtml('<div class="gate"><div class="gs">Erro: ' + esc(m) + '</div><button class="btn ghost" onclick="bootSheet()">Tentar de novo</button></div>');
-    });
+  return fetchRecipeTabs().then(function () {
+    showApp();
+    render();
+    if (!window._rcTabSync) {
+      window._rcTabSync = 1;
+      JB.onTabVisible(refreshQuiet);
+      JB.watchSheet(APP, refreshQuiet);
+    }
+    if (JB.onRoute) JB.onRoute(applyRoute);
+    applyRoute();
+  }).catch(function (e) {
+    var m = String(e.message || '');
+    if (m.indexOf('403') > -1 || m.indexOf('404') > -1) {
+      JB.clearSheetId(APP);
+      bootSheet();
+      return;
+    }
+    loadingHtml('<div class="gate"><div class="gs">Erro: ' + esc(m) + '</div><button class="btn ghost" onclick="bootSheet()">Tentar de novo</button></div>');
+  });
 }
 
 function refreshQuiet() {
   if (!JB.isSignedIn()) return Promise.resolve();
   if (JB.isGhost && JB.isGhost()) { render(); return Promise.resolve(); }
+  return fetchRecipeTabs().then(function () { render(); }).catch(function () {});
+}
+
+function fetchRecipeTabs() {
   var tabs = ['Cookbooks', 'Recipes', 'Ingredients', 'Steps', 'Plans'];
+  if (recipesGrid.Parts != null) tabs.push('Parts');
   return JB.api('GET', ssUrl('/values:batchGet?ranges=' + tabs.map(encodeURIComponent).join('&ranges=') + '&valueRenderOption=UNFORMATTED_VALUE'))
     .then(function (res) {
       var vr = res.valueRanges || [];
@@ -473,8 +478,8 @@ function refreshQuiet() {
       DATA.ingredients = parseIngredients(vr[2] && vr[2].values);
       DATA.steps = parseSteps(vr[3] && vr[3].values);
       DATA.plans = parsePlans(vr[4] && vr[4].values);
-      render();
-    }).catch(function () {});
+      DATA.parts = recipesGrid.Parts != null ? parseParts(vr[5] && vr[5].values) : [];
+    });
 }
 
 function parseCookbooks(rows) {
@@ -512,7 +517,8 @@ function parseIngredients(rows) {
     if (!r[0]) continue;
     out.push({
       id: String(r[0]), recipeId: String(r[1] || ''), text: String(r[2] || ''),
-      qty: String(r[3] || ''), unit: String(r[4] || ''), order: Number(r[5]) || 0
+      qty: String(r[3] || ''), unit: String(r[4] || ''), order: Number(r[5]) || 0,
+      partId: String(r[6] || '')
     });
   }
   out.sort(function (a, b) { return a.order - b.order; });
@@ -524,10 +530,24 @@ function parseSteps(rows) {
     var r = rows[i] || [];
     if (!r[0]) continue;
     out.push({
-      id: String(r[0]), recipeId: String(r[1] || ''), text: String(r[2] || ''), order: Number(r[3]) || 0
+      id: String(r[0]), recipeId: String(r[1] || ''), text: String(r[2] || ''),
+      order: Number(r[3]) || 0, partId: String(r[4] || '')
     });
   }
   out.sort(function (a, b) { return a.order - b.order; });
+  return out;
+}
+function parseParts(rows) {
+  var out = [];
+  for (var i = 1; i < (rows || []).length; i++) {
+    var r = rows[i] || [];
+    if (!r[0]) continue;
+    out.push({
+      id: String(r[0]), recipeId: String(r[1] || ''), name: String(r[2] || ''),
+      order: Number(r[3]) || 0
+    });
+  }
+  out.sort(function (a, b) { return a.order - b.order || a.name.localeCompare(b.name); });
   return out;
 }
 function sheetsDateLocal(v) {
@@ -565,11 +585,21 @@ function recipeById(id) {
 function recipesInBook(bookId) {
   return DATA.recipes.filter(function (r) { return r.cookbookId === bookId; });
 }
-function ingsFor(recipeId) {
-  return DATA.ingredients.filter(function (x) { return x.recipeId === recipeId; });
+function linePartId(x) { return String((x && x.partId) || ''); }
+function ingsFor(recipeId, partId) {
+  var want = partId == null ? '' : String(partId);
+  return DATA.ingredients.filter(function (x) {
+    return x.recipeId === recipeId && linePartId(x) === want;
+  });
 }
-function stepsFor(recipeId) {
-  return DATA.steps.filter(function (x) { return x.recipeId === recipeId; });
+function stepsFor(recipeId, partId) {
+  var want = partId == null ? '' : String(partId);
+  return DATA.steps.filter(function (x) {
+    return x.recipeId === recipeId && linePartId(x) === want;
+  });
+}
+function partsFor(recipeId) {
+  return (DATA.parts || []).filter(function (p) { return p.recipeId === recipeId; });
 }
 function plansFor(recipeId) {
   return (DATA.plans || []).filter(function (p) { return p.recipeId === recipeId; });
@@ -938,7 +968,9 @@ function goShelf() {
 function recipeMatches(r, q) {
   if (norm(r.title).indexOf(q) > -1) return true;
   if (norm(r.notes).indexOf(q) > -1) return true;
-  return ingsFor(r.id).some(function (x) { return norm(x.text).indexOf(q) > -1; });
+  if (partsFor(r.id).some(function (p) { return norm(p.name).indexOf(q) > -1; })) return true;
+  if (DATA.ingredients.some(function (x) { return x.recipeId === r.id && norm(x.text).indexOf(q) > -1; })) return true;
+  return DATA.steps.some(function (x) { return x.recipeId === r.id && norm(x.text).indexOf(q) > -1; });
 }
 function visibleRecipes(bookId) {
   var all = recipesInBook(bookId);
@@ -1279,6 +1311,46 @@ function stepsSection(r) {
     + '</div>';
 }
 
+function recipePartsHtml(r) {
+  return partsFor(r.id).map(function (p) { return partSection(r, p); }).join('');
+}
+
+function partSection(r, p) {
+  var ings = ingsFor(r.id, p.id);
+  var steps = stepsFor(r.id, p.id);
+  var ingDone = doneCount(r.id, ings);
+  var stepDone = doneCount(r.id, steps);
+  var ingRows = ings.map(function (ing) {
+    var on = isChecked(r.id, ing.id);
+    var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
+    return '<li class="' + (on ? 'on' : '') + '" data-chk="' + esc(r.id + '|' + ing.id) + '">'
+      + '<button type="button" class="ichk' + (on ? ' on' : '') + '"'
+      + ' onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\')"'
+      + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
+      + '<span><span class="ck-t">' + esc(label) + '</span></span></li>';
+  }).join('');
+  var stepRows = steps.map(function (st, i) {
+    var on = stepIsDone(r.id, st.id);
+    return '<li class="' + (on ? 'on' : '') + '" data-chk="' + esc(r.id + '|' + st.id) + '">'
+      + '<button type="button" class="step-num' + (on ? ' on' : '') + '" data-n="' + (i + 1) + '"'
+      + ' onclick="toggleStepCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(st.id) + '\')"'
+      + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="Passo ' + (i + 1) + '">'
+      + (on ? '✓' : (i + 1)) + '</button>'
+      + '<span><span class="ck-t">' + esc(st.text) + '</span></span></li>';
+  }).join('');
+  return '<div class="leaf-part">'
+    + '<h3 class="leaf-part-name">' + esc(p.name || 'Parte') + '</h3>'
+    + '<div class="leaf-sec">'
+    + '<h3>Mise en place' + (ings.length ? '<em data-tally="' + esc(r.id + '|ing|' + p.id) + '">' + ingDone + '/' + ings.length + '</em>' : '') + '</h3>'
+    + (ingRows ? '<ul class="ing-list">' + ingRows + '</ul>' : '<div class="rg">Nenhum ingrediente.</div>')
+    + '</div>'
+    + '<div class="leaf-sec">'
+    + '<h3>Passo a passo' + (steps.length ? '<em data-tally="' + esc(r.id + '|step|' + p.id) + '">' + stepDone + '/' + steps.length + '</em>' : '') + '</h3>'
+    + (stepRows ? '<ul class="step-list">' + stepRows + '</ul>' : '<div class="rg">Nenhum passo.</div>')
+    + '</div>'
+    + '</div>';
+}
+
 function leafEditBtn(r) {
   return leafActions(r);
 }
@@ -1292,6 +1364,7 @@ function recipeFullLeaf(r, side) {
     + recipeTitleBlock(r)
     + miseSection(r)
     + stepsSection(r)
+    + recipePartsHtml(r)
     + '</div>'
     + leafFolio(side, recipePageLabel(r))
     + '</div>';
@@ -1309,7 +1382,7 @@ function recipeHeadLeaf(r, side) {
 function recipeStepsLeaf(r, side) {
   if (!r) return endLeaf(side);
   return '<div class="leaf is-' + side + '">'
-    + '<div class="leaf-body">' + stepsSection(r) + '</div>'
+    + '<div class="leaf-body">' + stepsSection(r) + recipePartsHtml(r) + '</div>'
     + leafFolio(side, 'Modo de fazer')
     + '</div>';
 }
@@ -1506,6 +1579,7 @@ function renderDetail() {
     + '<div class="dsec"><h3>Passo a passo</h3>'
     + (stepHtml ? '<ul class="step-list">' + stepHtml + '</ul>' : '<div class="rg">Nenhum passo.</div>')
     + '</div>'
+    + recipePartsHtml(r)
     + '<div class="detail-actions">'
     + '<button class="btn" onclick="openRecipeModal(\'' + escAttr(r.id) + '\')">✏ Editar</button>'
     + '<button class="btn ghost' + (hasAnyChecks(r.id) ? '' : ' is-dim') + '"'
@@ -1657,11 +1731,15 @@ function deleteBookCascade(bookId) {
     JB.api('GET', ssUrl('/values/Cookbooks?valueRenderOption=UNFORMATTED_VALUE')),
     recipesGrid.Plans != null
       ? JB.api('GET', ssUrl('/values/Plans?valueRenderOption=UNFORMATTED_VALUE'))
+      : Promise.resolve({ values: [] }),
+    recipesGrid.Parts != null
+      ? JB.api('GET', ssUrl('/values/Parts?valueRenderOption=UNFORMATTED_VALUE'))
       : Promise.resolve({ values: [] })
   ]).then(function (pack) {
     var ingRows = collectRowNumsAny(pack[0].values, 1, recipeIds);
     var stepRows = collectRowNumsAny(pack[1].values, 1, recipeIds);
     var planRows = collectRowNumsAny(pack[4].values, 1, recipeIds);
+    var partRows = collectRowNumsAny(pack[5].values, 1, recipeIds);
     var recipeRows = [];
     var recipeVals = pack[2].values || [];
     for (var i = 1; i < recipeVals.length; i++) {
@@ -1691,6 +1769,7 @@ function deleteBookCascade(bookId) {
     }
     pushDeletes(recipesGrid.Ingredients, ingRows);
     pushDeletes(recipesGrid.Steps, stepRows);
+    pushDeletes(recipesGrid.Parts, partRows);
     pushDeletes(recipesGrid.Plans, planRows);
     pushDeletes(recipesGrid.Recipes, recipeRows);
     if (bookRow > 0) pushDeletes(recipesGrid.Cookbooks, [bookRow]);
@@ -1699,6 +1778,7 @@ function deleteBookCascade(bookId) {
   }).then(function () {
     purgeRecipeChecks(Object.keys(recipeIds));
     DATA.plans = (DATA.plans || []).filter(function (p) { return !recipeIds[p.recipeId]; });
+    DATA.parts = (DATA.parts || []).filter(function (p) { return !recipeIds[p.recipeId]; });
     if (JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();
   });
 }
@@ -1826,9 +1906,26 @@ function openRecipeModal(id) {
   _stepDraft = r ? stepsFor(r.id).map(function (x) {
     return { id: x.id, text: x.text };
   }) : [{ id: '', text: '' }];
+  _partDraft = r ? partsFor(r.id).map(function (p) {
+    return {
+      id: p.id,
+      name: p.name,
+      ings: ingsFor(r.id, p.id).map(function (x) {
+        return { id: x.id, text: x.text, qty: x.qty, unit: x.unit };
+      }),
+      steps: stepsFor(r.id, p.id).map(function (x) {
+        return { id: x.id, text: x.text };
+      })
+    };
+  }) : [];
+  _partDraft.forEach(function (p) {
+    if (!p.ings.length) p.ings.push({ id: '', text: '', qty: '', unit: '' });
+    if (!p.steps.length) p.steps.push({ id: '', text: '' });
+  });
   paintIconWrap('recipe');
   paintIngLines();
   paintStepLines();
+  paintPartBlocks();
   setRecipeImageValue(r ? r.imageUrl : '', null);
   var del = $('recipeDelBtn');
   if (del) del.style.display = r ? '' : 'none';
@@ -2056,6 +2153,71 @@ function addStepLine() { _stepDraft.push({ id: '', text: '' }); paintStepLines()
 function rmIngLine(i) { _ingDraft.splice(i, 1); if (!_ingDraft.length) _ingDraft.push({ id: '', text: '', qty: '', unit: '' }); paintIngLines(); }
 function rmStepLine(i) { _stepDraft.splice(i, 1); if (!_stepDraft.length) _stepDraft.push({ id: '', text: '' }); paintStepLines(); }
 
+function addPartBlock() {
+  _partDraft.push({
+    id: '',
+    name: '',
+    ings: [{ id: '', text: '', qty: '', unit: '' }],
+    steps: [{ id: '', text: '' }]
+  });
+  paintPartBlocks();
+}
+function rmPartBlock(i) {
+  _partDraft.splice(i, 1);
+  paintPartBlocks();
+}
+function addPartIng(pi) {
+  if (!_partDraft[pi]) return;
+  _partDraft[pi].ings.push({ id: '', text: '', qty: '', unit: '' });
+  paintPartBlocks();
+}
+function addPartStep(pi) {
+  if (!_partDraft[pi]) return;
+  _partDraft[pi].steps.push({ id: '', text: '' });
+  paintPartBlocks();
+}
+function rmPartIng(pi, i) {
+  var p = _partDraft[pi];
+  if (!p) return;
+  p.ings.splice(i, 1);
+  if (!p.ings.length) p.ings.push({ id: '', text: '', qty: '', unit: '' });
+  paintPartBlocks();
+}
+function rmPartStep(pi, i) {
+  var p = _partDraft[pi];
+  if (!p) return;
+  p.steps.splice(i, 1);
+  if (!p.steps.length) p.steps.push({ id: '', text: '' });
+  paintPartBlocks();
+}
+function paintPartBlocks() {
+  var el = $('recipePartList');
+  if (!el) return;
+  el.innerHTML = _partDraft.map(function (p, i) {
+    var ings = (p.ings || []).map(function (line, j) {
+      return '<div class="edit-line">'
+        + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_partDraft[' + i + '].ings[' + j + '].text=this.value">'
+        + '<input class="field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_partDraft[' + i + '].ings[' + j + '].qty=this.value">'
+        + '<button type="button" class="rm" onclick="rmPartIng(' + i + ',' + j + ')">×</button></div>';
+    }).join('');
+    var steps = (p.steps || []).map(function (line, j) {
+      return '<div class="edit-line step">'
+        + '<input class="field" placeholder="Passo ' + (j + 1) + '" value="' + esc(line.text) + '" oninput="_partDraft[' + i + '].steps[' + j + '].text=this.value">'
+        + '<button type="button" class="rm" onclick="rmPartStep(' + i + ',' + j + ')">×</button></div>';
+    }).join('');
+    return '<div class="part-edit">'
+      + '<div class="part-edit-head">'
+      + '<input class="field" placeholder="ex.: Ganache" value="' + esc(p.name) + '" oninput="_partDraft[' + i + '].name=this.value">'
+      + '<button type="button" class="rm" onclick="rmPartBlock(' + i + ')" aria-label="Remover parte">×</button>'
+      + '</div>'
+      + '<div class="edit-lines">' + ings + '</div>'
+      + '<button type="button" class="btn ghost part-edit-add" onclick="addPartIng(' + i + ')">+ Ingrediente</button>'
+      + '<div class="edit-lines">' + steps + '</div>'
+      + '<button type="button" class="btn ghost part-edit-add" onclick="addPartStep(' + i + ')">+ Passo</button>'
+      + '</div>';
+  }).join('');
+}
+
 function saveRecipeModal() {
   var title = (($('recipeTitle') && $('recipeTitle').value) || '').trim();
   if (!title) { toast('Dê um título'); return; }
@@ -2119,24 +2281,40 @@ function focusRecipePage(id) {
 function replaceRecipeChildren(recipeId) {
   return clearChildren(recipeId).then(function () {
     var ings = _ingDraft.filter(function (x) { return String(x.text || '').trim(); }).map(function (x, i) {
-      return [x.id || uuid(), recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i)];
+      return [x.id || uuid(), recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), ''];
     });
     var steps = _stepDraft.filter(function (x) { return String(x.text || '').trim(); }).map(function (x, i) {
-      return [x.id || uuid(), recipeId, String(x.text).trim(), String(i)];
+      return [x.id || uuid(), recipeId, String(x.text).trim(), String(i), ''];
     });
-    var data = [];
-    if (ings.length) data.push({ range: 'Ingredients!A:F', values: ings });
-    if (steps.length) data.push({ range: 'Steps!A:D', values: steps });
-    if (!data.length) return null;
+    var parts = [];
+    (_partDraft || []).forEach(function (p, pi) {
+      var name = String(p.name || '').trim();
+      var pIngs = (p.ings || []).filter(function (x) { return String(x.text || '').trim(); });
+      var pSteps = (p.steps || []).filter(function (x) { return String(x.text || '').trim(); });
+      if (!name && !pIngs.length && !pSteps.length) return;
+      var pid = p.id || uuid();
+      parts.push([pid, recipeId, name || 'Parte', String(pi)]);
+      pIngs.forEach(function (x, i) {
+        ings.push([x.id || uuid(), recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), pid]);
+      });
+      pSteps.forEach(function (x, i) {
+        steps.push([x.id || uuid(), recipeId, String(x.text).trim(), String(i), pid]);
+      });
+    });
     var chain = Promise.resolve();
     if (ings.length) {
       chain = chain.then(function () {
-        return JB.api('POST', ssUrl('/values/Ingredients!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
+        return JB.api('POST', ssUrl('/values/Ingredients!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
       });
     }
     if (steps.length) {
       chain = chain.then(function () {
-        return JB.api('POST', ssUrl('/values/Steps!A:D:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
+        return JB.api('POST', ssUrl('/values/Steps!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
+      });
+    }
+    if (parts.length) {
+      chain = chain.then(function () {
+        return JB.api('POST', ssUrl('/values/Parts!A:D:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: parts });
       });
     }
     return chain;
@@ -2146,20 +2324,24 @@ function replaceRecipeChildren(recipeId) {
 function clearChildren(recipeId) {
   return Promise.all([
     JB.api('GET', ssUrl('/values/Ingredients?valueRenderOption=UNFORMATTED_VALUE')),
-    JB.api('GET', ssUrl('/values/Steps?valueRenderOption=UNFORMATTED_VALUE'))
-  ]).then(function (pair) {
-    var ingRows = collectRowNums(pair[0].values, 1, recipeId);
-    var stepRows = collectRowNums(pair[1].values, 1, recipeId);
-    var sheetIdIng = recipesGrid.Ingredients;
-    var sheetIdStep = recipesGrid.Steps;
+    JB.api('GET', ssUrl('/values/Steps?valueRenderOption=UNFORMATTED_VALUE')),
+    recipesGrid.Parts != null
+      ? JB.api('GET', ssUrl('/values/Parts?valueRenderOption=UNFORMATTED_VALUE'))
+      : Promise.resolve({ values: [] })
+  ]).then(function (pack) {
+    var ingRows = collectRowNums(pack[0].values, 1, recipeId);
+    var stepRows = collectRowNums(pack[1].values, 1, recipeId);
+    var partRows = collectRowNums(pack[2].values, 1, recipeId);
     var reqs = [];
-    // delete from bottom so indices stay valid
-    ingRows.sort(function (a, b) { return b - a; }).forEach(function (rn) {
-      reqs.push({ deleteDimension: { range: { sheetId: sheetIdIng, dimension: 'ROWS', startIndex: rn - 1, endIndex: rn } } });
-    });
-    stepRows.sort(function (a, b) { return b - a; }).forEach(function (rn) {
-      reqs.push({ deleteDimension: { range: { sheetId: sheetIdStep, dimension: 'ROWS', startIndex: rn - 1, endIndex: rn } } });
-    });
+    function pushDeletes(sheetId, rows) {
+      if (sheetId == null) return;
+      rows.sort(function (a, b) { return b - a; }).forEach(function (rn) {
+        reqs.push({ deleteDimension: { range: { sheetId: sheetId, dimension: 'ROWS', startIndex: rn - 1, endIndex: rn } } });
+      });
+    }
+    pushDeletes(recipesGrid.Ingredients, ingRows);
+    pushDeletes(recipesGrid.Steps, stepRows);
+    pushDeletes(recipesGrid.Parts, partRows);
     if (!reqs.length) return null;
     return JB.api('POST', ssUrl(':batchUpdate'), { requests: reqs });
   });
@@ -2342,20 +2524,20 @@ function importMeal(source, sourceId) {
       return JB.api('POST', ssUrl('/values/Recipes!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
         .then(function () {
           var ings = (m.ingredients || []).map(function (x, i) {
-            return [uuid(), id, x.text || '', x.qty || '', x.unit || '', String(i)];
+            return [uuid(), id, x.text || '', x.qty || '', x.unit || '', String(i), ''];
           });
           var steps = (m.steps || []).map(function (x, i) {
-            return [uuid(), id, x.text || '', String(i)];
+            return [uuid(), id, x.text || '', String(i), ''];
           });
           var chain = Promise.resolve();
           if (ings.length) {
             chain = chain.then(function () {
-              return JB.api('POST', ssUrl('/values/Ingredients!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
+              return JB.api('POST', ssUrl('/values/Ingredients!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
             });
           }
           if (steps.length) {
             chain = chain.then(function () {
-              return JB.api('POST', ssUrl('/values/Steps!A:D:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
+              return JB.api('POST', ssUrl('/values/Steps!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
             });
           }
           return chain.then(function () { return id; });

@@ -108,7 +108,7 @@
     }
     if (app === 'recipes') {
       return {
-        grid: { Cookbooks: 0, Recipes: 1, Ingredients: 2, Steps: 3, Plans: 4, Settings: 5 },
+        grid: { Cookbooks: 0, Recipes: 1, Ingredients: 2, Steps: 3, Plans: 4, Parts: 5, Settings: 6 },
         data: {
           cookbooks: [
             { id: 'ghost-cb1', name: 'Rápido', icon: '🍳', color: '#e07a5f', order: 0, created: iso },
@@ -138,6 +138,8 @@
             { id: 'ghost-ri12', recipeId: 'ghost-r4', text: 'manteiga', qty: '1', unit: 'colher', order: 2 },
             { id: 'ghost-ri13', recipeId: 'ghost-r5', text: 'leite', qty: '500', unit: 'ml', order: 0 },
             { id: 'ghost-ri14', recipeId: 'ghost-r5', text: 'açúcar', qty: '1', unit: 'xícara', order: 1 },
+            { id: 'ghost-ri18', recipeId: 'ghost-r5', text: 'açúcar', qty: '1', unit: 'xícara', order: 0, partId: 'ghost-pt1' },
+            { id: 'ghost-ri19', recipeId: 'ghost-r5', text: 'água', qty: '1/2', unit: 'xícara', order: 1, partId: 'ghost-pt1' },
             { id: 'ghost-ri15', recipeId: 'ghost-r6', text: 'batatas', qty: '3', unit: '', order: 0 },
             { id: 'ghost-ri16', recipeId: 'ghost-r6', text: 'couve fatiada', qty: '1', unit: 'maço', order: 1 },
             { id: 'ghost-ri17', recipeId: 'ghost-r6', text: 'linguiça', qty: '1', unit: '', order: 2 }
@@ -154,12 +156,16 @@
             { id: 'ghost-rs9', recipeId: 'ghost-r4', text: 'Espere esfriar e enrole nas mãos untadas.', order: 1 },
             { id: 'ghost-rs10', recipeId: 'ghost-r5', text: 'Caramelize o açúcar na forma.', order: 0 },
             { id: 'ghost-rs11', recipeId: 'ghost-r5', text: 'Asse em banho-maria por 1 hora.', order: 1 },
+            { id: 'ghost-rs14', recipeId: 'ghost-r5', text: 'Derreta o açúcar até dourar e junte a água com cuidado.', order: 0, partId: 'ghost-pt1' },
             { id: 'ghost-rs12', recipeId: 'ghost-r6', text: 'Cozinhe as batatas e bata com o caldo.', order: 0 },
             { id: 'ghost-rs13', recipeId: 'ghost-r6', text: 'Junte a couve e a linguiça em rodelas.', order: 1 }
           ],
           plans: [
             { id: 'ghost-rp1', recipeId: 'ghost-r1', date: jbGhostYmdFrom(today, 2), created: iso },
             { id: 'ghost-rp2', recipeId: 'ghost-r4', date: jbGhostYmdFrom(today, 5), created: iso }
+          ],
+          parts: [
+            { id: 'ghost-pt1', recipeId: 'ghost-r5', name: 'Calda', order: 0 }
           ]
         }
       };

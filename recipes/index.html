@@ -87,6 +87,12 @@
     <div class="fg"><label class="fl">Notas</label><textarea class="field" id="recipeNotes" rows="2" placeholder="Dicas, variações…"></textarea></div>
     <div class="fg"><label class="fl">Ingredientes</label><div id="recipeIngList" class="edit-lines"></div><button type="button" class="btn ghost" onclick="addIngLine()">+ Ingrediente</button></div>
     <div class="fg"><label class="fl">Passos</label><div id="recipeStepList" class="edit-lines"></div><button type="button" class="btn ghost" onclick="addStepLine()">+ Passo</button></div>
+    <div class="fg">
+      <label class="fl">Partes</label>
+      <div class="rg">Ganache, recheio, calda — cada uma com seus ingredientes e passos.</div>
+      <div id="recipePartList"></div>
+      <button type="button" class="btn ghost" onclick="addPartBlock()">+ Nova parte</button>
+    </div>
     <button class="btn-primary" onclick="saveRecipeModal()">Salvar</button>
     <button class="del" id="recipeDelBtn" onclick="deleteRecipeModal()" style="display:none">Excluir receita</button>
   </div>

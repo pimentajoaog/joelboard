@@ -2121,7 +2121,7 @@ function deleteSheetRow(tab, rowNum) {
   });
 }
 
-/* ---- search / online recipes (Spoonacular → Foodashi → TheMealDB) ---- */
+/* ---- search / online recipes (Spoonacular → TheMealDB) ---- */
 var SEARCH_BY_KEY = 'jb_recipes_search_by';
 var searchBy = 'name'; /* name | ingredient */
 var searchProvider = 'themealdb';
@@ -2137,7 +2137,6 @@ function saveSearchByPref() {
 }
 function providerLabel(name) {
   if (name === 'spoonacular') return 'Spoonacular';
-  if (name === 'foodashi') return 'Foodashi';
   return 'TheMealDB';
 }
 function paintSearchBy() {

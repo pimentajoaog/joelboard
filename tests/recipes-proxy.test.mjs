@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import {
   recipesApiKey,
   spoonacularApiKey,
-  foodashiApiKey,
   recipesProviderChain,
   ingredientQueryVariants,
   proxyRecipesRequest
@@ -22,21 +21,14 @@ test('recipesApiKey prefers THEMEALDB_KEY', function () {
   assert.equal(auth.source, 'THEMEALDB_KEY');
 });
 
-test('recipesProviderChain orders Spoonacular then Foodashi then TheMealDB', function () {
+test('recipesProviderChain orders Spoonacular then TheMealDB', function () {
   assert.deepEqual(recipesProviderChain({}), ['themealdb']);
   assert.deepEqual(recipesProviderChain({ SPOONACULAR_KEY: 's' }), ['spoonacular', 'themealdb']);
-  assert.deepEqual(recipesProviderChain({ FOODASHI_KEY: 'f' }), ['foodashi', 'themealdb']);
-  assert.deepEqual(
-    recipesProviderChain({ SPOONACULAR_KEY: 's', FOODASHI_KEY: 'f' }),
-    ['spoonacular', 'foodashi', 'themealdb']
-  );
 });
 
-test('spoonacular and foodashi key helpers', function () {
+test('spoonacularApiKey helper', function () {
   assert.equal(spoonacularApiKey({}).key, '');
-  assert.equal(foodashiApiKey({}).key, '');
   assert.equal(spoonacularApiKey({ SPOONACULAR_API_KEY: 'x' }).key, 'x');
-  assert.equal(foodashiApiKey({ FOODASHI_API_KEY: 'y' }).key, 'y');
 });
 
 test('proxyRecipesRequest ping reports chain', async function () {

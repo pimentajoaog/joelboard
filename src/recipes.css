@@ -984,6 +984,7 @@ button.step-num{ cursor:pointer; }
   border-right:1.5px solid var(--muted);
   border-bottom:1.5px solid var(--muted);
   transform:rotate(45deg);
+  transition:transform .2s cubic-bezier(.16,.84,.22,1), top .2s ease;
 }
 .leaf-part.is-open .leaf-part-head::after{
   top:15px; transform:rotate(-135deg);
@@ -1000,8 +1001,24 @@ button.step-num{ cursor:pointer; }
   color:var(--muted);
 }
 .leaf-part-meta em{ font-style:normal; color:var(--primary); }
-.leaf-part-body{ display:none; padding:0 8px 8px; }
-.leaf-part.is-open .leaf-part-body{ display:block; }
+.leaf-part-body{
+  display:grid; grid-template-rows:0fr;
+  opacity:0;
+  transition:
+    grid-template-rows .32s cubic-bezier(.16,.84,.22,1),
+    opacity .16s ease;
+}
+.leaf-part.is-open .leaf-part-body{
+  grid-template-rows:1fr;
+  opacity:1;
+  transition:
+    grid-template-rows .32s cubic-bezier(.16,.84,.22,1),
+    opacity .22s ease .05s;
+}
+.leaf-part-fold{
+  min-height:0; overflow:hidden;
+  padding:0 8px 8px;
+}
 .leaf-part .leaf-sec{ margin-top:8px; }
 .leaf-part .leaf-sec h3{ font-size:10px; margin-bottom:6px; padding-bottom:4px; }
 .leaf-part .ing-list, .leaf-part .step-list{ gap:6px; }
@@ -1090,7 +1107,7 @@ button.step-num{ cursor:pointer; }
 @media (prefers-reduced-motion: reduce){
   .book-slot, .recipec, .detail, .book-body.is-intro{ animation:none; }
   .page-turn{ display:none; }
-  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-tool, .book-mode::before, .book-find-slot{ transition:none; }
+  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-tool, .book-mode::before, .book-find-slot, .leaf-part-body, .leaf-part-head::after{ transition:none; }
   .ck-t{ transition:none; }
   .ing-list li.just-on::after, .step-list li.just-on::after{ display:none; }
   li.just-on .ichk, li.just-on .step-num{ animation:none; }

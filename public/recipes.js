@@ -1296,12 +1296,51 @@ function partOpenKey(recipeId, partId) {
 }
 function paintPartOpenState() {
   var all = document.querySelectorAll('.leaf-part[data-part-key]');
-  for (var i = 0; i < all.length; i++) {
+  var motion = !reducedMotion();
+  var first = [];
+  var i;
+  if (motion) {
+    for (i = 0; i < all.length; i++) first.push(all[i].getBoundingClientRect());
+  }
+  for (i = 0; i < all.length; i++) {
     var on = (all[i].getAttribute('data-part-key') || '') === _openPartKey;
     all[i].classList.toggle('is-open', on);
     var head = all[i].querySelector('.leaf-part-head');
     if (head) head.setAttribute('aria-expanded', on ? 'true' : 'false');
   }
+  if (!motion) return;
+  for (i = 0; i < all.length; i++) playPartFlip(all[i], first[i]);
+}
+function playPartFlip(el, prev) {
+  if (!el || !prev) return;
+  var next = el.getBoundingClientRect();
+  var dx = prev.left - next.left;
+  var dy = prev.top - next.top;
+  var dw = prev.width - next.width;
+  if (dx * dx + dy * dy + dw * dw < 1) return;
+  if (el._partAn) {
+    try { el._partAn.cancel(); } catch (_) {}
+    el._partAn = null;
+  }
+  var from = { transform: 'translate(' + dx + 'px,' + dy + 'px)' };
+  var to = { transform: 'translate(0,0)' };
+  if (Math.abs(dw) >= 1) {
+    from.width = prev.width + 'px';
+    to.width = next.width + 'px';
+    el.style.justifySelf = 'start';
+    el.style.boxSizing = 'border-box';
+  }
+  var anim = el.animate([from, to], {
+    duration: 320,
+    easing: 'cubic-bezier(.16,.84,.22,1)'
+  });
+  el._partAn = anim;
+  function clear() {
+    el.style.justifySelf = '';
+    el.style.boxSizing = '';
+    if (el._partAn === anim) el._partAn = null;
+  }
+  anim.finished.then(clear, clear);
 }
 function toggleRecipePart(recipeId, partId, ev) {
   if (ev) ev.stopPropagation();
@@ -1419,6 +1458,7 @@ function partSection(r, p) {
     + (meta.length ? '<span class="leaf-part-meta">' + meta.join('') + '</span>' : '')
     + '</button>'
     + '<div class="leaf-part-body">'
+    + '<div class="leaf-part-fold">'
     + '<div class="leaf-sec">'
     + '<h3>Mise en place' + (ings.length ? '<em data-tally="' + esc(r.id + '|ing|' + p.id) + '">' + ingDone + '/' + ings.length + '</em>' : '') + '</h3>'
     + (ingRows ? '<ul class="ing-list">' + ingRows + '</ul>' : '<div class="rg">Nenhum ingrediente.</div>')
@@ -1426,6 +1466,7 @@ function partSection(r, p) {
     + '<div class="leaf-sec">'
     + '<h3>Passo a passo' + (steps.length ? '<em data-tally="' + esc(r.id + '|step|' + p.id) + '">' + stepDone + '/' + steps.length + '</em>' : '') + '</h3>'
     + (stepRows ? '<ul class="step-list">' + stepRows + '</ul>' : '<div class="rg">Nenhum passo.</div>')
+    + '</div>'
     + '</div>'
     + '</div>'
     + '</div>';

@@ -975,23 +975,94 @@ function saveBookModal() {
 function deleteBookModal() {
   if (!_editBookId) return;
   var id = _editBookId;
+  var book = bookById(id);
   var recs = recipesInBook(id);
-  JB.confirm('Excluir este livro?', recs.length ? ('Também remove ' + recs.length + ' receita(s).') : 'Só o livro vazio.', function () {
-    var chain = Promise.resolve();
-    recs.forEach(function (r) {
-      chain = chain.then(function () { return deleteRecipeCascade(r.id); });
-    });
-    chain.then(function () {
-      return findRow('Cookbooks', 0, id).then(function (rn) {
-        if (rn < 0) return;
-        return deleteSheetRow('Cookbooks', rn);
-      });
-    }).then(function () {
+  var title = 'Excluir livro?';
+  var msg = recs.length
+    ? ('“' + (book && book.name ? book.name : 'Este livro') + '” e as ' + recs.length
+      + ' receita' + (recs.length === 1 ? '' : 's')
+      + ' dentro (ingredientes e passos) serão excluídos. Não dá pra desfazer.')
+    : ('“' + (book && book.name ? book.name : 'Este livro') + '” está vazio e será excluído. Não dá pra desfazer.');
+  JB.confirm(title, msg, function () {
+    toast('Excluindo…');
+    deleteBookCascade(id).then(function () {
       closeBookModal();
-      if (openBookId === id) goShelf();
+      if (openBookId === id || (openRecipeId && recipeById(openRecipeId) && recipeById(openRecipeId).cookbookId === id)) {
+        goShelf();
+      }
       return refreshQuiet();
+    }).then(function () {
+      toast('Livro excluído');
     }).catch(function (e) { toast(e.message || 'Falha ao excluir'); });
-  }, { danger: true, yes: 'Excluir' });
+  }, { danger: true, yes: 'Excluir livro', no: 'Cancelar' });
+}
+
+/** Wipe a cookbook and every recipe / ingredient / step that belongs to it. */
+function deleteBookCascade(bookId) {
+  var recipeIds = {};
+  recipesInBook(bookId).forEach(function (r) { recipeIds[r.id] = true; });
+  return Promise.all([
+    JB.api('GET', ssUrl('/values/Ingredients?valueRenderOption=UNFORMATTED_VALUE')),
+    JB.api('GET', ssUrl('/values/Steps?valueRenderOption=UNFORMATTED_VALUE')),
+    JB.api('GET', ssUrl('/values/Recipes?valueRenderOption=UNFORMATTED_VALUE')),
+    JB.api('GET', ssUrl('/values/Cookbooks?valueRenderOption=UNFORMATTED_VALUE'))
+  ]).then(function (pack) {
+    var ingRows = collectRowNumsAny(pack[0].values, 1, recipeIds);
+    var stepRows = collectRowNumsAny(pack[1].values, 1, recipeIds);
+    var recipeRows = [];
+    var recipeVals = pack[2].values || [];
+    for (var i = 1; i < recipeVals.length; i++) {
+      var rr = recipeVals[i] || [];
+      if (recipeIds[String(rr[0] || '')] || String(rr[1] || '') === String(bookId)) {
+        recipeRows.push(i + 1);
+      }
+    }
+    var bookRow = -1;
+    var bookVals = pack[3].values || [];
+    for (var j = 1; j < bookVals.length; j++) {
+      if (String((bookVals[j] || [])[0] || '') === String(bookId)) {
+        bookRow = j + 1;
+        break;
+      }
+    }
+    var reqs = [];
+    function pushDeletes(sheetId, rows) {
+      rows.sort(function (a, b) { return b - a; }).forEach(function (rn) {
+        reqs.push({
+          deleteDimension: {
+            range: { sheetId: sheetId, dimension: 'ROWS', startIndex: rn - 1, endIndex: rn }
+          }
+        });
+      });
+    }
+    pushDeletes(recipesGrid.Ingredients, ingRows);
+    pushDeletes(recipesGrid.Steps, stepRows);
+    pushDeletes(recipesGrid.Recipes, recipeRows);
+    if (bookRow > 0) pushDeletes(recipesGrid.Cookbooks, [bookRow]);
+    if (!reqs.length) return null;
+    return JB.api('POST', ssUrl(':batchUpdate'), { requests: reqs });
+  }).then(function () {
+    purgeRecipeChecks(Object.keys(recipeIds));
+  });
+}
+
+function collectRowNumsAny(values, idCol, idMap) {
+  var out = [];
+  for (var i = 1; i < (values || []).length; i++) {
+    var key = String((values[i] || [])[idCol] || '');
+    if (idMap[key]) out.push(i + 1);
+  }
+  return out;
+}
+
+function purgeRecipeChecks(ids) {
+  if (!ids || !ids.length) return;
+  var m = loadChecks();
+  var changed = false;
+  ids.forEach(function (id) {
+    if (m[id]) { delete m[id]; changed = true; }
+  });
+  if (changed) saveChecks(m);
 }
 
 /* ---- recipe modal ---- */
@@ -1145,13 +1216,14 @@ function collectRowNums(values, idCol, id) {
 function deleteRecipeModal() {
   if (!_editRecipeId) return;
   var id = _editRecipeId;
-  JB.confirm('Excluir esta receita?', 'Não dá pra desfazer.', function () {
+  JB.confirm('Excluir esta receita?', 'Ingredientes, passos e a receita somem. Não dá pra desfazer.', function () {
     deleteRecipeCascade(id).then(function () {
+      purgeRecipeChecks([id]);
       closeRecipeModal();
       if (openRecipeId === id) backToBook();
       return refreshQuiet();
     }).catch(function (e) { toast(e.message || 'Falha ao excluir'); });
-  }, { danger: true, yes: 'Excluir' });
+  }, { danger: true, yes: 'Excluir', no: 'Cancelar' });
 }
 
 function deleteRecipeCascade(id) {

@@ -6,12 +6,15 @@ import vm from 'node:vm';
 
 const js = readFileSync(new URL('../public/recipes.js', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../recipes/index.html', import.meta.url), 'utf8');
+const helpStart = js.indexOf('var _scaleByRecipe');
+const helpEnd = js.indexOf('/* ---- measure helpers end ---- */');
 const start = js.indexOf('function shopIngLabel');
 const end = js.indexOf('function shopBarHtml');
+assert.ok(helpStart >= 0 && helpEnd > helpStart, 'measure helpers');
 assert.ok(start > 0 && end > start, 'shop helpers');
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(js.slice(start, end), ctx);
+vm.runInContext(js.slice(helpStart, helpEnd) + '\n' + js.slice(start, end), ctx);
 
 test('shopping list groups selected mise items by recipe', function () {
   var book = { id: 'cb1', name: 'Doces', icon: '🧁' };
@@ -34,6 +37,18 @@ test('shopping list groups selected mise items by recipe', function () {
   assert.equal(pack.itens[0].tipo, 'g');
   assert.equal(pack.itens[0].marcavel, false);
   assert.equal(pack.itens[1].marcavel, true);
+});
+
+test('shopping list uses the current view scale', function () {
+  ctx._scaleByRecipe.rs = 4;
+  var pack = ctx.buildShopList(
+    { id: 'cb1', name: 'Doces', icon: '🧁' },
+    [{ id: 'rs', cookbookId: 'cb1', title: 'Brigadeiro', order: 0, servings: '2' }],
+    [{ id: 'is', recipeId: 'rs', qty: '2', unit: 'colheres', text: 'chocolate', order: 0 }],
+    { is: {} }
+  );
+  assert.equal(pack.itens.map(function (x) { return x.texto; }).join('|'), 'Brigadeiro|4 colheres chocolate');
+  delete ctx._scaleByRecipe.rs;
 });
 
 test('plaque Notes icon and jb-link are wired', function () {

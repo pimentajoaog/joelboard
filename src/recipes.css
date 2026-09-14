@@ -788,6 +788,20 @@ body.recipes-book .secbar{ margin-bottom:10px; }
   background:color-mix(in srgb, var(--primary) 12%, transparent);
   border-radius:999px; padding:3px 9px;
 }
+.ftag.serv-step{
+  display:inline-flex; align-items:center; gap:2px; padding:2px 4px;
+}
+.serv-btn{
+  width:22px; height:22px; border:0; border-radius:999px; padding:0;
+  background:color-mix(in srgb, var(--primary) 18%, transparent);
+  color:var(--primary); font:inherit; font-weight:800; line-height:1; cursor:pointer;
+}
+.serv-btn:hover{ background:color-mix(in srgb, var(--primary) 28%, transparent); }
+.serv-n{ padding:0 5px; }
+.ing-hint{
+  display:block; margin-top:2px;
+  font-size:11px; font-weight:600; color:var(--muted);
+}
 .leaf-sec{ margin-top:18px; }
 .leaf-sec h3{
   display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -1013,10 +1027,20 @@ button.step-num{ cursor:pointer; }
 .icon-pick-btn.on{ border-color:var(--primary); background:color-mix(in srgb, var(--primary) 14%, var(--surface2)); }
 .icon-pick-label{ font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin:10px 0 8px; }
 
-.edit-lines{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
-.edit-line{ display:grid; grid-template-columns:1fr 72px 28px; gap:6px; align-items:center; }
-.edit-line.has-part-btn{ grid-template-columns:1fr 72px 32px 28px; }
+.edit-lines{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; overflow:visible; }
+.edit-line{ display:grid; grid-template-columns:minmax(0,1fr) 56px minmax(92px,120px) 28px; gap:6px; align-items:center; }
+.edit-line.has-part-btn{ grid-template-columns:minmax(0,1fr) 56px minmax(92px,120px) 32px 28px; }
 .edit-line.step{ grid-template-columns:1fr 28px; }
+.edit-line .qty-field{ min-width:0; padding-left:8px; padding-right:8px; }
+.unit-pick{ min-width:0; }
+.unit-pick.is-other{ display:grid; gap:4px; }
+.unit-dd .jb-dd-btn{
+  height:36px; padding:6px 8px; font-size:12px; font-weight:700;
+}
+.unit-dd .jb-dd-btn span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.unit-dd .jb-dd-menu{ min-width:220px; left:auto; right:0; z-index:600; }
+.unit-dd .jb-dd-opt{ font-size:13px; font-weight:600; padding:8px 10px; white-space:normal; }
+.unit-custom{ height:36px; padding:6px 8px; font-size:12px; }
 .ing-part-make{
   width:32px; height:36px; padding:0; border-radius:8px; cursor:pointer;
   display:inline-flex; align-items:center; justify-content:center;

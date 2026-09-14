@@ -2954,6 +2954,82 @@ function resolveRecipeImageUrl() {
   });
 }
 
+function reorderDraft(arr, idxs) {
+  if (!arr || !idxs || idxs.length !== arr.length) return false;
+  var seen = {}, next = [], i, k;
+  for (i = 0; i < idxs.length; i++) {
+    k = Number(idxs[i]);
+    if (!isFinite(k) || k < 0 || k >= arr.length || seen[k]) return false;
+    seen[k] = 1;
+    next.push(arr[k]);
+  }
+  for (i = 0; i < next.length; i++) arr[i] = next[i];
+  return true;
+}
+var _rcDrag = null;
+function editHandle(listId) {
+  return '<button type="button" class="edit-handle" onpointerdown="rcDragBegin(event,\'' + listId + '\')" title="Arrastar" aria-label="Arrastar">⠿</button>';
+}
+function rcDraftForList(listId) {
+  if (listId === 'ing') return _ingDraft;
+  if (listId === 'step') return _stepDraft;
+  var m = String(listId || '').match(/^p(ing|step)-(\d+)$/);
+  if (!m) return null;
+  var p = _partDraft[Number(m[2])];
+  return p ? (m[1] === 'ing' ? p.ings : p.steps) : null;
+}
+function rcPaintList(listId) {
+  if (listId === 'ing') paintIngLines();
+  else if (listId === 'step') paintStepLines();
+  else paintPartBlocks();
+}
+function rcDragBegin(ev, listId) {
+  if (!ev || ev.button) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  var row = ev.currentTarget && ev.currentTarget.closest ? ev.currentTarget.closest('.edit-line') : null;
+  var cont = row && row.parentNode;
+  if (!row || !cont) return;
+  _rcDrag = { row: row, cont: cont, listId: listId, moved: false };
+  row.classList.add('dragging');
+  document.addEventListener('pointermove', rcDragMove, { passive: false });
+  document.addEventListener('pointerup', rcDragEnd, { once: true });
+  document.addEventListener('pointercancel', rcDragEnd, { once: true });
+}
+function rcDragMove(ev) {
+  if (!_rcDrag) return;
+  ev.preventDefault();
+  _rcDrag.moved = true;
+  var y = ev.clientY;
+  var row = _rcDrag.row;
+  var rows = [].slice.call(_rcDrag.cont.children).filter(function (r) {
+    return r.classList && r.classList.contains('edit-line') && r !== row;
+  });
+  var target = null, i, rect;
+  for (i = 0; i < rows.length; i++) {
+    rect = rows[i].getBoundingClientRect();
+    if (y < rect.top + rect.height / 2) { target = rows[i]; break; }
+  }
+  if (target) _rcDrag.cont.insertBefore(row, target);
+  else _rcDrag.cont.appendChild(row);
+}
+function rcDragEnd() {
+  if (!_rcDrag) return;
+  document.removeEventListener('pointermove', rcDragMove);
+  var d = _rcDrag;
+  d.row.classList.remove('dragging');
+  _rcDrag = null;
+  if (!d.moved) return;
+  var idxs = [].slice.call(d.cont.children).filter(function (r) {
+    return r.classList && r.classList.contains('edit-line');
+  }).map(function (r) { return r.getAttribute('data-i'); });
+  if (!reorderDraft(rcDraftForList(d.listId), idxs)) {
+    rcPaintList(d.listId);
+    return;
+  }
+  rcPaintList(d.listId);
+}
+
 function blankIng() { return { id: '', text: '', qty: '', unit: '', qty2: '', unit2: '' }; }
 function draftIngFrom(x) {
   return { id: x.id, text: x.text, qty: x.qty, unit: x.unit, qty2: x.qty2 || '', unit2: x.unit2 || '' };
@@ -3066,7 +3142,8 @@ function paintIngLines() {
   el.innerHTML = _ingDraft.map(function (line, i) {
     var linked = !!draftPartFromIng(line.id);
     var altOn = ingHasAlt(line);
-    return '<div class="edit-line has-part-btn has-alt-btn' + (altOn ? ' is-alt' : '') + '">'
+    return '<div class="edit-line has-part-btn has-alt-btn' + (altOn ? ' is-alt' : '') + '" data-i="' + i + '">'
+      + editHandle('ing')
       + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_ingDraft[' + i + '].text=this.value">'
       + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_ingDraft[' + i + '].qty=this.value">'
       + unitPickerHtml(line, 'pickIngUnit(' + i + ',', '_ingDraft[' + i + '].unit=this.value')
@@ -3086,7 +3163,8 @@ function paintStepLines() {
   var el = $('recipeStepList');
   if (!el) return;
   el.innerHTML = _stepDraft.map(function (line, i) {
-    return '<div class="edit-line step">'
+    return '<div class="edit-line step" data-i="' + i + '">'
+      + editHandle('step')
       + '<input class="field" placeholder="Passo ' + (i + 1) + '" value="' + esc(line.text) + '" oninput="_stepDraft[' + i + '].text=this.value">'
       + '<button type="button" class="rm" onclick="rmStepLine(' + i + ')">×</button></div>';
   }).join('');
@@ -3175,7 +3253,8 @@ function paintPartBlocks() {
   el.innerHTML = _partDraft.map(function (p, i) {
     var ings = (p.ings || []).map(function (line, j) {
       var altOn = ingHasAlt(line);
-      return '<div class="edit-line has-alt-btn' + (altOn ? ' is-alt' : '') + '">'
+      return '<div class="edit-line has-alt-btn' + (altOn ? ' is-alt' : '') + '" data-i="' + j + '">'
+        + editHandle('ping-' + i)
         + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_partDraft[' + i + '].ings[' + j + '].text=this.value">'
         + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_partDraft[' + i + '].ings[' + j + '].qty=this.value">'
         + unitPickerHtml(line, 'pickPartUnit(' + i + ',' + j + ',', '_partDraft[' + i + '].ings[' + j + '].unit=this.value')
@@ -3185,7 +3264,8 @@ function paintPartBlocks() {
         + '</div>';
     }).join('');
     var steps = (p.steps || []).map(function (line, j) {
-      return '<div class="edit-line step">'
+      return '<div class="edit-line step" data-i="' + j + '">'
+        + editHandle('pstep-' + i)
         + '<input class="field" placeholder="Passo ' + (j + 1) + '" value="' + esc(line.text) + '" oninput="_partDraft[' + i + '].steps[' + j + '].text=this.value">'
         + '<button type="button" class="rm" onclick="rmPartStep(' + i + ',' + j + ')">×</button></div>';
     }).join('');

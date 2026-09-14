@@ -1060,12 +1060,24 @@ button.step-num{ cursor:pointer; }
 .icon-pick-label{ font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin:10px 0 8px; }
 
 .edit-lines{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; overflow:visible; }
-.edit-line{ display:grid; grid-template-columns:minmax(0,1fr) 56px minmax(92px,120px) 28px; gap:6px; align-items:center; }
-.edit-line.has-alt-btn{ grid-template-columns:minmax(0,1fr) 56px minmax(92px,120px) 32px 28px; }
-.edit-line.has-part-btn{ grid-template-columns:minmax(0,1fr) 56px minmax(92px,120px) 32px 28px; }
-.edit-line.has-part-btn.has-alt-btn{ grid-template-columns:minmax(0,1fr) 56px minmax(92px,120px) 32px 32px 28px; }
-.edit-line.is-alt .edit-alt{ grid-column:2 / 4; display:grid; grid-template-columns:56px minmax(0,1fr); gap:6px; }
-.edit-line.step{ grid-template-columns:1fr 28px; }
+.edit-line{ display:grid; grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 28px; gap:6px; align-items:center; }
+.edit-line.has-alt-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 28px; }
+.edit-line.has-part-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 28px; }
+.edit-line.has-part-btn.has-alt-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 32px 28px; }
+.edit-line.is-alt .edit-alt{ grid-column:3 / 5; display:grid; grid-template-columns:56px minmax(0,1fr); gap:6px; }
+.edit-line.step{ grid-template-columns:22px 1fr 28px; }
+.edit-handle{
+  width:22px; height:36px; padding:0; border:0; background:transparent;
+  color:var(--muted); cursor:grab; font-size:14px; line-height:1;
+  display:inline-flex; align-items:center; justify-content:center;
+  opacity:.35; touch-action:none; user-select:none;
+}
+.edit-line:hover .edit-handle, .edit-line.dragging .edit-handle{ opacity:.8; }
+.edit-handle:active{ cursor:grabbing; }
+.edit-line.dragging{ opacity:.55; }
+@media (hover:none){
+  .edit-handle{ opacity:.45; min-width:28px; min-height:36px; }
+}
 .edit-line .qty-field{ min-width:0; padding-left:8px; padding-right:8px; }
 .unit-pick{ min-width:0; }
 .unit-pick.is-other{ display:grid; gap:4px; }

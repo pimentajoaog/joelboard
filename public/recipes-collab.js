@@ -892,7 +892,7 @@ function rcJoinCollab(sheetId) {
     return rcLoadCollabBooks().then(function () {
       showApp();
       if (typeof applyRoute === 'function') applyRoute();
-      if (!bookById(String(ctx.metaRow[6])) || (typeof JB.qsGet === 'function' && !JB.qsGet().r && !JB.qsGet().b)) {
+      if (!bookById(String(ctx.metaRow[6])) || (typeof JB.qsGet === 'function' && !JB.qsGet('r') && !JB.qsGet('b'))) {
         openBook(String(ctx.metaRow[6]));
       }
       toast('✓ Livro compartilhado aberto');

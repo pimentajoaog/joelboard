@@ -2,7 +2,7 @@
    Classic global script (NOT a module); loads after /joelboard.js. */
 var DATA=null, plannerGrid={}, authDone=false, openPlanId=null, homeQuery='', _pbooted=false, _edMenuOpen=false, _focusDay='';
 var _stPlHome=false, _stPlTl={};
-var _linkOpen={}, _linkSnaps={}, _linkTarget=null;
+var _linkOpen={}, _linkSnaps={}, _linkCatalog=[], _linkTarget=null;
 var _editPlanId=null, _editDayId=null, _editEvtId=null, _editEvtDayId=null, _plEvtMer='', newStart='', newEnd='', newIcon='✈️';
 var _rowCache={};
 var PL_TABS=[
@@ -664,21 +664,22 @@ function plRefreshLinks(){
     return;
   }
 }
-function plShareHint(){
+function plShareHint(snap){
   var p=plan(openPlanId);
-  return (p&&p.collabSheetId)?'Esta lista é só sua. Compartilhe no Notes se o grupo precisar.':'';
+  var planShared=!!(p&&p.collabSheetId);
+  if(window.JB&&JB.link&&JB.link.listShareHint) return JB.link.listShareHint(snap, { planShared:planShared });
+  return planShared?'Esta lista é só sua. Compartilhe no Notes se o grupo precisar.':'';
 }
 function plPeekBlock(ids, kind, ownerId, compact){
   ids=plIds(ids);
   if(!ids.length || !window.JB || !JB.link || !JB.link.peekHtml) return '';
-  var hint=plShareHint();
   return ids.map(function(id){
     var snap=_linkSnaps[id];
     var key=kind+'|'+ownerId+'|'+id;
     if(!snap){
       return '<div class="jb-link-wrap'+(compact?' compact':'')+'"><div class="jb-link-sticker'+(compact?' compact':'')+'"><span class="jb-link-hue" aria-hidden="true"></span><span class="jb-link-title">Lista anexada</span></div></div>';
     }
-    return JB.link.peekHtml(snap, { open:!!_linkOpen[key], key:key, compact:!!compact, shareHint:hint, canUnlink:true, unlinkKey:key });
+    return JB.link.peekHtml(snap, { open:!!_linkOpen[key], key:key, compact:!!compact, shareHint:plShareHint(snap), canUnlink:true, unlinkKey:key });
   }).join('');
 }
 function toggleLinkPeek(key){
@@ -738,6 +739,7 @@ function openLinkPicker(kind, id){
     : '';
   var paint=function(snaps){
     snaps=snaps||[];
+    _linkCatalog=snaps;
     var presets=snaps.filter(function(s){ return s.preset && !attached[s.id]; });
     var lists=snaps.filter(function(s){ return !s.preset && s.sticker && !attached[s.id]; });
     var html='';
@@ -761,6 +763,25 @@ function openLinkPicker(kind, id){
   else paint([]);
 }
 function closeLinkPicker(){ $('linkOverlay').classList.remove('open'); _linkTarget=null; }
+function plSnapById(id){
+  if(_linkSnaps[id]) return _linkSnaps[id];
+  var i, list=_linkCatalog||[];
+  for(i=0;i<list.length;i++) if(list[i] && list[i].id===id) return list[i];
+  return null;
+}
+function plPasteToast(kind, noteId){
+  var p=plan(openPlanId);
+  var snap=plSnapById(noteId);
+  if(p&&p.collabSheetId&&snap&&snap.collabSheetId){
+    toast('✓ Lista colada. Já está compartilhada no Notes.');
+    return;
+  }
+  if(p&&p.collabSheetId){
+    toast('Lista colada. Ela continua só sua — compartilhe no Notes se o grupo precisar.');
+    return;
+  }
+  toast(kind==='day'?'✓ Lista colada no dia':'✓ Lista colada no plano');
+}
 function pickLinkedList(noteId, fromPreset){
   var tgt=_linkTarget; if(!tgt) return;
   var attach=function(id){
@@ -770,8 +791,7 @@ function pickLinkedList(noteId, fromPreset){
       if(window.JB&&JB.link) p.listaIds=JB.link.uniq(p.listaIds);
       closeLinkPicker();
       persistListaTarget('plan', p);
-      if(p.collabSheetId) toast('Lista colada. Ela continua só sua — compartilhe no Notes se o grupo precisar.');
-      else toast('✓ Lista colada no plano');
+      plPasteToast('plan', id);
       return;
     }
     var d=(DATA.dias||[]).find(function(x){ return x.id===tgt.id; }); if(!d) return;
@@ -779,9 +799,7 @@ function pickLinkedList(noteId, fromPreset){
     if(window.JB&&JB.link) d.listaIds=JB.link.uniq(d.listaIds);
     closeLinkPicker();
     persistListaTarget('day', d);
-    var planObj=plan(openPlanId);
-    if(planObj&&planObj.collabSheetId) toast('Lista colada. Ela continua só sua — compartilhe no Notes se o grupo precisar.');
-    else toast('✓ Lista colada no dia');
+    plPasteToast('day', id);
   };
   if(!fromPreset){ attach(noteId); return; }
   if(!window.JB||!JB.link||!JB.link.clonePreset){ toast('Não deu para clonar o preset'); return; }

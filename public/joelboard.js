@@ -3872,7 +3872,17 @@
   }
   /* ---- app URL sync (deep links + browser Back) ---- */
   function qsGet(name) {
-    try { return new URLSearchParams(location.search).get(name) || ''; } catch (_) { return ''; }
+    try {
+      var sp = new URLSearchParams(location.search);
+      if (arguments.length === 0) {
+        var out = {};
+        sp.forEach(function (v, k) { out[k] = v; });
+        return out;
+      }
+      return sp.get(name) || '';
+    } catch (_) {
+      return arguments.length === 0 ? {} : '';
+    }
   }
   function qsPatch(patch, opts) {
     opts = opts || {};

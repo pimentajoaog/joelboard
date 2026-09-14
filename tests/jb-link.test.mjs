@@ -32,6 +32,12 @@ test('packSnapshot counts checkable items and peekHtml strikes done ones', funct
   assert.equal(snap.open, 2);
   var sticky = link.packSnapshot({ id: 'n2', titulo: 'Mala', sticker: true }, []);
   assert.equal(sticky.sticker, true);
+  var shared = link.packSnapshot({
+    id: 'n8', titulo: 'Mala', sticker: true, collabSheetId: 'sid',
+    collabMembers: [{ email: 'a@b.com', nome: 'Ana', status: 'active' }]
+  }, []);
+  assert.equal(shared.collabSheetId, 'sid');
+  assert.equal(shared.collabMembers.length, 1);
   var preset = link.packSnapshot({ id: 'n3', titulo: 'Kit', preset: true, sticker: true }, []);
   assert.equal(preset.sticker, false);
   var html = link.peekHtml(snap, { open: true, shareHint: 'só sua' });
@@ -119,6 +125,30 @@ test('defaultPresets seed the two travel kits', function () {
   assert.equal(link.isDefaultKitTitle('Mala — fim de semana'), false);
 });
 
+test('listShareHint names Notes members instead of the personal warning', function () {
+  ctx.JB = { email: function () { return 'me@x.com'; } };
+  assert.equal(link.listShareHint({}), '');
+  assert.equal(
+    link.listShareHint({}, { planShared: true }),
+    'Esta lista é só sua. Compartilhe no Notes se o grupo precisar.'
+  );
+  assert.equal(
+    link.listShareHint({ collabSheetId: 'sid', collabMembers: [] }, { planShared: true }),
+    'Compartilhada no Notes.'
+  );
+  assert.equal(
+    link.listShareHint({
+      collabSheetId: 'sid',
+      collabMembers: [
+        { email: 'me@x.com', nome: 'Eu', status: 'active' },
+        { email: 'gabi@x.com', nome: 'Gabi', status: 'active' },
+        { email: 'joel@x.com', nome: 'Joel', status: 'active' }
+      ]
+    }, { planShared: true }),
+    'Compartilhada com Gabi e Joel.'
+  );
+});
+
 test('parseCollabListPack reads Meta + Itens from a shared note sheet', function () {
   var pack = link.parseCollabListPack(
     [
@@ -161,6 +191,15 @@ test('loadSnapshots fills attached lists from Notes Compartilhadas', async funct
           ]
         });
       }
+      if (url.indexOf('collab-sid') >= 0 && url.indexOf('Membros') >= 0) {
+        return Promise.resolve({
+          values: [
+            ['Email', 'Nome', 'Icone', 'Papel', 'Status'],
+            ['a@b.com', 'Ana', '🦊', 'owner', 'active'],
+            ['c@d.com', 'Caio', '🐻', 'editor', 'active']
+          ]
+        });
+      }
       if (url.indexOf('collab-sid') >= 0) {
         return Promise.resolve({
           valueRanges: [
@@ -177,6 +216,9 @@ test('loadSnapshots fills attached lists from Notes Compartilhadas', async funct
   assert.equal(snaps[0].id, 'trip1');
   assert.equal(snaps[0].titulo, 'Viagem nacional');
   assert.equal(snaps[0].items[0].texto, 'Passaporte');
+  assert.equal(snaps[0].collabSheetId, 'collab-sid');
+  assert.equal(snaps[0].collabMembers[1].nome, 'Caio');
   assert.ok(calls.some(function (u) { return u.indexOf('Compartilhadas') >= 0; }));
   assert.ok(calls.some(function (u) { return u.indexOf('collab-sid') >= 0; }));
+  assert.ok(calls.some(function (u) { return u.indexOf('Membros') >= 0; }));
 });

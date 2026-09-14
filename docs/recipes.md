@@ -14,6 +14,7 @@ Dados na planilha **Joelboard Recipes** no seu Drive. Livros compartilhados vira
 
 - Modo **páginas** (folhas) ou **cards**. Troca no livro ou em Ajustes.
 - Busca no livro, lista de compras (cesta → Notes), compartilhar (link `/recipes/?join=…`).
+- A URL guarda o livro (`?b=`) e a receita (`?r=`). Voltar no navegador e ← Estante / ← Livro seguem o mesmo caminho.
 
 ## Receita
 

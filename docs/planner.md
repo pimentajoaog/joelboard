@@ -24,7 +24,7 @@ Horário aceita `16h`, `16:00`, `16`, `4 PM`, `~4PM`, `8h30`, `tarde`, `noite` �
 - **⋯ → Colar lista do Notes** no plano, ou 📌 no dia.
 - Aparecem listas com **Liberar no Planner** no Notes — inclusive as **compartilhadas**, não só as da planilha pessoal.
 - Um kit vira uma lista nova (o título leva o nome do plano). A lista viva pode se chamar igual ao kit; continua lista, não some para a faixa de kits.
-- Num plano compartilhado a lista em si continua pessoal até você compartilhá-la no Notes.
+- Num plano compartilhado a lista em si continua pessoal até você compartilhá-la no Notes. Se ela já é compartilhada, o cartão mostra **Compartilhada com …** em vez do aviso de lista só sua.
 
 ## Compartilhar
 

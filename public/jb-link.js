@@ -45,7 +45,9 @@
       items: rows,
       done: done,
       total: chk.length,
-      open: Math.max(0, chk.length - done)
+      open: Math.max(0, chk.length - done),
+      collabSheetId: note.collabSheetId || '',
+      collabMembers: note.collabMembers || []
     };
   }
   function snapshotsFromLists(ids, notas, itens) {
@@ -127,6 +129,54 @@
     });
     return { notas: [note], itens: itens };
   }
+  function parseCollabMembers(rows) {
+    return (rows || []).slice(1).filter(function (r) { return r && r[0]; }).map(function (r) {
+      return {
+        email: String(r[0] || '').toLowerCase(),
+        nome: String(r[1] || ''),
+        icone: String(r[2] || ''),
+        papel: String(r[3] || 'editor'),
+        status: String(r[4] || 'active')
+      };
+    });
+  }
+  function memberLabel(m) {
+    var nome = String((m && m.nome) || '').trim();
+    if (nome) return nome;
+    var em = String((m && m.email) || '').trim();
+    var at = em.indexOf('@');
+    return at > 0 ? em.slice(0, at) : em;
+  }
+  function formatPtList(names) {
+    names = (names || []).filter(Boolean);
+    if (!names.length) return '';
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return names[0] + ' e ' + names[1];
+    return names.slice(0, -1).join(', ') + ' e ' + names[names.length - 1];
+  }
+  function listShareHint(snap, opts) {
+    opts = opts || {};
+    snap = snap || {};
+    if (snap.collabSheetId) {
+      var me = '';
+      try { me = String((window.JB && JB.email && JB.email()) || '').toLowerCase(); } catch (_) {}
+      var seen = {}, names = [];
+      (snap.collabMembers || []).forEach(function (m) {
+        var st = String((m && m.status) || 'active');
+        if (st && st !== 'active' && st !== 'pending') return;
+        if (me && String((m && m.email) || '').toLowerCase() === me) return;
+        var label = memberLabel(m);
+        var key = label.toLowerCase();
+        if (!label || seen[key]) return;
+        seen[key] = 1;
+        names.push(label);
+      });
+      if (names.length) return 'Compartilhada com ' + formatPtList(names) + '.';
+      return 'Compartilhada no Notes.';
+    }
+    if (opts.planShared) return 'Esta lista é só sua. Compartilhe no Notes se o grupo precisar.';
+    return '';
+  }
   function mergeNotesPack(a, b) {
     a = a || { notas: [], itens: [] };
     b = b || { notas: [], itens: [] };
@@ -156,7 +206,13 @@
     return JB.api('GET', sheetUrl(sheetId, '/values:batchGet?' + q)).then(function (res) {
       var meta = ((res.valueRanges || [])[0] || {}).values || [];
       var itens = ((res.valueRanges || [])[1] || {}).values || [];
-      return parseCollabListPack(meta, itens, listaId);
+      var pack = parseCollabListPack(meta, itens, listaId);
+      var n = (pack.notas || [])[0];
+      if (n) n.collabSheetId = sheetId;
+      return JB.api('GET', sheetUrl(sheetId, '/values/Membros?valueRenderOption=UNFORMATTED_VALUE')).then(function (mres) {
+        if (n) n.collabMembers = parseCollabMembers(mres && mres.values);
+        return pack;
+      }).catch(function () { return pack; });
     }).catch(function () { return { notas: [], itens: [] }; });
   }
   function fetchCollabNotesPack(wantIds) {
@@ -193,13 +249,9 @@
     if (!ids.length) return Promise.resolve([]);
     if (window.JB && JB.isGhost && JB.isGhost()) return Promise.resolve(snapshotsFromGhost(ids));
     return fetchNotesPack().then(function (pack) {
-      var snaps = snapshotsFromLists(ids, pack.notas, pack.itens);
-      var found = {};
-      snaps.forEach(function (s) { found[s.id] = 1; });
-      var missing = ids.filter(function (id) { return !found[id]; });
-      if (!missing.length) return snaps;
-      return fetchCollabNotesPack(missing).then(function (extra) {
-        return snaps.concat(snapshotsFromLists(missing, extra.notas, extra.itens));
+      return fetchCollabNotesPack(ids).then(function (extra) {
+        var merged = mergeNotesPack(pack, extra);
+        return snapshotsFromLists(ids, merged.notas, merged.itens);
       });
     }).catch(function () { return []; });
   }
@@ -459,7 +511,8 @@
     PEEK: PEEK, NOTAS: NOTAS, PLANNER: PLANNER,
     parseIds: parseIds, formatIds: formatIds, mergeIds: mergeIds, uniq: uniq,
     packSnapshot: packSnapshot, snapshotsFromLists: snapshotsFromLists,
-    parseCollabListPack: parseCollabListPack, mergeNotesPack: mergeNotesPack,
+    parseCollabListPack: parseCollabListPack, parseCollabMembers: parseCollabMembers, mergeNotesPack: mergeNotesPack,
+    listShareHint: listShareHint,
     snapshotsFromGhost: snapshotsFromGhost, loadSnapshots: loadSnapshots,
     loadCatalog: loadCatalog, clonePreset: clonePreset, createList: createList, bornGhostLists: function () { return ghostClones.slice(); }, bornListTitle: bornListTitle, isDefaultKitTitle: isDefaultKitTitle,
     peekPending: peekPending, peekItems: peekItems, peekRows: peekRows, peekHtml: peekHtml,

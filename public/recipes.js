@@ -794,7 +794,6 @@ function loadAll() {
     return (typeof rcLoadCollabBooks === 'function') ? rcLoadCollabBooks() : null;
   }).then(function () {
     showApp();
-    render();
     if (!window._rcTabSync) {
       window._rcTabSync = 1;
       JB.onTabVisible(refreshQuiet);
@@ -802,6 +801,7 @@ function loadAll() {
     }
     if (JB.onRoute) JB.onRoute(applyRoute);
     if (typeof rcCheckJoinParam === 'function' && /[?&]join=/.test(location.search)) {
+      render();
       rcCheckJoinParam();
     } else {
       applyRoute();
@@ -1009,9 +1009,11 @@ function countInBook(bookId) { return recipesInBook(bookId).length; }
 
 /* ---- routing ---- */
 function applyRoute() {
-  var q = JB.qsGet ? JB.qsGet() : {};
-  if (q.r) {
-    var rec = recipeById(q.r);
+  var r = JB.qsGet ? JB.qsGet('r') : '';
+  var b = JB.qsGet ? JB.qsGet('b') : '';
+  var iRaw = JB.qsGet ? JB.qsGet('i') : '';
+  if (r) {
+    var rec = recipeById(r);
     if (rec) {
       applyRoute._retried = '';
       openRecipeId = rec.id;
@@ -1020,24 +1022,30 @@ function applyRoute() {
       render();
       return;
     }
-    if (applyRoute._retried !== q.r && typeof rcLoadCollabBooks === 'function') {
-      applyRoute._retried = q.r;
+    if (applyRoute._retried !== ('r:' + r) && typeof rcLoadCollabBooks === 'function') {
+      applyRoute._retried = 'r:' + r;
       rcLoadCollabBooks().then(applyRoute).catch(function () {});
       return;
     }
   }
-  if (q.b) {
-    if (bookById(q.b)) {
-      openBookId = q.b;
+  if (b) {
+    if (bookById(b)) {
+      applyRoute._retried = '';
+      openBookId = b;
       openRecipeId = null;
       view = 'book';
       var list = recipesInBook(openBookId);
       flipIndex = 0;
-      if (q.i != null) {
-        var ix = Number(q.i);
+      if (iRaw) {
+        var ix = Number(iRaw);
         if (ix >= 0 && ix < list.length) flipIndex = ix;
       }
       render();
+      return;
+    }
+    if (applyRoute._retried !== ('b:' + b) && typeof rcLoadCollabBooks === 'function') {
+      applyRoute._retried = 'b:' + b;
+      rcLoadCollabBooks().then(applyRoute).catch(function () {});
       return;
     }
   }
@@ -1048,9 +1056,20 @@ function applyRoute() {
 }
 function patchRoute() {
   if (!JB.qsPatch) return;
-  if (view === 'recipe' && openRecipeId) JB.qsPatch({ b: openBookId || undefined, r: openRecipeId, i: undefined });
-  else if (view === 'book' && openBookId) JB.qsPatch({ b: openBookId, r: undefined, i: flipIndex || undefined });
-  else JB.qsPatch({ b: undefined, r: undefined, i: undefined });
+  var curB = JB.qsGet ? JB.qsGet('b') : '';
+  var curR = JB.qsGet ? JB.qsGet('r') : '';
+  var next = { b: undefined, r: undefined, i: undefined };
+  if (view === 'recipe' && openRecipeId) {
+    next.b = openBookId || undefined;
+    next.r = openRecipeId;
+  } else if (view === 'book' && openBookId) {
+    next.b = openBookId;
+    if (flipIndex) next.i = String(flipIndex);
+  }
+  var samePlace = (curB || '') === String(next.b || '') && (curR || '') === String(next.r || '');
+  var goingHome = !next.b && !next.r;
+  var dropping = (curR && !next.r) || (curB && !next.b && !next.r);
+  JB.qsPatch(next, { replace: samePlace || goingHome || dropping });
 }
 
 /* ---- render ---- */
@@ -1385,7 +1404,11 @@ function openBook(id) {
   _spreadIntro = true;
   render();
 }
-function goShelf() {
+function goShelf(opts) {
+  opts = opts || {};
+  if (!opts.fromRoute && JB.routeBack && JB.qsGet && (JB.qsGet('b') || JB.qsGet('r'))) {
+    if (JB.routeBack({ b: null, r: null, i: null })) return;
+  }
   view = 'shelf';
   openBookId = null;
   openRecipeId = null;
@@ -2426,7 +2449,11 @@ function openRecipe(id) {
   view = 'recipe';
   render();
 }
-function backToBook() {
+function backToBook(opts) {
+  opts = opts || {};
+  if (!opts.fromRoute && JB.routeBack && JB.qsGet && JB.qsGet('r')) {
+    if (JB.routeBack({ r: null })) return;
+  }
   openRecipeId = null;
   view = 'book';
   _spreadIntro = true;

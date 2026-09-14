@@ -195,3 +195,9 @@ test('collab Meta rewrite covers the full header row, not only Listas', function
   assert.match(collab, /Meta!A1:J1/);
   assert.match(planner, /function findPlanMetaRow/);
 });
+
+test('attached list share hint follows Notes members, not a blanket personal warning', function () {
+  assert.match(planner, /JB\.link\.listShareHint/);
+  assert.match(planner, /Já está compartilhada no Notes/);
+  assert.match(planner, /function plPasteToast/);
+});

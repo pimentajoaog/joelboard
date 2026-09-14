@@ -43,6 +43,12 @@ test('rcSidForBook uses the collab sheet, Plans stay on the personal sid', funct
   assert.match(recipes, /personalSsUrl\('\/values\/Plans!A:G:append/);
   assert.match(recipes, /ensurePlanSnapshotHeaders/);
   assert.match(recipes, /applyRoute\._retried/);
+  assert.match(recipes, /JB\.qsGet\('r'\)/);
+  assert.match(recipes, /JB\.qsGet\('b'\)/);
+  assert.match(recipes, /JB\.routeBack\(\{ b: null, r: null, i: null \}\)/);
+  assert.match(recipes, /JB\.routeBack\(\{ r: null \}\)/);
+  assert.match(recipes, /replace: samePlace \|\| goingHome \|\| dropping/);
+  assert.match(collab, /!JB\.qsGet\('r'\) && !JB\.qsGet\('b'\)/);
   assert.match(recipes, /function planRowVals/);
   assert.doesNotMatch(recipes, /sheetUrl\(sid, '\/values\/Plans/);
   function rcSidForBook(book, personal) {

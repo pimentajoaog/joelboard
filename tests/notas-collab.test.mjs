@@ -56,3 +56,35 @@ test('marcacao helpers and FeitoPor round-trip', function () {
   assert.match(notas, /function setItemDone/);
   assert.match(notas, /noteSaveLastCol/);
 });
+
+test('shared Viagem nacional is a live list, not a second kit', function () {
+  vm.runInContext(
+    'this.ncLooksLikeKit=ncLooksLikeKit;this.ncIsDefaultKitTitle=ncIsDefaultKitTitle;this.ncHealCollabKitFlags=ncHealCollabKitFlags;',
+    ctx
+  );
+  ctx.JB.link = {
+    isDefaultKitTitle: function (t) {
+      var s = String(t || '').trim().toLowerCase();
+      return s === 'viagem nacional' || s === 'viagem internacional';
+    }
+  };
+  ctx.DATA = {
+    config: { preset_trip1: '1' },
+    notas: [
+      { id: 'kit', titulo: 'Viagem nacional', preset: true },
+      { id: 'trip1', titulo: 'Viagem nacional', preset: true, sticker: true, collabSheetId: 'sid' }
+    ]
+  };
+  var saved = {};
+  ctx.saveConfig = function (k, v) { saved[k] = v; ctx.DATA.config[k] = v; };
+  ctx.ncHealCollabKitFlags();
+  var trip = ctx.DATA.notas[1];
+  assert.equal(trip.preset, false);
+  assert.equal(saved.preset_trip1, '');
+  assert.equal(ctx.ncLooksLikeKit(trip), false);
+  assert.equal(ctx.ncLooksLikeKit({ id: 'kit', titulo: 'Viagem nacional', preset: true }), true);
+  assert.equal(ctx.ncLooksLikeKit({
+    id: 'probe', titulo: 'Viagem nacional', preset: false, collabSheetId: 'sid2'
+  }), false);
+  assert.equal(ctx.ncIsDefaultKitTitle('Viagem Nacional'), true);
+});

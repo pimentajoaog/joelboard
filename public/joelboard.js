@@ -2929,25 +2929,9 @@
     var me = String(email() || '').toLowerCase();
     return papel === 'owner' || (!!me && owner === me);
   }
-  function defaultKitTitles() {
-    var out = {};
-    try {
-      var packs = [];
-      if (typeof window !== 'undefined' && window.JB && JB.link && typeof JB.link.defaultPresets === 'function') {
-        packs = JB.link.defaultPresets() || [];
-      } else if (typeof window !== 'undefined' && window.JB_LINK && typeof JB_LINK.defaultPresets === 'function') {
-        packs = JB_LINK.defaultPresets() || [];
-      }
-      (packs || []).forEach(function (p) {
-        if (p && p.titulo) out[String(p.titulo).trim().toLowerCase()] = 1;
-      });
-    } catch (_) {}
-    return out;
-  }
   function migrateOwnedCollabSheets() {
     if (isGhost() || !isSignedIn()) return Promise.resolve(0);
     var moved = 0;
-    var kitTitles = defaultKitTitles();
     function sheetValues(sid, tab) {
       return api('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(sid)
         + '/values/' + encodeURIComponent(tab) + '?valueRenderOption=UNFORMATTED_VALUE')
@@ -2984,9 +2968,10 @@
             if (!isCollabRegistryOwner(reg)) return;
             var sid = String(reg[1] || '');
             var listaId = String(reg[4] || '');
-            var titulo = String(reg[0] || '').trim().toLowerCase();
+            var titulo = String(reg[0] || '').trim();
             if (!sid) return;
-            var isKit = cfg['preset_' + listaId] === '1' || cfg['preset_' + listaId] === 1 || !!kitTitles[titulo];
+            var isKit = cfg['preset_' + listaId] === '1' || cfg['preset_' + listaId] === 1;
+            if (isKit && window.JB && JB.link && typeof JB.link.isDefaultKitTitle === 'function' && JB.link.isDefaultKitTitle(titulo)) isKit = false;
             chain = chain.then(function () { return moveOwned(sid, isKit ? kitId : sharedId); });
           });
           return chain;
@@ -3030,7 +3015,6 @@
   function migrateJoinedCollabShortcuts() {
     if (isGhost() || !isSignedIn()) return Promise.resolve(0);
     var created = 0;
-    var kitTitles = defaultKitTitles();
     function sheetValues(sid, tab) {
       return api('GET', 'https://sheets.googleapis.com/v4/spreadsheets/' + encodeURIComponent(sid)
         + '/values/' + encodeURIComponent(tab) + '?valueRenderOption=UNFORMATTED_VALUE')
@@ -3069,8 +3053,8 @@
             var listaId = String(reg[4] || '');
             var titulo = String(reg[0] || '').trim();
             if (!sid) return;
-            var isKit = cfg['preset_' + listaId] === '1' || cfg['preset_' + listaId] === 1
-              || !!kitTitles[titulo.toLowerCase()];
+            var isKit = cfg['preset_' + listaId] === '1' || cfg['preset_' + listaId] === 1;
+            if (isKit && window.JB && JB.link && typeof JB.link.isDefaultKitTitle === 'function' && JB.link.isDefaultKitTitle(titulo)) isKit = false;
             chain = chain.then(function () {
               return ensureJoined(sid, isKit ? kitId : sharedId, titulo || 'Lista compartilhada');
             });

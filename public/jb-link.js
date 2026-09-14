@@ -102,6 +102,44 @@
     });
     return { notas: notas, itens: itens };
   }
+  function parseCollabListPack(metaValues, itemValues, fallbackId) {
+    var row = (metaValues || []).slice(1)[0] || [];
+    var id = String(row[6] || fallbackId || '');
+    if (!id) return { notas: [], itens: [] };
+    var note = {
+      id: id,
+      titulo: String(row[0] || ''),
+      tipo: String(row[1] || ''),
+      cor: String(row[2] || ''),
+      preset: false,
+      sticker: true
+    };
+    var itens = (itemValues || []).slice(1).filter(function (r) { return r && r[5]; }).map(function (r) {
+      return {
+        id: String(r[5]),
+        notaId: String(r[0] || id),
+        ordem: Number(r[1]) || 0,
+        texto: String(r[2] || ''),
+        marcavel: !!r[3],
+        feito: !!r[4],
+        tipo: String(r[6] || '')
+      };
+    });
+    return { notas: [note], itens: itens };
+  }
+  function mergeNotesPack(a, b) {
+    a = a || { notas: [], itens: [] };
+    b = b || { notas: [], itens: [] };
+    var notas = (a.notas || []).slice();
+    var replace = {};
+    (b.notas || []).forEach(function (n) { if (n && n.id) replace[n.id] = 1; });
+    if (Object.keys(replace).length) {
+      notas = notas.filter(function (n) { return !replace[n.id]; });
+    }
+    notas = notas.concat(b.notas || []);
+    var itens = (a.itens || []).filter(function (it) { return !replace[it.notaId]; }).concat(b.itens || []);
+    return { notas: notas, itens: itens };
+  }
   function fetchNotesPack() {
     var sid = window.JB && JB.getSheetId && JB.getSheetId('notas');
     if (!sid || !JB.api) return Promise.resolve({ notas: [], itens: [] });
@@ -112,16 +150,66 @@
       return parseNotesPack(by);
     }).catch(function () { return { notas: [], itens: [] }; });
   }
+  function fetchOneCollabList(sheetId, listaId) {
+    if (!sheetId || !window.JB || !JB.api) return Promise.resolve({ notas: [], itens: [] });
+    var q = 'ranges=' + encodeURIComponent('Meta') + '&ranges=' + encodeURIComponent('Itens') + '&valueRenderOption=UNFORMATTED_VALUE';
+    return JB.api('GET', sheetUrl(sheetId, '/values:batchGet?' + q)).then(function (res) {
+      var meta = ((res.valueRanges || [])[0] || {}).values || [];
+      var itens = ((res.valueRanges || [])[1] || {}).values || [];
+      return parseCollabListPack(meta, itens, listaId);
+    }).catch(function () { return { notas: [], itens: [] }; });
+  }
+  function fetchCollabNotesPack(wantIds) {
+    wantIds = parseIds(wantIds);
+    var sid = window.JB && JB.getSheetId && JB.getSheetId('notas');
+    if (!sid || !JB.api) return Promise.resolve({ notas: [], itens: [] });
+    var want = {};
+    wantIds.forEach(function (id) { want[id] = 1; });
+    return JB.api('GET', sheetUrl(sid, '/values/Compartilhadas?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
+      var regs = (res.values || []).slice(1).filter(function (r) { return r && r[1]; });
+      var jobs = [];
+      regs.forEach(function (reg) {
+        var listaId = String(reg[4] || '');
+        var sheetId = String(reg[1] || '');
+        if (!sheetId) return;
+        if (wantIds.length && listaId && !want[listaId]) return;
+        jobs.push(fetchOneCollabList(sheetId, listaId).then(function (pack) {
+          if (!wantIds.length) return pack;
+          var n = (pack.notas || [])[0];
+          if (!n || !want[n.id]) return { notas: [], itens: [] };
+          return pack;
+        }));
+      });
+      if (!jobs.length) return { notas: [], itens: [] };
+      return Promise.all(jobs).then(function (packs) {
+        var out = { notas: [], itens: [] };
+        packs.forEach(function (p) { out = mergeNotesPack(out, p); });
+        return out;
+      });
+    }).catch(function () { return { notas: [], itens: [] }; });
+  }
   function loadSnapshots(ids) {
     ids = parseIds(ids);
     if (!ids.length) return Promise.resolve([]);
     if (window.JB && JB.isGhost && JB.isGhost()) return Promise.resolve(snapshotsFromGhost(ids));
-    return fetchNotesPack().then(function (pack) { return snapshotsFromLists(ids, pack.notas, pack.itens); });
+    return fetchNotesPack().then(function (pack) {
+      var snaps = snapshotsFromLists(ids, pack.notas, pack.itens);
+      var found = {};
+      snaps.forEach(function (s) { found[s.id] = 1; });
+      var missing = ids.filter(function (id) { return !found[id]; });
+      if (!missing.length) return snaps;
+      return fetchCollabNotesPack(missing).then(function (extra) {
+        return snaps.concat(snapshotsFromLists(missing, extra.notas, extra.itens));
+      });
+    });
   }
   function loadCatalog() {
     if (window.JB && JB.isGhost && JB.isGhost()) return Promise.resolve(catalogFromGhost());
     return fetchNotesPack().then(function (pack) {
-      return (pack.notas || []).map(function (n) { return packSnapshot(n, pack.itens); });
+      return fetchCollabNotesPack([]).then(function (extra) {
+        var merged = mergeNotesPack(pack, extra);
+        return (merged.notas || []).map(function (n) { return packSnapshot(n, merged.itens); });
+      });
     });
   }
   function uid() {
@@ -329,6 +417,15 @@
       });
     });
   }
+  function isDefaultKitTitle(titulo) {
+    var t = String(titulo || '').trim().toLowerCase();
+    if (!t) return false;
+    var packs = defaultPresets();
+    for (var i = 0; i < packs.length; i++) {
+      if (String((packs[i] && packs[i].titulo) || '').trim().toLowerCase() === t) return true;
+    }
+    return false;
+  }
   function defaultPresets() {
     return [
       {
@@ -362,8 +459,9 @@
     PEEK: PEEK, NOTAS: NOTAS, PLANNER: PLANNER,
     parseIds: parseIds, formatIds: formatIds, mergeIds: mergeIds, uniq: uniq,
     packSnapshot: packSnapshot, snapshotsFromLists: snapshotsFromLists,
+    parseCollabListPack: parseCollabListPack, mergeNotesPack: mergeNotesPack,
     snapshotsFromGhost: snapshotsFromGhost, loadSnapshots: loadSnapshots,
-    loadCatalog: loadCatalog, clonePreset: clonePreset, createList: createList, bornGhostLists: function () { return ghostClones.slice(); }, bornListTitle: bornListTitle,
+    loadCatalog: loadCatalog, clonePreset: clonePreset, createList: createList, bornGhostLists: function () { return ghostClones.slice(); }, bornListTitle: bornListTitle, isDefaultKitTitle: isDefaultKitTitle,
     peekPending: peekPending, peekItems: peekItems, peekRows: peekRows, peekHtml: peekHtml,
     mergeCalEvents: mergeCalEvents, decorateCalEvents: decorateCalEvents,
     defaultPresets: defaultPresets, barCss: barCss, dotCss: dotCss

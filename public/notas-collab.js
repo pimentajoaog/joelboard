@@ -370,6 +370,7 @@ function ncLoadCollabLists() {
         }).catch(function () { failed++; });
       })).then(function () {
         ncDedupePrivateVsCollab();
+        ncHealCollabKitFlags();
         if (failed && typeof toast === 'function') {
           toast(failed === 1
             ? 'Uma lista compartilhada não abriu — confira o acesso Editor no Drive.'
@@ -381,18 +382,34 @@ function ncLoadCollabLists() {
   }).catch(function () {});
 }
 
-function ncLooksLikeKit(n) {
-  if (!n) return false;
-  if (n.preset) return true;
-  if ((DATA.config || {})['preset_' + n.id] === '1') return true;
+function ncIsDefaultKitTitle(titulo) {
   try {
-    var packs = (JB.link && JB.link.defaultPresets) ? JB.link.defaultPresets()
-      : ((window.JB_LINK && JB_LINK.defaultPresets) ? JB_LINK.defaultPresets() : []);
-    var t = String(n.titulo || '').trim().toLowerCase();
-    for (var i = 0; i < (packs || []).length; i++) {
-      if (String((packs[i] && packs[i].titulo) || '').trim().toLowerCase() === t) return true;
+    if (typeof JB !== 'undefined' && JB.link && typeof JB.link.isDefaultKitTitle === 'function') {
+      return JB.link.isDefaultKitTitle(titulo);
+    }
+    if (typeof window !== 'undefined' && window.JB_LINK && typeof JB_LINK.isDefaultKitTitle === 'function') {
+      return JB_LINK.isDefaultKitTitle(titulo);
     }
   } catch (_) {}
+  var t = String(titulo || '').trim().toLowerCase();
+  return t === 'viagem nacional' || t === 'viagem internacional';
+}
+
+function ncHealCollabKitFlags() {
+  (DATA.notas || []).forEach(function (n) {
+    if (!n || !n.collabSheetId) return;
+    if (!ncIsDefaultKitTitle(n.titulo)) return;
+    var flagged = !!n.preset || (DATA.config || {})['preset_' + n.id] === '1';
+    n.preset = false;
+    if (flagged && typeof saveConfig === 'function') saveConfig('preset_' + n.id, '');
+  });
+}
+
+function ncLooksLikeKit(n) {
+  if (!n) return false;
+  if (n.collabSheetId && ncIsDefaultKitTitle(n.titulo)) return false;
+  if (n.preset) return true;
+  if ((DATA.config || {})['preset_' + n.id] === '1') return true;
   return false;
 }
 
@@ -693,6 +710,9 @@ function ncDoShareFromPrivate(marcacao) {
     n.marcacao = marc;
     n.sticker = keepSticker;
     n.preset = keepPreset;
+    if (keepPreset && typeof saveConfig === 'function' && !ncIsDefaultKitTitle(n.titulo)) {
+      saveConfig('preset_' + n.id, '1');
+    }
     n.collabMembers = [{ email: ncEmail(), nome: ncProfileName(), icone: ncProfileIcon(), papel: 'owner', status: 'active' }];
     return ncDeletePrivateList(n);
   }).then(function () {
@@ -917,7 +937,7 @@ function ncJoinCollab(sheetId) {
       if (!JB.ensureDriveShortcut) return;
       var titulo = String(ctx.metaRow[0] || '').trim();
       var listaId = String(ctx.metaRow[6] || '');
-      var probe = { id: listaId, titulo: titulo, preset: false };
+      var probe = { id: listaId, titulo: titulo, preset: false, collabSheetId: sheetId };
       var isKit = ncLooksLikeKit(probe);
       var ensure = isKit
         ? (JB.ensureNotesKitSharedFolder ? JB.ensureNotesKitSharedFolder() : Promise.resolve(''))

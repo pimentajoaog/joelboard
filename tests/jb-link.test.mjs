@@ -114,4 +114,69 @@ test('defaultPresets seed the two travel kits', function () {
   assert.equal(packs[0].titulo, 'Viagem nacional');
   assert.equal(packs[1].titulo, 'Viagem internacional');
   assert.ok(packs[0].groups.some(function (g) { return g.g === 'Documentos'; }));
+  assert.equal(link.isDefaultKitTitle('Viagem nacional'), true);
+  assert.equal(link.isDefaultKitTitle('Viagem Nacional'), true);
+  assert.equal(link.isDefaultKitTitle('Mala — fim de semana'), false);
+});
+
+test('parseCollabListPack reads Meta + Itens from a shared note sheet', function () {
+  var pack = link.parseCollabListPack(
+    [
+      ['Titulo', 'Tipo', 'Cor', 'Fixado', 'Criado', 'Atualizado', 'ID'],
+      ['Viagem nacional', 'viagem', '🧳', '', '', '', 'trip1']
+    ],
+    [
+      ['NotaID', 'Ordem', 'Texto', 'Marcavel', 'Feito', 'ID', 'Tipo'],
+      ['trip1', 1, 'RG ou CNH', true, false, 'c1', '']
+    ],
+    'fallback'
+  );
+  assert.equal(pack.notas.length, 1);
+  assert.equal(pack.notas[0].id, 'trip1');
+  assert.equal(pack.notas[0].preset, false);
+  assert.equal(pack.notas[0].sticker, true);
+  assert.equal(pack.itens[0].texto, 'RG ou CNH');
+});
+
+test('loadSnapshots fills attached lists from Notes Compartilhadas', async function () {
+  var calls = [];
+  ctx.JB = {
+    isGhost: function () { return false; },
+    getSheetId: function () { return 'personal-notes'; },
+    api: function (method, url) {
+      calls.push(url);
+      if (url.indexOf('personal-notes') >= 0 && url.indexOf('batchGet') >= 0) {
+        return Promise.resolve({
+          valueRanges: [
+            { values: [['Titulo'], ['Kit', 'viagem', '', '', '', '', 'kit1', '', '1', '']] },
+            { values: [['NotaID'], ['kit1', 1, 'RG', true, false, 'i1', '']] }
+          ]
+        });
+      }
+      if (url.indexOf('Compartilhadas') >= 0) {
+        return Promise.resolve({
+          values: [
+            ['Titulo', 'SheetID', 'Papel', 'Owner', 'ListaID'],
+            ['Viagem nacional', 'collab-sid', 'owner', 'a@b.com', 'trip1']
+          ]
+        });
+      }
+      if (url.indexOf('collab-sid') >= 0) {
+        return Promise.resolve({
+          valueRanges: [
+            { values: [['Titulo'], ['Viagem nacional', 'viagem', '', '', '', '', 'trip1']] },
+            { values: [['NotaID'], ['trip1', 1, 'Passaporte', true, false, 'c1', '']] }
+          ]
+        });
+      }
+      return Promise.resolve({});
+    }
+  };
+  var snaps = await link.loadSnapshots(['trip1']);
+  assert.equal(snaps.length, 1);
+  assert.equal(snaps[0].id, 'trip1');
+  assert.equal(snaps[0].titulo, 'Viagem nacional');
+  assert.equal(snaps[0].items[0].texto, 'Passaporte');
+  assert.ok(calls.some(function (u) { return u.indexOf('Compartilhadas') >= 0; }));
+  assert.ok(calls.some(function (u) { return u.indexOf('collab-sid') >= 0; }));
 });

@@ -809,6 +809,14 @@ function renderAll() {
   renderBudget(); renderBreakdown();
   renderCalendar(); renderTransactions(); renderRecurring(); renderGoals(); renderBundles(); renderSettledBadge(); renderSavingsBalance(); renderGeneralSavings(); renderSalaryControl(); renderTrend(); renderDebts();
   applyDim();
+  playQueuedStrike();
+}
+function playQueuedStrike() {
+  var key = window._jbStrikeSel;
+  window._jbStrikeSel = '';
+  if (!key || !window.JB || !JB.replayStrike) return;
+  var el = document.querySelector('[data-paid-key="'+key+'"]');
+  if (el) JB.replayStrike(el);
 }
 
 const CURRENCIES = {
@@ -1296,16 +1304,18 @@ function togglePaid(type, id) {
     const a = activeAllocations().find(x=>x.id===id);
     const pd = isCurrentMonth() ? todayStr() : (m+'-01');
     applyPaid(type, id, true, m, a && a.overridden ? a.amount : null, pd);
+    window._jbStrikeSel = 'allocation:'+id;
     renderAll();
     return;
   }
   applyPaid(type, id, nw, m);
+  if (nw) window._jbStrikeSel = type+':'+id;
   renderAll();
 }
 function promptActual(id, m) {
   const b = (DATA.recurring||[]).find(x=>x.id===id);
   const dim = daysInMonth(selY,selM), occDate = dayStr(selY,selM, Math.min((b&&b.dueDay)||1, dim)), overdue = isPast();
-  if (!b) { applyPaid('bill', id, true, m, '', overdue?todayStr():occDate); renderAll(); return; }
+  if (!b) { applyPaid('bill', id, true, m, '', overdue?todayStr():occDate); window._jbStrikeSel = 'bill:'+id; renderAll(); return; }
   confirmCtx = { kind:'paid', id:id, month:m, overdue:overdue, occDate:occDate, paidDate: overdue?todayStr():occDate };
   document.getElementById('ccTitle').textContent = '✓ ' + b.name;
   document.getElementById('ccQ').innerHTML = t('cc.wasAmount',{amt:brl(b.amount)});
@@ -1335,6 +1345,7 @@ function confirmActual() {
   if (!confirmCtx) return;
   if (confirmCtx.kind==='ot') { const ex=confirmCtx.excess, ds=confirmCtx.date; cancelConfirm(); commitOT(ds, ex); showToast(t('toast.otLogged',{h:fmtHours(ex)})); return; }
   applyPaid('bill', confirmCtx.id, true, confirmCtx.month, undefined, confirmCtx.paidDate);
+  window._jbStrikeSel = 'bill:'+confirmCtx.id;
   cancelConfirm(); renderAll(); showToast(t('toast.markedPaid'));
 }
 function confirmActualInput() {
@@ -1347,6 +1358,7 @@ function confirmActualInput() {
     cancelConfirm(); renderAll(); showToast(t('toast.allocAmtMonth')); return;
   }
   applyPaid('bill', confirmCtx.id, true, confirmCtx.month, v, confirmCtx.paidDate);
+  window._jbStrikeSel = 'bill:'+confirmCtx.id;
   cancelConfirm(); renderAll(); showToast(t('toast.paidActual',{amt:brl(v)}));
 }
 
@@ -1446,7 +1458,7 @@ function renderRecurring() {
     const meta = (b.ongoing ? esc(catLabel(b.category)) : once ? (esc(catLabel(b.category))+' · '+t('bill.onetimeMeta')) : (esc(catLabel(b.category))+' · '+t('bill.installMeta',{num:b.num,total:b.installments,pct:Math.round(b.num/b.installments*100)}))) + bundleChip(b.id);
     const sub  = (b.ongoing||once) ? dueLbl : (b.num+'/'+b.installments+' · '+dueLbl);
     const rightSub = b.overridden ? '<div class="row-sub" style="color:var(--savings)">'+t('bill.actualEst',{x:brl(b.nominal)})+'</div>' : '<div class="row-sub '+cls+'">'+sub+'</div>';
-    return '<div class="row-item click'+(paid?' paid':'')+'" onclick="editBill(\''+b.id+'\')"><div class="row-left"><div class="check'+(paid?' on':'')+'" onclick="event.stopPropagation();togglePaid(\'bill\',\''+b.id+'\')">'+(paid?'✓':'')+'</div><div class="row-dot" style="background:'+dotColor+'"></div><div><div class="row-name">'+esc(b.name)+'</div><div class="row-meta">'+meta+'</div></div></div><div class="row-right"><div class="row-amount'+(b.amount<0?' inc':'')+'">'+brlSig(b.amount)+'</div>'+rightSub+'</div></div>';
+    return '<div class="row-item click'+(paid?' paid':'')+'" data-paid-key="bill:'+b.id+'" onclick="editBill(\''+b.id+'\')"><div class="row-left"><div class="check'+(paid?' on':'')+'" onclick="event.stopPropagation();togglePaid(\'bill\',\''+b.id+'\')">'+(paid?'✓':'')+'</div><div class="row-dot" style="background:'+dotColor+'"></div><div><div class="row-name ck-t">'+esc(b.name)+'</div><div class="row-meta">'+meta+'</div></div></div><div class="row-right"><div class="row-amount'+(b.amount<0?' inc':'')+'">'+brlSig(b.amount)+'</div>'+rightSub+'</div></div>';
   }).join('') + '</div>';
 }
 function setBillRecur(v) {
@@ -1539,7 +1551,7 @@ function renderAllocRowHtml(a) {
   const acts = (!paid ? '<button type="button" class="alloc-act" onclick="event.stopPropagation();skipAllocMonth(\''+a.id+'\')" title="'+esc(t('alloc.skipMonth'))+'">⏭</button>' : '')
     + '<button type="button" class="alloc-act" onclick="event.stopPropagation();editAllocation(\''+a.id+'\')" title="'+esc(t('alloc.editPlan'))+'">✎</button>';
   const orig = a.overridden ? ' <span class="alloc-orig">('+t('alloc.planned',{x:brl(a.nominal)})+')</span>' : '';
-  return '<div class="alloc-row'+(paid?' paid':'')+'"><div class="check sm'+(paid?' on':'')+'" onclick="event.stopPropagation();togglePaid(\'allocation\',\''+a.id+'\')">'+(paid?'✓':'')+'</div><div class="alloc-main"><span class="alloc-amt" onclick="event.stopPropagation();promptAllocAmount(\''+a.id+'\')">'+brl(a.amount)+'</span><span class="alloc-lbl"> · '+lbl+'</span>'+orig+'</div><div class="alloc-acts">'+acts+'</div></div>';
+  return '<div class="alloc-row'+(paid?' paid':'')+'" data-paid-key="allocation:'+a.id+'"><div class="check sm'+(paid?' on':'')+'" onclick="event.stopPropagation();togglePaid(\'allocation\',\''+a.id+'\')">'+(paid?'✓':'')+'</div><div class="alloc-main"><span class="alloc-amt ck-t" onclick="event.stopPropagation();promptAllocAmount(\''+a.id+'\')">'+brl(a.amount)+'</span><span class="alloc-lbl ck-t"> · '+lbl+'</span>'+orig+'</div><div class="alloc-acts">'+acts+'</div></div>';
 }
 function renderGoals() {
   const tdy = todayStr();
@@ -1661,10 +1673,10 @@ function renderBundles() {
   el.innerHTML = bundles.map(b => {
     const rel = bundleRelevantItems(b), total = rel.reduce((s,it)=>s+bundleItemAmount(it),0);
     const paidCount = rel.filter(itemPaid).length, allPaid = rel.length>0 && paidCount===rel.length;
-    const itemsHtml = rel.length ? rel.map(it => '<div class="bundle-item'+(itemPaid(it)?' paid':'')+'"><span>'+esc(bundleItemName(it))+'</span><span>'+brlSig(bundleItemAmount(it))+'</span></div>').join('') : '<div class="bundle-item" style="color:var(--muted)"><span>'+t('bundle.noActive')+'</span><span></span></div>';
+    const itemsHtml = rel.length ? rel.map(it => '<div class="bundle-item'+(itemPaid(it)?' paid':'')+'"><span class="ck-t">'+esc(bundleItemName(it))+'</span><span class="ck-t">'+brlSig(bundleItemAmount(it))+'</span></div>').join('') : '<div class="bundle-item" style="color:var(--muted)"><span>'+t('bundle.noActive')+'</span><span></span></div>';
     return '<div class="card bundle-card"><div class="bundle-head">'
       + '<div class="check'+(allPaid?' on':'')+'" onclick="event.stopPropagation();toggleBundle(\''+b.id+'\')">'+(allPaid?'✓':'')+'</div>'
-      + '<div class="bundle-title" onclick="editBundle(\''+b.id+'\')"><div class="bundle-name'+(allPaid?' paid':'')+'">'+esc(b.name)+'</div>'+(b.payee?'<div class="bundle-payee">→ '+esc(b.payee)+'</div>':'')+'</div>'
+      + '<div class="bundle-title" onclick="editBundle(\''+b.id+'\')"><div class="bundle-name ck-t'+(allPaid?' paid':'')+'">'+esc(b.name)+'</div>'+(b.payee?'<div class="bundle-payee">→ '+esc(b.payee)+'</div>':'')+'</div>'
       + '<div class="bundle-total" onclick="editBundle(\''+b.id+'\')">'+brlSig(total)+'<div class="bundle-prog">'+t('bundle.paidCount',{paid:paidCount,total:rel.length})+'</div></div>'
       + '</div><div class="bundle-items">'+itemsHtml+'</div></div>';
   }).join('');
@@ -3192,8 +3204,8 @@ function renderDebts(){
     const mine = g.rows.filter(function(r){ return r.mine; });
     const allPaid = owed.length && owed.every(function(r){ return r.paid; });
     const owedHtml = owed.map(function(d){
-      return '<div class="debt-row'+(d.paid?' paid':'')+'">'
-        + '<div class="dr-left"><span class="dr-name">'+esc(d.person)+'</span><span class="dr-amt">'+brl(d.amount)+'</span></div>'
+      return '<div class="debt-row'+(d.paid?' paid':'')+'" data-paid-key="debt:'+d.id+'">'
+        + '<div class="dr-left"><span class="dr-name ck-t">'+esc(d.person)+'</span><span class="dr-amt ck-t">'+brl(d.amount)+'</span></div>'
         + '<button class="dr-pay'+(d.paid?' paid':'')+'" onclick="toggleDebt(\''+d.id+'\')">'+(d.paid?t('debts.paid'):t('debts.markPaid'))+'</button>'
         + '</div>';
     }).join('');
@@ -3216,7 +3228,9 @@ function renderDebts(){
 function toggleDebt(id){
   const d = (DATA.debts||[]).find(function(x){ return x.id === id; }); if (!d) return;
   const np = !d.paid; d.paid = np; d.paidDate = np ? Date.now() : 0;
+  if (np) window._jbStrikeSel = 'debt:'+id;
   renderDebts();
+  playQueuedStrike();
   jbRun('setDebtPaid', id, np, d.paidDate).catch(function(e){ showToast(t('err.prefix') + e.message, 'error'); reload(); });
 }
 function deleteOuting(sid){

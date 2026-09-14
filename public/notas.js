@@ -1032,7 +1032,7 @@ function itemRow(it, hidden, depth){
     return '<div class="irow selrow'+(son?' on':'')+(hidden?' ihide':'')+'" data-id="'+it.id+'"'+depthAttr(depth)+' onpointerdown="selRowDrag(event,\''+it.id+'\')" onclick="selToggle(\''+it.id+'\')">'
       +'<button class="ihandle" onpointerdown="dragBegin(event,\''+it.id+'\')" onclick="event.stopPropagation()" title="Arrastar">⠿</button>'
       +'<span class="seldot'+(son?' on':'')+'">'+(son?'✓':'')+'</span>'
-      +'<div class="itext itext-view">'+(it.texto?mdToHtml(it.texto):'<span class="iplace">(vazio)</span>')+'</div></div>';
+      +'<div class="itext itext-view">'+(it.texto?('<span class="ck-t">'+mdToHtml(it.texto)+'</span>'):'<span class="iplace">(vazio)</span>')+'</div></div>';
   }
   var n=note(it.notaId)||note(openNoteId);
   var done=itemIsDone(it,n);
@@ -1044,7 +1044,7 @@ function itemRow(it, hidden, depth){
     : '<button class="itype" title="Tornar item marcável" onclick="convertItem(\''+it.id+'\',1)">☑</button>';
   var body = (it.id===_editId)
     ? '<textarea class="itext" id="editTA" rows="1" autocomplete="off" oninput="autoGrow(this)" onblur="itemBlur(\''+it.id+'\',this)" onkeydown="itemKey(event,\''+it.id+'\')" onpaste="itemPaste(event,\''+it.id+'\')">'+esc(it.texto)+'</textarea>'
-    : '<div class="itext itext-view" onclick="startEdit(\''+it.id+'\')">'+(it.texto?mdToHtml(it.texto):'<span class="iplace">(vazio)</span>')+'</div>';
+    : '<div class="itext itext-view" onclick="startEdit(\''+it.id+'\')">'+(it.texto?('<span class="ck-t">'+mdToHtml(it.texto)+'</span>'):'<span class="iplace">(vazio)</span>')+'</div>';
   var chips=it.marcavel?itemTickChips(it,n):'';
   return '<div class="irow'+(done?' done':'')+(hidden?' ihide':'')+'" data-id="'+it.id+'"'+depthAttr(depth)+'>'
     +'<button class="ihandle" onpointerdown="dragBegin(event,\''+it.id+'\')" title="Arrastar">⠿</button>'+left+body+chips
@@ -1088,8 +1088,13 @@ function addItemFromInput(){ var inp=$('addInput'); var v=(inp.value||'').trim()
 function addUsual(t){ addItemText(t); var inp=$('addInput'); if(inp) inp.value=''; renderItems(); renderUsuals(); }
 function toggleItem(ev,id){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return;
   var n=note(openNoteId)||note(it.notaId);
-  if(ev && ev.shiftKey && _lastTick && _lastTick!==id){ var its=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel;}); var i1=-1,i2=-1; for(var k=0;k<its.length;k++){ if(its[k].id===_lastTick) i1=k; if(its[k].id===id) i2=k; } if(i1>-1 && i2>-1){ var lo=Math.min(i1,i2), hi=Math.max(i1,i2), target=!itemIsDone(it,n), changed=[]; for(var j=lo;j<=hi;j++){ if(itemIsDone(its[j],n)!==target){ setItemDone(its[j],n,target); changed.push(its[j]); } } _lastTick=id; renderItems(); if(changed.length) persistItems(changed); var nn=note(openNoteId); if(nn) touchNote(nn); return; } }
-  setItemDone(it,n,!itemIsDone(it,n)); _lastTick=id; renderItems(); saveItemRow(it); if(n) touchNote(n); }
+  if(ev && ev.shiftKey && _lastTick && _lastTick!==id){ var its=itemsOf(openNoteId).filter(function(x){return !isGroup(x) && x.marcavel;}); var i1=-1,i2=-1; for(var k=0;k<its.length;k++){ if(its[k].id===_lastTick) i1=k; if(its[k].id===id) i2=k; } if(i1>-1 && i2>-1){ var lo=Math.min(i1,i2), hi=Math.max(i1,i2), target=!itemIsDone(it,n), changed=[]; for(var j=lo;j<=hi;j++){ if(itemIsDone(its[j],n)!==target){ setItemDone(its[j],n,target); changed.push(its[j]); } } _lastTick=id; renderItems(); if(changed.length) persistItems(changed); var nn=note(openNoteId); if(nn) touchNote(nn); if(target && window.JB && JB.replayStrike){ var hit=document.querySelector('.irow[data-id="'+id+'"]'); if(hit) JB.replayStrike(hit); } return; } }
+  setItemDone(it,n,!itemIsDone(it,n)); _lastTick=id; renderItems(); saveItemRow(it); if(n) touchNote(n);
+  if(itemIsDone(it,n) && window.JB && JB.replayStrike){
+    var row=document.querySelector('.irow[data-id="'+id+'"]');
+    if(row) JB.replayStrike(row);
+  }
+}
 function convertItem(id,mk){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; it.marcavel=!!mk; if(!mk){ it.feito=false; it.feitoPor={}; } renderItems(); saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
 function commitText(id,val){ var it=(DATA.itens||[]).find(function(x){return x.id===id;}); if(!it) return; var v=val.replace(/\s+$/,''); if(isGroup(it)){ if(v===it.texto) return; it.texto=v; saveItemRow(it); var ng=note(openNoteId); if(ng) touchNote(ng); return; } if(!v.trim()){ deleteItem(id); return; } if(v===it.texto) return; it.texto=v; saveItemRow(it); var n=note(openNoteId); if(n) touchNote(n); }
 function deleteItem(id){

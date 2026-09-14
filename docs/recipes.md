@@ -18,7 +18,7 @@ Dados na planilha **Joelboard Recipes** no seu Drive. Livros compartilhados vira
 
 ## Receita
 
-- Marque ingredientes e passos. **↺ Limpar checks** recomeça.
+- Marque ingredientes e passos — o risco a lápis é o mesmo em Notes, Study, Finance e no Calendar. **↺ Limpar checks** recomeça.
 - **📅 Agendar** põe um prazo no Calendar do Hub (várias datas ok).
 - Foto: arrastar, colar ou URL.
 

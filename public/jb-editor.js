@@ -809,7 +809,7 @@
           var cm = lines[i].match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/);
           if (!cm) break;
           var on = /x/i.test(cm[1]);
-          out.push('<li class="' + (on ? 'on' : '') + '">' + inlineMd(cm[2]) + '</li>');
+          out.push('<li class="' + (on ? 'on' : '') + '"><span class="ck-t">' + inlineMd(cm[2]) + '</span></li>');
           i++;
         }
         out.push('</ul>');
@@ -4784,7 +4784,10 @@
       if (ev.clientX - rect.left > 22) return;
       ev.preventDefault();
       histBeforeChange();
+      var turningOn = !li.classList.contains('on');
       li.classList.toggle('on');
+      if (turningOn && window.JB && JB.justOn) JB.justOn(li);
+      else li.classList.remove('just-on');
       markDirty();
     });
 

@@ -3917,6 +3917,34 @@
     });
   }
   /** Prefer history.back when we pushed; otherwise apply clearPatch via replaceState. */
+  function justOn(el) {
+    if (!el) return;
+    el.classList.remove('just-on');
+    void el.offsetWidth;
+    el.classList.add('just-on');
+    clearTimeout(el._jbPen);
+    el._jbPen = setTimeout(function () { el.classList.remove('just-on'); }, 800);
+  }
+  function replayStrike(el) {
+    if (!el) return;
+    var nodes = [];
+    if (el.classList.contains('ck-t')) nodes.push(el);
+    el.querySelectorAll('.ck-t').forEach(function (t) { nodes.push(t); });
+    nodes.forEach(function (t) {
+      t.style.transition = 'none';
+      t.style.backgroundSize = '0% 2px';
+    });
+    void el.offsetWidth;
+    nodes.forEach(function (t) {
+      t.style.transition = '';
+      t.style.backgroundSize = '';
+    });
+    justOn(el);
+  }
+  function ckT(inner) {
+    return '<span class="ck-t">' + inner + '</span>';
+  }
+
   function routeBack(clearPatch) {
     var st = null;
     try { st = history.state; } catch (_) {}
@@ -3977,6 +4005,7 @@
     migrateJoinedCollabShortcuts: migrateJoinedCollabShortcuts,
     ensureDriveLayoutOnce: ensureDriveLayoutOnce, organizeDriveLayout: organizeDriveLayout,
     qsGet: qsGet, qsPatch: qsPatch, qsClearJoin: qsClearJoin, onRoute: onRoute, routeBack: routeBack,
+    justOn: justOn, replayStrike: replayStrike, ckT: ckT,
     pickColor: pickColor, mountColorControl: mountColorControl, colorControlValue: colorControlValue,
     resolveColor: resolveColor, tintChipStyle: tintChipStyle
   };

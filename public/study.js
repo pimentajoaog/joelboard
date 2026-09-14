@@ -308,11 +308,18 @@ function evtRow(e,showDate){
   var subs=(e.materiaIds||[]).map(mat).filter(Boolean); var col=subs[0]?subs[0].cor:'var(--muted)', nc=nearClass(e.data,e.concluido);
   var meta=(subs.length?subs.map(function(x){return esc(x.nome);}).join(', ')+' · ':'')+'<span class="etype">'+esc(e.tipo)+'</span>'+(e.hora?(' · '+esc(e.hora)):'')+(evtAnexos(e.id).length?' · 📎':'');
   var flag = showDate ? ('<span class="eflag '+nc+'">'+esc(relLabel(e.data))+'</span>') : '';
-  return '<div class="erow'+(e.concluido?' done':'')+'" onclick="openEvt(\''+e.id+'\')"><span class="ebar" style="background:'+col+'"></span>'
-    +'<div class="einfo"><div class="etitle">'+esc(e.titulo||'(sem título)')+'</div><div class="emeta">'+meta+(showDate?(' · '+esc(fmtBR(e.data))):'')+'</div></div>'
+  return '<div class="erow'+(e.concluido?' done':'')+'" data-eid="'+e.id+'" onclick="openEvt(\''+e.id+'\')"><span class="ebar" style="background:'+col+'"></span>'
+    +'<div class="einfo"><div class="etitle ck-t">'+esc(e.titulo||'(sem título)')+'</div><div class="emeta">'+meta+(showDate?(' · '+esc(fmtBR(e.data))):'')+'</div></div>'
     + flag + '<button class="echk'+(e.concluido?' on':'')+'" onclick="event.stopPropagation();toggleDone(\''+e.id+'\')" title="Concluir">'+(e.concluido?'✓':'')+'</button></div>';
 }
-function toggleDone(id){ var e=(DATA.eventos||[]).find(function(x){return x.id===id;}); if(!e) return; e.concluido=!e.concluido; render(); saveEvtRow(e); }
+function toggleDone(id){ var e=(DATA.eventos||[]).find(function(x){return x.id===id;}); if(!e) return; e.concluido=!e.concluido; render(); saveEvtRow(e);
+  if(e.concluido && window.JB && JB.replayStrike){
+    var row=document.querySelector('.erow[data-eid="'+id+'"]');
+    if(row) JB.replayStrike(row);
+    var cal=document.querySelector('.jb-cal-row[data-raw="'+id+'"]');
+    if(cal) JB.replayStrike(cal);
+  }
+}
 
 /* ---- event modal ---- */
 var editingEvt=null, evtTipo='Prova', evtMaterias=[], _evtEd=null;
@@ -462,7 +469,12 @@ function backModNote(opts){
 function modRowVals(m){ return [m.materiaId, m.nome, m.feito?'1':'', m.id, m.notas||'']; }
 function modSave(m){ findRow('Modulos',3,m.id).then(function(row){ if(row<0) return; return JB.api('PUT', ssUrl('/values/'+encodeURIComponent('Modulos!A'+row+':E'+row)+'?valueInputOption=RAW'), { values:[modRowVals(m)] }); }).catch(studyWriteErr); }
 function addModulo(matId){ var inp=$('detModInput'); if(!inp) return; var nome=(inp.value||'').trim(); if(!nome) return; var mod={ id:uuid(), materiaId:matId, nome:nome, feito:false, notas:'' }; DATA.modulos=DATA.modulos||[]; DATA.modulos.push(mod); inp.value=''; renderMaterias(); JB.api('POST', ssUrl('/values/Modulos:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values:[modRowVals(mod)] }).catch(studyWriteErr); setTimeout(function(){ var i=$('detModInput'); if(i) i.focus(); },30); }
-function toggleModulo(id){ var m=modulo(id); if(!m) return; m.feito=!m.feito; var subj=mat(m.materiaId); if(subj) matSyncConcluido(subj, { allowClear:true }); modSave(m); if(matNote===id){ var btn=document.querySelector('.modnote-chk'); var head=document.querySelector('.modnote-head'); if(btn){ btn.classList.toggle('on', m.feito); btn.textContent=m.feito?'✓':''; } if(head) head.classList.toggle('done', m.feito); return; } renderMaterias(); }
+function toggleModulo(id){ var m=modulo(id); if(!m) return; m.feito=!m.feito; var subj=mat(m.materiaId); if(subj) matSyncConcluido(subj, { allowClear:true }); modSave(m); if(matNote===id){ var btn=document.querySelector('.modnote-chk'); var head=document.querySelector('.modnote-head'); if(btn){ btn.classList.toggle('on', m.feito); btn.textContent=m.feito?'✓':''; } if(head) head.classList.toggle('done', m.feito); if(m.feito && window.JB && JB.justOn && head) JB.justOn(head); return; } renderMaterias();
+  if(m.feito && window.JB && JB.replayStrike){
+    var row=document.querySelector('.modrow[data-mid="'+id+'"]');
+    if(row) JB.replayStrike(row);
+  }
+}
 function renameModulo(id){ var m=modulo(id); if(!m) return; var inp=$('modNoteName'); var nome=inp?String(inp.value||'').trim():''; if(!nome){ if(inp) inp.value=m.nome; return; } if(nome===m.nome) return; m.nome=nome; modSave(m); }
 function saveModNotes(m, v){ v=String(v==null?'':v); if(v.length>NOTE_CHAR_LIMIT){ v=v.slice(0,NOTE_CHAR_LIMIT); toast('Nota limitada a 50 mil caracteres'); } var prev=m.notas||''; m.notas=v; studyTrashRemovedImages(prev, v); modSave(m); }
 function removeModulo(id){ if(matNote===id){ destroyModEd(); matNote=null; } DATA.modulos=(DATA.modulos||[]).filter(function(x){return x.id!==id;}); renderMaterias(); deleteSheetRow('Modulos',3,id); }
@@ -477,7 +489,7 @@ function matDetailHtml(matId){
     +'<div class="matsub" style="margin-top:0">'+pr.done+' / '+(pr.total||'—')+' módulos'+(sm?(' · ⏱ '+fmtStudy(sm)):'')+'</div>'
     +'<div class="pbar"><span style="width:'+pr.pct+'%;background:'+m.cor+'"></span></div>'
     +'<div class="secbar" style="margin-top:24px"><div class="sect">Módulos / Aulas</div></div>'
-    +(mods.length?mods.map(function(x){ return '<div class="modrow'+(x.feito?' done':'')+'"><button class="echk'+(x.feito?' on':'')+'" onclick="event.stopPropagation();toggleModulo(\''+x.id+'\')">'+(x.feito?'✓':'')+'</button>'+(x.notas?'<span class="modnote-mark" title="Tem anotações" aria-label="Tem anotações">n</span>':'')+'<button type="button" class="modname" onclick="openModNote(\''+x.id+'\')">'+esc(x.nome)+'</button><button class="anexx" onclick="event.stopPropagation();removeModulo(\''+x.id+'\')">✕</button></div>'; }).join(''):'<div class="rg">Adicione módulos ou aulas — toque num item para anotar.</div>')
+    +(mods.length?mods.map(function(x){ return '<div class="modrow'+(x.feito?' done':'')+'" data-mid="'+x.id+'"><button class="echk'+(x.feito?' on':'')+'" onclick="event.stopPropagation();toggleModulo(\''+x.id+'\')">'+(x.feito?'✓':'')+'</button>'+(x.notas?'<span class="modnote-mark" title="Tem anotações" aria-label="Tem anotações">n</span>':'')+'<button type="button" class="modname ck-t" onclick="openModNote(\''+x.id+'\')">'+esc(x.nome)+'</button><button class="anexx" onclick="event.stopPropagation();removeModulo(\''+x.id+'\')">✕</button></div>'; }).join(''):'<div class="rg">Adicione módulos ou aulas — toque num item para anotar.</div>')
     +'<div class="modadd"><input class="field" id="detModInput" placeholder="ex.: Módulo 1 — Limites" onkeydown="if(event.key===\'Enter\')addModulo(\''+matId+'\')"><button class="btn" onclick="addModulo(\''+matId+'\')">+</button></div>'
     +'<div class="secbar" style="margin-top:26px"><div class="sect">Provas & trabalhos</div><button class="btn" onclick="openEvtForMat(\''+matId+'\')">+ Adicionar</button></div>'
     +(evs.length?evs.map(function(e){return evtRow(e,true);}).join(''):JB.emptyState({ icon:'📚', title:'Nada agendado', hint:'Vincule provas e trabalhos a esta matéria.' }))
@@ -491,7 +503,7 @@ function modNoteHtml(modId){
   return '<button class="lnk" onclick="backModNote()">← '+(m?esc(m.nome):'Matéria')+'</button>'
     +'<div class="modnote-head'+(x.feito?' done':'')+'">'
     +'<button type="button" class="echk modnote-chk'+(x.feito?' on':'')+'" onclick="toggleModulo(\''+x.id+'\')" title="Concluir">'+(x.feito?'✓':'')+'</button>'
-    +'<input class="field modnote-name" id="modNoteName" value="'+esc(x.nome)+'" onblur="renameModulo(\''+x.id+'\')" onkeydown="if(event.key===\'Enter\'){this.blur();}">'
+    +'<input class="field modnote-name ck-t" id="modNoteName" value="'+esc(x.nome)+'" onblur="renameModulo(\''+x.id+'\')" onkeydown="if(event.key===\'Enter\'){this.blur();}">'
     +'</div>'
     +'<p class="rg modnote-hint">Cole um print (Ctrl+V). Selecione o texto para formatar. Salva ao sair da aba, a cada 20s, ou toque em Salvar.</p>'
     +'<div id="modNoteEd"></div>';
@@ -507,7 +519,7 @@ function mountModEd(){
 function matCardHtml(m, doneStyle){
   var pr=modProgress(m.id), complete=isMatComplete(m);
   var cnt=(DATA.eventos||[]).filter(function(e){return (e.materiaIds||[]).indexOf(m.id)>-1 && !e.concluido && daysUntil(e.data)>=0;}).length; var anx=subjAnexos(m.id).length;
-  return '<div class="matc'+(doneStyle?' matc-done':'')+'" onclick="openMatDetail(\''+m.id+'\')"><div class="matrow"><span class="dotc lg" style="background:'+m.cor+'"></span><div class="matname">'+esc(m.nome)+'</div>'
+  return '<div class="matc'+(doneStyle?' matc-done':'')+'" onclick="openMatDetail(\''+m.id+'\')"><div class="matrow"><span class="dotc lg" style="background:'+m.cor+'"></span><div class="matname ck-t">'+esc(m.nome)+'</div>'
     +(complete?'<span class="mat-done-badge">✓</span>':'')
     +'<span class="rg" style="flex:0 0 auto">›</span></div>'
     +'<div class="matsub">'+pr.done+' / '+(pr.total||'—')+' módulos'+(cnt?(' · '+cnt+' próximo'+(cnt>1?'s':'')):'')+(anx?(' · 📎 '+anx):'')+studyTimeStr(m.id)+'</div>'

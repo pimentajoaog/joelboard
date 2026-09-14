@@ -44,7 +44,7 @@ test('packSnapshot counts checkable items and peekHtml strikes done ones', funct
   assert.match(html, /1\/3/);
   assert.match(html, /Roupas/);
   assert.match(html, /Chaves/);
-  assert.match(html, /jb-link-item done/);
+  assert.match(html, /jb-link-item ck-t done/);
   assert.match(html, /Carregador/);
   assert.match(html, /jb-link-g/);
   assert.match(html, /Docs/);

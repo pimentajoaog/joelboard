@@ -850,7 +850,7 @@ body.jb-relogin-bar { scroll-padding-top: 52px; }
 .jb-ed-surface .jb-ed-tasks { list-style: none; padding-left: 0; }
 .jb-ed-surface .jb-ed-tasks li { padding-left: 22px; position: relative; margin-bottom: 4px; cursor: pointer; }
 .jb-ed-surface .jb-ed-tasks li::before { content: ''; position: absolute; left: 0; top: 4px; width: 14px; height: 14px; border: 1px solid var(--border, #2d3346); border-radius: 4px; }
-.jb-ed-surface .jb-ed-tasks li.on { color: var(--muted, #7b85a0); text-decoration: line-through; }
+.jb-ed-surface .jb-ed-tasks li.on { color: var(--muted, #7b85a0); }
 .jb-ed-surface .jb-ed-tasks li.on::before { background: var(--success, #34d399); border-color: var(--success, #34d399); }
 .jb-ed-surface blockquote { margin: 0 0 10px; padding: 6px 12px; border-left: 3px solid var(--primary, #818cf8); color: var(--muted, #7b85a0); }
 .jb-ed-surface pre { margin: 0 0 10px; padding: 10px 12px; background: var(--surface2, #232838); border-radius: 10px; overflow-x: auto; }
@@ -1483,8 +1483,6 @@ html.jb-ink-full .fab {
 .jb-cal-row.done .jb-cal-title,
 .jb-cal.compact .jb-cal-row.done .jb-cal-title {
   color: var(--muted, #7b85a0);
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
 }
 .jb-cal-bar { width: 4px; align-self: stretch; border-radius: 3px; flex: 0 0 auto; }
 .jb-cal-info { flex: 1; min-width: 0; }
@@ -1678,7 +1676,7 @@ html.jb-ink-full .fab {
   border-radius: 0 0 12px 12px; padding: 8px 12px 10px;
 }
 .jb-link-item { font-size: 13px; padding: 5px 0; padding-left: calc(var(--gdepth, 0) * 10px); color: var(--text, #e7eaf3); }
-.jb-link-item.done { text-decoration: line-through; color: var(--muted, #7b85a0); }
+.jb-link-item.done { color: var(--muted, #7b85a0); }
 .jb-link-g {
   font-size: 10px; font-weight: 800; letter-spacing: .45px; text-transform: uppercase;
   color: var(--muted, #7b85a0);
@@ -1703,8 +1701,59 @@ html.jb-ink-full .fab {
 .jb-link-sticker.compact { padding: 6px 8px; border-radius: 10px; }
 .nc-preset-badge { font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: #f59e0b; background: rgba(245,158,11,.14); border-radius: 999px; padding: 2px 8px; }
 .nc-sticker-badge { font-size: 10px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: #2dd4bf; background: rgba(45,212,191,.14); border-radius: 999px; padding: 2px 8px; }
+/* Pencil strike (Recipes tick). .ck-t draws the line; .just-on runs the ✏️. */
+.ck-t,
+s, strike, del,
+.jb-ed-surface [style*="line-through"] {
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  background-image: linear-gradient(var(--primary, #818cf8), var(--primary, #818cf8));
+  background-repeat: no-repeat;
+  background-position: 0 .68em;
+}
+.ck-t {
+  background-size: 0% 2px;
+  transition: background-size .42s cubic-bezier(.22,.72,.25,1);
+}
+s, strike, del,
+.jb-ed-surface [style*="line-through"] {
+  text-decoration: none !important;
+  background-size: 100% 2px;
+}
+.done .ck-t,
+.paid .ck-t,
+.matc-done .ck-t,
+.ing-list li.on .ck-t,
+.step-list li.on .ck-t,
+.jb-ed-tasks li.on .ck-t,
+.ck-t.done,
+.ck-t.paid { background-size: 100% 2px; }
+.just-on { position: relative; }
+.just-on::after {
+  content: '✏️';
+  position: absolute; left: 10px; top: 50%; margin-top: -1em;
+  font-size: 13px; line-height: 1; pointer-events: none; z-index: 2;
+  animation: jbPen .5s cubic-bezier(.22,.72,.25,1) both;
+}
+@keyframes jbPen {
+  0% { left: 10px; opacity: 0; transform: rotate(-22deg) scale(.9); }
+  14% { opacity: 1; }
+  72% { opacity: 1; }
+  100% { left: calc(100% - 16px); opacity: 0; transform: rotate(-10deg) scale(1); }
+}
+.just-on .ichk, .just-on .step-num, .just-on .echk, .just-on .jb-cal-chk, .just-on .check {
+  animation: jbTick .36s cubic-bezier(.3,1.5,.5,1) both;
+}
+@keyframes jbTick {
+  0% { transform: scale(.84); }
+  55% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .jb-ed-bar, .jb-ed-btn, .jb-ed-ink-tools, .jb-ed-fs-menu, .jb-ed-hl-menu, .jb-ed-ink-chip, .jb-ed-hl-chip {
     animation: none !important; transition: none !important; transform: none !important;
   }
+  .ck-t { transition: none; }
+  .just-on::after { display: none; }
+  .just-on .ichk, .just-on .step-num, .just-on .echk, .just-on .jb-cal-chk, .just-on .check { animation: none; }
 }

@@ -32,7 +32,7 @@ test('renders checklists, quotes, code, links and hr', function () {
   var md = '- [ ] pendente\n- [x] feito\n\n> citação\n\n`code`\n\n```\nlinha\n```\n\n[ok](https://example.com)\n\n---';
   var html = ED.mdToHtml(md);
   assert.match(html, /jb-ed-tasks/);
-  assert.match(html, /<li class="on">feito<\/li>/);
+  assert.match(html, /<li class="on"><span class="ck-t">feito<\/span><\/li>/);
   assert.match(html, /<blockquote>/);
   assert.match(html, /<code>code<\/code>/);
   assert.match(html, /<pre><code>linha<\/code><\/pre>/);

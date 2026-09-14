@@ -280,7 +280,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .ispacer{ @apply w-[22px] flex-[0_0_auto] flex items-center justify-center text-muted text-[12px]; }
 .itext{ @apply flex-1 bg-transparent border-0 text-ink text-sm p-0 min-w-0; }
 .itext:focus{ outline:none; }
-.irow.done .itext{ @apply line-through text-muted; }
+.irow.done .itext{ @apply text-muted; }
 .itype{ @apply bg-transparent border-0 text-muted cursor-pointer text-[13px] flex-[0_0_auto] px-1; }
 .itype:hover{ opacity:1; }
 .idel{ @apply bg-transparent border-0 text-muted cursor-pointer text-[13px] flex-[0_0_auto] px-1; }
@@ -405,7 +405,7 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 /* ===== rich-text: rendered view + format toolbar ===== */
 .itext-view{ cursor:text; white-space:pre-wrap; word-break:break-word; line-height:1.4; min-height:20px; padding:1px 0; }
 .itext-view .iplace{ color:var(--muted); }
-.irow.done .itext-view{ text-decoration:line-through; color:var(--muted); }
+.irow.done .itext-view{ color:var(--muted); }
 .gname-view{ cursor:text; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.4; }
 .gname-view .iplace{ color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0; }
 
@@ -414,7 +414,6 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .fmtbar button{ width:36px; height:36px; border:0; background:transparent; color:var(--text); border-radius:50%; cursor:pointer; font-size:15px; font-family:inherit; line-height:1; }
 .fmtbar button:active{ background:var(--surface); }
 .fmtbar button u{ text-decoration:underline; }
-.fmtbar button s{ text-decoration:line-through; }
 .fmtbar .fmtdone{ color:var(--success); font-weight:800; }
 
 /* in-app date picker trigger (uses JB.datePicker) */

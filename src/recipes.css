@@ -1003,33 +1003,7 @@ body.recipes-shop .ing-list li.is-shop{
 
 /* O risco é um gradiente no texto inline: com box-decoration-break cada linha
    quebrada ganha o seu, e a transição só dispara quando .on muda de verdade
-   (render novo já nasce riscado, sem repetir a animação). */
-.ck-t{
-  -webkit-box-decoration-break:clone; box-decoration-break:clone;
-  background-image:linear-gradient(var(--primary), var(--primary));
-  background-repeat:no-repeat; background-position:0 .68em; background-size:0% 2px;
-  transition:background-size .42s cubic-bezier(.22,.72,.25,1);
-}
-li.on .ck-t{ background-size:100% 2px; }
-
-/* lapisinho correndo junto com a ponta do risco */
-.ing-list li.just-on::after, .step-list li.just-on::after{
-  content:'✏️'; position:absolute; left:10px; top:50%; margin-top:-1em;
-  font-size:13px; line-height:1; pointer-events:none; z-index:2;
-  animation:rcPen .5s cubic-bezier(.22,.72,.25,1) both;
-}
-@keyframes rcPen{
-  0%{ left:10px; opacity:0; transform:rotate(-22deg) scale(.9); }
-  14%{ opacity:1; }
-  72%{ opacity:1; }
-  100%{ left:calc(100% - 16px); opacity:0; transform:rotate(-10deg) scale(1); }
-}
-li.just-on .ichk, li.just-on .step-num{ animation:rcTick .36s cubic-bezier(.3,1.5,.5,1) both; }
-@keyframes rcTick{
-  0%{ transform:scale(.84); }
-  55%{ transform:scale(1.14); }
-  100%{ transform:scale(1); }
-}
+   (render novo já nasce riscado, sem repetir a animação). Core: .ck-t / .just-on. */
 
 .ichk{
   width:22px; height:22px; border-radius:7px; border:1.5px solid var(--border); flex:none;
@@ -1300,7 +1274,4 @@ html.rc-mode-swap::view-transition-new(root){
   .book-slot, .recipec, .detail, .book-body.is-intro, #main.is-mode-in{ animation:none; }
   .page-turn{ display:none; }
   .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-tool, .book-mode::before, .book-find-slot, .leaf-part-body, .leaf-part-head::after, #main.is-mode-out, .serv-widget, .serv-drawer, .qty-slot, .serve-fields{ transition:none; }
-  .ck-t{ transition:none; }
-  .ing-list li.just-on::after, .step-list li.just-on::after{ display:none; }
-  li.just-on .ichk, li.just-on .step-num{ animation:none; }
 }

@@ -92,7 +92,6 @@ textarea.field{ resize:vertical; min-height:64px; }
 .erow{ @apply flex items-center gap-3 bg-surface border border-border rounded-[14px] px-3.5 py-3 mb-2 cursor-pointer; }
 .erow:hover{ border-color:var(--primary); }
 .erow.done{ opacity:.55; }
-.erow.done .etitle{ text-decoration:line-through; }
 .ebar{ width:4px; align-self:stretch; border-radius:3px; flex:0 0 auto; }
 .einfo{ flex:1; min-width:0; }
 .etitle{ @apply text-[15px] font-semibold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -116,7 +115,7 @@ textarea.field{ resize:vertical; min-height:64px; }
 .mat-done-bucket{ display:block; width:100%; text-align:left; padding:8px 0; margin:4px 0 8px; font-size:12px; font-weight:700; color:var(--muted); background:transparent; border:0; border-bottom:1px solid color-mix(in srgb, var(--border) 55%, transparent); cursor:pointer; font-family:inherit; }
 .mat-done-bucket:hover{ color:var(--primary); }
 .matc-done{ opacity:.82; }
-.matc-done .matname{ text-decoration:line-through; color:var(--muted); }
+.matc-done .matname{ color:var(--muted); }
 .mat-done-badge{ flex:0 0 auto; font-size:11px; font-weight:800; color:var(--success); background:color-mix(in srgb, var(--success) 14%, var(--surface)); border-radius:99px; padding:2px 8px; }
 .secbar-actions{ display:flex; align-items:center; justify-content:flex-end; gap:10px; flex:1 1 auto; min-width:0; flex-wrap:nowrap; }
 #matSecbar .mat-done-toggle{ flex:0 1 auto; min-width:0; max-width:52vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:6px 0; }
@@ -204,7 +203,7 @@ textarea.field{ resize:vertical; min-height:64px; }
 .matdet-head{ display:flex; align-items:center; gap:10px; margin:12px 0 4px; }
 .matdet-name{ flex:1; font-size:20px; font-weight:800; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .modrow{ display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:7px; }
-.modrow.done .modname{ text-decoration:line-through; color:var(--muted); }
+.modrow.done .modname{ color:var(--muted); }
 .modname{ flex:1; min-width:0; font-size:14px; font-weight:600; text-align:left; background:transparent; border:0; color:inherit; cursor:pointer; font-family:inherit; padding:0; }
 .modname:hover{ color:var(--primary); }
 .modnote-mark{
@@ -228,7 +227,7 @@ textarea.field{ resize:vertical; min-height:64px; }
 .modrow.done .modnote-mark{ color:var(--muted); opacity:0.85; }
 .modnote-head{ display:flex; align-items:center; gap:10px; margin:14px 0 8px; }
 .modnote-name{ font-size:18px; font-weight:800; }
-.modnote-head.done .modnote-name{ text-decoration:line-through; color:var(--muted); }
+.modnote-head.done .modnote-name{ color:var(--muted); }
 .modnote-hint{ margin:0 0 12px; }
 .modadd{ display:flex; gap:8px; margin-top:8px; }
 .modadd .field{ flex:1; }

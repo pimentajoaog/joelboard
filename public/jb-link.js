@@ -419,7 +419,7 @@
       if (row.group) {
         return '<div class="jb-link-g d' + d + '" style="--gdepth:' + d + '">' + esc(row.texto) + '</div>';
       }
-      return '<div class="jb-link-item' + (row.feito ? ' done' : '') + '" style="--gdepth:' + d + '">' + esc(row.texto) + '</div>';
+      return '<div class="jb-link-item ck-t' + (row.feito ? ' done' : '') + '" style="--gdepth:' + d + '">' + esc(row.texto) + '</div>';
     }).join('');
     if (!rows) rows = '<div class="jb-link-item mute">Lista vazia</div>';
     var extra = snap.total > nChk ? ('<div class="jb-link-more">+' + (snap.total - nChk) + ' no Notes</div>') : '';

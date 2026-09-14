@@ -656,7 +656,7 @@
     var row = '<div class="jb-cal-row' + (e.done ? ' done' : '') + (e.linkedNotes ? ' linked' : '') + (openPeek ? ' jb-peek-open' : '') + '" data-id="' + esc(e.id) + '" data-app="' + esc(e.app) + '"' + href + raw
       + (peekable ? ' data-peek="1" aria-expanded="' + (openPeek ? 'true' : 'false') + '"' : '') + '>'
       + '<span class="jb-cal-bar" style="' + barBg + '"></span>'
-      + '<div class="jb-cal-info"><div class="jb-cal-title">' + esc(e.title || '(sem título)') + '</div>'
+      + '<div class="jb-cal-info"><div class="jb-cal-title ck-t">' + esc(e.title || '(sem título)') + '</div>'
       + (meta ? '<div class="jb-cal-meta">' + meta + '</div>' : '') + '</div>' + flag + linkPill + chk + '</div>';
     if (!peekable) return row;
     return '<div class="jb-cal-rowwrap">' + row + '</div>';

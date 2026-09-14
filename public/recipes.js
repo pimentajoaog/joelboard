@@ -471,13 +471,8 @@ function checkRows(recipeId, itemId) {
 
 function paintCheckRow(li, on) {
   li.classList.toggle('on', on);
-  li.classList.remove('just-on');
-  if (on) {
-    void li.offsetWidth;
-    li.classList.add('just-on');
-    clearTimeout(li._rcPen);
-    li._rcPen = setTimeout(function () { li.classList.remove('just-on'); }, 800);
-  }
+  if (on && window.JB && JB.justOn) JB.justOn(li);
+  else li.classList.remove('just-on');
   var btn = li.querySelector('.ichk, .step-num');
   if (!btn) return;
   btn.classList.toggle('on', on);

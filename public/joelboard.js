@@ -2784,18 +2784,29 @@
       .finally(function () { delete ensureFolderInflight[inflightKey]; });
     return ensureFolderInflight[inflightKey];
   }
-  function moveFile(fileId, newParentId) {
+  function moveFile(fileId, newParentId, opts) {
+    opts = opts || {};
     if (!fileId || !newParentId) return Promise.resolve({ id: fileId, moved: false });
     if (isGhost()) return Promise.resolve({ id: fileId, moved: false });
     return api('GET', 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?fields=parents')
       .then(function (meta) {
         var parents = meta.parents || [];
-        if (parents.indexOf(newParentId) >= 0) return { id: fileId, moved: false };
-        var remove = parents.join(',');
-        var url = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId)
-          + '?addParents=' + encodeURIComponent(newParentId)
-          + (remove ? ('&removeParents=' + encodeURIComponent(remove)) : '')
-          + '&fields=id,parents';
+        var already = parents.indexOf(newParentId) >= 0;
+        var remove = [];
+        if (opts.onlyReplace && opts.onlyReplace.length) {
+          parents.forEach(function (p) {
+            if (p !== newParentId && opts.onlyReplace.indexOf(p) >= 0) remove.push(p);
+          });
+          if (already && !remove.length) return { id: fileId, moved: false };
+        } else if (opts.keepOtherParents) {
+          if (already) return { id: fileId, moved: false };
+        } else {
+          if (already) return { id: fileId, moved: false };
+          remove = parents.filter(function (p) { return p !== newParentId; });
+        }
+        var url = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?fields=id,parents';
+        if (!already) url += '&addParents=' + encodeURIComponent(newParentId);
+        if (remove.length) url += '&removeParents=' + encodeURIComponent(remove.join(','));
         return api('PATCH', url, {}).then(function () { return { id: fileId, moved: true }; });
       });
   }
@@ -2838,8 +2849,8 @@
       return ensureFolder({ name: 'Anexos', parentId: studyId, cacheKey: 'study:anexos' });
     });
   }
-  function placeFileInFolder(fileId, folderId) {
-    return moveFile(fileId, folderId).then(function (r) {
+  function placeFileInFolder(fileId, folderId, opts) {
+    return moveFile(fileId, folderId, opts).then(function (r) {
       return (r && r.id) || fileId;
     }, function () { return fileId; });
   }
@@ -2937,11 +2948,25 @@
         + '/values/' + encodeURIComponent(tab) + '?valueRenderOption=UNFORMATTED_VALUE')
         .then(function (res) { return res.values || []; }, function () { return []; });
     }
-    function moveOwned(sid, folderId) {
+    function moveOwned(sid, folderId, opts) {
       if (!sid || !folderId) return Promise.resolve();
-      return moveFile(sid, folderId).then(function (r) {
+      return moveFile(sid, folderId, opts).then(function (r) {
         if (r && r.moved) moved++;
       }, function () {});
+    }
+    function notesCollabMove(sid, kitId, sharedId, isKit) {
+      return sheetTabs(sid).then(function (grid) {
+        var onlyReplace = [kitId, sharedId].filter(Boolean);
+        if (grid && grid['Dias'] != null && grid['Itens'] == null && grid['Planos'] == null) {
+          return ensurePlannerSharedFolder().then(function (pf) {
+            if (!pf) return moveOwned(sid, isKit ? kitId : sharedId, { onlyReplace: onlyReplace });
+            return moveOwned(sid, pf, { onlyReplace: onlyReplace.concat([pf]) });
+          });
+        }
+        return moveOwned(sid, isKit ? kitId : sharedId, { onlyReplace: onlyReplace });
+      }, function () {
+        return moveOwned(sid, isKit ? kitId : sharedId, { onlyReplace: [kitId, sharedId].filter(Boolean) });
+      });
     }
     var notesId = getSheetId('notas');
     var plannerId = getSheetId('planner');
@@ -2972,7 +2997,7 @@
             if (!sid) return;
             var isKit = cfg['preset_' + listaId] === '1' || cfg['preset_' + listaId] === 1;
             if (isKit && window.JB && JB.link && typeof JB.link.isDefaultKitTitle === 'function' && JB.link.isDefaultKitTitle(titulo)) isKit = false;
-            chain = chain.then(function () { return moveOwned(sid, isKit ? kitId : sharedId); });
+            chain = chain.then(function () { return notesCollabMove(sid, kitId, sharedId, isKit); });
           });
           return chain;
         });

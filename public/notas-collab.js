@@ -150,7 +150,11 @@ function ncParseJoinSheetId(raw) {
 }
 
 function ncIsCollabSpreadsheetGrid(grid) {
-  return !!(grid && grid['Meta'] != null && grid['Membros'] != null);
+  return !!(grid && grid['Meta'] != null && grid['Membros'] != null && grid['Itens'] != null
+    && grid['Notas'] == null && grid['Dias'] == null && grid['Planos'] == null);
+}
+function ncGridLooksLikePlanner(grid) {
+  return !!(grid && grid['Meta'] != null && grid['Dias'] != null && grid['Itens'] == null && grid['Planos'] == null);
 }
 
 function ncCollabUrl(sid, p) {
@@ -247,18 +251,20 @@ function ncStripCollabFromData() {
 
 function ncFetchCollabPack(sid, opts) {
   opts = opts || {};
-  if (collabGrids[sid]) {
+  function load(grid) {
+    if (ncGridLooksLikePlanner(grid)) {
+      return Promise.resolve({ sid: sid, grid: grid, meta: [], itens: [], membros: [], skip: 'planner' });
+    }
     return ensureCollabNotesHeaders(sid).then(function () {
-      return ncLoadCollabSheetData(sid, collabGrids[sid], opts);
+      return ncLoadCollabSheetData(sid, grid, opts);
     });
   }
+  if (collabGrids[sid]) return load(collabGrids[sid]);
   return JB.api('GET', ncCollabUrl(sid, '?fields=sheets.properties(sheetId,title)')).then(function (meta) {
     var grid = {};
     (meta.sheets || []).forEach(function (sh) { grid[sh.properties.title] = sh.properties.sheetId; });
     collabGrids[sid] = grid;
-    return ensureCollabNotesHeaders(sid).then(function () {
-      return ncLoadCollabSheetData(sid, grid, opts);
-    });
+    return load(grid);
   });
 }
 
@@ -361,6 +367,10 @@ function ncLoadCollabLists() {
         if (!sid) return null;
         return ncFetchCollabPack(sid).then(function (pack) {
           if (!pack) { failed++; return; }
+          if (pack.skip === 'planner' || ncGridLooksLikePlanner(pack.grid)) {
+            ncRestoreMisfiledPlannerSheet(sid);
+            return;
+          }
           var n = ncMergeRegistryRow(reg, pack);
           if (!n) { failed++; return; }
           if (stickerKeep[n.id]) n.sticker = true;
@@ -405,6 +415,21 @@ function ncHealCollabKitFlags() {
   });
 }
 
+function ncRestoreMisfiledPlannerSheet(sid) {
+  if (!sid || !JB.ensurePlannerSharedFolder || !JB.placeFileInFolder) return Promise.resolve();
+  return Promise.all([
+    JB.ensurePlannerSharedFolder(),
+    JB.ensureNotesSharedFolder ? JB.ensureNotesSharedFolder() : Promise.resolve(''),
+    JB.ensureNotesKitSharedFolder ? JB.ensureNotesKitSharedFolder() : Promise.resolve('')
+  ]).then(function (ids) {
+    var plannerFolder = ids[0], notesShared = ids[1], notesKits = ids[2];
+    if (!plannerFolder) return;
+    return JB.placeFileInFolder(sid, plannerFolder, {
+      onlyReplace: [notesShared, notesKits].filter(Boolean)
+    });
+  }).catch(function () {});
+}
+
 function ncLooksLikeKit(n) {
   if (!n) return false;
   if (n.collabSheetId && ncIsDefaultKitTitle(n.titulo)) return false;
@@ -417,29 +442,39 @@ function ncMigrateCollabDriveFolders() {
   if (JB.isGhost && JB.isGhost()) return;
   if (!JB.placeFileInFolder && !JB.ensureDriveShortcut) return;
   var me = String(ncEmail() || '').toLowerCase();
-  var chain = Promise.resolve();
-  (DATA.notas || []).forEach(function (n) {
-    if (!n || !n.collabSheetId) return;
-    var role = String(n.collabRole || '').toLowerCase();
-    var owner = String(n.collabOwner || '').toLowerCase();
-    var isOwner = role === 'owner' || (!!me && owner === me);
-    if (ncLooksLikeKit(n)) {
-      n.preset = true;
-      if (typeof saveConfig === 'function') saveConfig('preset_' + n.id, '1');
-    }
-    chain = chain.then(function () {
-      var ensure = n.preset
-        ? (JB.ensureNotesKitSharedFolder ? JB.ensureNotesKitSharedFolder() : Promise.resolve(''))
-        : (JB.ensureNotesSharedFolder ? JB.ensureNotesSharedFolder() : Promise.resolve(''));
-      return ensure.then(function (folderId) {
+  var foldersP = Promise.all([
+    JB.ensureNotesSharedFolder ? JB.ensureNotesSharedFolder() : Promise.resolve(''),
+    JB.ensureNotesKitSharedFolder ? JB.ensureNotesKitSharedFolder() : Promise.resolve('')
+  ]);
+  var chain = foldersP.then(function (folders) {
+    var sharedId = folders[0], kitId = folders[1];
+    var onlyReplace = [sharedId, kitId].filter(Boolean);
+    var next = Promise.resolve();
+    (DATA.notas || []).forEach(function (n) {
+      if (!n || !n.collabSheetId) return;
+      var grid = collabGrids[n.collabSheetId] || {};
+      if (ncGridLooksLikePlanner(grid)) {
+        next = next.then(function () { return ncRestoreMisfiledPlannerSheet(n.collabSheetId); });
+        return;
+      }
+      var role = String(n.collabRole || '').toLowerCase();
+      var owner = String(n.collabOwner || '').toLowerCase();
+      var isOwner = role === 'owner' || (!!me && owner === me);
+      if (ncLooksLikeKit(n)) {
+        n.preset = true;
+        if (typeof saveConfig === 'function') saveConfig('preset_' + n.id, '1');
+      }
+      next = next.then(function () {
+        var folderId = n.preset ? kitId : sharedId;
         if (!folderId) return;
         if (isOwner) {
-          return JB.placeFileInFolder ? JB.placeFileInFolder(n.collabSheetId, folderId) : null;
+          return JB.placeFileInFolder(n.collabSheetId, folderId, { onlyReplace: onlyReplace });
         }
         if (!JB.ensureDriveShortcut) return null;
         return JB.ensureDriveShortcut(n.collabSheetId, folderId, n.titulo || 'Lista compartilhada');
       });
     });
+    return next;
   });
   chain.catch(function () {});
 }
@@ -584,6 +619,8 @@ function ncEnsureCollabGridCols(sid, tab, minCols) {
 
 function ensureCollabNotesHeaders(sid) {
   if (!sid || !JB.api) return Promise.resolve();
+  var grid = collabGrids[sid] || {};
+  if (ncGridLooksLikePlanner(grid)) return Promise.resolve();
   return Promise.all([
     ncEnsureCollabGridCols(sid, 'Meta', 10).then(function () {
       return JB.api('GET', ncCollabUrl(sid, '/values/' + encodeURIComponent('Meta!1:1')));
@@ -896,6 +933,7 @@ function ncJoinCollab(sheetId) {
     return ncFetchCollabPack(sheetId);
   }).then(function (pack) {
     if (!pack) throw new Error('planilha_invalida');
+    if (pack.skip === 'planner' || ncGridLooksLikePlanner(pack.grid)) throw new Error('planilha_de_plano');
     var metaRow = body(pack.meta)[0];
     if (!metaRow || !metaRow[6]) throw new Error('lista_nao_encontrada');
     var em = ncEmail();
@@ -980,6 +1018,7 @@ function ncJoinErrMessage(e) {
   var m = String((e && e.message) || '');
   if (m === 'link_invalido') return 'Link de convite inválido.';
   if (m === 'planilha_invalida' || m === 'lista_nao_encontrada') return 'Essa planilha não é uma lista compartilhada do Joelboard.';
+  if (m === 'planilha_de_plano') return 'Esse convite é de um plano do Planner. Abra o link no Planner, não no Notes.';
   if (m === 'planilha_compartilhada_como_pessoal') return 'Sua planilha pessoal estava apontando para a lista compartilhada — crie uma planilha pessoal separada.';
   if (m.indexOf('403') > -1 || m.indexOf('PERMISSION') > -1) return 'Sem acesso à planilha. Peça Editor no Drive e abra o link de novo.';
   if (m.indexOf('404') > -1) return 'Planilha não encontrada. Confira o link.';

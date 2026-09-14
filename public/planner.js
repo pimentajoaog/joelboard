@@ -415,7 +415,8 @@ function show(){
     if(JB.ensureProfile && !JB.profileReady()) JB.ensureProfile(function(){ if(typeof plPaintAcct==='function') plPaintAcct(); });
   }
   plBindLinkClicks();
-  if(openPlanId) plRefreshLinks(); else render();
+  render();
+  if(openPlanId) plRefreshLinks();
   if(!_pbooted){
     _pbooted=true;
     if(typeof plCheckJoinParam==='function') plCheckJoinParam();
@@ -640,14 +641,18 @@ function plLinkIds(){
 function plRefreshLinks(){
   var p=plan(openPlanId);
   if(!p){ render(); return; }
+  render();
   var ids=plLinkIds();
   var apply=function(snaps){
     _linkSnaps={};
     (snaps||[]).forEach(function(s){ _linkSnaps[s.id]=s; });
     render();
   };
-  if(window.JB&&JB.link&&JB.link.loadSnapshots) JB.link.loadSnapshots(ids).then(apply);
-  else apply([]);
+  if(!ids.length) return;
+  if(window.JB&&JB.link&&JB.link.loadSnapshots){
+    JB.link.loadSnapshots(ids).then(apply, function(){ apply([]); });
+    return;
+  }
 }
 function plShareHint(){
   var p=plan(openPlanId);

@@ -8,7 +8,7 @@ const src = readFileSync(new URL('../public/notas-collab.js', import.meta.url), 
 const notas = readFileSync(new URL('../public/notas.js', import.meta.url), 'utf8');
 const ctx = { console, JB: { onProfileChange: function () {} } };
 vm.createContext(ctx);
-vm.runInContext(src.replace(/^function /, 'function ') + '\nthis.ncParseJoinSheetId = ncParseJoinSheetId;\nthis.ncIsCollabSpreadsheetGrid = ncIsCollabSpreadsheetGrid;\nthis.ncJoinErrMessage = ncJoinErrMessage;', ctx);
+vm.runInContext(src.replace(/^function /, 'function ') + '\nthis.ncParseJoinSheetId = ncParseJoinSheetId;\nthis.ncIsCollabSpreadsheetGrid = ncIsCollabSpreadsheetGrid;\nthis.ncGridLooksLikePlanner = ncGridLooksLikePlanner;\nthis.ncJoinErrMessage = ncJoinErrMessage;', ctx);
 
 test('ncParseJoinSheetId accepts a raw id, join URL, or Drive URL', function () {
   var id = '1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
@@ -22,6 +22,8 @@ test('ncParseJoinSheetId accepts a raw id, join URL, or Drive URL', function () 
 test('collab sheets are not treated as the personal Notes workbook', function () {
   assert.equal(ctx.ncIsCollabSpreadsheetGrid({ Meta: 1, Membros: 2, Itens: 3 }), true);
   assert.equal(ctx.ncIsCollabSpreadsheetGrid({ Notas: 1, Itens: 2 }), false);
+  assert.equal(ctx.ncIsCollabSpreadsheetGrid({ Meta: 1, Membros: 2, Dias: 3 }), false);
+  assert.equal(ctx.ncGridLooksLikePlanner({ Meta: 1, Dias: 2, Eventos: 3, Membros: 4 }), true);
   assert.match(notas, /namePart:'Joelboard Not'/);
   assert.match(notas, /function openNoteEditor/);
   assert.match(notas, /requiredTabs: \['Notas'\]/);
@@ -30,6 +32,7 @@ test('collab sheets are not treated as the personal Notes workbook', function ()
 
 test('join explains missing Drive access', function () {
   assert.match(ctx.ncJoinErrMessage({ message: 'HTTP 403' }), /Editor no Drive/);
+  assert.match(ctx.ncJoinErrMessage({ message: 'planilha_de_plano' }), /Planner/);
   assert.match(src, /function ncGrantEditorAccess/);
   assert.match(src, /ncFindRegistryRow\(ctx\.metaRow\[6\], sheetId\)/);
   assert.match(src, /n\.collabSheetId = sid/);

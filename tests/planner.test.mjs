@@ -27,6 +27,7 @@ vm.createContext(cctx);
 vm.runInContext(
   collab
   + '\nthis.plParseJoinSheetId=plParseJoinSheetId;this.plIsCollabSpreadsheetGrid=plIsCollabSpreadsheetGrid;'
+  + 'this.plGridLooksLikeNotes=plGridLooksLikeNotes;this.plPlanIdFromMeta=plPlanIdFromMeta;'
   + 'this.plJoinErrMessage=plJoinErrMessage;this.plMemberNeedsProfileWrite=plMemberNeedsProfileWrite;',
   cctx
 );
@@ -133,10 +134,15 @@ test('collab sheets are not treated as the personal Planner workbook', function 
   assert.equal(cctx.plIsCollabSpreadsheetGrid({ Meta: 1, Membros: 2, Dias: 3 }), true);
   assert.equal(cctx.plIsCollabSpreadsheetGrid({ Planos: 1, Dias: 2 }), false);
   assert.equal(cctx.plIsCollabSpreadsheetGrid({ Meta: 1, Membros: 2, Planos: 3 }), false);
+  assert.equal(cctx.plIsCollabSpreadsheetGrid({ Meta: 1, Membros: 2, Itens: 3 }), false);
+  assert.equal(cctx.plGridLooksLikeNotes({ Meta: 1, Membros: 2, Itens: 3 }), true);
+  assert.equal(cctx.plPlanIdFromMeta(['t', '', '', '', '', '', '', ''], ['Viagem', 'sid', 'owner', 'a@b.com', 'plan-real']), 'plan-real');
+  assert.equal(cctx.plPlanIdFromMeta(['t', '', '', '', '', '', '', 'plan-meta'], null), 'plan-meta');
   assert.match(planner, /namePart:'Joelboard Planner'/);
   assert.match(planner, /requiredTabs: \['Planos'\]/);
   assert.match(collab, /Joelboard Plano —/);
   assert.match(cctx.plJoinErrMessage({ message: 'HTTP 403' }), /Editor no Drive/);
+  assert.match(cctx.plJoinErrMessage({ message: 'planilha_de_lista' }), /Notes/);
   assert.match(planner, /plPaintAcct/);
   assert.doesNotMatch(planner, /acctEmail'\)\.textContent='👤 '\+.*plAcctLabel/);
   assert.match(planner, /\['Planos',\[.*'Listas'\]/);

@@ -201,7 +201,7 @@
       return fetchCollabNotesPack(missing).then(function (extra) {
         return snaps.concat(snapshotsFromLists(missing, extra.notas, extra.itens));
       });
-    });
+    }).catch(function () { return []; });
   }
   function loadCatalog() {
     if (window.JB && JB.isGhost && JB.isGhost()) return Promise.resolve(catalogFromGhost());

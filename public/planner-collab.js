@@ -94,7 +94,14 @@ function plParseJoinSheetId(raw) {
 }
 
 function plIsCollabSpreadsheetGrid(grid) {
-  return !!(grid && grid['Meta'] != null && grid['Membros'] != null && grid['Planos'] == null);
+  return !!(grid && grid['Meta'] != null && grid['Membros'] != null && grid['Dias'] != null
+    && grid['Planos'] == null && grid['Itens'] == null && grid['Notas'] == null);
+}
+function plGridLooksLikeNotes(grid) {
+  return !!(grid && grid['Itens'] != null && grid['Dias'] == null && grid['Planos'] == null);
+}
+function plPlanIdFromMeta(metaRow, reg) {
+  return String((reg && reg[4]) || (metaRow && metaRow[7]) || '');
 }
 
 function plCollabUrl(sid, p) {
@@ -271,26 +278,59 @@ function plPeekMetaAtualizado(sid) {
 }
 
 function plMergeRegistryRow(reg, pack) {
-  var metaRow = body(pack.meta)[0];
-  if (!metaRow || !metaRow[7]) return null;
+  pack = pack || {};
+  var metaRow = body(pack.meta)[0] || [];
+  var id = plPlanIdFromMeta(metaRow, reg);
+  if (!id) return null;
   var members = plParseMembers(pack.membros);
   var my = null;
   for (var mi = 0; mi < members.length; mi++) { if (members[mi].email === plEmail()) { my = members[mi]; break; } }
   return {
-    id: String(metaRow[7]),
-    titulo: String(metaRow[0] || reg[0] || ''),
+    id: id,
+    titulo: String(metaRow[0] || (reg && reg[0]) || ''),
     subtitulo: String(metaRow[1] || ''),
     inicio: String(metaRow[2] || ''),
     fim: String(metaRow[3] || ''),
     icone: String(metaRow[4] || '📅'),
     criado: String(metaRow[5] || ''),
-    atualizado: String(reg[5] || metaRow[6] || ''),
-    collabSheetId: pack.sid,
-    collabRole: String(reg[2] || (my && my.papel) || 'editor'),
-    collabOwner: String(reg[3] || metaRow[8] || ''),
+    atualizado: String((reg && reg[5]) || metaRow[6] || ''),
+    collabSheetId: pack.sid || String((reg && reg[1]) || ''),
+    collabRole: String((reg && reg[2]) || (my && my.papel) || 'editor'),
+    collabOwner: String((reg && reg[3]) || metaRow[8] || ''),
     collabMembers: members,
     listaIds: (typeof plIds==='function')?plIds(metaRow[9]):String(metaRow[9]||'').split(',').filter(Boolean)
   };
+}
+
+function plStubFromRegistry(reg) {
+  var id = String((reg && reg[4]) || '');
+  var sid = String((reg && reg[1]) || '');
+  if (!id || !sid) return null;
+  return {
+    id: id,
+    titulo: String((reg && reg[0]) || 'Plano compartilhado'),
+    subtitulo: '',
+    inicio: '',
+    fim: '',
+    icone: '📅',
+    criado: '',
+    atualizado: String((reg && reg[5]) || ''),
+    collabSheetId: sid,
+    collabRole: String((reg && reg[2]) || 'editor'),
+    collabOwner: String((reg && reg[3]) || ''),
+    collabMembers: [],
+    listaIds: []
+  };
+}
+
+function plKeepRegistryPlan(reg, pack) {
+  var p = pack ? plMergeRegistryRow(reg, pack) : null;
+  if (!p) p = plStubFromRegistry(reg);
+  if (!p) return null;
+  var exists = (DATA.planos || []).some(function (x) { return x.id === p.id || (x.collabSheetId && x.collabSheetId === p.collabSheetId); });
+  if (!exists) DATA.planos.push(p);
+  if (pack && pack.grid && !plGridLooksLikeNotes(pack.grid)) plApplyCollabPack(p.id, pack);
+  return p;
 }
 
 function plLoadCollabPlans() {
@@ -305,14 +345,16 @@ function plLoadCollabPlans() {
         var sid = String(reg[1] || '');
         if (!sid) return null;
         return plFetchCollabPack(sid).then(function (pack) {
-          if (!pack) { failed++; return; }
-          var p = plMergeRegistryRow(reg, pack);
+          if (pack && plGridLooksLikeNotes(pack.grid)) { failed++; return; }
+          var p = plKeepRegistryPlan(reg, pack);
           if (!p) { failed++; return; }
-          DATA.planos.push(p);
-          plApplyCollabPack(p.id, pack);
-          _plCollabSig[p.id] = plPackSignature(daysOf(p.id), eventsOfPlan(p.id), body(pack.meta)[0], p.collabMembers);
-          plSyncMyMemberProfile(p, pack.membros);
-        }).catch(function () { failed++; });
+          if (pack && pack.meta) {
+            _plCollabSig[p.id] = plPackSignature(daysOf(p.id), eventsOfPlan(p.id), body(pack.meta)[0], p.collabMembers);
+            plSyncMyMemberProfile(p, pack.membros);
+          }
+        }).catch(function () {
+          if (!plKeepRegistryPlan(reg, null)) failed++;
+        });
       })).then(function () {
         if (failed && typeof toast === 'function') {
           toast(failed === 1
@@ -681,8 +723,9 @@ function plJoinCollab(sheetId) {
     return plFetchCollabPack(sheetId);
   }).then(function (pack) {
     if (!pack) throw new Error('planilha_invalida');
+    if (plGridLooksLikeNotes(pack.grid)) throw new Error('planilha_de_lista');
     var metaRow = body(pack.meta)[0];
-    if (!metaRow || !metaRow[7]) throw new Error('lista_nao_encontrada');
+    if (!metaRow || !plPlanIdFromMeta(metaRow)) throw new Error('lista_nao_encontrada');
     var em = plEmail();
     var members = plParseMembers(pack.membros);
     var me = null;
@@ -705,14 +748,14 @@ function plJoinCollab(sheetId) {
       return { pack: pack, metaRow: metaRow, members: members };
     });
   }).then(function (ctx) {
-    return plFindRegistryRow(ctx.metaRow[7], sheetId).then(function (row) {
+    return plFindRegistryRow(plPlanIdFromMeta(ctx.metaRow), sheetId).then(function (row) {
       if (row > 0) return;
       return plAppendRegistry({
         titulo: String(ctx.metaRow[0] || ''),
         sheetId: sheetId,
         papel: 'editor',
         owner: String(ctx.metaRow[8] || ''),
-        planoId: String(ctx.metaRow[7]),
+        planoId: plPlanIdFromMeta(ctx.metaRow),
         atualizado: new Date().toISOString()
       });
     }).then(function () {
@@ -728,7 +771,7 @@ function plJoinCollab(sheetId) {
     else try { history.replaceState(null, '', location.pathname); } catch (_) {}
     return plLoadCollabPlans().then(function () {
       show();
-      openPlan(String(ctx.metaRow[7]));
+      openPlan(plPlanIdFromMeta(ctx.metaRow));
       toast('✓ Plano compartilhado aberto');
     });
   });
@@ -754,6 +797,7 @@ function plJoinErrMessage(e) {
   var m = String((e && e.message) || '');
   if (m === 'link_invalido') return 'Link de convite inválido.';
   if (m === 'planilha_invalida' || m === 'lista_nao_encontrada') return 'Essa planilha não é um plano compartilhado do Joelboard.';
+  if (m === 'planilha_de_lista') return 'Esse convite é de uma lista do Notes. Abra o link no Notes, não no Planner.';
   if (m === 'planilha_compartilhada_como_pessoal') return 'Sua planilha pessoal estava apontando para o plano compartilhado — crie uma planilha pessoal separada.';
   if (m.indexOf('403') > -1 || m.indexOf('PERMISSION') > -1) return 'Sem acesso à planilha. Peça Editor no Drive e abra o link de novo.';
   if (m.indexOf('404') > -1) return 'Planilha não encontrada. Confira o link.';

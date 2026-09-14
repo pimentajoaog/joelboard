@@ -5,8 +5,13 @@ import {
   isTokenFresh,
   shouldRefreshSoon,
   shouldAdoptSharedToken,
+  tabIsVisible,
+  tabAllowsSilentGis,
+  tokenNeedsForcedRefresh,
+  ignoreAuthFocusBounce,
   REFRESH_LEAD_MS,
   VISIBLE_REFRESH_MS,
+  FOCUS_BOUNCE_MS,
 } from '../lib/auth-token.mjs';
 
 describe('tokenExpiryMs', () => {
@@ -39,6 +44,40 @@ describe('shouldRefreshSoon', () => {
     const now = 1_000_000_000_000;
     assert.equal(shouldRefreshSoon(now + VISIBLE_REFRESH_MS, now, VISIBLE_REFRESH_MS), true);
     assert.equal(shouldRefreshSoon(now + VISIBLE_REFRESH_MS + 1, now, VISIBLE_REFRESH_MS), false);
+  });
+});
+
+describe('tabIsVisible', () => {
+  it('blocks only hidden documents', () => {
+    assert.equal(tabIsVisible('hidden'), false);
+    assert.equal(tabIsVisible('visible'), true);
+    assert.equal(tabIsVisible(''), true);
+  });
+});
+
+describe('tabAllowsSilentGis', () => {
+  it('blocks hidden and unfocused tabs', () => {
+    assert.equal(tabAllowsSilentGis('hidden', true), false);
+    assert.equal(tabAllowsSilentGis('visible', false), false);
+    assert.equal(tabAllowsSilentGis('visible', true), true);
+    assert.equal(tabAllowsSilentGis('', true), true);
+  });
+});
+
+describe('tokenNeedsForcedRefresh', () => {
+  it('skips GIS when another tab already refreshed', () => {
+    const now = 1_000_000_000_000;
+    assert.equal(tokenNeedsForcedRefresh(now + REFRESH_LEAD_MS + 1, now), false);
+    assert.equal(tokenNeedsForcedRefresh(now + REFRESH_LEAD_MS, now), true);
+  });
+});
+
+describe('ignoreAuthFocusBounce', () => {
+  it('ignores focus events right after a GIS popup', () => {
+    const now = 1_000_000_000_000;
+    assert.equal(ignoreAuthFocusBounce(now - 100, now), true);
+    assert.equal(ignoreAuthFocusBounce(now - FOCUS_BOUNCE_MS, now), false);
+    assert.equal(ignoreAuthFocusBounce(0, now), false);
   });
 });
 

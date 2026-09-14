@@ -12,10 +12,15 @@
   var SILENT_FAIL_COOLDOWN_KNOWN_MS = 8000;
   var REFRESH_LEAD_MS = 13 * 60 * 1000;
   var VISIBLE_REFRESH_MS = 15 * 60 * 1000;
+  var FOCUS_BOUNCE_MS = 4000;
   var GIS_SETTLE_MS = 300;
   var TAB_ID = 't' + Math.random().toString(36).slice(2, 10);
   var memTok = '', memExp = 0;
   var silentFailStreak = 0;
+  var lastSilentGisAt = 0;
+  var heldGisLock = false;
+  var GIS_LOCK = 'jb_gis';
+  var GIS_LOCK_MS = 18000;
   var AUTH_BC = null;
   try { AUTH_BC = new BroadcastChannel('jb-auth'); } catch (_) {}
 
@@ -292,6 +297,14 @@
     refreshTimer = setTimeout(function () {
       pullSharedToken();
       if (!email() && !readToken()) return;
+      if (isTokenValid() && (readExp() - Date.now() > REFRESH_LEAD_MS)) {
+        scheduleTokenRefresh();
+        return;
+      }
+      if (!tabAllowsSilentGis()) {
+        scheduleTokenRefresh();
+        return;
+      }
       requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {
         afterSilentRefreshFail('refresh_timer');
       });
@@ -545,23 +558,38 @@
   function afterSilentRefreshFail(reason){
     pullSharedToken();
     if (isTokenValid()) { scheduleTokenRefresh(); return; }
+    if (reason === 'silent_hidden' || !tabIsVisible()) {
+      scheduleTokenRefresh();
+      return;
+    }
     if (silentFailStreak < 2 && (reason === 'refresh_timer' || reason === 'visible')) return;
     if (needsReLogin()) promptReLogin(reason);
   }
   // Expired local token — stay on loading and try silent GIS first. Gate only if that fails.
   function bootAuthIfExpired(onExpired, onSilentOk){
     if (!needsReLogin()) return false;
-    requestToken(false, { force: true }).then(function () {
-      if (isTokenValid() && typeof onSilentOk === 'function') onSilentOk();
-    }).catch(function () {
-      pullSharedToken();
-      if (isTokenValid()) {
-        if (typeof onSilentOk === 'function') onSilentOk();
-        return;
-      }
-      promptReLogin('boot');
-      if (typeof onExpired === 'function') onExpired();
-    });
+    function run(){
+      requestToken(false, { force: true }).then(function () {
+        if (isTokenValid() && typeof onSilentOk === 'function') onSilentOk();
+      }).catch(function (err) {
+        pullSharedToken();
+        if (isTokenValid()) {
+          if (typeof onSilentOk === 'function') onSilentOk();
+          return;
+        }
+        if ((err && err.message === 'silent_hidden') || !tabIsVisible()) {
+          whenForeground(run);
+          return;
+        }
+        promptReLogin('boot');
+        if (typeof onExpired === 'function') onExpired();
+      });
+    }
+    if (!tabIsVisible()) {
+      whenForeground(run);
+      return true;
+    }
+    run();
     return true;
   }
 
@@ -575,6 +603,7 @@
 
   function clearSilentTimer(){ if (silentTimer) { clearTimeout(silentTimer); silentTimer = null; } }
   function finishPending(err, tok){
+    releaseSilentGisLock();
     clearSilentTimer();
     var res = pendingRes, rej = pendingRej, wasInteractive = pendingInteractive;
     pendingRes = pendingRej = null;
@@ -595,7 +624,72 @@
     authGen++;
     clearSilentTimer();
     if (pendingRej) finishPending(new Error(reason || 'auth_cancelled'));
+    else releaseSilentGisLock();
     inflightToken = null;
+  }
+
+  function tabIsVisible(){
+    try {
+      if (document.visibilityState && document.visibilityState !== 'visible') return false;
+    } catch (_) {}
+    return true;
+  }
+  function tabAllowsSilentGis(){
+    if (!tabIsVisible()) return false;
+    try {
+      if (typeof document.hasFocus === 'function' && !document.hasFocus()) return false;
+    } catch (_) {}
+    return true;
+  }
+  function whenForeground(fn){
+    if (tabIsVisible()) { fn(); return; }
+    var done = false;
+    function go(){
+      if (done || !tabIsVisible()) return;
+      done = true;
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('focus', onVis);
+      fn();
+    }
+    function onVis(){ if (tabIsVisible()) go(); }
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', onVis);
+  }
+  function claimSilentGisLock(){
+    var now = Date.now();
+    var stamp = TAB_ID + ':' + now + ':' + Math.random().toString(36).slice(2, 6);
+    try {
+      var prev = JSON.parse(lg(GIS_LOCK) || 'null');
+      if (prev && Number(prev.until) > now && prev.from && prev.from !== TAB_ID) return false;
+    } catch (_) {}
+    ls(GIS_LOCK, JSON.stringify({ from: TAB_ID, until: now + GIS_LOCK_MS, n: stamp }));
+    try {
+      var got = JSON.parse(lg(GIS_LOCK) || 'null');
+      if (!got || got.n !== stamp) return false;
+    } catch (_) {}
+    heldGisLock = true;
+    return true;
+  }
+  function releaseSilentGisLock(){
+    if (!heldGisLock) return;
+    heldGisLock = false;
+    try {
+      var got = JSON.parse(lg(GIS_LOCK) || 'null');
+      if (got && got.from === TAB_ID) lr(GIS_LOCK);
+    } catch (_) {}
+  }
+  function waitPeerToken(ms){
+    ms = ms || 8000;
+    var t0 = Date.now();
+    return new Promise(function (res, rej) {
+      function tick(){
+        pullSharedToken();
+        if (isTokenValid()) { res(readToken()); return; }
+        if (Date.now() - t0 >= ms) { rej(new Error('silent_cooldown')); return; }
+        setTimeout(tick, 200);
+      }
+      tick();
+    });
   }
 
   function ensureClient(cb){
@@ -666,10 +760,13 @@
           if (gen !== authGen) { rej(new Error('auth_cancelled')); return; }
           pendingRes = res; pendingRej = rej; pendingInteractive = !!interactive;
           if (!interactive) {
+            lastSilentGisAt = Date.now();
             silentTimer = setTimeout(function () {
               if (pendingRej === rej) finishPending(new Error('silent_timeout'));
             }, SILENT_TIMEOUT_MS);
           }
+          // GIS always opens a Google window, even with prompt:none — it flashes
+          // and steals OS focus. Callers must already have checked tabAllowsSilentGis.
           try { tokenClient.requestAccessToken({ prompt: pmt }); }
           catch (e) { finishPending(e); }
         });
@@ -683,11 +780,24 @@
     if (isGhost()) return Promise.reject(new Error('ghost'));
     pullSharedToken();
     if (!interactive && isTokenValid() && !opts.force) return Promise.resolve(readToken());
+    if (!interactive && isTokenValid() && (readExp() - Date.now() > REFRESH_LEAD_MS)) {
+      return Promise.resolve(readToken());
+    }
+    if (!interactive && !tabIsVisible()) {
+      if (isTokenValid()) return Promise.resolve(readToken());
+      return Promise.reject(new Error('silent_hidden'));
+    }
     if (!interactive && Date.now() < silentCooldownUntil) {
       if (isTokenValid()) return Promise.resolve(readToken());
       return Promise.reject(new Error('silent_cooldown'));
     }
     if (!interactive && inflightToken) return inflightToken;
+    if (!interactive && !claimSilentGisLock()) {
+      if (isTokenValid()) return Promise.resolve(readToken());
+      var peer = waitPeerToken();
+      inflightToken = peer.finally(function () { inflightToken = null; });
+      return inflightToken;
+    }
     if (interactive) {
       cancelSilentAuth('superseded');
       var p = authChain = authChain.catch(function () {}).then(function () {
@@ -696,7 +806,10 @@
       return p;
     }
     var p = requestTokenCore(false, opts);
-    inflightToken = p.finally(function () { inflightToken = null; });
+    inflightToken = p.finally(function () {
+      inflightToken = null;
+      releaseSilentGisLock();
+    });
     authChain = authChain.catch(function () {}).then(function () { return p; });
     return inflightToken;
   }
@@ -1137,7 +1250,7 @@
   }
   // opts {app, namePart, requiredTabs}. Resolves {id, grid}.
   // Rejects Error('JB_NEED_SHEET') with .files (candidates to pick) and optional .fromFolder when the app must show its gate/picker.
-  function isAuthErr(err){ var m = String((err && err.message) || ''); return m.indexOf('silent_timeout') > -1 || m.indexOf('silent_cooldown') > -1 || m.indexOf('signed_out') > -1 || m.indexOf('auth_failed') > -1 || m.indexOf('401') > -1 || m.indexOf('cancelled') > -1; }
+  function isAuthErr(err){ var m = String((err && err.message) || ''); return m.indexOf('silent_timeout') > -1 || m.indexOf('silent_cooldown') > -1 || m.indexOf('silent_hidden') > -1 || m.indexOf('signed_out') > -1 || m.indexOf('auth_failed') > -1 || m.indexOf('401') > -1 || m.indexOf('cancelled') > -1; }
   function isSessionErr(err){ var m = String((err && err.message) || ''); return m === 'silent_cooldown' || m === 'silent_timeout' || m === 'signed_out' || m === 'auth_failed' || (err && err.code === 'JB_NEED_SCOPES') || m.indexOf('401') > -1; }
   function writeErrMessage(err){
     var m = String((err && err.message) || '');
@@ -1154,6 +1267,7 @@
     return requestToken(false, { force: true }).catch(function (err) {
       pullSharedToken();
       if (isTokenValid()) return readToken();
+      if (err && err.message === 'silent_hidden') throw err;
       promptReLogin('token');
       throw err;
     });
@@ -1279,7 +1393,8 @@
 
   function onTabFocusAuth(){
     if (isGhost()) return;
-    if (document.visibilityState === 'hidden' || lg('jb_signedout')) return;
+    if (!tabAllowsSilentGis() || lg('jb_signedout')) return;
+    if (lastSilentGisAt && Date.now() - lastSilentGisAt < FOCUS_BOUNCE_MS) return;
     pullSharedToken();
     if (!email() && !readToken()) return;
     if (isTokenValid() && readExp() - Date.now() > VISIBLE_REFRESH_MS) return;
@@ -1323,8 +1438,10 @@
       if (isTokenValid()) scheduleTokenRefresh();
       else {
         clearStaleToken();
-        requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {
-          afterSilentRefreshFail('boot');
+        whenForeground(function () {
+          requestToken(false, { force: true }).then(scheduleTokenRefresh).catch(function () {
+            afterSilentRefreshFail('boot');
+          });
         });
       }
     }
@@ -3800,11 +3917,13 @@
       return;
     }
     if (hasSession() && email()) {
-      ensureToken(false).then(function () {
-        if (isSignedIn()) {
-          pullAccountPrefs().then(function () { ensureDriveLayoutOnce(); });
-        }
-      }).catch(function () {});
+      whenForeground(function () {
+        ensureToken(false).then(function () {
+          if (isSignedIn()) {
+            pullAccountPrefs().then(function () { ensureDriveLayoutOnce(); });
+          }
+        }).catch(function () {});
+      });
     }
   });
   bootGhost();

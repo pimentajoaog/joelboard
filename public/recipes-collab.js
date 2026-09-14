@@ -1,7 +1,7 @@
 /* Joelboard Recipes — shared cookbooks (collab). © 2026 Joel Soluções LTDA. */
 var RC_COLLAB_TABS = [
   ['Meta', ['Nome', 'Icone', 'Cor', 'Ordem', 'Criado', 'Atualizado', 'ID', 'OwnerEmail']],
-  ['Recipes', ['ID', 'CookbookID', 'Titulo', 'Icone', 'ImageUrl', 'Porcoes', 'Minutos', 'Notas', 'Ordem', 'Source', 'SourceID', 'Criado']],
+  ['Recipes', ['ID', 'CookbookID', 'Titulo', 'Icone', 'ImageUrl', 'Porcoes', 'Minutos', 'Notas', 'Ordem', 'Source', 'SourceID', 'Criado', 'ServeQtd', 'ServeUnidade']],
   ['Ingredients', ['ID', 'RecipeID', 'Texto', 'Qtd', 'Unidade', 'Ordem', 'PartID', 'Qtd2', 'Unidade2', 'Opcional']],
   ['Steps', ['ID', 'RecipeID', 'Texto', 'Ordem', 'PartID', 'Opcional']],
   ['Parts', ['ID', 'RecipeID', 'Nome', 'Ordem', 'SourceIngID']],

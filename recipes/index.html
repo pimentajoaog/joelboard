@@ -61,6 +61,13 @@
       <div><label class="fl">Porções</label><input class="field" id="recipeServings" placeholder="2"></div>
       <div><label class="fl">Minutos</label><input class="field" id="recipeMinutes" type="number" inputmode="numeric" placeholder="20"></div>
     </div>
+    <div class="fg serve-edit" id="recipeServeEdit">
+      <button type="button" class="tg" id="recipeServeTg" onclick="toggleRecipeServe()" aria-pressed="false">Serve</button>
+      <div class="serve-fields" id="recipeServeFields">
+        <input class="field" id="recipeServeQty" placeholder="8" inputmode="decimal" aria-label="Serve quantidade">
+        <input class="field" id="recipeServeUnit" placeholder="fatias" aria-label="Serve unidade">
+      </div>
+    </div>
     <div class="fg">
       <label class="fl">Imagem <span style="font-weight:600;color:var(--muted)">(opcional)</span></label>
       <div class="rc-img" id="recipeImgPick" tabindex="0"

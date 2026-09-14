@@ -61,6 +61,14 @@ body.recipes-shelf .acct:has(.shelf-pill) #acctEmail{ display:none; }
 .fl{ @apply block text-xs text-muted mb-1.5 font-semibold; }
 .field{ width:100%; }
 .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.serve-edit{ display:flex; align-items:center; gap:8px; }
+.serve-edit .tg{ flex:none; padding:6px 12px; font-size:12px; }
+.serve-fields{
+  display:grid; grid-template-columns:64px minmax(0,1fr); gap:8px; flex:1; min-width:0;
+  max-height:0; opacity:0; overflow:hidden;
+  transition:max-height .28s cubic-bezier(.4,0,.2,1), opacity .2s ease;
+}
+.serve-edit.is-on .serve-fields{ max-height:48px; opacity:1; }
 textarea.field{ resize:vertical; min-height:64px; }
 
 .gate{ @apply max-w-[420px] mx-auto my-10 text-center; }
@@ -802,12 +810,17 @@ body.recipes-book .secbar{ margin-bottom:10px; }
   box-shadow:0 8px 22px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 .serv-tag{
-  display:inline-flex; align-items:center; justify-content:center; border:0; cursor:pointer;
+  display:inline-flex; flex-direction:column; align-items:center; justify-content:center; border:0; cursor:pointer;
   font:inherit; font-size:11px; font-weight:800; color:var(--primary); line-height:1.2;
-  background:transparent; padding:3px 9px;
+  background:transparent; padding:3px 9px; gap:1px;
 }
 .serv-tag:hover{ color:color-mix(in srgb, var(--primary) 80%, var(--text)); }
 .serv-n{ padding:0; }
+.serv-yield{
+  display:block; font-size:9.5px; font-weight:650; letter-spacing:.1px; line-height:1.2;
+  color:color-mix(in srgb, var(--primary) 55%, var(--muted));
+}
+.serv-static{ display:inline-flex; flex-direction:column; align-items:center; gap:1px; }
 .serv-drawer{
   max-height:0; opacity:0; overflow:hidden; margin:0 8px;
   transition:max-height .4s cubic-bezier(.4,0,.2,1), opacity .28s ease, margin .35s ease;
@@ -1286,7 +1299,7 @@ html.rc-mode-swap::view-transition-new(root){
 @media (prefers-reduced-motion: reduce){
   .book-slot, .recipec, .detail, .book-body.is-intro, #main.is-mode-in{ animation:none; }
   .page-turn{ display:none; }
-  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-tool, .book-mode::before, .book-find-slot, .leaf-part-body, .leaf-part-head::after, #main.is-mode-out, .serv-widget, .serv-drawer, .qty-slot{ transition:none; }
+  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-tool, .book-mode::before, .book-find-slot, .leaf-part-body, .leaf-part-head::after, #main.is-mode-out, .serv-widget, .serv-drawer, .qty-slot, .serve-fields{ transition:none; }
   .ck-t{ transition:none; }
   .ing-list li.just-on::after, .step-list li.just-on::after{ display:none; }
   li.just-on .ichk, li.just-on .step-num{ animation:none; }

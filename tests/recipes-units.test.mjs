@@ -117,6 +117,20 @@ test('grams and litres promote the hint when the total crosses 1000', function (
   assert.equal(ctx.unitHintText({ qty: '½', unit: 'l', text: 'leite' }, r), '≈ 1 l');
 });
 
+test('porção is singular for 1 and serve lines stay optional', function () {
+  assert.equal(ctx.porcaoWord(1), 'porção');
+  assert.equal(ctx.porcaoWord('1'), 'porção');
+  assert.equal(ctx.porcaoWord(2), 'porções');
+  assert.equal(ctx.porcaoWord('1,5'), 'porções');
+  assert.equal(ctx.formatPorcoesText(1), '1 porção');
+  assert.equal(ctx.formatPorcoesText('4'), '4 porções');
+  var r = { id: 'rbread', servings: '1', serveQty: '8', serveUnit: 'fatias' };
+  assert.equal(ctx.formatServeLine(r), 'serve 8 (fatias)');
+  ctx._scaleByRecipe.rbread = 2;
+  assert.equal(ctx.formatServeLine(r), 'serve 16 (fatias)');
+  assert.equal(ctx.formatServeLine({ servings: '2' }), '');
+});
+
 test('no stepper base when servings are missing', function () {
   assert.equal(ctx.recipeBaseServings({ servings: '' }), null);
   assert.equal(ctx.recipeBaseServings({ servings: 'família' }), null);
@@ -162,6 +176,8 @@ test('editor and leaf wire unit picker, stepper, and hints', function () {
   assert.match(js, /function pickPartUnit/);
   assert.match(js, /Outra…/);
   assert.match(js, /function servingsStepper/);
+  assert.match(js, /function formatServeLine/);
+  assert.match(js, /ServeQtd/);
   assert.match(js, /function toggleServPanel/);
   assert.match(js, /serv-widget/);
   assert.match(js, /serv-drawer/);

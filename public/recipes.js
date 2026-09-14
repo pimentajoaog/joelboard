@@ -37,7 +37,7 @@ var _spreadIntro = true;
 
 var RECIPES_TABS = [
   ['Cookbooks', ['ID', 'Nome', 'Icone', 'Cor', 'Ordem', 'Criado']],
-  ['Recipes', ['ID', 'CookbookID', 'Titulo', 'Icone', 'ImageUrl', 'Porcoes', 'Minutos', 'Notas', 'Ordem', 'Source', 'SourceID', 'Criado']],
+  ['Recipes', ['ID', 'CookbookID', 'Titulo', 'Icone', 'ImageUrl', 'Porcoes', 'Minutos', 'Notas', 'Ordem', 'Source', 'SourceID', 'Criado', 'ServeQtd', 'ServeUnidade']],
   ['Ingredients', ['ID', 'RecipeID', 'Texto', 'Qtd', 'Unidade', 'Ordem', 'PartID', 'Qtd2', 'Unidade2', 'Opcional']],
   ['Steps', ['ID', 'RecipeID', 'Texto', 'Ordem', 'PartID', 'Opcional']],
   ['Parts', ['ID', 'RecipeID', 'Nome', 'Ordem', 'SourceIngID']],
@@ -157,6 +157,32 @@ function formatQty(n) {
   var str = String(rounded);
   if (str.indexOf('.') >= 0) str = str.replace(/\.?0+$/, '');
   return sign + str.replace('.', ',');
+}
+function porcaoWord(n) {
+  var q = typeof n === 'number' && isFinite(n) ? n : parseQty(n);
+  return (q != null && Math.abs(q - 1) < 1e-6) ? 'porção' : 'porções';
+}
+function formatPorcoesText(amount) {
+  if (amount == null || amount === '') return '';
+  var q = typeof amount === 'number' ? amount : parseQty(amount);
+  var shown = q != null ? formatQty(q) : String(amount);
+  if (!String(shown).trim()) return '';
+  return shown + ' ' + porcaoWord(q != null ? q : amount);
+}
+function formatServeLine(r) {
+  if (!r) return '';
+  var qty = String(r.serveQty || '').trim();
+  var unit = String(r.serveUnit || '').trim();
+  if (!qty && !unit) return '';
+  var n = parseQty(qty);
+  if (n != null) {
+    var factor = recipeScaleFactor(r);
+    qty = formatQty(factor === 1 ? n : n * factor);
+  }
+  var out = 'serve';
+  if (qty) out += ' ' + qty;
+  if (unit) out += ' (' + unit + ')';
+  return out;
 }
 function recipeBaseServings(r) { return parseQty(r && r.servings); }
 function recipeViewServings(r) {
@@ -307,7 +333,8 @@ function recipeRowVals(r) {
   return [
     r.id, r.cookbookId, r.title, r.icon || '🍽️', r.imageUrl || '',
     r.servings || '', r.minutes || '', r.notes || '', String(r.order || 0),
-    r.source || '', r.sourceId || '', r.created || todayISO()
+    r.source || '', r.sourceId || '', r.created || todayISO(),
+    r.serveQty || '', r.serveUnit || ''
   ];
 }
 function ingRowVals(x) {
@@ -829,7 +856,8 @@ function parseRecipes(rows) {
       id: String(r[0]), cookbookId: String(r[1] || ''), title: String(r[2] || ''),
       icon: String(r[3] || '🍽️'), imageUrl: String(r[4] || ''), servings: String(r[5] || ''),
       minutes: String(r[6] || ''), notes: String(r[7] || ''), order: Number(r[8]) || 0,
-      source: String(r[9] || ''), sourceId: String(r[10] || ''), created: String(r[11] || '')
+      source: String(r[9] || ''), sourceId: String(r[10] || ''), created: String(r[11] || ''),
+      serveQty: String(r[12] || ''), serveUnit: String(r[13] || '')
     });
   }
   out.sort(function (a, b) { return a.order - b.order || a.title.localeCompare(b.title); });
@@ -1245,7 +1273,7 @@ function peekPageHtml(r, folio, budget) {
   }
   var meta = [];
   if (r.minutes) meta.push(esc(r.minutes) + ' min');
-  if (r.servings) meta.push(esc(r.servings) + ' porções');
+  if (r.servings) meta.push(esc(formatPorcoesText(r.servings)));
   return '<div class="bp-head"><span class="bp-ico">' + esc(r.icon || '🍽️') + '</span>'
     + '<span class="bp-title">' + esc(r.title) + '</span></div>'
     + (meta.length ? '<div class="bp-meta">' + meta.join(' · ') + '</div>' : '')
@@ -1720,7 +1748,7 @@ function renderCards(list, book) {
   var cards = list.map(function (r, i) {
     var meta = [];
     if (r.minutes) meta.push(r.minutes + ' min');
-    if (r.servings) meta.push(r.servings + ' porções');
+    if (r.servings) meta.push(formatPorcoesText(r.servings));
     var ico = r.imageUrl
       ? '<img src="' + esc(r.imageUrl) + '" alt="">'
       : esc(r.icon || '🍽️');
@@ -1847,14 +1875,27 @@ function paintServView(recipeId) {
   var r = typeof recipeById === 'function' ? recipeById(recipeId) : null;
   if (!r) return;
   var viewN = recipeViewServings(r);
-  var shown = formatQty(viewN);
   document.querySelectorAll('[data-serv="' + recipeId + '"]').forEach(function (el) {
     var inp = el.querySelector('.serv-input');
     var range = el.querySelector('.serv-range');
     var lab = el.querySelector('.serv-n');
     if (inp && document.activeElement !== inp) inp.value = formatServInput(viewN);
     if (range) range.value = String(Math.max(1, Math.min(5, viewN || 1)));
-    if (lab) lab.textContent = shown + ' porções';
+    if (lab) lab.textContent = formatPorcoesText(viewN);
+    var yieldEl = el.querySelector('.serv-yield');
+    var serve = formatServeLine(r);
+    if (serve) {
+      if (!yieldEl && lab && lab.parentNode) {
+        yieldEl = document.createElement('span');
+        yieldEl.className = 'serv-yield';
+        lab.parentNode.appendChild(yieldEl);
+      }
+      if (yieldEl) yieldEl.textContent = serve;
+    } else if (yieldEl && yieldEl.parentNode) yieldEl.parentNode.removeChild(yieldEl);
+    var word = el.querySelector('.serv-lab');
+    if (word) word.textContent = porcaoWord(viewN);
+    var btn = el.querySelector('.serv-tag');
+    if (btn) btn.setAttribute('aria-label', [formatPorcoesText(viewN), serve].filter(Boolean).join(', '));
   });
   document.querySelectorAll('.ing-list li[data-chk]').forEach(function (li) {
     var chk = li.getAttribute('data-chk') || '';
@@ -1883,29 +1924,35 @@ function paintServView(recipeId) {
   });
 }
 function servingsStepper(r) {
+  var serve = formatServeLine(r);
+  var yieldHtml = serve ? '<span class="serv-yield">' + esc(serve) + '</span>' : '';
   var base = recipeBaseServings(r);
   if (!base) {
-    return r && r.servings ? '<span class="ftag">' + esc(r.servings) + ' porções</span>' : '';
+    return r && r.servings
+      ? '<span class="ftag serv-static">' + esc(formatPorcoesText(r.servings)) + yieldHtml + '</span>'
+      : (serve ? '<span class="ftag serv-static">' + yieldHtml + '</span>' : '');
   }
   var viewN = recipeViewServings(r) || base;
   var id = escAttr(r.id);
   var open = _servOpenId === r.id;
   var slide = Math.max(1, Math.min(5, viewN));
+  var label = formatPorcoesText(viewN);
   return '<span class="serv-widget' + (open ? ' open' : '') + '" data-serv="' + esc(r.id) + '">'
     + '<button type="button" class="serv-tag" onclick="event.stopPropagation();toggleServPanel(\'' + id + '\')"'
-    + ' aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + esc(formatQty(viewN) + ' porções') + '">'
-    + '<span class="serv-n">' + esc(formatQty(viewN)) + ' porções</span>'
+    + ' aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + esc(label) + '">'
+    + '<span class="serv-n">' + esc(label) + '</span>'
+    + yieldHtml
     + '</button>'
     + '<span class="serv-drawer" onclick="event.stopPropagation()">'
     + '<span class="serv-panel-head">'
-    + '<input class="serv-input" inputmode="decimal" aria-label="Porções" value="' + esc(formatServInput(viewN)) + '"'
+    + '<input class="serv-input" inputmode="decimal" aria-label="' + esc(porcaoWord(viewN)) + '" value="' + esc(formatServInput(viewN)) + '"'
     + ' oninput="onServType(\'' + id + '\',this.value,true)"'
     + ' onchange="onServType(\'' + id + '\',this.value,false)"'
     + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();onServType(\'' + id + '\',this.value,false);this.blur()}">'
-    + '<span class="serv-lab">porções</span>'
+    + '<span class="serv-lab">' + esc(porcaoWord(viewN)) + '</span>'
     + '</span>'
     + '<input class="serv-range" type="range" min="1" max="5" step="0.1" value="' + slide + '"'
-    + ' aria-label="Ajustar porções" oninput="onServSlide(\'' + id + '\',this.value)"'
+    + ' aria-label="Ajustar ' + esc(porcaoWord(viewN)) + '" oninput="onServSlide(\'' + id + '\',this.value)"'
     + ' onchange="onServSlide(\'' + id + '\',this.value,true)">'
     + '</span>'
     + '</span>';
@@ -2750,7 +2797,32 @@ function deletePlansForRecipes(recipeIds) {
   });
 }
 
-/* ---- recipe modal ---- */
+function syncRecipeServeUi(on) {
+  var wrap = $('recipeServeEdit');
+  if (wrap) wrap.classList.toggle('is-on', !!on);
+  var tg = $('recipeServeTg');
+  if (tg) {
+    tg.classList.toggle('on', !!on);
+    tg.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+}
+function toggleRecipeServe() {
+  var wrap = $('recipeServeEdit');
+  var on = !(wrap && wrap.classList.contains('is-on'));
+  syncRecipeServeUi(on);
+  if (on) {
+    var q = $('recipeServeQty');
+    if (q) q.focus();
+  }
+}
+function recipeServeFromModal() {
+  var wrap = $('recipeServeEdit');
+  if (!wrap || !wrap.classList.contains('is-on')) return { qty: '', unit: '' };
+  return {
+    qty: (($('recipeServeQty') && $('recipeServeQty').value) || '').trim(),
+    unit: (($('recipeServeUnit') && $('recipeServeUnit').value) || '').trim()
+  };
+}
 function openRecipeModal(id) {
   if (!openBookId && !id) {
     toast('Abra um livro primeiro');
@@ -2765,6 +2837,9 @@ function openRecipeModal(id) {
   $('recipeServings').value = r ? r.servings : '';
   $('recipeMinutes').value = r ? r.minutes : '';
   $('recipeNotes').value = r ? r.notes : '';
+  if ($('recipeServeQty')) $('recipeServeQty').value = r && r.serveQty ? r.serveQty : '';
+  if ($('recipeServeUnit')) $('recipeServeUnit').value = r && r.serveUnit ? r.serveUnit : '';
+  syncRecipeServeUi(!!(r && (String(r.serveQty || '').trim() || String(r.serveUnit || '').trim())));
   _ingDraft = r ? ingsFor(r.id).map(draftIngFrom) : [blankIng()];
   _stepDraft = r ? stepsFor(r.id).map(draftStepFrom) : [blankStep()];
   _partDraft = r ? partsFor(r.id).map(function (p) {
@@ -3493,6 +3568,7 @@ function saveRecipeModal() {
     if (cur) order = cur.order;
   }
   resolveRecipeImageUrl().then(function (imageUrl) {
+    var serve = recipeServeFromModal();
     var row = [
       id, openBookId, title, _iconDraft || '🍽️',
       imageUrl || '',
@@ -3500,17 +3576,18 @@ function saveRecipeModal() {
       (($('recipeMinutes') && $('recipeMinutes').value) || '').trim(),
       (($('recipeNotes') && $('recipeNotes').value) || '').trim(),
       String(order), _editRecipeId ? (recipeById(_editRecipeId).source || '') : 'manual',
-      _editRecipeId ? (recipeById(_editRecipeId).sourceId || '') : '', created
+      _editRecipeId ? (recipeById(_editRecipeId).sourceId || '') : '', created,
+      serve.qty, serve.unit
     ];
     var book = bookById(openBookId);
     var sid = rcSidForBook(book);
     var write = _editRecipeId
       ? findRowInSid(sid, 'Recipes', 0, id).then(function (rn) {
         if (rn < 0) throw new Error('Receita não encontrada');
-        return JB.api('PUT', sheetUrl(sid, '/values/Recipes!A' + rn + ':L' + rn + '?valueInputOption=RAW'), { values: [row] })
+        return JB.api('PUT', sheetUrl(sid, '/values/Recipes!A' + rn + ':N' + rn + '?valueInputOption=RAW'), { values: [row] })
           .then(function () { return replaceRecipeChildren(id); });
       })
-      : JB.api('POST', sheetUrl(sid, '/values/Recipes!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
+      : JB.api('POST', sheetUrl(sid, '/values/Recipes!A:N:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
         .then(function () { return replaceRecipeChildren(id); });
     var p = (typeof rcGuardWrite === 'function') ? rcGuardWrite(write) : write;
     var inBook = view === 'book';

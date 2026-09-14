@@ -1060,15 +1060,9 @@ button.step-num{ cursor:pointer; }
 .icon-pick-label{ font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin:10px 0 8px; }
 
 .edit-lines{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; overflow:visible; }
-.edit-line{ display:grid; grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 28px; gap:6px; align-items:center; }
-.edit-line.has-alt-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 28px; }
-.edit-line.has-part-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 28px; }
-.edit-line.has-part-btn.has-alt-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 32px 28px; }
-.edit-line.has-alt-btn.has-more-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 28px 28px; }
-.edit-line.has-part-btn.has-alt-btn.has-more-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 32px 28px 28px; }
+.edit-line{ display:grid; grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 28px 28px; gap:6px; align-items:center; }
 .edit-line.is-alt .edit-alt{ grid-column:3 / 5; display:grid; grid-template-columns:56px minmax(0,1fr); gap:6px; }
-.edit-line.step{ grid-template-columns:22px 1fr 28px; }
-.edit-line.step.has-more-btn{ grid-template-columns:22px 1fr 28px 28px; }
+.edit-line.step{ grid-template-columns:22px 1fr 28px 28px; }
 .edit-more{ min-width:0; }
 .edit-more-btn{
   width:28px; height:36px; padding:0; border-radius:8px; cursor:pointer;
@@ -1101,22 +1095,6 @@ button.step-num{ cursor:pointer; }
 .unit-dd .jb-dd-menu{ min-width:220px; left:auto; right:0; z-index:600; }
 .unit-dd .jb-dd-opt{ font-size:13px; font-weight:600; padding:8px 10px; white-space:normal; }
 .unit-custom{ height:36px; padding:6px 8px; font-size:12px; }
-.ing-alt-make{
-  width:32px; height:36px; padding:0; border-radius:8px; cursor:pointer;
-  display:inline-flex; align-items:center; justify-content:center;
-  background:var(--surface2); border:1px solid var(--border); color:var(--muted);
-  font:inherit; font-size:10px; font-weight:800; letter-spacing:.2px;
-}
-.ing-alt-make:hover{ color:var(--text); border-color:var(--primary); }
-.ing-alt-make.is-on{ color:var(--primary); border-color:var(--primary); }
-.ing-part-make{
-  width:32px; height:36px; padding:0; border-radius:8px; cursor:pointer;
-  display:inline-flex; align-items:center; justify-content:center;
-  background:var(--surface2); border:1px solid var(--border); color:var(--muted);
-}
-.ing-part-make svg{ width:14px; height:14px; display:block; }
-.ing-part-make:hover{ color:var(--text); border-color:var(--primary); }
-.ing-part-make.is-on{ color:var(--primary); border-color:var(--primary); }
 .edit-line .rm, .part-edit-rm{
   background:var(--surface2); border:1px solid var(--border); color:var(--muted);
   border-radius:8px; width:36px; height:36px; cursor:pointer; padding:0;

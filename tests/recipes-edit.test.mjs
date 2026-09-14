@@ -27,7 +27,10 @@ test('parte toggle deletes an existing parte instead of no-op', function () {
   assert.match(js, /_partDraft\.splice\(pi, 1\)/);
   assert.match(js, /function lineMoreHtml/);
   assert.match(js, /toggleIngOptional/);
+  assert.match(js, /label: 'ou'/);
+  assert.match(js, /label: 'Parte'/);
   assert.match(js, /Opcional/);
+  assert.doesNotMatch(js, /ing-alt-make|ing-part-make/);
 });
 
 test('editor paints drag handles on ingredients and steps, not partes', function () {

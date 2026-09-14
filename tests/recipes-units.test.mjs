@@ -133,7 +133,7 @@ test('editor and leaf wire unit picker, stepper, and hints', function () {
   assert.match(js, /serv-drawer/);
   assert.match(js, /function snapServings/);
   assert.match(js, /function formatIngAlt/);
-  assert.match(js, /ing-alt-make/);
+  assert.match(js, /label: 'ou'/);
   assert.match(js, /ing-hint/);
   assert.match(js, /shopIngLabel\(ing, r\)/);
 });

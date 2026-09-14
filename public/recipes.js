@@ -3054,12 +3054,16 @@ function blankStep() { return { id: '', text: '', optional: false }; }
 function draftStepFrom(x) {
   return { id: x.id, text: x.text, optional: isOptional(x) };
 }
-function lineMoreHtml(on, toggleFn) {
+function lineMoreHtml(items) {
+  items = items || [];
+  var on = false;
+  var opts = items.map(function (x) {
+    if (x.on) on = true;
+    return '<div class="jb-dd-opt' + (x.on ? ' is-sel' : '') + '" onclick="' + x.fn + '">' + esc(x.label) + '</div>';
+  }).join('');
   return '<div class="jb-dd edit-more up' + (on ? ' is-on' : '') + '">'
     + '<button type="button" class="edit-more-btn" onclick="JB.ddToggle(this)" title="Mais opções" aria-label="Mais opções">⋯</button>'
-    + '<div class="jb-dd-menu">'
-    + '<div class="jb-dd-opt' + (on ? ' is-sel' : '') + '" onclick="' + toggleFn + '">Opcional</div>'
-    + '</div></div>';
+    + '<div class="jb-dd-menu">' + opts + '</div></div>';
 }
 function toggleIngOptional(i) {
   if (window.JB && JB.ddClose) JB.ddClose();
@@ -3152,6 +3156,7 @@ function pickPartUnit2(pi, j, id) {
   paintPartBlocks();
 }
 function toggleIngAlt(i) {
+  if (window.JB && JB.ddClose) JB.ddClose();
   var line = _ingDraft[i];
   if (!line) return;
   if (ingHasAlt(line)) {
@@ -3165,6 +3170,7 @@ function toggleIngAlt(i) {
   paintIngLines();
 }
 function togglePartIngAlt(pi, j) {
+  if (window.JB && JB.ddClose) JB.ddClose();
   var p = _partDraft[pi];
   var line = p && p.ings && p.ings[j];
   if (!line) return;
@@ -3178,11 +3184,6 @@ function togglePartIngAlt(pi, j) {
   }
   paintPartBlocks();
 }
-function ingAltBtn(on, onclick) {
-  return '<button type="button" class="ing-alt-make' + (on ? ' is-on' : '') + '" onclick="' + onclick + '"'
-    + ' title="' + (on ? 'Remover medida alternativa' : 'Medida alternativa') + '"'
-    + ' aria-label="' + (on ? 'Remover medida alternativa' : 'Medida alternativa') + '">ou</button>';
-}
 function ingAltFields(line, qtyAttr, pickPrefix, unitAttr) {
   return '<div class="edit-alt">'
     + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty2 || '') + '" oninput="' + qtyAttr + '">'
@@ -3195,19 +3196,16 @@ function paintIngLines() {
   el.innerHTML = _ingDraft.map(function (line, i) {
     var linked = !!draftPartFromIng(line.id);
     var altOn = ingHasAlt(line);
-    return '<div class="edit-line has-part-btn has-alt-btn has-more-btn' + (altOn ? ' is-alt' : '') + '" data-i="' + i + '">'
+    return '<div class="edit-line' + (altOn ? ' is-alt' : '') + '" data-i="' + i + '">'
       + editHandle('ing')
       + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_ingDraft[' + i + '].text=this.value">'
       + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_ingDraft[' + i + '].qty=this.value">'
       + unitPickerHtml(line, 'pickIngUnit(' + i + ',', '_ingDraft[' + i + '].unit=this.value')
-      + ingAltBtn(altOn, 'toggleIngAlt(' + i + ')')
-      + '<button type="button" class="ing-part-make' + (linked ? ' is-on' : '') + '" onclick="makePartFromDraftIng(' + i + ')"'
-      + ' title="' + (linked ? 'Remover parte' : 'Criar parte') + '" aria-label="' + (linked ? 'Remover parte' : 'Criar parte') + '">'
-      + (linked
-        ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v9M4.2 8.2L8 12l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-        : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3.5h8v4.2c0 2.2-1.8 4-4 4s-4-1.8-4-4z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M8 7.2v5.3M6.2 11.2L8 13l1.8-1.8" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>')
-      + '</button>'
-      + lineMoreHtml(isOptional(line), 'toggleIngOptional(' + i + ')')
+      + lineMoreHtml([
+        { label: 'ou', on: altOn, fn: 'toggleIngAlt(' + i + ')' },
+        { label: 'Parte', on: linked, fn: 'makePartFromDraftIng(' + i + ')' },
+        { label: 'Opcional', on: isOptional(line), fn: 'toggleIngOptional(' + i + ')' }
+      ])
       + '<button type="button" class="rm" onclick="rmIngLine(' + i + ')">×</button>'
       + (altOn ? ingAltFields(line, '_ingDraft[' + i + '].qty2=this.value', 'pickIngUnit2(' + i + ',', '_ingDraft[' + i + '].unit2=this.value') : '')
       + '</div>';
@@ -3217,10 +3215,12 @@ function paintStepLines() {
   var el = $('recipeStepList');
   if (!el) return;
   el.innerHTML = _stepDraft.map(function (line, i) {
-    return '<div class="edit-line step has-more-btn" data-i="' + i + '">'
+    return '<div class="edit-line step" data-i="' + i + '">'
       + editHandle('step')
       + '<input class="field" placeholder="Passo ' + (i + 1) + '" value="' + esc(line.text) + '" oninput="_stepDraft[' + i + '].text=this.value">'
-      + lineMoreHtml(isOptional(line), 'toggleStepOptional(' + i + ')')
+      + lineMoreHtml([
+        { label: 'Opcional', on: isOptional(line), fn: 'toggleStepOptional(' + i + ')' }
+      ])
       + '<button type="button" class="rm" onclick="rmStepLine(' + i + ')">×</button></div>';
   }).join('');
 }
@@ -3238,6 +3238,7 @@ function rmIngLine(i) {
   paintIngLines();
 }
 function makePartFromDraftIng(i) {
+  if (window.JB && JB.ddClose) JB.ddClose();
   var line = _ingDraft[i];
   if (!line) return;
   if (!line.id) line.id = uuid();
@@ -3312,22 +3313,26 @@ function paintPartBlocks() {
   el.innerHTML = _partDraft.map(function (p, i) {
     var ings = (p.ings || []).map(function (line, j) {
       var altOn = ingHasAlt(line);
-      return '<div class="edit-line has-alt-btn has-more-btn' + (altOn ? ' is-alt' : '') + '" data-i="' + j + '">'
+      return '<div class="edit-line' + (altOn ? ' is-alt' : '') + '" data-i="' + j + '">'
         + editHandle('ping-' + i)
         + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_partDraft[' + i + '].ings[' + j + '].text=this.value">'
         + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_partDraft[' + i + '].ings[' + j + '].qty=this.value">'
         + unitPickerHtml(line, 'pickPartUnit(' + i + ',' + j + ',', '_partDraft[' + i + '].ings[' + j + '].unit=this.value')
-        + ingAltBtn(altOn, 'togglePartIngAlt(' + i + ',' + j + ')')
-        + lineMoreHtml(isOptional(line), 'togglePartIngOptional(' + i + ',' + j + ')')
+        + lineMoreHtml([
+          { label: 'ou', on: altOn, fn: 'togglePartIngAlt(' + i + ',' + j + ')' },
+          { label: 'Opcional', on: isOptional(line), fn: 'togglePartIngOptional(' + i + ',' + j + ')' }
+        ])
         + '<button type="button" class="rm" onclick="rmPartIng(' + i + ',' + j + ')">×</button>'
         + (altOn ? ingAltFields(line, '_partDraft[' + i + '].ings[' + j + '].qty2=this.value', 'pickPartUnit2(' + i + ',' + j + ',', '_partDraft[' + i + '].ings[' + j + '].unit2=this.value') : '')
         + '</div>';
     }).join('');
     var steps = (p.steps || []).map(function (line, j) {
-      return '<div class="edit-line step has-more-btn" data-i="' + j + '">'
+      return '<div class="edit-line step" data-i="' + j + '">'
         + editHandle('pstep-' + i)
         + '<input class="field" placeholder="Passo ' + (j + 1) + '" value="' + esc(line.text) + '" oninput="_partDraft[' + i + '].steps[' + j + '].text=this.value">'
-        + lineMoreHtml(isOptional(line), 'togglePartStepOptional(' + i + ',' + j + ')')
+        + lineMoreHtml([
+          { label: 'Opcional', on: isOptional(line), fn: 'togglePartStepOptional(' + i + ',' + j + ')' }
+        ])
         + '<button type="button" class="rm" onclick="rmPartStep(' + i + ',' + j + ')">×</button></div>';
     }).join('');
     return '<div class="part-edit">'

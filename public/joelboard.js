@@ -2511,8 +2511,8 @@
   /* ===== Account prefs (Drive) — keep merge helpers aligned with lib/account-prefs.mjs ===== */
   var PREFS_FILE_NAME = 'Joelboard — Prefs.json';
   var PREFS_FILE_KEY = 'jb_prefs_file_id';
-  var PREFS_APPS = ['hub', 'finance', 'notas', 'planner', 'fit', 'study', 'prateleira'];
-  var PREFS_TOURS = ['hub', 'finance', 'notas', 'planner', 'fit', 'study', 'julioel'];
+  var PREFS_APPS = ['hub', 'finance', 'notas', 'planner', 'fit', 'study', 'recipes', 'prateleira'];
+  var PREFS_TOURS = ['hub', 'finance', 'notas', 'planner', 'fit', 'study', 'recipes', 'mini', 'prateleira', 'julioel'];
   var prefsPushTimer = 0;
   var prefsPulling = null;
   var prefsPushing = null;

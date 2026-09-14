@@ -605,7 +605,7 @@ function fitConfirm(title,msg,onYes){ JB.confirm(title, msg, onYes); }
 var _fbooted=false;
 var FIT_TOUR=[
   { title:'Bem-vindo ao Fit 💪', body:'Um tour rápido pelas funções.' },
-  { go:function(){ tab('hoje'); }, sel:'#hoje', title:'Hoje', body:'Seu treino do dia — inicie, registre séries e acompanhe o timer de descanso na barra inferior enquanto loga.' },
+  { go:function(){ tab('hoje'); }, sel:'#hoje', title:'Hoje', body:'Seu treino do dia — inicie, registre séries e acompanhe o timer de descanso na barra inferior. No celular o descanso tenta seguir na notificação se você sair do app.' },
   { go:function(){ tab('treinos'); }, sel:'#p-treinos .btn', title:'Treinos', body:'Monte seus treinos (splits) com exercícios, séries e descanso.' },
   { go:function(){ tab('exercicios'); }, sel:'#p-exercicios .btn', title:'Exercícios', body:'Sua biblioteca — carga, peso corporal ou por tempo (ex.: prancha).' },
   { go:function(){ tab('progresso'); }, sel:'#p-progresso', title:'Progresso', body:'Evolução por exercício, volume semanal por grupo muscular e sugestões de próxima progressão.' },

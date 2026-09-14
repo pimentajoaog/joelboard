@@ -553,8 +553,28 @@ function switchSet(name) {
     b.classList.toggle('active', b.getAttribute('data-st') === name);
   });
   document.querySelectorAll('#setOverlay .set-pane').forEach(function (p) {
-    p.style.display = p.getAttribute('data-pane') === name ? '' : 'none';
+    var on = p.getAttribute('data-pane') === name;
+    p.style.display = on ? '' : 'none';
+    p.classList.toggle('active', on);
   });
+}
+var RECIPES_TOUR = [
+  { go: function () { if (typeof goShelf === 'function') goShelf(); }, title: 'Joelboard Recipes', body: 'Livros na estante. Passe o mouse (ou toque) para um preview de páginas reais do livro.' },
+  { sel: '#fab', title: 'Novo livro', body: 'O + na estante cria um livro. Dentro de um livro, o + cria uma receita.' },
+  { sel: '#main', title: 'Abrir um livro', body: 'Toque numa lombada. No modo páginas, vire as folhas; dá para mudar para cards no próprio livro ou em Ajustes.' },
+  { title: 'Cozinhar', body: 'Marque ingredientes e passos. ↺ Limpar checks recomeça. 📅 Agendar põe um prazo no Calendar do Hub. A cesta vira lista de compras no Notes.' },
+  { title: 'Compartilhar', body: 'No livro, o ícone de compartilhar envia um link. Quem entra precisa de Editor no Drive.' },
+  { sel: '.acct .lnk', title: 'Ajustes', body: 'Tema, páginas vs cards, layout das folhas e este tutorial.' }
+];
+function recipesVerTutorial() {
+  closeSettings();
+  setTimeout(function () { JB.tour('recipes', RECIPES_TOUR); }, 250);
+}
+function maybeRecipesTour() {
+  if (window._rcTourQueued) return;
+  window._rcTourQueued = 1;
+  if (JB.tourDone && JB.tourDone('recipes')) return;
+  setTimeout(function () { JB.tour('recipes', RECIPES_TOUR); }, 700);
 }
 function toggleFlipPref() {
   setBookView(bookViewMode === 'flip' ? 'cards' : 'flip');
@@ -577,6 +597,7 @@ function startRecipes() {
     showApp();
     if (JB.onRoute) JB.onRoute(applyRoute);
     applyRoute();
+    maybeRecipesTour();
     return;
   }
   if (JB.cachedToken && JB.cachedToken()) {
@@ -784,6 +805,7 @@ function loadAll() {
       rcCheckJoinParam();
     } else {
       applyRoute();
+      maybeRecipesTour();
     }
     if (typeof rcStartCollabPoll === 'function') rcStartCollabPoll();
   }).catch(function (e) {

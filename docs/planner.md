@@ -38,6 +38,8 @@ Essa planilha é de **plano** (Dias + Eventos). Uma lista do Notes é outro arqu
 
 Tema, perfil (nome/ícone nas compartilhadas), tutorial, feedback.
 
+O tour cobre a home, a linha do tempo, colar listas e compartilhar.
+
 ## Planilha (abas)
 
 Pessoal: `Planos`, `Dias`, `Eventos`, `Config`, `Compartilhadas`.

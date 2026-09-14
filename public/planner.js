@@ -32,8 +32,11 @@ var PL_PERIODS={
 };
 var PL_TOUR=[
   { title:'Joelboard Planner', body:'Monte roteiros, encontros e viagens — um plano por vez, no seu ritmo.' },
-  { sel:'#fab', title:'Novo plano', body:'Título, vibe e as datas. Cole qualquer emoji no ícone — como no Notes. Os dias aparecem sozinhos na linha do tempo.' },
-  { go:function(){}, sel:'#main', title:'Linha do tempo', body:'Toque num dia para o título, num horário para o evento. Tudo é opcional — inclusive o horário.' }
+  { go:function(){ if(openPlanId) backHome(); }, sel:'#fab', title:'Novo plano', body:'Título, vibe e as datas. Cole qualquer emoji no ícone — como no Notes. Os dias aparecem sozinhos na linha do tempo.' },
+  { go:function(){ if(openPlanId) backHome(); }, sel:'#main', title:'Seus planos', body:'Cards com datas e noites. Planos compartilhados ficam numa seção à parte. Toque num card para abrir.' },
+  { go:function(){ var p=(DATA.planos||[])[0]; if(p) openPlan(p.id); }, sel:'#main', title:'Linha do tempo', body:'Toque no dia para o título, num horário para o evento. Tudo é opcional — inclusive o horário. 📌 cola uma lista do Notes neste dia.' },
+  { title:'Listas e compartilhar', body:'No ⋯: Colar lista do Notes, tornar compartilhado (link /planner/?join=…) ou sair. Kits viram uma lista nova; uma lista viva pode ter o mesmo nome do kit.' },
+  { go:function(){ if(openPlanId) backHome(); }, sel:'.acct .lnk', title:'Ajustes', body:'Tema, perfil (nome e ícone nas compartilhadas) e este tutorial.' }
 ];
 
 function $(id){ return document.getElementById(id); }

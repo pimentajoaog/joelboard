@@ -316,12 +316,36 @@ function hubNewsEditSave(){
 function $(id){ return document.getElementById(id); }
 var HUB_TOUR=[
   { title:'Bem-vindo ao Joelboard 👋', body:'Seus apps pessoais num lugar só — entre com Google para sincronizar dados no seu Drive.' },
-  { sel:'#hubAgenda', title:'Calendar', body:'Contas, provas, prazos, treinos e planos no mesmo calendário. No celular comece pelos próximos dias; no desktop os ícones filtram por app.' },
-  { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notes, Planner ou Mini (extensões Chrome).' },
+  { sel:'#hubAgenda', title:'Calendar', body:'Contas, provas, prazos, treinos, receitas agendadas e planos no mesmo calendário. No celular comece pelos próximos dias; no desktop os ícones filtram por app.' },
+  { sel:'.grid', title:'Seus apps', body:'Toque num card para abrir Finance, Fit, Study, Notes, Planner, Recipes ou Mini (extensões Chrome).' },
   { sel:'#hubNews', title:'Novidades', body:'Fique por dentro das últimas mudanças nos apps — atualizado aqui no Hub.' },
-  { sel:'.gear', title:'Ajustes', body:'Tema, login, tutorial, privacidade e aviso legal ficam aqui.' }
+  { sel:'.gear', title:'Ajustes', body:'Tema, perfil, tutorial, privacidade e aviso legal ficam aqui. O painel Mini tem um tutorial próprio.' }
 ];
 function hubVerTutorial(){ closeHubSet(); setTimeout(function(){ JB.tour('hub', HUB_TOUR); }, 250); }
+
+var MINI_TOUR=[
+  { title:'Joelboard Mini ⚡', body:'Uma extensão Chrome com Replace (texto) e Refresh (auto-reload). Não está na Chrome Web Store — instalação manual.' },
+  { sel:'#miniViewer .miniv-card', title:'Baixar', body:'Toque no card para baixar o zip. Descompacte e carregue a pasta mini em chrome://extensions (modo desenvolvedor).' },
+  { sel:'#miniViewer .miniv-steps', title:'Replace e Refresh', body:'Replace expande gatilhos como //oi. Refresh recarrega a aba num intervalo. Atalho padrão: Alt+Shift+R.' },
+  { sel:'#miniReplaceSync', title:'Sincronizar', body:'Macros e ajustes vão para a planilha Joelboard Mini no seu Drive — a mesma conta Google do Hub.' },
+  { sel:'#miniSitesList', title:'Sites permitidos', body:'A extensão só roda nos domínios da lista. Adicione os que você usa.' }
+];
+function hubVerMiniTutorial(){
+  var v=document.getElementById('miniViewer');
+  if(v && !v.classList.contains('open')){
+    if (!JB.isSignedIn()) {
+      JB.signIn({ onSuccess: function(){ setGreet(); document.getElementById('miniViewer').classList.add('open'); miniRenderSites(); miniApplySitesFromSheet().catch(function(){}); setTimeout(function(){ JB.tour('mini', MINI_TOUR); }, 350); } });
+      return;
+    }
+    document.getElementById('miniViewer').classList.add('open');
+    miniRenderSites();
+  }
+  setTimeout(function(){ JB.tour('mini', MINI_TOUR); }, 350);
+}
+function maybeMiniTour(){
+  if(!JB.tourDone || JB.tourDone('mini')) return;
+  setTimeout(function(){ JB.tour('mini', MINI_TOUR); }, 500);
+}
 
 /* ---- Julioelboard easter egg (Joel + Julia only) ---- */
 var JULIOEL_EMAILS=['joaogabrielpabarbosa@gmail.com','juliazin182@gmail.com'];
@@ -1009,12 +1033,13 @@ function miniAddSite(){
 }
 function openMini(){
   if (!JB.isSignedIn()) {
-    JB.signIn({ onSuccess: function(){ setGreet(); document.getElementById('miniViewer').classList.add('open'); miniRenderSites(); miniApplySitesFromSheet().catch(function(){}); } });
+    JB.signIn({ onSuccess: function(){ setGreet(); document.getElementById('miniViewer').classList.add('open'); miniRenderSites(); miniApplySitesFromSheet().catch(function(){}); maybeMiniTour(); } });
     return;
   }
   document.getElementById('miniViewer').classList.add('open');
   miniRenderSites();
   if (JB.isSignedIn()) miniApplySitesFromSheet().catch(function () {});
+  maybeMiniTour();
 }
 JB.applySkin('hub');
 if (JB.hasSession()) {

@@ -634,6 +634,7 @@ function boot() {
         refreshMissingPosters();
         initPrateleiraAutoRefresh();
         JB.watchSheet(APP, refreshPrateleiraQuiet);
+        maybePrateleiraTour();
       })
       .catch(handleBootErr);
   });
@@ -2077,7 +2078,24 @@ function prateleiraSetTab(name) {
   document.querySelectorAll('#setOverlay .set-pane').forEach(function (p) {
     var on = p.getAttribute('data-pane') === name;
     p.style.display = on ? '' : 'none';
+    p.classList.toggle('active', on);
   });
+}
+var PRATELEIRA_TOUR = [
+  { title: 'Prateleira 📚', body: 'Filmes, séries, jogos e álbuns que vocês dois registram na mesma planilha.' },
+  { go: function () { prateleiraTab('lib'); }, sel: '#mainTabs', title: 'Biblioteca', body: 'O que já está na prateleira — o que cada um marcou e os filtros.' },
+  { go: function () { prateleiraTab('search'); }, sel: '#mainTabs', title: 'Buscar', body: 'Procure um título e registrem quando assistirem, jogarem ou ouvirem.' },
+  { sel: '#prSetBtn', title: 'Ajustes', body: 'Tema, seu ícone (visível para os dois) e a planilha compartilhada. Este tutorial também fica em Sobre.' }
+];
+function prateleiraVerTutorial() {
+  closePrateleiraSet();
+  setTimeout(function () { JB.tour('prateleira', PRATELEIRA_TOUR); }, 250);
+}
+function maybePrateleiraTour() {
+  if (window._prTourQueued) return;
+  window._prTourQueued = 1;
+  if (JB.tourDone && JB.tourDone('prateleira')) return;
+  setTimeout(function () { JB.tour('prateleira', PRATELEIRA_TOUR); }, 700);
 }
 function closePrateleiraSet() { document.getElementById('setOverlay').classList.remove('open'); }
 

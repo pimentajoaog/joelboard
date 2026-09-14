@@ -118,7 +118,7 @@ Background reloads: wrap fetches in `JB.syncWrap(promise)` for top sync bar + he
 | `JB.feedback(appName)` | Bug/idea modal → Google Form |
 | `JB.ddToggle(btn)`, `JB.ddClose()` | Custom dropdown `.jb-dd` |
 | `JB.datePicker`, `JB.dpOpen`, `JB.dpSet`, `JB.dpGet`, `JB.fmtDate` | In-app calendar (no native `<input type=date>`) |
-| `JB.tour(app, steps[, { onDone }])`, `JB.tourDone(app)` | Coach-mark onboarding |
+| `JB.tour(app, steps[, { onDone }])`, `JB.tourDone(app)` | Coach-marks. Replay from Ajustes → Sobre. Keep `PREFS_TOURS` in joelboard.js and lib/account-prefs.mjs aligned. |
 | `JB.emptyState({ icon, title, hint, action, onclick })` | Empty list placeholder HTML |
 | `JB.skeletonHtml('fit'\|'study'\|'notas'\|'planner')` | Loading shimmer |
 | `JB.staggerChildren(el, key)` | First-render list cascade |

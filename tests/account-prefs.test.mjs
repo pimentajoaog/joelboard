@@ -72,6 +72,10 @@ describe('account prefs merge', () => {
   it('lists known apps and tours', () => {
     assert.ok(PREFS_APPS.includes('hub'));
     assert.ok(PREFS_TOURS.includes('julioel'));
+    assert.ok(PREFS_TOURS.includes('recipes'));
+    assert.ok(PREFS_TOURS.includes('mini'));
+    assert.ok(PREFS_TOURS.includes('prateleira'));
+    assert.ok(PREFS_APPS.includes('recipes'));
     assert.equal(emptyPrefsBlob().v, 1);
     assert.equal(normalizePrefsBlob(null).profile, null);
   });

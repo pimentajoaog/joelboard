@@ -1445,10 +1445,11 @@ function toggleNudgePref(){ var off=(DATA.config&&DATA.config.nudgePref)==='off'
 var NOTAS_TOUR=[
   { title:'Bem-vindo ao Notes 📝', body:'Listas marcáveis — compras, tarefas, viagem ou nota livre. Listas compartilhadas aparecem na seção 👥 Compartilhadas.' },
   { sel:'#fab', title:'Nova lista', body:'Toque no + e escolha o tipo. Numa nota livre, qualquer linha vira um item marcável com um toque.' },
-  { sel:'#main', title:'Suas listas', body:'Cada card mostra progresso. O lápis abre o editor da lista — o mesmo do menu ⋯.' },
-  { title:'Dentro da lista', body:'Use "+ Adicionar grupo" para seções com cabeçalhos colapsáveis. Itens concluídos podem ir para um grupo recolhível no fim (menu ⋯ ou Ajustes → Ocultar concluídos).' },
+  { go:function(){ if(openNoteId) backHome(); }, sel:'.nc-kits-wrap', title:'Kits', body:'Modelos (ex.: Viagem nacional). Usar copia para uma lista nova. Uma lista viva — mesmo compartilhada — pode ter o mesmo nome; não vira um segundo kit.' },
+  { go:function(){ if(openNoteId) backHome(); }, sel:'#main', title:'Suas listas', body:'Cada card mostra progresso. Liberar no Planner (⋯) deixa a lista no catálogo de colar. O lápis abre o editor.' },
+  { title:'Dentro da lista', body:'Use "+ Adicionar grupo" para seções colapsáveis. Itens concluídos podem ir para um grupo no fim (menu ⋯ ou Ajustes → Ocultar concluídos).' },
   { title:'Selecionar vários', body:'Toque em ☑ Selecionar na barra inferior para marcar vários itens de uma vez — ideal no celular. Esc para sair.' },
-  { title:'Listas compartilhadas', body:'No menu ⋯, "Tornar compartilhada" convida por e-mail. Membros editam juntos; configure seu perfil em Ajustes → Perfil.' },
+  { title:'Listas compartilhadas', body:'No ⋯, "Tornar compartilhada" convida por e-mail. Quem entra precisa de Editor no Drive. Perfil em Ajustes → Perfil.' },
   { sel:'.acct .lnk', title:'Ajustes', body:'Tema, perfil, sugestões automáticas e este tutorial. O app aprende itens frequentes e lembra listas que você costuma refazer.' }
 ];
 function notasVerTutorial(){ closeSettings(); setTimeout(function(){ JB.tour('notas', NOTAS_TOUR); }, 250); }

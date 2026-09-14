@@ -41,6 +41,8 @@ Dados na planilha **Joelboard Notes** no seu Drive.
 
 Tema, tutorial, feedback.
 
+O tour na primeira abertura cobre kits vs listas vivas e o compartilhar.
+
 ## Kits
 
 Modelos na faixa **✦ Kits** (os padrão são **Viagem nacional** e **Viagem internacional**). **Usar** copia o conteúdo para uma **lista nova**. Kits não entram no Planner nem na busca das listas do dia a dia.

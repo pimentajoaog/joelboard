@@ -10,8 +10,9 @@ Guias de uso por app. Para desenvolvimento, veja [STARTER.md](../STARTER.md). Vi
 | [study.md](study.md) | Calendário, matérias, foco |
 | [notas.md](notas.md) | Notes — listas, kits e compartilhadas |
 | [planner.md](planner.md) | Roteiros, listas coladas e planos compartilhados |
+| [recipes.md](recipes.md) | Livros de receita e páginas |
 | [mini.md](mini.md) | Extensão Mini (Replace + Refresh) |
 
 **Primeira vez:** entre com Google em qualquer app. Na primeira abertura, o app cria (ou vincula) uma planilha no seu Drive. O login é compartilhado entre todos os apps do Hub.
 
-**Tutorial in-app:** em quase todo app, **Ajustes → Ver tutorial** repete o tour guiado.
+**Tutorial in-app:** em cada app, **Ajustes → Sobre → Ver tutorial** (Finance: Settings → tour). O painel Mini no Hub tem um 🧭 próprio. Recipes e Prateleira também têm tour na primeira abertura.

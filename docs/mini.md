@@ -18,6 +18,8 @@ Staff permanece extensão local separada (não entra no zip público).
 
 Após **atualizar** a extensão (novo zip ou reload em `chrome://extensions`), **recarregue as abas abertas** — scripts antigos perdem o contexto da extensão.
 
+No Hub, o painel Mini tem um tour (🧭 no topo). A primeira abertura também dispara o guia.
+
 Se você ainda tinha Replace/Refresh/Report separados, remova-os e instale só o Mini.
 
 ---

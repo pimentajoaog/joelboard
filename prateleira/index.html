@@ -22,7 +22,7 @@
 <div id="app" class="hidden">
   <div class="header">
     <div class="hl"><a class="hub-home" href="/" title="Voltar ao Hub" aria-label="Voltar ao Hub"><img src="/icon-192.png" alt="Joelboard"></a><h1>Prateleira</h1></div>
-    <div class="acct"><span id="acctEmail"></span><button class="lnk" id="prRefreshBtn" onclick="refreshPrateleira()" title="Atualizar">↻</button><button class="lnk" onclick="openPrateleiraSet()" title="Ajustes">⚙</button><button class="lnk" onclick="prateleiraSignOut()">Sair</button></div>
+    <div class="acct"><span id="acctEmail"></span><button class="lnk" id="prRefreshBtn" onclick="refreshPrateleira()" title="Atualizar">↻</button><button class="lnk" id="prSetBtn" onclick="openPrateleiraSet()" title="Ajustes">⚙</button><button class="lnk" onclick="prateleiraSignOut()">Sair</button></div>
   </div>
   <div class="tabs" id="mainTabs">
     <button class="tab on" data-tab="lib" onclick="prateleiraTab('lib')">Biblioteca</button>
@@ -50,6 +50,7 @@
       <button class="set-tab active" data-st="tema" onclick="prateleiraSetTab('tema')">Tema</button>
       <button class="set-tab" data-st="perfil" onclick="prateleiraSetTab('perfil')">Perfil</button>
       <button class="set-tab" data-st="sheet" onclick="prateleiraSetTab('sheet')">Planilha</button>
+      <button class="set-tab" data-st="sobre" onclick="prateleiraSetTab('sobre')">Sobre</button>
     </div>
     <div class="set-pane" data-pane="tema">
       <div class="fg"><label class="fl">Tema do app</label><div id="prateleiraSkins"></div></div>
@@ -74,6 +75,10 @@
         <button class="btn ghost" style="width:100%;margin-top:8px" onclick="useDefaultSheet()">Usar planilha padrão (Joel)</button>
         <button class="btn ghost" style="width:100%;margin-top:8px" onclick="createSharedSheet()">Criar planilha nova</button>
       </div>
+    </div>
+    <div class="set-pane" data-pane="sobre" style="display:none">
+      <div class="fg"><button class="btn ghost" style="width:100%" onclick="prateleiraVerTutorial()">🧭 Ver tutorial</button></div>
+      <div class="rg" style="text-align:center;font-size:11px;margin-top:4px">Julioelboard Prateleira</div>
     </div>
     <button class="btn-primary" onclick="closePrateleiraSet()">Pronto</button>
   </div>

@@ -1032,7 +1032,7 @@ var STUDY_TOUR=[
   { title:'Bem-vindo ao Study 📚', body:'Organize provas, trabalhos e matérias.' },
   { go:function(){ tab('calendario'); }, sel:'#calCells', title:'Calendário', body:'Toque num dia para agendar provas e trabalhos; os pontos mostram os itens.' },
   { go:function(){ tab('calendario'); }, sel:'.focpanel', title:'Modo foco', body:'Inicie um Pomodoro. O painel ao lado mostra foco e pausa do dia, os últimos 7 dias e suas metas opcionais.' },
-  { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias e adicione módulos ou aulas. Toque num módulo para escrever anotações — formate o texto no lugar ou cole um print (Ctrl+V). Ao concluir todos, a matéria vai para "concluídas".' },
+  { go:function(){ tab('materias'); }, sel:'#p-materias .btn', title:'Matérias', body:'Crie matérias e adicione módulos ou aulas. Toque num módulo para anotar — formate o texto ou cole um print (Ctrl+V). Imagens ficam na pasta Study do Drive. Ao concluir todos, a matéria vai para "concluídas".' },
   { go:function(){ tab('calendario'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para agendar um item. Nas notas do evento você formata o texto e pode colar um print.' },
   { sel:'.acct .lnk', title:'Ajustes', body:'Tema e este tutorial ficam aqui.' }
 ];

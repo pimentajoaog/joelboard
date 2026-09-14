@@ -2385,7 +2385,7 @@ var FIN_TOUR=[
   { go:function(){ switchTab('overview'); }, sel:'.summary-grid', title:'Visão geral', body:'Seu mês num relance: receitas, despesas, saldo, taxa de poupança e o que vence nesta semana.' },
   { go:function(){ switchTab('worklog'); }, sel:'.cal-grid', title:'Jornada', body:'Marque os dias que trabalhou; o app estima sua renda e você a lança no mês.' },
   { go:function(){ switchTab('money'); }, sel:'#tab-money .card', title:'Dinheiro', body:'Lance transações, veja o histórico e busque por descrição.' },
-  { go:function(){ switchTab('bills'); }, sel:'#tab-bills', title:'Contas & Poupança', body:'Contas recorrentes, metas de poupança e pacotes de pagamento — marque conforme paga.' },
+  { go:function(){ switchTab('bills'); }, sel:'#tab-bills', title:'Contas & Poupança', body:'Contas recorrentes, metas, rachar conta e pacotes de pagamento — marque conforme paga.' },
   { go:function(){ switchTab('budget'); }, sel:'#tab-budget .card', title:'Orçamento', body:'Defina limites por categoria e receba sugestões a partir dos seus gastos.' },
   { go:function(){ switchTab('overview'); }, sel:'#fab', title:'Adicionar', body:'Toque no + para lançar uma transação, conta, meta, orçamento ou pacote.' },
   { sel:'#settingsBtn', title:'Ajustes', body:'Temas, idioma, salário, categorias, backup CSV e este tutorial ficam aqui.' }

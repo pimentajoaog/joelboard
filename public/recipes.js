@@ -753,10 +753,16 @@ function applyRoute() {
   if (q.r) {
     var rec = recipeById(q.r);
     if (rec) {
+      applyRoute._retried = '';
       openRecipeId = rec.id;
       openBookId = rec.cookbookId;
       view = 'recipe';
       render();
+      return;
+    }
+    if (applyRoute._retried !== q.r && typeof rcLoadCollabBooks === 'function') {
+      applyRoute._retried = q.r;
+      rcLoadCollabBooks().then(applyRoute).catch(function () {});
       return;
     }
   }
@@ -2154,7 +2160,7 @@ function purgeRecipeChecks(ids) {
 
 /* ---- prazos no Calendar (aba Plans) ---- */
 function scheduleRecipe(recipeId) {
-  if (!recipeById(recipeId)) return;
+  if (!recipeById(recipeId)) { toast('Receita não encontrada'); return; }
   if (!JB.datePicker) { toast('Seletor de data indisponível'); return; }
   JB.datePicker(todayISO(), function (iso) {
     if (!iso) return;
@@ -2182,8 +2188,11 @@ function addRecipePlan(recipeId, date) {
     toast('Prazo adicionado');
     return;
   }
-  JB.api('POST', personalSsUrl('/values/Plans!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {
-    values: [planRowVals(plan)]
+  var prep = recipesGrid.Plans == null ? ensureTabs() : Promise.resolve();
+  prep.then(ensurePlanSnapshotHeaders).then(function () {
+    return JB.api('POST', personalSsUrl('/values/Plans!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {
+      values: [planRowVals(plan)]
+    });
   }).then(function () {
     DATA.plans = (DATA.plans || []).concat([plan]);
     if (JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();

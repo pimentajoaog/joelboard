@@ -90,10 +90,28 @@ test('Hub Calendar does not read Plans from shared cookbooks', function () {
   var fromGrid = src.slice(src.indexOf('function loadAppEventsFromGrid'));
   var recipesBlock = fromGrid.split("if (app === 'recipes')")[1] || '';
   assert.ok(recipesBlock, 'recipes loadAppEventsFromGrid branch');
-  var chunk = recipesBlock.slice(0, 1200);
+  var chunk = recipesBlock.slice(0, 2800);
   assert.match(chunk, /Plans/);
-  assert.doesNotMatch(chunk, /Compartilhadas/);
+  assert.match(chunk, /Compartilhadas/);
+  assert.match(chunk, /\['Meta', 'Recipes'\]/);
+  assert.doesNotMatch(chunk, /\['Meta', 'Recipes', 'Plans'\]/);
+  assert.doesNotMatch(chunk, /batchGet\([^)]*Plans[^)]*reg/);
   assert.match(src, /isCollabRecipesGrid\(grid\)/);
+  var book = cal.cookbookFromRecipesCollab(
+    ['Casa', 'sid-shared', 'editor', 'me@x', 'cb1', ''],
+    ['Casa', '🏡', '#60a5fa', '0', '', '', 'cb1', 'me@x']
+  );
+  assert.equal(book.id, 'cb1');
+  assert.equal(book.color, '#60a5fa');
+  var recs = cal.recipesFromRecipesCollab([['ID'], ['r1', 'cb1', 'Moqueca', '🐟']], 'cb1');
+  assert.equal(recs[0].title, 'Moqueca');
+  var named = cal.eventsFromRecipes(
+    [{ id: 'p1', recipeId: 'r1', date: '2026-09-20' }],
+    recs,
+    [book]
+  );
+  assert.equal(named[0].title, '🐟 Moqueca');
+  assert.match(named[0].subtitle, /Casa/);
 });
 
 test('capByApp hides the 6th item per app until expanded', function () {

@@ -262,6 +262,30 @@
       });
     });
   }
+  /* Shared cookbooks live on another spreadsheet. Hub still only reads personal Plans;
+     Meta + Recipes are enough to title a prazo the editor scheduled. */
+  function cookbookFromRecipesCollab(reg, metaRow) {
+    reg = reg || [];
+    metaRow = metaRow || [];
+    var id = String(metaRow[6] || reg[4] || '');
+    if (!id) return null;
+    return {
+      id: id,
+      name: String(metaRow[0] || reg[0] || ''),
+      icon: String(metaRow[1] || ''),
+      color: String(metaRow[2] || '')
+    };
+  }
+  function recipesFromRecipesCollab(rows, bookId) {
+    return body(rows).filter(function (r) { return r[0]; }).map(function (r) {
+      return {
+        id: String(r[0]),
+        cookbookId: String(r[1] || bookId || ''),
+        title: String(r[2] || ''),
+        icon: String(r[3] || '')
+      };
+    });
+  }
   function plannerHref(planId, dayId) {
     var q = 'p=' + encodeURIComponent(planId || '');
     if (dayId) q += '&d=' + encodeURIComponent(dayId);
@@ -503,7 +527,7 @@
       });
     }
     if (app === 'recipes') {
-      var rt = tabsPresent(grid, ['Plans', 'Recipes', 'Cookbooks']);
+      var rt = tabsPresent(grid, ['Plans', 'Recipes', 'Cookbooks', 'Compartilhadas']);
       if (rt.indexOf('Plans') < 0) return [];
       return batchGet(sid, rt).then(function (by) {
         var plans = body(by.Plans).filter(function (r) { return r[0] && r[2]; }).map(function (r) {
@@ -518,7 +542,26 @@
         var cookbooks = body(by.Cookbooks).filter(function (r) { return r[0]; }).map(function (r) {
           return { id: String(r[0]), name: String(r[1] || ''), icon: String(r[2] || ''), color: String(r[3] || '') };
         });
-        return eventsFromRecipes(plans, recipes, cookbooks).filter(function (e) { return e.date >= start && e.date <= end; });
+        var have = {};
+        recipes.forEach(function (r) { have[r.id] = 1; });
+        var regs = body(by.Compartilhadas || []).filter(function (r) { return r[1]; });
+        var needLookup = plans.some(function (p) { return p.recipeId && !have[p.recipeId]; });
+        var finish = function () {
+          return eventsFromRecipes(plans, recipes, cookbooks).filter(function (e) { return e.date >= start && e.date <= end; });
+        };
+        if (!needLookup || !regs.length) return finish();
+        return mapSeq(regs, function (reg) {
+          return batchGet(String(reg[1]), ['Meta', 'Recipes']).then(function (pack) {
+            var book = cookbookFromRecipesCollab(reg, body(pack.Meta)[0]);
+            if (book) cookbooks.push(book);
+            recipesFromRecipesCollab(pack.Recipes, book && book.id).forEach(function (rec) {
+              if (!have[rec.id]) {
+                have[rec.id] = 1;
+                recipes.push(rec);
+              }
+            });
+          }).catch(function () {});
+        }).then(finish);
       });
     }
     return Promise.resolve([]);
@@ -1345,6 +1388,7 @@
     eventsFromFit: eventsFromFit, eventsFromStudy: eventsFromStudy,
     eventsFromNotas: eventsFromNotas, eventsFromPlanner: eventsFromPlanner,
     eventsFromRecipes: eventsFromRecipes,
+    cookbookFromRecipesCollab: cookbookFromRecipesCollab, recipesFromRecipesCollab: recipesFromRecipesCollab,
     isCollabPlannerGrid: isCollabPlannerGrid, isCollabNotasGrid: isCollabNotasGrid, isCollabRecipesGrid: isCollabRecipesGrid,
     eventRowHtml: eventRowHtml, plannerPeekHtml: plannerPeekHtml, relLabel: relLabel, nearClass: nearClass, daysUntil: daysUntil, fmtBR: fmtBR,
     loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp, clearHubCache: clearHubCache, appsInDay: appsInDay, splitByWhen: splitByWhen, orderWithinApp: orderWithinApp,

@@ -47,6 +47,35 @@ test('matchUnit maps aliases onto templates, specific before generic', function 
   assert.equal(ctx.matchUnit('a gosto').id, 'gosto');
   assert.equal(ctx.matchUnit('fatias').id, 'fatia');
   assert.equal(ctx.matchUnit('ramo'), null);
+  assert.equal(ctx.matchUnit('tsp').id, 'cha');
+  assert.equal(ctx.matchUnit('cc').id, 'cha');
+  assert.equal(ctx.matchUnit('grams').id, 'g');
+  assert.equal(ctx.matchUnit('pinch').id, 'pitada');
+});
+
+test('qty field shortcuts split a trailing unit onto the picker', function () {
+  var g = ctx.parseQtyUnit('160g');
+  assert.ok(g);
+  assert.equal(g.qty, '160');
+  assert.equal(g.unit.id, 'g');
+  assert.equal(ctx.parseQtyUnit('160 g'), null);
+  assert.equal(ctx.parseQtyUnit('160 g', { allowShort: true }).unit.id, 'g');
+  assert.equal(ctx.parseQtyUnit('1,5kg').unit.id, 'kg');
+  assert.equal(ctx.parseQtyUnit('1,5kg').qty, '1,5');
+  assert.equal(ctx.parseQtyUnit('250ml').unit.id, 'ml');
+  assert.equal(ctx.parseQtyUnit('160kg').unit.id, 'kg');
+  assert.equal(ctx.parseQtyUnit('2tbsp').unit.id, 'sopa');
+  assert.equal(ctx.parseQtyUnit('1/2 cup').unit.id, 'xcha');
+  assert.equal(ctx.parseQtyUnit('1 1/2 tsp').qty, '1 1/2');
+  assert.equal(ctx.parseQtyUnit('1 1/2 tsp').unit.id, 'cha');
+  assert.equal(ctx.parseQtyUnit('2 cs').unit.id, 'sopa');
+  assert.equal(ctx.parseQtyUnit('2x').unit.id, 'un');
+  assert.equal(ctx.parseQtyUnit('2 pinch').unit.id, 'pitada');
+  assert.equal(ctx.parseQtyUnit('160'), null);
+  assert.equal(ctx.parseQtyUnit('g'), null);
+  assert.equal(ctx.parseQtyUnit('2 l'), null);
+  assert.equal(ctx.parseQtyUnit('2 l', { allowShort: true }).unit.id, 'l');
+  assert.equal(ctx.parseQtyUnit('2 lata').unit.id, 'lata');
 });
 
 test('scale is view-only and hints ml/g from the template', function () {
@@ -143,5 +172,7 @@ test('editor and leaf wire unit picker, stepper, and hints', function () {
   assert.match(js, /is-gosto/);
   assert.match(js, /playQtyAnim/);
   assert.match(js, /ing-hint/);
-  assert.match(js, /shopIngLabel\(ing, r\)/);
+  assert.match(js, /function parseQtyUnit/);
+  assert.match(js, /function handleQtyTyped/);
+  assert.match(js, /onIngQty\(event/);
 });

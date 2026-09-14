@@ -59,23 +59,23 @@ var BOOK_COLORS = ['#e07a5f', '#f59e0b', '#34d399', '#22d3ee', '#60a5fa', '#a78b
 var _scaleByRecipe = {};
 var _servOpenId = '';
 var MEASURE_UNITS = [
-  { id: 'cha', label: 'colher de chá', aliases: ['colher de cha', 'colheres de chá', 'colheres de cha', 'cchá', 'ccha', 'tsp', 'teaspoon', 'teaspoons'], si: { n: 5, u: 'ml' } },
+  { id: 'cha', label: 'colher de chá', aliases: ['colher de cha', 'colheres de chá', 'colheres de cha', 'cchá', 'ccha', 'cc', 'tsp', 'teaspoon', 'teaspoons'], si: { n: 5, u: 'ml' } },
   { id: 'sobremesa', label: 'colher de sobremesa', aliases: ['colheres de sobremesa'], si: { n: 10, u: 'ml' } },
-  { id: 'sopa', label: 'colher de sopa', aliases: ['colher', 'colheres', 'colheres de sopa', 'cs', 'tbsp', 'tablespoon', 'tablespoons'], si: { n: 15, u: 'ml' } },
+  { id: 'sopa', label: 'colher de sopa', aliases: ['colher', 'colheres', 'colheres de sopa', 'cs', 'tbsp', 'tbs', 'tbl', 'tablespoon', 'tablespoons'], si: { n: 15, u: 'ml' } },
   { id: 'xcafe', label: 'xícara de café', aliases: ['xicara de cafe', 'xícaras de café', 'xicaras de cafe'], si: { n: 80, u: 'ml' } },
   { id: 'xcha', label: 'xícara de chá', aliases: ['xicara de cha', 'xícara', 'xicara', 'xícaras', 'xicaras', 'xícaras de chá', 'xicaras de cha', 'cup', 'cups'], si: { n: 240, u: 'ml' } },
   { id: 'copo', label: 'copo americano', aliases: ['copo', 'copos', 'copos americano'], si: { n: 190, u: 'ml' } },
-  { id: 'ml', label: 'ml', aliases: ['mililitro', 'mililitros'], si: { n: 1, u: 'ml' } },
-  { id: 'l', label: 'l', aliases: ['litro', 'litros', 'lt'], si: { n: 1000, u: 'ml' } },
-  { id: 'g', label: 'g', aliases: ['grama', 'gramas', 'gr'], si: { n: 1, u: 'g' } },
-  { id: 'kg', label: 'kg', aliases: ['quilo', 'quilos', 'kilograma'], si: { n: 1000, u: 'g' } },
-  { id: 'un', label: 'unidade', aliases: ['un', 'unidades', 'und'], si: null },
-  { id: 'dente', label: 'dente', aliases: ['dentes'], si: null },
-  { id: 'lata', label: 'lata', aliases: ['latas'], si: null },
-  { id: 'caixa', label: 'caixa', aliases: ['caixas'], si: null },
-  { id: 'pacote', label: 'pacote', aliases: ['pacotes'], si: null },
-  { id: 'fatia', label: 'fatia', aliases: ['fatias'], si: null },
-  { id: 'pitada', label: 'pitada', aliases: ['pitadas'], si: null },
+  { id: 'ml', label: 'ml', aliases: ['mililitro', 'mililitros', 'milliliter', 'millilitre', 'milliliters', 'millilitres'], si: { n: 1, u: 'ml' } },
+  { id: 'l', label: 'l', aliases: ['litro', 'litros', 'lt', 'liter', 'litre', 'liters', 'litres'], si: { n: 1000, u: 'ml' } },
+  { id: 'g', label: 'g', aliases: ['grama', 'gramas', 'gr', 'gram', 'grams'], si: { n: 1, u: 'g' } },
+  { id: 'kg', label: 'kg', aliases: ['quilo', 'quilos', 'kilograma', 'kilo', 'kilos', 'kilogram', 'kilograms'], si: { n: 1000, u: 'g' } },
+  { id: 'un', label: 'unidade', aliases: ['un', 'unidades', 'und', 'unit', 'units', 'pcs', 'pc', 'x'], si: null },
+  { id: 'dente', label: 'dente', aliases: ['dentes', 'clove', 'cloves'], si: null },
+  { id: 'lata', label: 'lata', aliases: ['latas', 'can', 'cans'], si: null },
+  { id: 'caixa', label: 'caixa', aliases: ['caixas', 'box', 'boxes'], si: null },
+  { id: 'pacote', label: 'pacote', aliases: ['pacotes', 'pack', 'packs', 'pkg'], si: null },
+  { id: 'fatia', label: 'fatia', aliases: ['fatias', 'slice', 'slices'], si: null },
+  { id: 'pitada', label: 'pitada', aliases: ['pitadas', 'pinch', 'pinches'], si: null },
   { id: 'gosto', label: 'a gosto', aliases: ['gosto', 'qb'], si: null }
 ];
 
@@ -95,6 +95,26 @@ function matchUnit(s) {
     for (j = 0; j < names.length; j++) {
       if (normUnitKey(names[j]) === k) return u;
     }
+  }
+  return null;
+}
+function parseQtyUnit(raw, opts) {
+  opts = opts || {};
+  var s = String(raw == null ? '' : raw).trim();
+  if (!s) return null;
+  var allowShort = !!opts.allowShort;
+  var i, left, right, u, glued, key;
+  for (i = s.length - 1; i >= 1; i--) {
+    right = s.slice(i).trim();
+    if (!right) continue;
+    u = matchUnit(right);
+    if (!u) continue;
+    left = s.slice(0, i).trim();
+    if (parseQty(left) == null) continue;
+    glued = !/\s/.test(s.charAt(i)) && !/\s/.test(s.charAt(i - 1));
+    key = normUnitKey(right);
+    if (!glued && key.length < 2 && !allowShort) continue;
+    return { qty: left, unit: u };
   }
   return null;
 }
@@ -3229,18 +3249,75 @@ function editIngLineClass(line, altOn) {
     + (unitIsTaste(line.unit) ? ' is-gosto' : '')
     + (altOn && unitIsTaste(line.unit2) ? ' is-gosto2' : '');
 }
-function qtyFieldHtml(value, oninput, hidden) {
+function qtyFieldHtml(value, fn, hidden) {
   return '<div class="qty-slot">'
-    + '<input class="field qty-field" placeholder="Qtd" value="' + esc(value || '') + '" oninput="' + oninput + '"'
+    + '<input class="field qty-field" placeholder="Qtd" value="' + esc(value || '') + '"'
+    + ' oninput="' + fn + '" onblur="' + fn + '"'
     + (hidden ? ' tabindex="-1" aria-hidden="true"' : '')
     + '>'
     + '</div>';
 }
-function ingAltFields(line, qtyAttr, pickPrefix, unitAttr) {
+function ingAltFields(line, qtyFn, pickPrefix, unitAttr) {
   return '<div class="edit-alt">'
-    + qtyFieldHtml(line.qty2, qtyAttr, unitIsTaste(line.unit2))
+    + qtyFieldHtml(line.qty2, qtyFn, unitIsTaste(line.unit2))
     + unitPickerHtml(line, pickPrefix, unitAttr, 'unit2')
     + '</div>';
+}
+var _qtyShortcutLock = false;
+function focusEditQty(rootId, qtyId, alt) {
+  requestAnimationFrame(function () {
+    var root = $(rootId);
+    var row = root && root.querySelector('.edit-line[data-qty="' + qtyId + '"]');
+    if (!row) return;
+    var inputs = row.querySelectorAll('.qty-field');
+    var el = alt ? inputs[inputs.length - 1] : inputs[0];
+    if (!el || el.getAttribute('aria-hidden') === 'true') return;
+    el.focus();
+    try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {}
+  });
+}
+function handleQtyTyped(ev, line, qtyKey, paintFn, focusFn) {
+  if (_qtyShortcutLock || !line || !ev || !ev.target) return;
+  var raw = ev.target.value;
+  var parsed = parseQtyUnit(raw, { allowShort: ev.type === 'blur' });
+  if (!parsed) {
+    line[qtyKey] = raw;
+    return;
+  }
+  var unitKey = qtyKey === 'qty2' ? 'unit2' : 'unit';
+  var prev = matchUnit(line[unitKey]);
+  line[qtyKey] = parsed.qty;
+  applyUnitPick(line, parsed.unit.id, unitKey);
+  if (prev && prev.id === parsed.unit.id && !unitIsTaste(line[unitKey])) {
+    ev.target.value = parsed.qty;
+    return;
+  }
+  _qtyShortcutLock = true;
+  paintFn();
+  _qtyShortcutLock = false;
+  if (ev.type !== 'blur' && focusFn) focusFn();
+}
+function onIngQty(ev, i) {
+  handleQtyTyped(ev, _ingDraft[i], 'qty', function () {
+    paintIngLines({ qtyAnim: true });
+  }, function () { focusEditQty('recipeIngList', 'ing-' + i, false); });
+}
+function onIngQty2(ev, i) {
+  handleQtyTyped(ev, _ingDraft[i], 'qty2', function () {
+    paintIngLines({ qtyAnim: true });
+  }, function () { focusEditQty('recipeIngList', 'ing-' + i, true); });
+}
+function onPartIngQty(ev, pi, j) {
+  var p = _partDraft[pi];
+  handleQtyTyped(ev, p && p.ings && p.ings[j], 'qty', function () {
+    paintPartBlocks({ qtyAnim: true });
+  }, function () { focusEditQty('recipePartList', 'p' + pi + '-' + j, false); });
+}
+function onPartIngQty2(ev, pi, j) {
+  var p = _partDraft[pi];
+  handleQtyTyped(ev, p && p.ings && p.ings[j], 'qty2', function () {
+    paintPartBlocks({ qtyAnim: true });
+  }, function () { focusEditQty('recipePartList', 'p' + pi + '-' + j, true); });
 }
 function paintIngLines(opts) {
   var el = $('recipeIngList');
@@ -3252,7 +3329,7 @@ function paintIngLines(opts) {
     return '<div class="' + editIngLineClass(line, altOn) + '" data-i="' + i + '" data-qty="ing-' + i + '">'
       + editHandle('ing')
       + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_ingDraft[' + i + '].text=this.value">'
-      + qtyFieldHtml(line.qty, '_ingDraft[' + i + '].qty=this.value', unitIsTaste(line.unit))
+      + qtyFieldHtml(line.qty, 'onIngQty(event,' + i + ')', unitIsTaste(line.unit))
       + unitPickerHtml(line, 'pickIngUnit(' + i + ',', '_ingDraft[' + i + '].unit=this.value')
       + lineMoreHtml([
         { label: 'ou', on: altOn, fn: 'toggleIngAlt(' + i + ')' },
@@ -3260,7 +3337,7 @@ function paintIngLines(opts) {
         { label: 'Opcional', on: isOptional(line), fn: 'toggleIngOptional(' + i + ')' }
       ])
       + '<button type="button" class="rm" onclick="rmIngLine(' + i + ')">×</button>'
-      + (altOn ? ingAltFields(line, '_ingDraft[' + i + '].qty2=this.value', 'pickIngUnit2(' + i + ',', '_ingDraft[' + i + '].unit2=this.value') : '')
+      + (altOn ? ingAltFields(line, 'onIngQty2(event,' + i + ')', 'pickIngUnit2(' + i + ',', '_ingDraft[' + i + '].unit2=this.value') : '')
       + '</div>';
   }).join('');
   if (prev) playQtyAnim(el, prev);
@@ -3371,14 +3448,14 @@ function paintPartBlocks(opts) {
       return '<div class="' + editIngLineClass(line, altOn) + '" data-i="' + j + '" data-qty="p' + i + '-' + j + '">'
         + editHandle('ping-' + i)
         + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_partDraft[' + i + '].ings[' + j + '].text=this.value">'
-        + qtyFieldHtml(line.qty, '_partDraft[' + i + '].ings[' + j + '].qty=this.value', unitIsTaste(line.unit))
+        + qtyFieldHtml(line.qty, 'onPartIngQty(event,' + i + ',' + j + ')', unitIsTaste(line.unit))
         + unitPickerHtml(line, 'pickPartUnit(' + i + ',' + j + ',', '_partDraft[' + i + '].ings[' + j + '].unit=this.value')
         + lineMoreHtml([
           { label: 'ou', on: altOn, fn: 'togglePartIngAlt(' + i + ',' + j + ')' },
           { label: 'Opcional', on: isOptional(line), fn: 'togglePartIngOptional(' + i + ',' + j + ')' }
         ])
         + '<button type="button" class="rm" onclick="rmPartIng(' + i + ',' + j + ')">×</button>'
-        + (altOn ? ingAltFields(line, '_partDraft[' + i + '].ings[' + j + '].qty2=this.value', 'pickPartUnit2(' + i + ',' + j + ',', '_partDraft[' + i + '].ings[' + j + '].unit2=this.value') : '')
+        + (altOn ? ingAltFields(line, 'onPartIngQty2(event,' + i + ',' + j + ')', 'pickPartUnit2(' + i + ',' + j + ',', '_partDraft[' + i + '].ings[' + j + '].unit2=this.value') : '')
         + '</div>';
     }).join('');
     var steps = (p.steps || []).map(function (line, j) {

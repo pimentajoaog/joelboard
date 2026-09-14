@@ -28,7 +28,12 @@ vm.runInContext(
   collab
   + '\nthis.plParseJoinSheetId=plParseJoinSheetId;this.plIsCollabSpreadsheetGrid=plIsCollabSpreadsheetGrid;'
   + 'this.plGridLooksLikeNotes=plGridLooksLikeNotes;this.plPlanIdFromMeta=plPlanIdFromMeta;'
-  + 'this.plJoinErrMessage=plJoinErrMessage;this.plMemberNeedsProfileWrite=plMemberNeedsProfileWrite;',
+  + 'this.plJoinErrMessage=plJoinErrMessage;this.plMemberNeedsProfileWrite=plMemberNeedsProfileWrite;'
+  + 'this.plLooksLikeYmd=plLooksLikeYmd;this.plLooksLikePlanIcon=plLooksLikePlanIcon;'
+  + 'this.plSanitizeListaIds=plSanitizeListaIds;this.plCollabMetaNeedsHeal=plCollabMetaNeedsHeal;'
+  + 'this.plCollabMetaRowTrustworthy=plCollabMetaRowTrustworthy;'
+  + 'this.plFillPlanRangeFromDays=plFillPlanRangeFromDays;this.plSanitizeCollabPlanMeta=plSanitizeCollabPlanMeta;'
+  + 'this.plIsNotesKind=plIsNotesKind;',
   cctx
 );
 
@@ -151,4 +156,42 @@ test('collab sheets are not treated as the personal Planner workbook', function 
   assert.match(planner, /plScrollFocusDay/);
   assert.match(planner, /id="pl-day-'/);
   assert.match(collab, /OwnerEmail', 'Listas'/);
+});
+
+test('collab Meta heal detects Notes-shaped headers and rows', function () {
+  var headers = ['Titulo', 'Subtitulo', 'Inicio', 'Fim', 'Icone', 'Criado', 'Atualizado', 'ID', 'OwnerEmail', 'Listas'];
+  var row = ['Viagem', '', '2026-07-13', '2026-07-18', '✈️', 't', 't', 'plan-1', 'a@b.com', ''];
+  assert.equal(cctx.plCollabMetaNeedsHeal([headers, row], 'plan-1'), false);
+  assert.equal(cctx.plCollabMetaNeedsHeal([
+    ['Titulo', 'Tipo', 'Cor', 'Fixado', 'Criado', 'Atualizado', 'ID', 'Vence', 'OwnerEmail', 'Marcacao'],
+    ['Viagem nacional', 'viagem', '#f59e0b', '0', '2026-07-01T00:00:00.000Z', 't', 'note-1', '', 'a@b.com', 'compartilhado']
+  ], 'plan-1'), true);
+  assert.equal(cctx.plCollabMetaNeedsHeal([headers, ['Viagem', '', '2026-07-13', '2026-07-18', '✈️', 't', 't', 'wrong', 'a@b.com', '']], 'plan-1'), true);
+  var headerOnly = ['Titulo', 'Subtitulo', 'Inicio', 'Fim', 'Icone', 'Criado', 'Atualizado', 'ID', 'OwnerEmail', 'Marcacao'];
+  assert.equal(cctx.plCollabMetaNeedsHeal([headerOnly, row], 'plan-1'), true);
+  assert.equal(cctx.plCollabMetaRowTrustworthy(row, 'plan-1'), true);
+});
+
+test('collab Meta heal recovers dates and drops Notes leftovers', function () {
+  assert.equal(cctx.plLooksLikeYmd('2026-07-13'), true);
+  assert.equal(cctx.plLooksLikeYmd('#f59e0b'), false);
+  assert.equal(cctx.plLooksLikePlanIcon('✈️'), true);
+  assert.equal(cctx.plLooksLikePlanIcon('2026-07-01T00:00:00.000Z'), false);
+  assert.equal(cctx.plIsNotesKind('viagem'), true);
+  assert.equal(cctx.plSanitizeListaIds('compartilhado').join(','), '');
+  assert.equal(cctx.plSanitizeListaIds('abc,pessoal').join(','), 'abc');
+  var p = { id: 'plan-1', titulo: 'Viagem', subtitulo: 'viagem', inicio: '#f59e0b', fim: '0', icone: '2026-07-01T00:00:00.000Z', listaIds: ['compartilhado'] };
+  cctx.plSanitizeCollabPlanMeta(p, null, [{ data: '2026-07-13' }, { data: '2026-07-18' }]);
+  assert.equal(p.subtitulo, '');
+  assert.equal(p.icone, '📅');
+  assert.equal(p.inicio, '2026-07-13');
+  assert.equal(p.fim, '2026-07-18');
+  assert.equal((p.listaIds || []).join(','), '');
+});
+
+test('collab Meta rewrite covers the full header row, not only Listas', function () {
+  assert.match(collab, /plHealCollabPlanMeta/);
+  assert.match(collab, /Meta!A1:J2/);
+  assert.match(collab, /Meta!A1:J1/);
+  assert.match(planner, /function findPlanMetaRow/);
 });

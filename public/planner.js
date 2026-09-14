@@ -211,6 +211,13 @@ function findRowInSid(sid, tab, idCol, id){
     return row!=null?row:-1;
   });
 }
+function findPlanMetaRow(sid, p){
+  return findRowInSid(sid, plPlanTab(p), 7, p.id).then(function(row){
+    if(row>0) return row;
+    if(p && p.collabSheetId) return 2;
+    return row;
+  });
+}
 
 function plSheetUrl(sid, p){ return 'https://sheets.googleapis.com/v4/spreadsheets/'+sid+p; }
 function plSidForPlan(p){ if(p&&p.collabSheetId) return p.collabSheetId; return JB.getSheetId('planner'); }
@@ -995,7 +1002,7 @@ function persistPlanShape(p, removedDays, addedDays){
         });
       }
       return chain.then(function(){
-        return findRowInSid(sid, tab, p.collabSheetId?7:7, p.id).then(function(row){
+        return findPlanMetaRow(sid, p).then(function(row){
           if(row<0) throw plRowErr(tab);
           var vals=p.collabSheetId?metaRowVals(p):planRowVals(p);
           var last=p.collabSheetId?'J':'I';
@@ -1041,7 +1048,7 @@ function touchPlan(p){
   var sid=plSidForPlan(p), tab=plPlanTab(p);
   plPersistForPlan(p, {
     run: function(){
-      return findRowInSid(sid, tab, 7, p.id).then(function(row){
+      return findPlanMetaRow(sid, p).then(function(row){
         if(row<0) throw plRowErr(tab);
         var vals=p.collabSheetId?metaRowVals(p):planRowVals(p);
         var last=p.collabSheetId?'J':'I';

@@ -43,8 +43,8 @@ function ensureCollabLinkHeaders(sid) {
   return Promise.all([
     JB.api('GET', plCollabUrl(sid, '/values/' + encodeURIComponent('Meta!1:1'))).then(function (res) {
       var h = (res.values && res.values[0]) || [];
-      if (h[9] === 'Listas') return;
-      return JB.api('PUT', plCollabUrl(sid, '/values/' + encodeURIComponent('Meta!J1') + '?valueInputOption=RAW'), { values: [['Listas']] });
+      if (h[7] === 'ID' && h[9] === 'Listas') return;
+      return JB.api('PUT', plCollabUrl(sid, '/values/' + encodeURIComponent('Meta!A1:J1') + '?valueInputOption=RAW'), { values: [PL_COLLAB_TABS[0][1]] });
     }).catch(function () {}),
     JB.api('GET', plCollabUrl(sid, '/values/' + encodeURIComponent('Dias!1:1'))).then(function (res) {
       var h = (res.values && res.values[0]) || [];
@@ -102,6 +102,93 @@ function plGridLooksLikeNotes(grid) {
 }
 function plPlanIdFromMeta(metaRow, reg) {
   return String((reg && reg[4]) || (metaRow && metaRow[7]) || '');
+}
+
+function plLooksLikeYmd(s) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(s || '').trim());
+}
+function plLooksLikeIsoTime(s) {
+  return /^\d{4}-\d{2}-\d{2}T/.test(String(s || ''));
+}
+function plIsNotesKind(s) {
+  return /^(viagem|tarefas|compras|nota)$/i.test(String(s || '').trim());
+}
+function plLooksLikePlanIcon(s) {
+  s = String(s || '').trim();
+  if (!s) return false;
+  if (plLooksLikeYmd(s) || plLooksLikeIsoTime(s)) return false;
+  if (plIsNotesKind(s)) return false;
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s)) return false;
+  if (/^[01]$/.test(s)) return false;
+  return Array.from(s).length <= 4;
+}
+function plSanitizeListaIds(raw) {
+  var ids;
+  if (typeof plIds === 'function') ids = plIds(raw);
+  else if (Array.isArray(raw)) ids = raw.map(String).filter(Boolean);
+  else ids = String(raw || '').split(/[,;\s]+/).filter(Boolean);
+  return ids.filter(function (id) {
+    var x = String(id || '').trim().toLowerCase();
+    return x && x !== 'compartilhado' && x !== 'pessoal' && x !== 'marcacao' && x !== 'listas';
+  });
+}
+function plCollabMetaRowTrustworthy(row, planId) {
+  if (!row || !row.length) return false;
+  if (planId && String(row[7] || '') !== String(planId)) return false;
+  if (plIsNotesKind(row[1])) return false;
+  if (row[2] && !plLooksLikeYmd(row[2])) return false;
+  if (row[3] && !plLooksLikeYmd(row[3])) return false;
+  if (row[4] && !plLooksLikePlanIcon(row[4])) return false;
+  var lista = String(row[9] || '').toLowerCase();
+  if (lista === 'compartilhado' || lista === 'pessoal' || lista === 'marcacao') return false;
+  return true;
+}
+function plCollabMetaNeedsHeal(metaValues, planId) {
+  var h = (metaValues && metaValues[0]) || [];
+  var row = (metaValues && metaValues[1]) || [];
+  if (String(h[7] || '') !== 'ID') return true;
+  if (String(h[9] || '') !== 'Listas') return true;
+  return !plCollabMetaRowTrustworthy(row, planId);
+}
+function plFillPlanRangeFromDays(p, days) {
+  if (!p) return;
+  if (!days && typeof daysOf === 'function' && p.id) days = daysOf(p.id);
+  var dates = (days || []).map(function (d) { return String(d.data || ''); }).filter(plLooksLikeYmd).sort();
+  if (!dates.length) return;
+  if (!plLooksLikeYmd(p.inicio)) p.inicio = dates[0];
+  if (!plLooksLikeYmd(p.fim)) p.fim = dates[dates.length - 1];
+}
+function plSanitizeCollabPlanMeta(p, pack, days) {
+  if (!p) return p;
+  if (plIsNotesKind(p.subtitulo)) p.subtitulo = '';
+  if (p.icone && !plLooksLikePlanIcon(p.icone)) p.icone = '📅';
+  else if (p.icone && typeof plNormIcon === 'function') p.icone = plNormIcon(p.icone) || p.icone;
+  if (!days) {
+    if (typeof daysOf === 'function' && p.id) days = daysOf(p.id);
+    else if (pack && pack.dias && typeof parseDias === 'function') days = parseDias(pack.dias);
+  }
+  plFillPlanRangeFromDays(p, days);
+  if (p.inicio && !plLooksLikeYmd(p.inicio)) p.inicio = '';
+  if (p.fim && !plLooksLikeYmd(p.fim)) p.fim = '';
+  p.listaIds = plSanitizeListaIds(p.listaIds);
+  return p;
+}
+function plHealCollabPlanMeta(p, pack) {
+  if (!p || !p.collabSheetId) return Promise.resolve();
+  if (typeof JB !== 'undefined' && JB.isGhost && JB.isGhost()) return Promise.resolve();
+  plSanitizeCollabPlanMeta(p, pack);
+  if (!plCollabMetaNeedsHeal((pack && pack.meta) || [], p.id)) return Promise.resolve();
+  if (!plLooksLikePlanIcon(p.icone)) p.icone = '📅';
+  var headers = PL_COLLAB_TABS[0][1];
+  var vals = (typeof metaRowVals === 'function')
+    ? metaRowVals(p)
+    : [p.titulo, p.subtitulo || '', p.inicio, p.fim, p.icone || '📅', p.criado || '', p.atualizado || '', p.id, p.collabOwner || '', (typeof plFmtIds === 'function') ? plFmtIds(p.listaIds) : (p.listaIds || []).join(',')];
+  return JB.api('PUT', plCollabUrl(p.collabSheetId, '/values/' + encodeURIComponent('Meta!A1:J2') + '?valueInputOption=RAW'), {
+    values: [headers, vals]
+  }).then(function () {
+    if (typeof invalidateRowCacheForSid === 'function') invalidateRowCacheForSid(p.collabSheetId, 'Meta');
+    if (typeof seedRowCacheForSid === 'function') seedRowCacheForSid(p.collabSheetId, 'Meta', [headers, vals], 7);
+  }).catch(function () {});
 }
 
 function plCollabUrl(sid, p) {
@@ -282,23 +369,27 @@ function plMergeRegistryRow(reg, pack) {
   var metaRow = body(pack.meta)[0] || [];
   var id = plPlanIdFromMeta(metaRow, reg);
   if (!id) return null;
+  var trust = plCollabMetaRowTrustworthy(metaRow, id);
   var members = plParseMembers(pack.membros);
   var my = null;
   for (var mi = 0; mi < members.length; mi++) { if (members[mi].email === plEmail()) { my = members[mi]; break; } }
+  var criado = String(metaRow[5] || '');
+  if (!trust && !plLooksLikeIsoTime(criado) && plLooksLikeIsoTime(metaRow[4])) criado = String(metaRow[4]);
+  if (criado && !plLooksLikeIsoTime(criado) && !plLooksLikeYmd(criado)) criado = '';
   return {
     id: id,
-    titulo: String(metaRow[0] || (reg && reg[0]) || ''),
-    subtitulo: String(metaRow[1] || ''),
-    inicio: String(metaRow[2] || ''),
-    fim: String(metaRow[3] || ''),
-    icone: String(metaRow[4] || '📅'),
-    criado: String(metaRow[5] || ''),
-    atualizado: String((reg && reg[5]) || metaRow[6] || ''),
+    titulo: String((!trust && reg && reg[0]) || metaRow[0] || (reg && reg[0]) || ''),
+    subtitulo: trust ? String(metaRow[1] || '') : '',
+    inicio: trust ? String(metaRow[2] || '') : '',
+    fim: trust ? String(metaRow[3] || '') : '',
+    icone: trust ? String(metaRow[4] || '📅') : '📅',
+    criado: criado,
+    atualizado: String((reg && reg[5]) || (plLooksLikeIsoTime(metaRow[6]) ? metaRow[6] : '') || ''),
     collabSheetId: pack.sid || String((reg && reg[1]) || ''),
     collabRole: String((reg && reg[2]) || (my && my.papel) || 'editor'),
     collabOwner: String((reg && reg[3]) || metaRow[8] || ''),
     collabMembers: members,
-    listaIds: (typeof plIds==='function')?plIds(metaRow[9]):String(metaRow[9]||'').split(',').filter(Boolean)
+    listaIds: trust ? plSanitizeListaIds(metaRow[9]) : []
   };
 }
 
@@ -330,6 +421,7 @@ function plKeepRegistryPlan(reg, pack) {
   var exists = (DATA.planos || []).some(function (x) { return x.id === p.id || (x.collabSheetId && x.collabSheetId === p.collabSheetId); });
   if (!exists) DATA.planos.push(p);
   if (pack && pack.grid && !plGridLooksLikeNotes(pack.grid)) plApplyCollabPack(p.id, pack);
+  plSanitizeCollabPlanMeta(p, pack);
   return p;
 }
 
@@ -351,6 +443,7 @@ function plLoadCollabPlans() {
           if (pack && pack.meta) {
             _plCollabSig[p.id] = plPackSignature(daysOf(p.id), eventsOfPlan(p.id), body(pack.meta)[0], p.collabMembers);
             plSyncMyMemberProfile(p, pack.membros);
+            return plHealCollabPlanMeta(p, pack);
           }
         }).catch(function () {
           if (!plKeepRegistryPlan(reg, null)) failed++;
@@ -407,20 +500,23 @@ function plRefreshCollabOnly(force) {
       if (!cur || cur.collabSheetId !== sheetId) return { changed: false };
       var metaRow = body(pack.meta)[0];
       plApplyCollabPack(planId, pack);
-      if (metaRow) {
+      if (metaRow && plCollabMetaRowTrustworthy(metaRow, planId)) {
         cur.titulo = String(metaRow[0] || cur.titulo);
         cur.subtitulo = String(metaRow[1] || '');
         cur.inicio = String(metaRow[2] || '');
         cur.fim = String(metaRow[3] || '');
         cur.icone = String(metaRow[4] || cur.icone);
         cur.atualizado = String(metaRow[6] || cur.atualizado);
-        cur.listaIds = (typeof plIds==='function')?plIds(metaRow[9]):String(metaRow[9]||'').split(',').filter(Boolean);
+        cur.listaIds = plSanitizeListaIds(metaRow[9]);
       }
       if (pack.membros && pack.membros.length) cur.collabMembers = plParseMembers(pack.membros);
-      var sig = plPackSignature(daysOf(planId), eventsOfPlan(planId), metaRow, cur.collabMembers);
-      var changed = _plCollabSig[planId] !== sig;
-      _plCollabSig[planId] = sig;
-      return { changed: changed, remote: !!changed };
+      plSanitizeCollabPlanMeta(cur, pack);
+      return plHealCollabPlanMeta(cur, pack).then(function () {
+        var sig = plPackSignature(daysOf(planId), eventsOfPlan(planId), metaRow, cur.collabMembers);
+        var changed = _plCollabSig[planId] !== sig;
+        _plCollabSig[planId] = sig;
+        return { changed: changed, remote: !!changed };
+      });
     }
     if (!force) {
       return plPeekMetaAtualizado(sheetId).then(function (remoteAt) {

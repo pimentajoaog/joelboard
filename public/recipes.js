@@ -234,11 +234,7 @@ function switchSet(name) {
   });
 }
 function toggleFlipPref() {
-  bookViewMode = bookViewMode === 'flip' ? 'cards' : 'flip';
-  saveViewPref();
-  var flip = $('setFlipPref');
-  if (flip) flip.classList.toggle('on', bookViewMode === 'flip');
-  if (view === 'book') render();
+  setBookView(bookViewMode === 'flip' ? 'cards' : 'flip');
 }
 
 /* ---- boot / sheet ---- */
@@ -1142,11 +1138,66 @@ function renderBook() {
   return head + renderSpread(list, book);
 }
 
+var _modeSwap = false;
 function setBookView(mode) {
-  bookViewMode = mode === 'cards' ? 'cards' : 'flip';
+  var next = mode === 'cards' ? 'cards' : 'flip';
+  if (next === bookViewMode) return;
+  if (_modeSwap) return;
+  bookViewMode = next;
   saveViewPref();
-  _spreadIntro = true;
-  render();
+  var pref = $('setFlipPref');
+  if (pref) pref.classList.toggle('on', bookViewMode === 'flip');
+  if (view !== 'book') return;
+  playBookModeSwap();
+}
+function playBookModeSwap() {
+  var main = $('main');
+  if (!main || reducedMotion()) {
+    _spreadIntro = bookViewMode === 'flip';
+    render();
+    return;
+  }
+  _modeSwap = true;
+  var finished = false;
+  function finish() {
+    if (finished) return;
+    finished = true;
+    _modeSwap = false;
+    document.documentElement.classList.remove('rc-mode-swap');
+    if (main) {
+      main.classList.remove('is-mode-out');
+      main.classList.remove('is-mode-in');
+    }
+  }
+  if (typeof document.startViewTransition === 'function') {
+    _spreadIntro = false;
+    document.documentElement.classList.add('rc-mode-swap');
+    try {
+      var t = document.startViewTransition(function () { render(); });
+      if (t && t.finished) {
+        t.finished.then(finish, finish);
+        setTimeout(finish, 700);
+        return;
+      }
+    } catch (_) {}
+    document.documentElement.classList.remove('rc-mode-swap');
+  }
+  main.classList.add('is-mode-out');
+  setTimeout(function () {
+    _spreadIntro = bookViewMode === 'flip';
+    render();
+    main.classList.remove('is-mode-out');
+    main.classList.add('is-mode-in');
+    var ended = false;
+    function end() {
+      if (ended) return;
+      ended = true;
+      main.removeEventListener('animationend', end);
+      finish();
+    }
+    main.addEventListener('animationend', end);
+    setTimeout(end, 480);
+  }, 180);
 }
 
 function renderCards(list, book) {

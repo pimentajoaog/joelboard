@@ -18,14 +18,14 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 #loading{ @apply max-w-[480px] mx-auto; }
 #app{ @apply hidden max-w-[1100px] mx-auto; }
 
-.header{ @apply flex items-center justify-between gap-3 mb-5; }
+.header{ @apply flex items-center justify-between gap-3 mb-5; view-transition-name:rc-head; }
 .hl{ @apply flex items-center gap-2.5; }
 .hl img{ @apply w-[34px] h-[34px] rounded-[9px]; }
 .hl h1{ @apply text-xl font-extrabold tracking-[-.4px]; font-family:var(--font-display); color:var(--primary); }
 .acct{ @apply text-xs text-muted flex items-center gap-2.5; }
 .lnk{ @apply bg-transparent border-0 text-primary font-bold text-xs cursor-pointer; font-family:inherit; }
 
-.secbar{ @apply flex items-center justify-between gap-2.5 mb-3.5 flex-wrap; }
+.secbar{ @apply flex items-center justify-between gap-2.5 mb-3.5 flex-wrap; view-transition-name:rc-bar; }
 .sect{ @apply text-[11px] font-bold tracking-[.8px] uppercase text-muted; }
 .back{ @apply bg-transparent border-0 text-primary font-extrabold text-[13px] cursor-pointer; font-family:inherit; }
 
@@ -63,6 +63,16 @@ textarea.field{ resize:vertical; min-height:64px; }
 
 /* ===== Bookcase shelf (spines → open book) ===== */
 #main{ overflow:visible; }
+#main.is-mode-out{
+  opacity:0; transform:translateY(8px) scale(.985);
+  pointer-events:none;
+  transition:opacity .18s ease, transform .2s cubic-bezier(.16,.84,.22,1);
+}
+#main.is-mode-in{ animation:rcModeIn .36s cubic-bezier(.16,.84,.22,1) both; }
+@keyframes rcModeIn{
+  from{ opacity:0; transform:translateY(8px) scale(.98); }
+  to{ opacity:1; transform:none; }
+}
 body.recipes-shelf{ padding-bottom:72px; }
 body.recipes-shelf .foot{ display:none; }
 
@@ -345,6 +355,7 @@ body.recipes-shelf .foot{ display:none; }
   display:flex; align-items:stretch; align-self:flex-start;
   padding:0 18px; margin:0 0 -20px; z-index:1; position:relative;
   overflow:visible; max-width:min(720px, 94vw);
+  view-transition-name:rc-crest;
 }
 .book-plaque{
   display:inline-flex; align-items:center; gap:8px;
@@ -396,7 +407,7 @@ body.recipes-shelf .foot{ display:none; }
   content:''; position:absolute; top:2px; left:2px; width:20px; height:20px;
   border-radius:999px; background:rgba(255,255,255,.2);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.18);
-  transition:transform .2s ease;
+  transition:transform .28s cubic-bezier(.16,.84,.22,1);
 }
 .book-mode.is-cards::before{ transform:translateX(22px); }
 .book-mode-ico{
@@ -447,6 +458,7 @@ body.recipes-shelf .foot{ display:none; }
 .book-ledge{
   position:relative; z-index:2; height:22px; margin-top:0;
   border-radius:14px 20px 0 0;
+  view-transition-name:rc-cover;
   background:
     linear-gradient(180deg,
       color-mix(in srgb, var(--kc, var(--primary)) 74%, #000 26%) 0%,
@@ -547,6 +559,7 @@ body.recipes-book .secbar{ margin-bottom:10px; }
   width:100%;
   display:flex; padding:13px 13px 15px;
   overflow:visible;
+  view-transition-name:rc-cover;
   border-radius:14px 20px 20px 14px;
   background:
     linear-gradient(180deg,
@@ -590,6 +603,7 @@ body.recipes-book .secbar{ margin-bottom:10px; }
   position:relative; display:flex; align-items:stretch; justify-content:center;
   width:auto; flex:1; margin:0 7px; height:min(78vh, 760px); min-height:440px;
   perspective:1700px; perspective-origin:50% 50%;
+  view-transition-name:rc-sheet;
 }
 @keyframes spreadOpen{
   from{ opacity:0; transform:rotateX(11deg) scale(.94); }
@@ -814,7 +828,10 @@ body.recipes-book .secbar{ margin-bottom:10px; }
 .spread-arrow.is-next:hover:not(:disabled){ transform:translateX(3px); }
 .spread-arrow:disabled{ opacity:.28; cursor:default; }
 
-.recipes-grid{ display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); }
+.recipes-grid{
+  display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  view-transition-name:rc-sheet;
+}
 .recipec{
   background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
   padding:14px; cursor:pointer; transition:border-color .15s ease, transform .15s ease;
@@ -1104,10 +1121,26 @@ button.step-num{ cursor:pointer; }
   .book-ribbon{ display:none; }
 }
 
+html.rc-mode-swap .recipec,
+html.rc-mode-swap .book-body.is-intro{ animation:none; }
+html.rc-mode-swap::view-transition-group(rc-cover),
+html.rc-mode-swap::view-transition-group(rc-sheet),
+html.rc-mode-swap::view-transition-group(rc-crest),
+html.rc-mode-swap::view-transition-group(rc-head),
+html.rc-mode-swap::view-transition-group(rc-bar){
+  animation-duration:.4s;
+  animation-timing-function:cubic-bezier(.16,.84,.22,1);
+}
+html.rc-mode-swap::view-transition-old(root),
+html.rc-mode-swap::view-transition-new(root){
+  animation-duration:.32s;
+  animation-timing-function:cubic-bezier(.16,.84,.22,1);
+}
+
 @media (prefers-reduced-motion: reduce){
-  .book-slot, .recipec, .detail, .book-body.is-intro{ animation:none; }
+  .book-slot, .recipec, .detail, .book-body.is-intro, #main.is-mode-in{ animation:none; }
   .page-turn{ display:none; }
-  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-tool, .book-mode::before, .book-find-slot, .leaf-part-body, .leaf-part-head::after{ transition:none; }
+  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-tool, .book-mode::before, .book-find-slot, .leaf-part-body, .leaf-part-head::after, #main.is-mode-out{ transition:none; }
   .ck-t{ transition:none; }
   .ing-list li.just-on::after, .step-list li.just-on::after{ display:none; }
   li.just-on .ichk, li.just-on .step-num{ animation:none; }

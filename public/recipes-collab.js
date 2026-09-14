@@ -567,11 +567,43 @@ function rcCreateCollabSpreadsheet(book, recipes, ings, steps, parts) {
   });
 }
 
+function rcOtherPersonalBooks(exceptId) {
+  return (DATA.cookbooks || []).filter(function (x) {
+    return x && x.id && x.id !== exceptId && !x.collabSheetId;
+  }).map(function (x) {
+    return {
+      id: x.id, name: x.name, icon: x.icon, color: x.color,
+      order: x.order, created: x.created
+    };
+  });
+}
+
+function rcReattachPersonalBooks(saved) {
+  (saved || []).forEach(function (o) {
+    if (o && o.id && !bookById(o.id)) DATA.cookbooks.push(o);
+  });
+  if (!saved || !saved.length) return Promise.resolve();
+  if (JB.isGhost && JB.isGhost()) return Promise.resolve();
+  return JB.api('GET', personalSsUrl('/values/Cookbooks?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
+    var have = {};
+    ((res.values || []).slice(1)).forEach(function (r) {
+      if (r && r[0]) have[String(r[0])] = 1;
+    });
+    var missing = (saved || []).filter(function (o) { return o && o.id && !have[o.id]; });
+    if (!missing.length) return null;
+    return JB.api('POST', personalSsUrl('/values/Cookbooks!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {
+      values: missing.map(bookRowVals)
+    });
+  }).catch(function () {});
+}
+
 function rcDeletePrivateCookbook(book) {
   var recs = recipesInBook(book.id);
   var recIds = {};
   recs.forEach(function (r) { recIds[r.id] = true; });
   var sid = personalSid();
+  var cookGid = recipesGrid.Cookbooks;
+  var recGid = recipesGrid.Recipes;
   return Promise.all([
     JB.api('GET', personalSsUrl('/values/Ingredients?valueRenderOption=UNFORMATTED_VALUE')),
     JB.api('GET', personalSsUrl('/values/Steps?valueRenderOption=UNFORMATTED_VALUE')),
@@ -597,16 +629,19 @@ function rcDeletePrivateCookbook(book) {
     }
     var reqs = [];
     function pushDeletes(sheetId, rows) {
-      if (sheetId == null) return;
+      if (sheetId == null || sheetId === '') return;
       rows.sort(function (a, b) { return b - a; }).forEach(function (rn) {
+        if (rn < 2) return;
         reqs.push({ deleteDimension: { range: { sheetId: sheetId, dimension: 'ROWS', startIndex: rn - 1, endIndex: rn } } });
       });
     }
-    pushDeletes(recipesGrid.Ingredients, ingRows);
-    pushDeletes(recipesGrid.Steps, stepRows);
-    pushDeletes(recipesGrid.Parts, partRows);
-    pushDeletes(recipesGrid.Recipes, recipeRows);
-    if (bookRow > 0) pushDeletes(recipesGrid.Cookbooks, [bookRow]);
+    if (cookGid == null || recGid == null || cookGid !== recGid) {
+      pushDeletes(recipesGrid.Ingredients, ingRows);
+      pushDeletes(recipesGrid.Steps, stepRows);
+      pushDeletes(recipesGrid.Parts, partRows);
+      pushDeletes(recGid, recipeRows);
+    }
+    if (bookRow > 1) pushDeletes(cookGid, [bookRow]);
     if (!reqs.length) return null;
     ['Ingredients', 'Steps', 'Parts', 'Recipes', 'Cookbooks'].forEach(function (tab) {
       if (typeof invalidateRowCacheForSid === 'function') invalidateRowCacheForSid(sid, tab);
@@ -652,6 +687,8 @@ function rcShareFromPrivate() {
       var ings = (DATA.ingredients || []).filter(function (x) { return recIds[x.recipeId]; });
       var steps = (DATA.steps || []).filter(function (x) { return recIds[x.recipeId]; });
       var parts = (DATA.parts || []).filter(function (p) { return recIds[p.recipeId]; });
+      var others = rcOtherPersonalBooks(b.id);
+      rcWriteBegin();
       rcCreateCollabSpreadsheet(b, recs, ings, steps, parts).then(function (sid) {
         b.collabSheetId = sid;
         b.collabRole = 'owner';
@@ -662,7 +699,10 @@ function rcShareFromPrivate() {
       }).then(function () {
         DATA.cookbooks = (DATA.cookbooks || []).filter(function (x) { return x.id !== b.id; });
         DATA.cookbooks.push(b);
+        others.forEach(function (o) { if (!bookById(o.id)) DATA.cookbooks.push(o); });
         return rcLoadCollabBooks().catch(function () {});
+      }).then(function () {
+        return rcReattachPersonalBooks(others);
       }).then(function () {
         if (!bookById(b.id)) {
           DATA.cookbooks.push(b);
@@ -676,7 +716,7 @@ function rcShareFromPrivate() {
         showApp();
         if (typeof render === 'function') render();
         toast('Erro: ' + ((e && e.message) || 'falha'));
-      });
+      }).then(function () { rcWriteEnd(); }, function () { rcWriteEnd(); });
     }, { yes: 'Compartilhar', no: 'Cancelar' });
   });
 }

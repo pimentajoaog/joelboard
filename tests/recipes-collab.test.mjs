@@ -51,6 +51,26 @@ test('rcSidForBook uses the collab sheet, Plans stay on the personal sid', funct
   assert.equal(rcSidForBook({ id: 'cb1' }, 'sid-mine'), 'sid-mine');
 });
 
+test('sharing one book keeps the other personal cookbooks', function () {
+  vm.runInContext(
+    'this.rcOtherPersonalBooks=rcOtherPersonalBooks;'
+    + 'DATA={cookbooks:['
+    + '{id:"saguados",name:"Saguados"},'
+    + '{id:"docinhos",name:"Docinhos"},'
+    + '{id:"casa",name:"Casa",collabSheetId:"sid"}'
+    + ']};',
+    ctx
+  );
+  var others = ctx.rcOtherPersonalBooks('docinhos');
+  assert.equal(others.map(function (b) { return b.id; }).join(','), 'saguados');
+  assert.match(collab, /function rcReattachPersonalBooks/);
+  assert.match(collab, /rcOtherPersonalBooks\(b\.id\)/);
+  assert.match(collab, /bookRow > 1\) pushDeletes\(cookGid, \[bookRow\]\)/);
+  assert.match(collab, /cookGid !== recGid/);
+  assert.match(recipes, /recipes-shelf-split/);
+  assert.match(recipes, /rcCollabSyncBlocked/);
+});
+
 test('join URL, registry, and Recipes/Compartilhados folder are wired', function () {
   assert.match(collab, /\/recipes\/\?join=/);
   assert.match(collab, /Compartilhadas/);

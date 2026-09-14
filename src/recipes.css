@@ -106,8 +106,11 @@ body.recipes-shelf .foot{ display:none; }
   border:1px solid var(--border);
   border-top-color:color-mix(in srgb, var(--text) 22%, var(--border));
 }
-.bookcase.is-tight{ min-height:0; }
-.bookcase.is-tight .bookcase-row{ min-height:calc(240px + 120px); padding-top:120px; }
+.bookcase.is-tight{ min-height:0; justify-content:flex-end; }
+.bookcase.is-tight .bookcase-row{ min-height:0; padding:72px 12px 10px; }
+.shelf-split{ display:flex; flex-direction:column; gap:4px; }
+body.recipes-shelf-split .bookcase{ min-height:0; }
+body.recipes-shelf-split .bookcase-row{ min-height:0; padding-top:72px; }
 .book-spine-avs{
   position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
   display:flex; justify-content:center; pointer-events:none;

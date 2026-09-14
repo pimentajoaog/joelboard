@@ -99,6 +99,16 @@ test('snapServings rounds to .0 or .5 when close', function () {
   assert.equal(ctx.setRecipeServings('rsnap', 3.4), 3.5);
 });
 
+test('secondary measure is muted and scales with the view', function () {
+  var r = { id: 'r4', servings: '2' };
+  var ing = { qty: '200', unit: 'g', qty2: '2', unit2: 'caixas', text: 'Creme de Leite' };
+  assert.equal(ctx.formatIngLabel(ing, r), '200 g Creme de Leite');
+  assert.equal(ctx.formatIngAlt(ing, r), '(ou 2 caixas Creme de Leite)');
+  ctx._scaleByRecipe.r4 = 4;
+  assert.equal(ctx.formatIngAlt(ing, r), '(ou 4 caixas Creme de Leite)');
+  assert.equal(ctx.formatIngAlt({ qty: '1', unit: 'g', text: 'sal' }, r), '');
+});
+
 test('editor and leaf wire unit picker, stepper, and hints', function () {
   assert.match(js, /function unitPickerHtml/);
   assert.match(js, /function pickIngUnit/);
@@ -106,7 +116,11 @@ test('editor and leaf wire unit picker, stepper, and hints', function () {
   assert.match(js, /Outra…/);
   assert.match(js, /function servingsStepper/);
   assert.match(js, /function toggleServPanel/);
+  assert.match(js, /serv-widget/);
+  assert.match(js, /serv-drawer/);
   assert.match(js, /function snapServings/);
+  assert.match(js, /function formatIngAlt/);
+  assert.match(js, /ing-alt-make/);
   assert.match(js, /ing-hint/);
   assert.match(js, /shopIngLabel\(ing, r\)/);
 });

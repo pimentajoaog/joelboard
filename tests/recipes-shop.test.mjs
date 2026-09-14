@@ -39,6 +39,16 @@ test('shopping list groups selected mise items by recipe', function () {
   assert.equal(pack.itens[1].marcavel, true);
 });
 
+test('shopping list includes the secondary measure', function () {
+  var pack = ctx.buildShopList(
+    { id: 'cb1', name: 'Doces', icon: '🧁' },
+    [{ id: 'ra', cookbookId: 'cb1', title: 'Bolo', order: 0, servings: '1' }],
+    [{ id: 'ia', recipeId: 'ra', qty: '200', unit: 'g', qty2: '2', unit2: 'caixas', text: 'Creme de Leite', order: 0 }],
+    { ia: {} }
+  );
+  assert.equal(pack.itens[1].texto, '200 g Creme de Leite (ou 2 caixas Creme de Leite)');
+});
+
 test('shopping list uses the current view scale', function () {
   ctx._scaleByRecipe.rs = 4;
   var pack = ctx.buildShopList(

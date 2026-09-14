@@ -38,7 +38,7 @@ var _spreadIntro = true;
 var RECIPES_TABS = [
   ['Cookbooks', ['ID', 'Nome', 'Icone', 'Cor', 'Ordem', 'Criado']],
   ['Recipes', ['ID', 'CookbookID', 'Titulo', 'Icone', 'ImageUrl', 'Porcoes', 'Minutos', 'Notas', 'Ordem', 'Source', 'SourceID', 'Criado']],
-  ['Ingredients', ['ID', 'RecipeID', 'Texto', 'Qtd', 'Unidade', 'Ordem', 'PartID']],
+  ['Ingredients', ['ID', 'RecipeID', 'Texto', 'Qtd', 'Unidade', 'Ordem', 'PartID', 'Qtd2', 'Unidade2']],
   ['Steps', ['ID', 'RecipeID', 'Texto', 'Ordem', 'PartID']],
   ['Parts', ['ID', 'RecipeID', 'Nome', 'Ordem', 'SourceIngID']],
   ['Plans', ['ID', 'RecipeID', 'Data', 'Criado', 'Titulo', 'Icone', 'Cor']],
@@ -72,6 +72,7 @@ var MEASURE_UNITS = [
   { id: 'un', label: 'unidade', aliases: ['un', 'unidades', 'und'], si: null },
   { id: 'dente', label: 'dente', aliases: ['dentes'], si: null },
   { id: 'lata', label: 'lata', aliases: ['latas'], si: null },
+  { id: 'caixa', label: 'caixa', aliases: ['caixas'], si: null },
   { id: 'pacote', label: 'pacote', aliases: ['pacotes'], si: null },
   { id: 'fatia', label: 'fatia', aliases: ['fatias'], si: null },
   { id: 'pitada', label: 'pitada', aliases: ['pitadas'], si: null },
@@ -166,6 +167,14 @@ function formatIngAmount(ing, r) {
 }
 function formatIngLabel(ing, r) {
   return [formatIngAmount(ing, r), ing && ing.unit, ing && ing.text].filter(Boolean).join(' ').trim();
+}
+function formatIngAlt(ing, r) {
+  if (!ing) return '';
+  var has = String(ing.qty2 || '').trim() || String(ing.unit2 || '').trim();
+  if (!has) return '';
+  var amt = formatIngAmount({ qty: ing.qty2, unit: ing.unit2 }, r);
+  var bits = [amt, ing.unit2, ing.text].filter(Boolean).join(' ').trim();
+  return bits ? '(ou ' + bits + ')' : '';
 }
 function unitHintText(ing, r) {
   var u = matchUnit(ing && ing.unit);
@@ -266,7 +275,7 @@ function recipeRowVals(r) {
   ];
 }
 function ingRowVals(x) {
-  return [x.id, x.recipeId, x.text || '', x.qty || '', x.unit || '', String(x.order || 0), x.partId || ''];
+  return [x.id, x.recipeId, x.text || '', x.qty || '', x.unit || '', String(x.order || 0), x.partId || '', x.qty2 || '', x.unit2 || ''];
 }
 function stepRowVals(x) {
   return [x.id, x.recipeId, x.text || '', String(x.order || 0), x.partId || ''];
@@ -798,7 +807,7 @@ function parseIngredients(rows) {
     out.push({
       id: String(r[0]), recipeId: String(r[1] || ''), text: String(r[2] || ''),
       qty: String(r[3] || ''), unit: String(r[4] || ''), order: Number(r[5]) || 0,
-      partId: String(r[6] || '')
+      partId: String(r[6] || ''), qty2: String(r[7] || ''), unit2: String(r[8] || '')
     });
   }
   out.sort(function (a, b) { return a.order - b.order; });
@@ -1379,8 +1388,7 @@ function bindBookSearchEsc() {
     }
     if (_servOpenId) {
       e.preventDefault();
-      _servOpenId = '';
-      if (typeof render === 'function') render();
+      setServOpen('');
       return;
     }
     if (!_bookSearchOpen || view !== 'book') return;
@@ -1450,7 +1458,11 @@ function shopPickCount() {
 }
 function shopIngLabel(ing, r) {
   if (!ing) return '';
-  if (typeof formatIngLabel === 'function') return formatIngLabel(ing, r);
+  if (typeof formatIngLabel === 'function') {
+    var main = formatIngLabel(ing, r);
+    var alt = typeof formatIngAlt === 'function' ? formatIngAlt(ing, r) : '';
+    return [main, alt].filter(Boolean).join(' ').trim();
+  }
   return [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ').trim();
 }
 function buildShopList(book, recipes, ingredients, picks) {
@@ -1760,14 +1772,21 @@ function bindServChrome() {
   bindServChrome._on = true;
   document.addEventListener('pointerdown', function (e) {
     if (!_servOpenId) return;
-    if (e.target && e.target.closest && e.target.closest('.serv-panel, .serv-tag')) return;
-    _servOpenId = '';
-    if (typeof render === 'function') render();
+    if (e.target && e.target.closest && e.target.closest('.serv-widget')) return;
+    setServOpen('');
+  });
+}
+function setServOpen(recipeId) {
+  _servOpenId = recipeId || '';
+  document.querySelectorAll('.serv-widget').forEach(function (el) {
+    var on = !!(_servOpenId && el.getAttribute('data-serv') === _servOpenId);
+    el.classList.toggle('open', on);
+    var btn = el.querySelector('.serv-tag');
+    if (btn) btn.setAttribute('aria-expanded', on ? 'true' : 'false');
   });
 }
 function toggleServPanel(recipeId) {
-  _servOpenId = _servOpenId === recipeId ? '' : recipeId;
-  if (typeof render === 'function') render();
+  setServOpen(_servOpenId === recipeId ? '' : recipeId);
 }
 function onServSlide(recipeId, raw, commit) {
   var n = Number(raw);
@@ -1806,7 +1825,8 @@ function paintServView(recipeId) {
     if (!ing) return;
     var label = formatIngLabel(ing, r);
     var t = li.querySelector('.ck-t');
-    if (t) t.textContent = label;
+    var alt = formatIngAlt(ing, r);
+    if (t) t.innerHTML = esc(label) + (alt ? ' <span class="ing-alt">' + esc(alt) + '</span>' : '');
     var hint = unitHintText(ing, r);
     var h = li.querySelector('.ing-hint');
     if (hint) {
@@ -1818,7 +1838,7 @@ function paintServView(recipeId) {
       if (h) h.textContent = hint;
     } else if (h && h.parentNode) h.parentNode.removeChild(h);
     var btn = li.querySelector('.ichk');
-    if (btn) btn.setAttribute('aria-label', label);
+    if (btn) btn.setAttribute('aria-label', [label, alt].filter(Boolean).join(' '));
   });
 }
 function servingsStepper(r) {
@@ -1828,26 +1848,26 @@ function servingsStepper(r) {
   }
   var viewN = recipeViewServings(r) || base;
   var id = escAttr(r.id);
-  if (_servOpenId === r.id) {
-    var slide = Math.max(1, Math.min(5, viewN));
-    return '<span class="serv-panel" data-serv="' + esc(r.id) + '" onclick="event.stopPropagation()">'
-      + '<span class="serv-panel-head">'
-      + '<input class="serv-input" inputmode="decimal" aria-label="Porções" value="' + esc(formatServInput(viewN)) + '"'
-      + ' oninput="onServType(\'' + id + '\',this.value,true)"'
-      + ' onchange="onServType(\'' + id + '\',this.value,false)"'
-      + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();onServType(\'' + id + '\',this.value,false);this.blur()}">'
-      + '<button type="button" class="serv-lab" onclick="event.stopPropagation();toggleServPanel(\'' + id + '\')">porções</button>'
-      + '</span>'
-      + '<input class="serv-range" type="range" min="1" max="5" step="0.1" value="' + slide + '"'
-      + ' aria-label="Ajustar porções" oninput="onServSlide(\'' + id + '\',this.value)"'
-      + ' onchange="onServSlide(\'' + id + '\',this.value,true)">'
-      + '</span>';
-  }
-  return '<button type="button" class="ftag serv-tag" data-serv="' + esc(r.id) + '"'
-    + ' onclick="event.stopPropagation();toggleServPanel(\'' + id + '\')"'
-    + ' aria-expanded="false" aria-label="' + esc(formatQty(viewN) + ' porções') + '">'
+  var open = _servOpenId === r.id;
+  var slide = Math.max(1, Math.min(5, viewN));
+  return '<span class="serv-widget' + (open ? ' open' : '') + '" data-serv="' + esc(r.id) + '">'
+    + '<button type="button" class="serv-tag" onclick="event.stopPropagation();toggleServPanel(\'' + id + '\')"'
+    + ' aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + esc(formatQty(viewN) + ' porções') + '">'
     + '<span class="serv-n">' + esc(formatQty(viewN)) + ' porções</span>'
-    + '</button>';
+    + '</button>'
+    + '<span class="serv-drawer" onclick="event.stopPropagation()">'
+    + '<span class="serv-panel-head">'
+    + '<input class="serv-input" inputmode="decimal" aria-label="Porções" value="' + esc(formatServInput(viewN)) + '"'
+    + ' oninput="onServType(\'' + id + '\',this.value,true)"'
+    + ' onchange="onServType(\'' + id + '\',this.value,false)"'
+    + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();onServType(\'' + id + '\',this.value,false);this.blur()}">'
+    + '<span class="serv-lab">porções</span>'
+    + '</span>'
+    + '<input class="serv-range" type="range" min="1" max="5" step="0.1" value="' + slide + '"'
+    + ' aria-label="Ajustar porções" oninput="onServSlide(\'' + id + '\',this.value)"'
+    + ' onchange="onServSlide(\'' + id + '\',this.value,true)">'
+    + '</span>'
+    + '</span>';
 }
 function recipeTags(r) {
   var tags = '';
@@ -2001,10 +2021,21 @@ function revealRecipePart(el) {
   });
 }
 
+function formatIngTextHtml(ing, r) {
+  var label = formatIngLabel(ing, r);
+  var alt = formatIngAlt(ing, r);
+  var hint = unitHintText(ing, r);
+  return '<span class="ck-t">' + esc(label)
+    + (alt ? ' <span class="ing-alt">' + esc(alt) + '</span>' : '')
+    + '</span>'
+    + (hint ? '<span class="ing-hint">' + esc(hint) + '</span>' : '');
+}
+function formatIngAria(ing, r) {
+  return [formatIngLabel(ing, r), formatIngAlt(ing, r)].filter(Boolean).join(' ');
+}
 function miseIngRow(r, ing) {
   var on = isChecked(r.id, ing.id);
-  var label = formatIngLabel(ing, r);
-  var hint = unitHintText(ing, r);
+  var label = formatIngAria(ing, r);
   var part = partFromSourceIng(ing.id);
   var go = '';
   if (part) {
@@ -2017,7 +2048,7 @@ function miseIngRow(r, ing) {
     + '<button type="button" class="ichk' + (on ? ' on' : '') + '"'
     + ' onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\',event)"'
     + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
-    + '<span><span class="ck-t">' + esc(label) + '</span>' + (hint ? '<span class="ing-hint">' + esc(hint) + '</span>' : '') + '</span>'
+    + '<span>' + formatIngTextHtml(ing, r) + '</span>'
     + go
     + '</li>';
 }
@@ -2074,13 +2105,12 @@ function partSection(r, p) {
   if (steps.length) meta.push('<span>Passos <em data-tally="' + esc(r.id + '|step|' + p.id) + '">' + stepDone + '/' + steps.length + '</em></span>');
   var ingRows = ings.map(function (ing) {
     var on = isChecked(r.id, ing.id);
-    var label = formatIngLabel(ing, r);
-    var hint = unitHintText(ing, r);
+    var label = formatIngAria(ing, r);
     return '<li class="' + (on ? 'on' : '') + (_shopOn && _shopPicks[ing.id] ? ' is-shop' : '') + '" data-ing="' + esc(ing.id) + '" data-chk="' + esc(r.id + '|' + ing.id) + '" onclick="onIngRowClick(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\',event)">'
     + '<button type="button" class="ichk' + (on ? ' on' : '') + '"'
     + ' onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\',event)"'
       + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
-      + '<span><span class="ck-t">' + esc(label) + '</span>' + (hint ? '<span class="ing-hint">' + esc(hint) + '</span>' : '') + '</span></li>';
+      + '<span>' + formatIngTextHtml(ing, r) + '</span></li>';
   }).join('');
   var stepRows = steps.map(function (st, i) {
     var on = stepIsDone(r.id, st.id);
@@ -2698,9 +2728,7 @@ function openRecipeModal(id) {
   $('recipeServings').value = r ? r.servings : '';
   $('recipeMinutes').value = r ? r.minutes : '';
   $('recipeNotes').value = r ? r.notes : '';
-  _ingDraft = r ? ingsFor(r.id).map(function (x) {
-    return { id: x.id, text: x.text, qty: x.qty, unit: x.unit };
-  }) : [{ id: '', text: '', qty: '', unit: '' }];
+  _ingDraft = r ? ingsFor(r.id).map(draftIngFrom) : [blankIng()];
   _stepDraft = r ? stepsFor(r.id).map(function (x) {
     return { id: x.id, text: x.text };
   }) : [{ id: '', text: '' }];
@@ -2709,16 +2737,14 @@ function openRecipeModal(id) {
       id: p.id,
       name: p.name,
       sourceIngId: p.sourceIngId || '',
-      ings: ingsFor(r.id, p.id).map(function (x) {
-        return { id: x.id, text: x.text, qty: x.qty, unit: x.unit };
-      }),
+      ings: ingsFor(r.id, p.id).map(draftIngFrom),
       steps: stepsFor(r.id, p.id).map(function (x) {
         return { id: x.id, text: x.text };
       })
     };
   }) : [];
   _partDraft.forEach(function (p) {
-    if (!p.ings.length) p.ings.push({ id: '', text: '', qty: '', unit: '' });
+    if (!p.ings.length) p.ings.push(blankIng());
     if (!p.steps.length) p.steps.push({ id: '', text: '' });
   });
   paintIconWrap('recipe');
@@ -2928,15 +2954,25 @@ function resolveRecipeImageUrl() {
   });
 }
 
-function unitIsOther(line) {
-  if (line && line._unitOther) return true;
-  var v = line && line.unit;
+function blankIng() { return { id: '', text: '', qty: '', unit: '', qty2: '', unit2: '' }; }
+function draftIngFrom(x) {
+  return { id: x.id, text: x.text, qty: x.qty, unit: x.unit, qty2: x.qty2 || '', unit2: x.unit2 || '' };
+}
+function ingHasAlt(line) {
+  return !!(line && (line._altOn || String(line.qty2 || '').trim() || String(line.unit2 || '').trim()));
+}
+function unitOtherFlag(key) { return key === 'unit2' ? '_unit2Other' : '_unitOther'; }
+function unitIsOther(line, key) {
+  key = key || 'unit';
+  if (line && line[unitOtherFlag(key)]) return true;
+  var v = line && line[key];
   return !!(v && !matchUnit(v));
 }
-function unitPickerHtml(line, pickPrefix, inputAttr) {
-  var value = (line && line.unit) || '';
+function unitPickerHtml(line, pickPrefix, inputAttr, key) {
+  key = key || 'unit';
+  var value = (line && line[key]) || '';
   var matched = matchUnit(value);
-  var other = unitIsOther(line);
+  var other = unitIsOther(line, key);
   var shown = matched ? matched.label : (other ? (value || 'Outra…') : 'Unid.');
   var opts = MEASURE_UNITS.map(function (u) {
     return '<div class="jb-dd-opt' + (matched && matched.id === u.id ? ' is-sel' : '') + '" onclick="' + pickPrefix + '\'' + u.id + '\')">' + esc(u.label) + '</div>';
@@ -2949,47 +2985,101 @@ function unitPickerHtml(line, pickPrefix, inputAttr) {
     + (other ? '<input class="field unit-custom" placeholder="Unidade" value="' + esc(!matched ? value : '') + '" oninput="' + inputAttr + '">' : '')
     + '</div>';
 }
-function applyUnitPick(line, id) {
+function applyUnitPick(line, id, key) {
   if (!line) return;
+  key = key || 'unit';
+  var flag = unitOtherFlag(key);
   if (window.JB && JB.ddClose) JB.ddClose();
   if (id === '__outra__') {
-    if (matchUnit(line.unit)) line.unit = '';
-    line._unitOther = true;
+    if (matchUnit(line[key])) line[key] = '';
+    line[flag] = true;
     return;
   }
-  line._unitOther = false;
+  line[flag] = false;
   var i;
   for (i = 0; i < MEASURE_UNITS.length; i++) {
-    if (MEASURE_UNITS[i].id === id) { line.unit = MEASURE_UNITS[i].label; return; }
+    if (MEASURE_UNITS[i].id === id) { line[key] = MEASURE_UNITS[i].label; return; }
   }
-  line.unit = '';
+  line[key] = '';
 }
 function pickIngUnit(i, id) {
-  applyUnitPick(_ingDraft[i], id);
+  applyUnitPick(_ingDraft[i], id, 'unit');
+  paintIngLines();
+}
+function pickIngUnit2(i, id) {
+  applyUnitPick(_ingDraft[i], id, 'unit2');
   paintIngLines();
 }
 function pickPartUnit(pi, j, id) {
   var p = _partDraft[pi];
   if (!p || !p.ings) return;
-  applyUnitPick(p.ings[j], id);
+  applyUnitPick(p.ings[j], id, 'unit');
   paintPartBlocks();
+}
+function pickPartUnit2(pi, j, id) {
+  var p = _partDraft[pi];
+  if (!p || !p.ings) return;
+  applyUnitPick(p.ings[j], id, 'unit2');
+  paintPartBlocks();
+}
+function toggleIngAlt(i) {
+  var line = _ingDraft[i];
+  if (!line) return;
+  if (ingHasAlt(line)) {
+    line.qty2 = '';
+    line.unit2 = '';
+    line._altOn = false;
+    line._unit2Other = false;
+  } else {
+    line._altOn = true;
+  }
+  paintIngLines();
+}
+function togglePartIngAlt(pi, j) {
+  var p = _partDraft[pi];
+  var line = p && p.ings && p.ings[j];
+  if (!line) return;
+  if (ingHasAlt(line)) {
+    line.qty2 = '';
+    line.unit2 = '';
+    line._altOn = false;
+    line._unit2Other = false;
+  } else {
+    line._altOn = true;
+  }
+  paintPartBlocks();
+}
+function ingAltBtn(on, onclick) {
+  return '<button type="button" class="ing-alt-make' + (on ? ' is-on' : '') + '" onclick="' + onclick + '"'
+    + ' title="' + (on ? 'Remover medida alternativa' : 'Medida alternativa') + '"'
+    + ' aria-label="' + (on ? 'Remover medida alternativa' : 'Medida alternativa') + '">ou</button>';
+}
+function ingAltFields(line, qtyAttr, pickPrefix, unitAttr) {
+  return '<div class="edit-alt">'
+    + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty2 || '') + '" oninput="' + qtyAttr + '">'
+    + unitPickerHtml(line, pickPrefix, unitAttr, 'unit2')
+    + '</div>';
 }
 function paintIngLines() {
   var el = $('recipeIngList');
   if (!el) return;
   el.innerHTML = _ingDraft.map(function (line, i) {
     var linked = !!draftPartFromIng(line.id);
-    return '<div class="edit-line has-part-btn">'
+    var altOn = ingHasAlt(line);
+    return '<div class="edit-line has-part-btn has-alt-btn' + (altOn ? ' is-alt' : '') + '">'
       + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_ingDraft[' + i + '].text=this.value">'
       + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_ingDraft[' + i + '].qty=this.value">'
       + unitPickerHtml(line, 'pickIngUnit(' + i + ',', '_ingDraft[' + i + '].unit=this.value')
+      + ingAltBtn(altOn, 'toggleIngAlt(' + i + ')')
       + '<button type="button" class="ing-part-make' + (linked ? ' is-on' : '') + '" onclick="makePartFromDraftIng(' + i + ')"'
       + ' title="' + (linked ? 'Já é uma parte' : 'Criar parte') + '" aria-label="' + (linked ? 'Já é uma parte' : 'Criar parte') + '">'
       + (linked
         ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v9M4.2 8.2L8 12l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3.5h8v4.2c0 2.2-1.8 4-4 4s-4-1.8-4-4z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M8 7.2v5.3M6.2 11.2L8 13l1.8-1.8" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>')
       + '</button>'
-      + '<button type="button" class="rm" onclick="rmIngLine(' + i + ')">×</button></div>';
+      + '<button type="button" class="rm" onclick="rmIngLine(' + i + ')">×</button>'
+      + (altOn ? ingAltFields(line, '_ingDraft[' + i + '].qty2=this.value', 'pickIngUnit2(' + i + ',', '_ingDraft[' + i + '].unit2=this.value') : '')
+      + '</div>';
   }).join('');
 }
 function paintStepLines() {
@@ -3001,7 +3091,7 @@ function paintStepLines() {
       + '<button type="button" class="rm" onclick="rmStepLine(' + i + ')">×</button></div>';
   }).join('');
 }
-function addIngLine() { _ingDraft.push({ id: '', text: '', qty: '', unit: '' }); paintIngLines(); }
+function addIngLine() { _ingDraft.push(blankIng()); paintIngLines(); }
 function addStepLine() { _stepDraft.push({ id: '', text: '' }); paintStepLines(); }
 function rmIngLine(i) {
   var gone = _ingDraft[i] && _ingDraft[i].id;
@@ -3011,7 +3101,7 @@ function rmIngLine(i) {
       if (String(p.sourceIngId || '') === String(gone)) p.sourceIngId = '';
     });
   }
-  if (!_ingDraft.length) _ingDraft.push({ id: '', text: '', qty: '', unit: '' });
+  if (!_ingDraft.length) _ingDraft.push(blankIng());
   paintIngLines();
 }
 function makePartFromDraftIng(i) {
@@ -3028,7 +3118,7 @@ function makePartFromDraftIng(i) {
     id: uuid(),
     name: name,
     sourceIngId: line.id,
-    ings: [{ id: '', text: '', qty: '', unit: '' }],
+    ings: [blankIng()],
     steps: [{ id: '', text: '' }]
   });
   paintIngLines();
@@ -3046,7 +3136,7 @@ function addPartBlock() {
     id: '',
     name: '',
     sourceIngId: '',
-    ings: [{ id: '', text: '', qty: '', unit: '' }],
+    ings: [blankIng()],
     steps: [{ id: '', text: '' }]
   });
   paintPartBlocks();
@@ -3057,7 +3147,7 @@ function rmPartBlock(i) {
 }
 function addPartIng(pi) {
   if (!_partDraft[pi]) return;
-  _partDraft[pi].ings.push({ id: '', text: '', qty: '', unit: '' });
+  _partDraft[pi].ings.push(blankIng());
   paintPartBlocks();
 }
 function addPartStep(pi) {
@@ -3069,7 +3159,7 @@ function rmPartIng(pi, i) {
   var p = _partDraft[pi];
   if (!p) return;
   p.ings.splice(i, 1);
-  if (!p.ings.length) p.ings.push({ id: '', text: '', qty: '', unit: '' });
+  if (!p.ings.length) p.ings.push(blankIng());
   paintPartBlocks();
 }
 function rmPartStep(pi, i) {
@@ -3084,11 +3174,15 @@ function paintPartBlocks() {
   if (!el) return;
   el.innerHTML = _partDraft.map(function (p, i) {
     var ings = (p.ings || []).map(function (line, j) {
-      return '<div class="edit-line">'
+      var altOn = ingHasAlt(line);
+      return '<div class="edit-line has-alt-btn' + (altOn ? ' is-alt' : '') + '">'
         + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_partDraft[' + i + '].ings[' + j + '].text=this.value">'
         + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_partDraft[' + i + '].ings[' + j + '].qty=this.value">'
         + unitPickerHtml(line, 'pickPartUnit(' + i + ',' + j + ',', '_partDraft[' + i + '].ings[' + j + '].unit=this.value')
-        + '<button type="button" class="rm" onclick="rmPartIng(' + i + ',' + j + ')">×</button></div>';
+        + ingAltBtn(altOn, 'togglePartIngAlt(' + i + ',' + j + ')')
+        + '<button type="button" class="rm" onclick="rmPartIng(' + i + ',' + j + ')">×</button>'
+        + (altOn ? ingAltFields(line, '_partDraft[' + i + '].ings[' + j + '].qty2=this.value', 'pickPartUnit2(' + i + ',' + j + ',', '_partDraft[' + i + '].ings[' + j + '].unit2=this.value') : '')
+        + '</div>';
     }).join('');
     var steps = (p.steps || []).map(function (line, j) {
       return '<div class="edit-line step">'
@@ -3179,7 +3273,7 @@ function replaceRecipeChildren(recipeId) {
   return clearChildren(recipeId).then(function () {
     var ings = _ingDraft.filter(function (x) { return String(x.text || '').trim(); }).map(function (x, i) {
       if (!x.id) x.id = uuid();
-      return [x.id, recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), ''];
+      return [x.id, recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), '', String(x.qty2 || '').trim(), String(x.unit2 || '').trim()];
     });
     var steps = _stepDraft.filter(function (x) { return String(x.text || '').trim(); }).map(function (x, i) {
       return [x.id || uuid(), recipeId, String(x.text).trim(), String(i), ''];
@@ -3196,7 +3290,7 @@ function replaceRecipeChildren(recipeId) {
       var src = savedIng[String(p.sourceIngId || '')] ? String(p.sourceIngId) : '';
       parts.push([pid, recipeId, name || 'Parte', String(pi), src]);
       pIngs.forEach(function (x, i) {
-        ings.push([x.id || uuid(), recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), pid]);
+        ings.push([x.id || uuid(), recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), pid, String(x.qty2 || '').trim(), String(x.unit2 || '').trim()]);
       });
       pSteps.forEach(function (x, i) {
         steps.push([x.id || uuid(), recipeId, String(x.text).trim(), String(i), pid]);
@@ -3206,7 +3300,7 @@ function replaceRecipeChildren(recipeId) {
     if (ings.length) {
       chain = chain.then(function () {
         invalidateRowCacheForSid(sid, 'Ingredients');
-        return JB.api('POST', sheetUrl(sid, '/values/Ingredients!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
+        return JB.api('POST', sheetUrl(sid, '/values/Ingredients!A:I:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
       });
     }
     if (steps.length) {
@@ -3452,7 +3546,7 @@ function importMeal(source, sourceId) {
           if (ings.length) {
             chain = chain.then(function () {
               invalidateRowCacheForSid(sid, 'Ingredients');
-              return JB.api('POST', sheetUrl(sid, '/values/Ingredients!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
+              return JB.api('POST', sheetUrl(sid, '/values/Ingredients!A:I:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
             });
           }
           if (steps.length) {

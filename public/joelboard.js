@@ -145,7 +145,7 @@
             { id: 'ghost-ri5', recipeId: 'ghost-r2', text: 'ovos', qty: '3', unit: '', order: 0 },
             { id: 'ghost-ri6', recipeId: 'ghost-r2', text: 'queijo ralado', qty: '50', unit: 'g', order: 1 },
             { id: 'ghost-ri7', recipeId: 'ghost-r3', text: 'arroz cozido', qty: '3', unit: 'xícaras', order: 0 },
-            { id: 'ghost-ri8', recipeId: 'ghost-r3', text: 'creme de leite', qty: '1', unit: 'lata', order: 1 },
+            { id: 'ghost-ri8', recipeId: 'ghost-r3', text: 'creme de leite', qty: '200', unit: 'g', qty2: '2', unit2: 'caixas', order: 1 },
             { id: 'ghost-ri9', recipeId: 'ghost-r3', text: 'mussarela', qty: '200', unit: 'g', order: 2 },
             { id: 'ghost-ri10', recipeId: 'ghost-r4', text: 'leite condensado', qty: '1', unit: 'lata', order: 0 },
             { id: 'ghost-ri11', recipeId: 'ghost-r4', text: 'chocolate em pó', qty: '4', unit: 'colheres', order: 1 },

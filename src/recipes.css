@@ -779,30 +779,40 @@ body.recipes-book .secbar{ margin-bottom:10px; }
   text-align:center; font-family:var(--font-display); font-weight:800; font-size:21px;
   letter-spacing:-.4px; line-height:1.2; word-break:break-word;
 }
-.leaf-tags{ display:flex; justify-content:center; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.leaf-tags{ display:flex; justify-content:center; flex-wrap:wrap; align-items:flex-start; gap:6px; margin-top:10px; }
 .leaf-notes{
   color:var(--muted); font-size:12.5px; line-height:1.5; margin-top:10px; text-align:center;
 }
 .ftag{
+  flex:none; align-self:flex-start; height:fit-content; line-height:1.2;
   font-size:11px; font-weight:800; color:var(--primary);
   background:color-mix(in srgb, var(--primary) 12%, transparent);
   border-radius:999px; padding:3px 9px;
 }
+.serv-widget{
+  display:inline-flex; flex-direction:column; align-self:flex-start; flex:none;
+  max-width:100%; overflow:hidden;
+  border-radius:999px;
+  background:color-mix(in srgb, var(--primary) 12%, transparent);
+  transition:border-radius .35s cubic-bezier(.4,0,.2,1), min-width .38s cubic-bezier(.4,0,.2,1), box-shadow .35s ease;
+}
+.serv-widget.open{
+  border-radius:14px;
+  min-width:min(176px, 78vw);
+  box-shadow:0 8px 22px color-mix(in srgb, var(--primary) 12%, transparent);
+}
 .serv-tag{
-  display:inline-flex; align-items:center; border:0; cursor:pointer;
-  font:inherit; font-size:11px; font-weight:800; color:var(--primary);
-  background:color-mix(in srgb, var(--primary) 12%, transparent);
-  border-radius:999px; padding:3px 9px;
+  display:inline-flex; align-items:center; justify-content:center; border:0; cursor:pointer;
+  font:inherit; font-size:11px; font-weight:800; color:var(--primary); line-height:1.2;
+  background:transparent; padding:3px 9px;
 }
-.serv-tag:hover{ background:color-mix(in srgb, var(--primary) 20%, transparent); }
+.serv-tag:hover{ color:color-mix(in srgb, var(--primary) 80%, var(--text)); }
 .serv-n{ padding:0; }
-.serv-panel{
-  display:flex; flex-direction:column; gap:6px;
-  min-width:min(200px, 72vw); padding:8px 10px 10px;
-  border-radius:14px; text-align:left;
-  background:color-mix(in srgb, var(--primary) 12%, transparent);
-  color:var(--primary);
+.serv-drawer{
+  max-height:0; opacity:0; overflow:hidden; margin:0 8px;
+  transition:max-height .4s cubic-bezier(.4,0,.2,1), opacity .28s ease, margin .35s ease;
 }
+.serv-widget.open .serv-drawer{ max-height:92px; opacity:1; margin:0 10px 10px; }
 .serv-panel-head{ display:flex; align-items:center; gap:6px; }
 .serv-input{
   width:52px; height:28px; padding:0 6px; text-align:center;
@@ -811,15 +821,17 @@ body.recipes-book .secbar{ margin-bottom:10px; }
   border-radius:8px;
 }
 .serv-lab{
-  border:0; background:transparent; padding:0; cursor:pointer;
-  font:inherit; font-size:11px; font-weight:800; color:var(--primary); letter-spacing:.2px;
+  font-size:11px; font-weight:800; color:var(--primary); letter-spacing:.2px;
 }
 .serv-range{
-  width:100%; height:22px; margin:0; cursor:pointer;
+  width:100%; height:22px; margin:2px 0 0; cursor:pointer;
   accent-color:var(--primary);
 }
 .ing-hint{
   display:block; margin-top:2px;
+  font-size:11px; font-weight:600; color:var(--muted);
+}
+.ing-alt{
   font-size:11px; font-weight:600; color:var(--muted);
 }
 .leaf-sec{ margin-top:18px; }
@@ -927,7 +939,7 @@ body.recipes-book .secbar{ margin-bottom:10px; }
 .detail-hero img{ width:100%; max-height:220px; object-fit:cover; display:block; }
 .detail-hero .big-ico{ font-size:64px; padding:36px; }
 .detail-title{ font-family:var(--font-display); font-weight:800; font-size:24px; letter-spacing:-.5px; }
-.detail-meta{ display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 16px; }
+.detail-meta{ display:flex; flex-wrap:wrap; align-items:flex-start; gap:8px; margin:10px 0 16px; }
 .dsec{ margin:18px 0; }
 .dsec h3{ font-size:12px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
 .ing-list, .step-list{ list-style:none; display:flex; flex-direction:column; gap:8px; }
@@ -1049,7 +1061,10 @@ button.step-num{ cursor:pointer; }
 
 .edit-lines{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; overflow:visible; }
 .edit-line{ display:grid; grid-template-columns:minmax(0,1fr) 56px minmax(92px,120px) 28px; gap:6px; align-items:center; }
+.edit-line.has-alt-btn{ grid-template-columns:minmax(0,1fr) 56px minmax(92px,120px) 32px 28px; }
 .edit-line.has-part-btn{ grid-template-columns:minmax(0,1fr) 56px minmax(92px,120px) 32px 28px; }
+.edit-line.has-part-btn.has-alt-btn{ grid-template-columns:minmax(0,1fr) 56px minmax(92px,120px) 32px 32px 28px; }
+.edit-line.is-alt .edit-alt{ grid-column:2 / 4; display:grid; grid-template-columns:56px minmax(0,1fr); gap:6px; }
 .edit-line.step{ grid-template-columns:1fr 28px; }
 .edit-line .qty-field{ min-width:0; padding-left:8px; padding-right:8px; }
 .unit-pick{ min-width:0; }
@@ -1061,6 +1076,14 @@ button.step-num{ cursor:pointer; }
 .unit-dd .jb-dd-menu{ min-width:220px; left:auto; right:0; z-index:600; }
 .unit-dd .jb-dd-opt{ font-size:13px; font-weight:600; padding:8px 10px; white-space:normal; }
 .unit-custom{ height:36px; padding:6px 8px; font-size:12px; }
+.ing-alt-make{
+  width:32px; height:36px; padding:0; border-radius:8px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:var(--surface2); border:1px solid var(--border); color:var(--muted);
+  font:inherit; font-size:10px; font-weight:800; letter-spacing:.2px;
+}
+.ing-alt-make:hover{ color:var(--text); border-color:var(--primary); }
+.ing-alt-make.is-on{ color:var(--primary); border-color:var(--primary); }
 .ing-part-make{
   width:32px; height:36px; padding:0; border-radius:8px; cursor:pointer;
   display:inline-flex; align-items:center; justify-content:center;
@@ -1251,7 +1274,7 @@ html.rc-mode-swap::view-transition-new(root){
 @media (prefers-reduced-motion: reduce){
   .book-slot, .recipec, .detail, .book-body.is-intro, #main.is-mode-in{ animation:none; }
   .page-turn{ display:none; }
-  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-tool, .book-mode::before, .book-find-slot, .leaf-part-body, .leaf-part-head::after, #main.is-mode-out{ transition:none; }
+  .book-slot, .book-pop, .book-open, .book-leaf, .book-openlabel, .recipec, .spread-arrow, .leaf-add, .book-tool, .book-mode::before, .book-find-slot, .leaf-part-body, .leaf-part-head::after, #main.is-mode-out, .serv-widget, .serv-drawer{ transition:none; }
   .ck-t{ transition:none; }
   .ing-list li.just-on::after, .step-list li.just-on::after{ display:none; }
   li.just-on .ichk, li.just-on .step-num{ animation:none; }

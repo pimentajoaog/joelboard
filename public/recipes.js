@@ -2302,17 +2302,6 @@ function bindFlipGesture() {
   if (!el || el._rcBound) return;
   el._rcBound = true;
   el.setAttribute('tabindex', '0');
-  var x0 = 0;
-  el.addEventListener('touchstart', function (e) {
-    if (!e.touches || !e.touches[0]) return;
-    x0 = e.touches[0].clientX;
-  }, { passive: true });
-  el.addEventListener('touchend', function (e) {
-    if (!e.changedTouches || !e.changedTouches[0]) return;
-    var dx = e.changedTouches[0].clientX - x0;
-    if (dx > 48) flipPrev();
-    else if (dx < -48) flipNext();
-  }, { passive: true });
   el.addEventListener('keydown', function (e) {
     if (e.key === 'ArrowLeft') { e.preventDefault(); flipPrev(); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); flipNext(); }

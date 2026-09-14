@@ -33,6 +33,15 @@ test('parte toggle deletes an existing parte instead of no-op', function () {
   assert.doesNotMatch(js, /ing-alt-make|ing-part-make/);
 });
 
+test('book pages do not flip from a sideways swipe', function () {
+  var start = js.indexOf('function bindFlipGesture');
+  var end = js.indexOf('function bindSpreadResize');
+  assert.ok(start >= 0 && end > start);
+  var fn = js.slice(start, end);
+  assert.match(fn, /ArrowLeft/);
+  assert.doesNotMatch(fn, /touchstart|touchend|clientX/);
+});
+
 test('editor paints drag handles on ingredients and steps, not partes', function () {
   assert.match(js, /function rcDragBegin/);
   assert.match(js, /editHandle\('ing'\)/);

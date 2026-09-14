@@ -42,6 +42,15 @@ test('book pages do not flip from a sideways swipe', function () {
   assert.doesNotMatch(fn, /touchstart|touchend|clientX/);
 });
 
+test('a gosto hides the qty field with an animated slot', function () {
+  assert.match(js, /function unitIsTaste/);
+  assert.match(js, /function qtyFieldHtml/);
+  assert.match(js, /function playQtyAnim/);
+  assert.match(js, /is-gosto/);
+  assert.match(js, /qtyAnim: true/);
+  assert.match(js, /qtySave\(x\)/);
+});
+
 test('editor paints drag handles on ingredients and steps, not partes', function () {
   assert.match(js, /function rcDragBegin/);
   assert.match(js, /editHandle\('ing'\)/);

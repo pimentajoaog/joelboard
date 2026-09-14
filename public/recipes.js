@@ -150,9 +150,16 @@ function recipeScaleFactor(r) {
   if (!base || !view) return 1;
   return view / base;
 }
-function unitAllowsScale(unit) {
+function unitIsTaste(unit) {
   var u = matchUnit(unit);
-  return !(u && u.id === 'gosto');
+  return !!(u && u.id === 'gosto');
+}
+function unitAllowsScale(unit) { return !unitIsTaste(unit); }
+function qtySave(x, key) {
+  key = key || 'qty';
+  var unitKey = key === 'qty2' ? 'unit2' : 'unit';
+  if (unitIsTaste(x && x[unitKey])) return '';
+  return String((x && x[key]) || '').trim();
 }
 function ingViewQty(ing, r) {
   var n = parseQty(ing && ing.qty);
@@ -161,6 +168,7 @@ function ingViewQty(ing, r) {
   return n * recipeScaleFactor(r);
 }
 function formatIngAmount(ing, r) {
+  if (unitIsTaste(ing && ing.unit)) return '';
   var n = ingViewQty(ing, r);
   if (n == null) return String((ing && ing.qty) || '');
   return formatQty(n);
@@ -3126,23 +3134,23 @@ function applyUnitPick(line, id, key) {
 }
 function pickIngUnit(i, id) {
   applyUnitPick(_ingDraft[i], id, 'unit');
-  paintIngLines();
+  paintIngLines({ qtyAnim: true });
 }
 function pickIngUnit2(i, id) {
   applyUnitPick(_ingDraft[i], id, 'unit2');
-  paintIngLines();
+  paintIngLines({ qtyAnim: true });
 }
 function pickPartUnit(pi, j, id) {
   var p = _partDraft[pi];
   if (!p || !p.ings) return;
   applyUnitPick(p.ings[j], id, 'unit');
-  paintPartBlocks();
+  paintPartBlocks({ qtyAnim: true });
 }
 function pickPartUnit2(pi, j, id) {
   var p = _partDraft[pi];
   if (!p || !p.ings) return;
   applyUnitPick(p.ings[j], id, 'unit2');
-  paintPartBlocks();
+  paintPartBlocks({ qtyAnim: true });
 }
 function toggleIngAlt(i) {
   if (window.JB && JB.ddClose) JB.ddClose();
@@ -3173,22 +3181,78 @@ function togglePartIngAlt(pi, j) {
   }
   paintPartBlocks();
 }
+function qtyAnimState(root) {
+  var out = {};
+  if (!root) return out;
+  var rows = root.querySelectorAll('.edit-line');
+  var i, row, k;
+  for (i = 0; i < rows.length; i++) {
+    row = rows[i];
+    k = row.getAttribute('data-qty') || row.getAttribute('data-i');
+    if (k == null) continue;
+    out[k] = {
+      gosto: row.classList.contains('is-gosto'),
+      gosto2: row.classList.contains('is-gosto2')
+    };
+  }
+  return out;
+}
+function playQtyAnim(root, prev) {
+  if (!root || !prev) return;
+  if (typeof reducedMotion === 'function' && reducedMotion()) return;
+  var rows = root.querySelectorAll('.edit-line');
+  var changes = [];
+  var i, row, st, nowG, nowG2;
+  for (i = 0; i < rows.length; i++) {
+    row = rows[i];
+    st = prev[row.getAttribute('data-qty') || row.getAttribute('data-i')];
+    if (!st) continue;
+    nowG = row.classList.contains('is-gosto');
+    nowG2 = row.classList.contains('is-gosto2');
+    if (st.gosto === nowG && st.gosto2 === nowG2) continue;
+    row.classList.toggle('is-gosto', st.gosto);
+    row.classList.toggle('is-gosto2', st.gosto2);
+    changes.push({ row: row, g: nowG, g2: nowG2 });
+  }
+  if (!changes.length) return;
+  void root.offsetWidth;
+  requestAnimationFrame(function () {
+    for (i = 0; i < changes.length; i++) {
+      changes[i].row.classList.toggle('is-gosto', changes[i].g);
+      changes[i].row.classList.toggle('is-gosto2', changes[i].g2);
+    }
+  });
+}
+function editIngLineClass(line, altOn) {
+  return 'edit-line'
+    + (altOn ? ' is-alt' : '')
+    + (unitIsTaste(line.unit) ? ' is-gosto' : '')
+    + (altOn && unitIsTaste(line.unit2) ? ' is-gosto2' : '');
+}
+function qtyFieldHtml(value, oninput, hidden) {
+  return '<div class="qty-slot">'
+    + '<input class="field qty-field" placeholder="Qtd" value="' + esc(value || '') + '" oninput="' + oninput + '"'
+    + (hidden ? ' tabindex="-1" aria-hidden="true"' : '')
+    + '>'
+    + '</div>';
+}
 function ingAltFields(line, qtyAttr, pickPrefix, unitAttr) {
   return '<div class="edit-alt">'
-    + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty2 || '') + '" oninput="' + qtyAttr + '">'
+    + qtyFieldHtml(line.qty2, qtyAttr, unitIsTaste(line.unit2))
     + unitPickerHtml(line, pickPrefix, unitAttr, 'unit2')
     + '</div>';
 }
-function paintIngLines() {
+function paintIngLines(opts) {
   var el = $('recipeIngList');
   if (!el) return;
+  var prev = opts && opts.qtyAnim ? qtyAnimState(el) : null;
   el.innerHTML = _ingDraft.map(function (line, i) {
     var linked = !!draftPartFromIng(line.id);
     var altOn = ingHasAlt(line);
-    return '<div class="edit-line' + (altOn ? ' is-alt' : '') + '" data-i="' + i + '">'
+    return '<div class="' + editIngLineClass(line, altOn) + '" data-i="' + i + '" data-qty="ing-' + i + '">'
       + editHandle('ing')
       + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_ingDraft[' + i + '].text=this.value">'
-      + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_ingDraft[' + i + '].qty=this.value">'
+      + qtyFieldHtml(line.qty, '_ingDraft[' + i + '].qty=this.value', unitIsTaste(line.unit))
       + unitPickerHtml(line, 'pickIngUnit(' + i + ',', '_ingDraft[' + i + '].unit=this.value')
       + lineMoreHtml([
         { label: 'ou', on: altOn, fn: 'toggleIngAlt(' + i + ')' },
@@ -3199,6 +3263,7 @@ function paintIngLines() {
       + (altOn ? ingAltFields(line, '_ingDraft[' + i + '].qty2=this.value', 'pickIngUnit2(' + i + ',', '_ingDraft[' + i + '].unit2=this.value') : '')
       + '</div>';
   }).join('');
+  if (prev) playQtyAnim(el, prev);
 }
 function paintStepLines() {
   var el = $('recipeStepList');
@@ -3296,16 +3361,17 @@ function rmPartStep(pi, i) {
   if (!p.steps.length) p.steps.push(blankStep());
   paintPartBlocks();
 }
-function paintPartBlocks() {
+function paintPartBlocks(opts) {
   var el = $('recipePartList');
   if (!el) return;
+  var prev = opts && opts.qtyAnim ? qtyAnimState(el) : null;
   el.innerHTML = _partDraft.map(function (p, i) {
     var ings = (p.ings || []).map(function (line, j) {
       var altOn = ingHasAlt(line);
-      return '<div class="edit-line' + (altOn ? ' is-alt' : '') + '" data-i="' + j + '">'
+      return '<div class="' + editIngLineClass(line, altOn) + '" data-i="' + j + '" data-qty="p' + i + '-' + j + '">'
         + editHandle('ping-' + i)
         + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_partDraft[' + i + '].ings[' + j + '].text=this.value">'
-        + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_partDraft[' + i + '].ings[' + j + '].qty=this.value">'
+        + qtyFieldHtml(line.qty, '_partDraft[' + i + '].ings[' + j + '].qty=this.value', unitIsTaste(line.unit))
         + unitPickerHtml(line, 'pickPartUnit(' + i + ',' + j + ',', '_partDraft[' + i + '].ings[' + j + '].unit=this.value')
         + lineMoreHtml([
           { label: 'ou', on: altOn, fn: 'togglePartIngAlt(' + i + ',' + j + ')' },
@@ -3335,6 +3401,7 @@ function paintPartBlocks() {
       + '<button type="button" class="btn ghost part-edit-add" onclick="addPartStep(' + i + ')">+ Passo</button>'
       + '</div>';
   }).join('');
+  if (prev) playQtyAnim(el, prev);
 }
 
 function saveRecipeModal() {
@@ -3408,7 +3475,7 @@ function replaceRecipeChildren(recipeId) {
   return clearChildren(recipeId).then(function () {
     var ings = _ingDraft.filter(function (x) { return String(x.text || '').trim(); }).map(function (x, i) {
       if (!x.id) x.id = uuid();
-      return [x.id, recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), '', String(x.qty2 || '').trim(), String(x.unit2 || '').trim(), optionalCell(x)];
+      return [x.id, recipeId, String(x.text).trim(), qtySave(x), String(x.unit || '').trim(), String(i), '', qtySave(x, 'qty2'), String(x.unit2 || '').trim(), optionalCell(x)];
     });
     var steps = _stepDraft.filter(function (x) { return String(x.text || '').trim(); }).map(function (x, i) {
       return [x.id || uuid(), recipeId, String(x.text).trim(), String(i), '', optionalCell(x)];
@@ -3425,7 +3492,7 @@ function replaceRecipeChildren(recipeId) {
       var src = savedIng[String(p.sourceIngId || '')] ? String(p.sourceIngId) : '';
       parts.push([pid, recipeId, name || 'Parte', String(pi), src]);
       pIngs.forEach(function (x, i) {
-        ings.push([x.id || uuid(), recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), pid, String(x.qty2 || '').trim(), String(x.unit2 || '').trim(), optionalCell(x)]);
+        ings.push([x.id || uuid(), recipeId, String(x.text).trim(), qtySave(x), String(x.unit || '').trim(), String(i), pid, qtySave(x, 'qty2'), String(x.unit2 || '').trim(), optionalCell(x)]);
       });
       pSteps.forEach(function (x, i) {
         steps.push([x.id || uuid(), recipeId, String(x.text).trim(), String(i), pid, optionalCell(x)]);

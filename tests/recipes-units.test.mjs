@@ -66,7 +66,12 @@ test('unparseable qty and a gosto do not scale or hint', function () {
   var r = { id: 'r2', servings: '2' };
   ctx._scaleByRecipe.r2 = 6;
   var taste = { qty: '2', unit: 'a gosto', text: 'sal' };
-  assert.equal(ctx.formatIngLabel(taste, r), '2 a gosto sal');
+  assert.equal(ctx.formatIngLabel(taste, r), 'a gosto sal');
+  assert.equal(ctx.unitIsTaste('a gosto'), true);
+  assert.equal(ctx.unitIsTaste('g'), false);
+  assert.equal(ctx.qtySave(taste), '');
+  assert.equal(ctx.qtySave({ qty: '2', unit: 'g' }), '2');
+  assert.equal(ctx.qtySave({ qty2: '1', unit2: 'a gosto' }, 'qty2'), '');
   assert.equal(ctx.unitHintText(taste, r), '');
   var loose = { qty: 'pitada', unit: 'colher de sopa', text: 'noz-moscada' };
   assert.equal(ctx.formatIngLabel(loose, r), 'pitada colher de sopa noz-moscada');
@@ -134,6 +139,9 @@ test('editor and leaf wire unit picker, stepper, and hints', function () {
   assert.match(js, /function snapServings/);
   assert.match(js, /function formatIngAlt/);
   assert.match(js, /label: 'ou'/);
+  assert.match(js, /qty-slot/);
+  assert.match(js, /is-gosto/);
+  assert.match(js, /playQtyAnim/);
   assert.match(js, /ing-hint/);
   assert.match(js, /shopIngLabel\(ing, r\)/);
 });

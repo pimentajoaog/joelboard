@@ -26,6 +26,8 @@ var _recipeImgLocalUrl = '';
 var CHECK_KEY = 'jb_recipes_checks';
 var VIEW_KEY = 'jb_recipes_view';
 var SPREAD_KEY = 'jb_recipes_spread';
+var SHELF_KEY = 'jb_recipes_shelf';
+var shelfTab = 'mine'; /* mine | shared */
 var spreadMode = 'pair'; /* pair = 2 receitas por spread | recipe = 1 receita nas duas folhas */
 var _turnDir = 0;
 var _spreadIntro = true;
@@ -133,6 +135,45 @@ function loadSpreadPref() {
     var v = localStorage.getItem(SPREAD_KEY);
     spreadMode = (v === 'recipe') ? 'recipe' : 'pair';
   } catch (_) { spreadMode = 'pair'; }
+}
+function loadShelfTab() {
+  try {
+    shelfTab = localStorage.getItem(SHELF_KEY) === 'shared' ? 'shared' : 'mine';
+  } catch (_) { shelfTab = 'mine'; }
+}
+function saveShelfTab() {
+  try { localStorage.setItem(SHELF_KEY, shelfTab); } catch (_) {}
+}
+function shelfGroups() {
+  var shared = (DATA.cookbooks || []).filter(function (b) { return b.collabSheetId; });
+  var mine = (DATA.cookbooks || []).filter(function (b) { return !b.collabSheetId; });
+  return { shared: shared, mine: mine };
+}
+function activeShelfTab() {
+  var g = shelfGroups();
+  if (g.shared.length && g.mine.length) return shelfTab === 'shared' ? 'shared' : 'mine';
+  if (g.shared.length && !g.mine.length) return 'shared';
+  return 'mine';
+}
+function setShelfTab(tab) {
+  shelfTab = tab === 'shared' ? 'shared' : 'mine';
+  saveShelfTab();
+  _peekBookId = null;
+  if (view === 'shelf') render();
+  else paintShelfTabs();
+}
+function paintShelfTabs() {
+  var el = $('shelfTabs');
+  if (!el) return;
+  var g = shelfGroups();
+  var show = view === 'shelf' && g.shared.length > 0 && g.mine.length > 0;
+  el.hidden = !show;
+  if (!show) { el.innerHTML = ''; return; }
+  var on = activeShelfTab();
+  el.innerHTML = '<div class="shelf-pill" role="tablist" aria-label="Estante">'
+    + '<button type="button" role="tab" class="' + (on === 'mine' ? 'on' : '') + '" aria-selected="' + (on === 'mine' ? 'true' : 'false') + '" onclick="setShelfTab(\'mine\')"><span class="sp-long">Seus livros</span><span class="sp-short">Seus</span></button>'
+    + '<button type="button" role="tab" class="' + (on === 'shared' ? 'on' : '') + '" aria-selected="' + (on === 'shared' ? 'true' : 'false') + '" onclick="setShelfTab(\'shared\')"><span class="sp-long">Compartilhados</span><span class="sp-short">Comp.</span></button>'
+    + '</div>';
 }
 function saveSpreadPref() {
   try { localStorage.setItem(SPREAD_KEY, spreadMode); } catch (_) {}
@@ -296,6 +337,7 @@ function startRecipes() {
   bindBookSearchEsc();
   loadViewPref();
   loadSpreadPref();
+  loadShelfTab();
   if (JB.isGhost && JB.isGhost()) {
     authDone = true;
     var fx = JB.ghostFixture && JB.ghostFixture('recipes');
@@ -757,8 +799,8 @@ function render() {
   if (!main) return;
   if (JB.paintAcct) JB.paintAcct();
   document.body.classList.toggle('recipes-shelf', view === 'shelf');
-  document.body.classList.toggle('recipes-shelf-split', view === 'shelf' && (DATA.cookbooks || []).some(function (b) { return b.collabSheetId; }) && (DATA.cookbooks || []).some(function (b) { return !b.collabSheetId; }));
   document.body.classList.toggle('recipes-book', view === 'book' && bookViewMode === 'flip');
+  paintShelfTabs();
   /* marcar um ingrediente repinta a página: mantém a rolagem das folhas.
      Virar a página ou abrir o livro começa do topo. */
   var sameSpread = !_turnDir && !_spreadIntro;
@@ -1035,35 +1077,37 @@ function renderBookSpines(books) {
       + '</div>';
   }).join('');
 }
-function renderBookcase(books, tight) {
+function renderBookcase(books) {
   var spines = renderBookSpines(books);
   if (!spines) return '';
-  return '<div class="bookcase' + (tight ? ' is-tight' : '') + '">'
+  return '<div class="bookcase">'
     + '<div class="bookcase-row" style="--n:' + books.length + '">' + spines + '</div>'
     + '<div class="bookcase-ledge" aria-hidden="true"></div>'
     + '</div>';
 }
 function renderShelf() {
-  var shared = DATA.cookbooks.filter(function (b) { return b.collabSheetId; });
-  var mine = DATA.cookbooks.filter(function (b) { return !b.collabSheetId; });
-  if (!shared.length && !mine.length) {
+  var g = shelfGroups();
+  if (!g.shared.length && !g.mine.length) {
     return '<div class="empty">Nenhum livro ainda. Toque em + para criar o primeiro.</div>';
   }
-  if (!shared.length) return renderBookcase(mine, false);
-  var split = !!mine.length;
-  var html = '<div class="shelf-split">'
-    + '<div class="secbar"><div class="sect">Compartilhados</div></div>'
-    + renderBookcase(shared, split);
-  if (mine.length) {
-    html += '<div class="secbar"><div class="sect">Seus livros</div></div>'
-      + renderBookcase(mine, true);
+  var tab = activeShelfTab();
+  var books = tab === 'shared' ? g.shared : g.mine;
+  if (!books.length) {
+    return tab === 'shared'
+      ? '<div class="empty">Nenhum livro compartilhado ainda.</div>'
+      : '<div class="empty">Nenhum livro ainda. Toque em + para criar o primeiro.</div>';
   }
-  return html + '</div>';
+  return renderBookcase(books);
 }
 
 function norm(s) { return String(s || '').trim().toLowerCase(); }
 
 function openBook(id) {
+  var opened = bookById(id);
+  if (opened) {
+    shelfTab = opened.collabSheetId ? 'shared' : 'mine';
+    saveShelfTab();
+  }
   _peekBookId = null;
   openBookId = id;
   openRecipeId = null;
@@ -1980,6 +2024,8 @@ function saveBookModal() {
       return JB.api('PUT', personalSsUrl('/values/Cookbooks!A' + rn + ':F' + rn + '?valueInputOption=RAW'), { values: [row] });
     });
   } else {
+    shelfTab = 'mine';
+    saveShelfTab();
     p = JB.api('POST', personalSsUrl('/values/Cookbooks!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] });
   }
   p.then(function () {

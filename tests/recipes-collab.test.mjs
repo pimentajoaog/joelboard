@@ -67,7 +67,11 @@ test('sharing one book keeps the other personal cookbooks', function () {
   assert.match(collab, /rcOtherPersonalBooks\(b\.id\)/);
   assert.match(collab, /bookRow > 1\) pushDeletes\(cookGid, \[bookRow\]\)/);
   assert.match(collab, /cookGid !== recGid/);
-  assert.match(recipes, /recipes-shelf-split/);
+  assert.match(recipes, /function setShelfTab/);
+  assert.match(recipes, /function paintShelfTabs/);
+  assert.match(recipes, /shelf-pill/);
+  assert.doesNotMatch(recipes, /recipes-shelf-split/);
+  assert.match(html, /id="shelfTabs"/);
   assert.match(recipes, /rcCollabSyncBlocked/);
 });
 

@@ -23,6 +23,23 @@ body{ @apply min-h-screen text-ink text-sm leading-normal; background:var(--bg);
 .hl img{ @apply w-[34px] h-[34px] rounded-[9px]; }
 .hl h1{ @apply text-xl font-extrabold tracking-[-.4px]; font-family:var(--font-display); color:var(--primary); }
 .acct{ @apply text-xs text-muted flex items-center gap-2.5; }
+#shelfTabs{ flex:0 0 auto; }
+#shelfTabs[hidden]{ display:none; }
+.shelf-pill{
+  display:inline-flex; align-items:center; padding:2px; gap:0;
+  background:var(--surface2); border:1px solid var(--border); border-radius:999px;
+}
+.shelf-pill button{
+  background:transparent; border:0; color:var(--muted);
+  border-radius:999px; padding:5px 11px;
+  font-size:11px; font-weight:800; letter-spacing:.2px;
+  cursor:pointer; font-family:inherit; white-space:nowrap;
+}
+.shelf-pill button.on{
+  color:var(--on-brand); background:var(--primary);
+}
+.shelf-pill .sp-short{ display:none; }
+body.recipes-shelf .acct:has(.shelf-pill) #acctEmail{ display:none; }
 .lnk{ @apply bg-transparent border-0 text-primary font-bold text-xs cursor-pointer; font-family:inherit; }
 
 .secbar{ @apply flex items-center justify-between gap-2.5 mb-3.5 flex-wrap; view-transition-name:rc-bar; }
@@ -106,11 +123,6 @@ body.recipes-shelf .foot{ display:none; }
   border:1px solid var(--border);
   border-top-color:color-mix(in srgb, var(--text) 22%, var(--border));
 }
-.bookcase.is-tight{ min-height:0; justify-content:flex-end; }
-.bookcase.is-tight .bookcase-row{ min-height:0; padding:72px 12px 10px; }
-.shelf-split{ display:flex; flex-direction:column; gap:4px; }
-body.recipes-shelf-split .bookcase{ min-height:0; }
-body.recipes-shelf-split .bookcase-row{ min-height:0; padding-top:72px; }
 .book-spine-avs{
   position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
   display:flex; justify-content:center; pointer-events:none;
@@ -1136,6 +1148,11 @@ button.step-num{ cursor:pointer; }
   .leaf-folio.left, .leaf-folio.right{ left:0; right:0; text-align:center; }
 }
 
+@media (max-width:520px){
+  .shelf-pill .sp-long{ display:none; }
+  .shelf-pill .sp-short{ display:inline; }
+  .shelf-pill button{ padding:5px 9px; }
+}
 @media (max-width:420px){
   body.recipes-book{ padding-left:10px; padding-right:10px; }
   .spread-arrow{ width:27px; height:64px; font-size:18px; }

@@ -1556,22 +1556,49 @@ function playPartFlip(el, prev) {
 function toggleRecipePart(recipeId, partId, ev) {
   if (ev) ev.stopPropagation();
   var key = partOpenKey(recipeId, partId);
-  _openPartKey = _openPartKey === key ? '' : key;
+  var opening = _openPartKey !== key;
+  _openPartKey = opening ? key : '';
   paintPartOpenState();
+  if (opening) revealRecipePart(document.getElementById('rc-part-' + recipeId + '-' + partId));
 }
 function jumpRecipePart(recipeId, partId) {
   _openPartKey = partOpenKey(recipeId, partId);
   paintPartOpenState();
-  var el = document.getElementById('rc-part-' + recipeId + '-' + partId);
+  revealRecipePart(document.getElementById('rc-part-' + recipeId + '-' + partId));
+}
+/* After a parte expands, keep the whole card in the leaf (or as much as fits). */
+function revealRecipePart(el) {
   if (!el) return;
-  var body = el.closest('.leaf-body');
-  if (body) {
-    var er = el.getBoundingClientRect();
-    var br = body.getBoundingClientRect();
-    body.scrollTo({ top: body.scrollTop + (er.top - br.top) - 8, behavior: 'smooth' });
-    return;
+  var instant = reducedMotion();
+  function place() {
+    var scroller = el.closest('.leaf-body');
+    if (scroller) {
+      var er = el.getBoundingClientRect();
+      var br = scroller.getBoundingClientRect();
+      var pad = 10;
+      var delta = 0;
+      if (er.bottom > br.bottom - pad) delta = er.bottom - (br.bottom - pad);
+      if (er.top - delta < br.top + pad) delta = er.top - (br.top + pad);
+      if (Math.abs(delta) >= 1) {
+        scroller.scrollTo({ top: scroller.scrollTop + delta, behavior: instant ? 'auto' : 'smooth' });
+      }
+      return;
+    }
+    if (el.scrollIntoView) {
+      el.scrollIntoView({ behavior: instant ? 'auto' : 'smooth', block: 'nearest' });
+    }
   }
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  requestAnimationFrame(function () { requestAnimationFrame(place); });
+  if (instant) return;
+  var fold = el.querySelector('.leaf-part-body');
+  var t = setTimeout(place, 360);
+  if (!fold) return;
+  fold.addEventListener('transitionend', function onEnd(ev) {
+    if (ev.propertyName && ev.propertyName !== 'grid-template-rows') return;
+    clearTimeout(t);
+    fold.removeEventListener('transitionend', onEnd);
+    place();
+  });
 }
 
 function miseIngRow(r, ing) {

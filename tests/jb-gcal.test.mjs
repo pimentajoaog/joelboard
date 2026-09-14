@@ -125,3 +125,9 @@ test('default login scopes still omit Calendar', function () {
   assert.match(jb, /var CAL_SCOPE = 'https:\/\/www\.googleapis\.com\/auth\/calendar\.app\.created'/);
   assert.match(src, /reminders: \{ useDefault: false/);
 });
+
+test('publish never lists the user calendar list (app.created cannot)', function () {
+  assert.doesNotMatch(src, /\/users\/me\/calendarList/);
+  assert.match(src, /'POST', '\/calendars'/);
+  assert.match(src, /'DELETE', '\/calendars\/'/);
+});

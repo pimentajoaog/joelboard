@@ -191,10 +191,11 @@
     var open = document.getElementById('hubGcalOpen');
     if (tg) {
       var on = isOn();
-      tg.classList.toggle('on', on);
+      var err = lastErr();
+      tg.classList.toggle('on', on && !err);
       tg.setAttribute('aria-pressed', on ? 'true' : 'false');
       tg.disabled = !!(busy || (ghost() && !on));
-      tg.textContent = on ? 'Publicando no Google Calendar' : 'Publicar no Google Calendar';
+      tg.textContent = !on ? 'Publicar no Google Calendar' : (err ? 'Tentar de novo' : 'Publicando no Google Calendar');
     }
     if (st) {
       if (ghost()) st.textContent = 'Ghost não publica no Google — ligue isto com uma conta real.';
@@ -209,7 +210,7 @@
     }
     if (open) {
       var href = calLink() || openUrl(calId());
-      var show = !!(isOn() && href);
+      var show = !!(isOn() && href && !lastErr());
       open.classList.toggle('on', show);
       open.hidden = !show;
       if (href) open.href = href;
@@ -218,10 +219,11 @@
 
   function setBusy(v){ busy = !!v; paint(); }
 
-  function requestCalendarScope(){
+  function requestCalendarScope(opts){
+    opts = opts || {};
     if (!window.JB || !JB.requestExtraScope) return Promise.reject(new Error('no_auth'));
     try { ss(KEY_WANT, '1'); } catch (_) {}
-    return JB.requestExtraScope(CAL_SCOPE).then(function (tok) {
+    return JB.requestExtraScope(CAL_SCOPE, { force: !!opts.force }).then(function (tok) {
       sr(KEY_WANT);
       return tok;
     }, function (err) {
@@ -231,34 +233,15 @@
     });
   }
 
-  function listCalendars(){
-    var all = [];
-    function page(token){
-      var q = '/users/me/calendarList?maxResults=250&minAccessRole=owner';
-      if (token) q += '&pageToken=' + encodeURIComponent(token);
-      return calApi('GET', q).then(function (res) {
-        (res.items || []).forEach(function (it) { all.push(it); });
-        if (res.nextPageToken) return page(res.nextPageToken);
-        return all;
-      });
-    }
-    return page('');
-  }
-  function isOurs(cal){
-    if (!cal) return false;
-    if (String(cal.summary || '') !== CAL_NAME) return false;
-    return String(cal.description || '').indexOf('Calendar do Hub Joelboard') > -1;
-  }
   function rememberCal(cal){
     if (!cal || !cal.id) return;
     setCalId(cal.id);
     setCalLink(cal.htmlLink || openUrl(cal.id));
   }
-  function silenceReminders(id){
-    return calApi('PATCH', '/users/me/calendarList/' + encodeURIComponent(id), {
-      defaultReminders: [],
-      selected: true
-    }).catch(function () {});
+  function clearCal(){
+    setCalId('');
+    setCalLink('');
+    setLastAt(0);
   }
   function createCalendar(){
     return calApi('POST', '/calendars', {
@@ -267,31 +250,38 @@
       timeZone: tz()
     }).then(function (cal) {
       rememberCal(cal);
-      return silenceReminders(cal.id).then(function () { return cal; });
+      return cal;
     });
   }
   function ensureCalendar(){
     var id = calId();
-    if (id) {
-      return calApi('GET', '/calendars/' + encodeURIComponent(id)).then(function (cal) {
-        rememberCal(cal);
-        return cal;
-      }).catch(function (err) {
-        if (err && err.status === 404) { setCalId(''); setCalLink(''); return findOrCreate(); }
-        throw err;
-      });
-    }
-    return findOrCreate();
-  }
-  function findOrCreate(){
-    return listCalendars().then(function (list) {
-      var found = null;
-      (list || []).forEach(function (it) { if (!found && isOurs(it)) found = it; });
-      if (found) {
-        rememberCal(found);
-        return silenceReminders(found.id).then(function () { return found; });
+    if (!id) return createCalendar();
+    return calApi('GET', '/calendars/' + encodeURIComponent(id)).then(function (cal) {
+      rememberCal(cal);
+      return cal;
+    }).catch(function (err) {
+      if (err && (err.status === 404 || err.status === 410)) {
+        clearCal();
+        return createCalendar();
       }
-      return createCalendar();
+      throw err;
+    });
+  }
+  function removePublishedCalendar(){
+    var id = calId();
+    if (!id) {
+      clearCal();
+      return Promise.resolve('missing');
+    }
+    return calApi('DELETE', '/calendars/' + encodeURIComponent(id)).then(function () {
+      clearCal();
+      return 'deleted';
+    }).catch(function (err) {
+      if (err && (err.status === 404 || err.status === 410)) {
+        clearCal();
+        return 'deleted';
+      }
+      throw err;
     });
   }
 
@@ -367,7 +357,7 @@
   function errMessage(err){
     var code = err && err.code;
     if (code === 'JB_CALENDAR_API_OFF') return 'Ligue a API Google Calendar no projeto Google deste login.';
-    if (code === 'JB_NEED_CALENDAR_SCOPE') return 'Falta permissão do Google Calendar. Toque de novo em Publicar.';
+    if (code === 'JB_NEED_CALENDAR_SCOPE') return 'O Google ainda não liberou o Calendar. Toque em Tentar de novo e aceite a permissão extra.';
     if (err && (err.message === 'cancelled' || err.message === 'access_denied')) return 'Publicação no Google Calendar cancelada.';
     if (err && err.message === 'ghost') return 'Ghost não publica no Google Calendar.';
     return 'Não foi possível publicar no Google Calendar.';
@@ -393,7 +383,7 @@
     return go().catch(function (err) {
       if (err && err.code === 'JB_NEED_CALENDAR_SCOPE' && !asked) {
         asked = true;
-        return requestCalendarScope().then(go);
+        return requestCalendarScope({ force: true }).then(go);
       }
       throw err;
     }).then(function () {
@@ -421,18 +411,9 @@
     syncTimer = setTimeout(function () { runSync(lastPack); }, 1400);
   }
 
-  function toggle(){
-    if (ghost()) { toast('Ghost não publica no Google Calendar.'); paint(); return; }
-    if (!signedIn()) { toast('Entre com Google para publicar o Calendar.'); return; }
-    if (isOn()) {
-      setOn(false);
-      setLastErr('');
-      paint();
-      toast('Parou de publicar. A agenda Joelboard continua no Google.');
-      return;
-    }
+  function startPublish(){
     setBusy(true);
-    requestCalendarScope().then(function () {
+    requestCalendarScope({ force: true }).then(function () {
       setOn(true);
       setLastErr('');
       paint();
@@ -442,6 +423,40 @@
       setLastErr(errMessage(err));
       toast(errMessage(err));
     }).then(function () { setBusy(false); paint(); });
+  }
+  function stopPublish(){
+    function finish(ok){
+      setOn(false);
+      setLastErr('');
+      setBusy(false);
+      paint();
+      toast(ok
+        ? 'Agenda Joelboard removida do Google Calendar.'
+        : 'Parou de publicar. Se a agenda Joelboard ainda aparecer no Google, apague por lá.');
+    }
+    setBusy(true);
+    paint();
+    function del(){ return removePublishedCalendar(); }
+    del().then(function () { finish(true); }, function (err) {
+      if (err && err.code === 'JB_NEED_CALENDAR_SCOPE') {
+        return requestCalendarScope({ force: true }).then(del).then(function () { finish(true); }, function () { finish(false); });
+      }
+      finish(false);
+    });
+  }
+  function toggle(){
+    if (ghost()) { toast('Ghost não publica no Google Calendar.'); paint(); return; }
+    if (!signedIn()) { toast('Entre com Google para publicar o Calendar.'); return; }
+    if (isOn() && lastErr()) { startPublish(); return; }
+    if (isOn()) {
+      if (window.JB && JB.confirm) {
+        JB.confirm('Parar de publicar?', 'Apaga a agenda Joelboard no Google Calendar. O Calendar do Hub continua aqui.', stopPublish, {
+          yes: 'Apagar agenda', no: 'Cancelar', danger: true
+        });
+      } else stopPublish();
+      return;
+    }
+    startPublish();
   }
 
   function consumePending(){

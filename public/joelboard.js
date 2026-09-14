@@ -348,6 +348,19 @@
     if (scope === CAL_SCOPE) return jbOAuthHasCalendarScope(g) === true;
     return false;
   }
+  function dropGrantedScope(scope){
+    scope = normalizeScopes(scope);
+    var g = normalizeScopes(lg(SCOPE_KEY) || '');
+    if (!scope || !g) return;
+    var next = g.split(' ').filter(function (sc) {
+      if (!sc) return false;
+      if (sc === scope) return false;
+      if (scope === CAL_SCOPE && /https:\/\/www\.googleapis\.com\/auth\/calendar(?:\.app\.created)?(?:\s|$)/.test(sc)) return false;
+      return true;
+    });
+    if (next.length) ls(SCOPE_KEY, next.join(' '));
+    else lr(SCOPE_KEY);
+  }
   function extraTokenScope(){
     if (hasGrantedScope(CAL_SCOPE)) return CAL_SCOPE;
     return '';
@@ -877,11 +890,13 @@
     authChain = authChain.catch(function () {}).then(function () { return p; });
     return inflightToken;
   }
-  function requestExtraScope(scope){
+  function requestExtraScope(scope, opts){
+    opts = opts || {};
     scope = normalizeScopes(scope);
     if (!scope) return Promise.resolve(readToken());
     if (isGhost()) return Promise.reject(new Error('ghost'));
-    if (hasGrantedScope(scope) && isTokenValid()) return Promise.resolve(readToken());
+    if (!opts.force && hasGrantedScope(scope) && isTokenValid()) return Promise.resolve(readToken());
+    if (opts.force) dropGrantedScope(scope);
     return requestToken(true, { prompt: 'consent', scope: scope });
   }
 
@@ -1082,8 +1097,9 @@
           calOff.code = 'JB_CALENDAR_API_OFF';
           throw calOff;
         }
-        if (r.status === 403 && /insufficient authentication scopes/i.test(tx)) {
+        if (r.status === 403 && /insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficientPermissions/i.test(tx)) {
           if (isCalendarApiUrl(url)) {
+            dropGrantedScope(CAL_SCOPE);
             var calScope = new Error('Falta permissão do Google Calendar.');
             calScope.status = 403;
             calScope.code = 'JB_NEED_CALENDAR_SCOPE';
@@ -1470,6 +1486,7 @@
     try { if (t && window.google && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke) google.accounts.oauth2.revoke(t, function () {}); } catch (_) {}
     clearTokenStorage();
     lr(EML);
+    lr(SCOPE_KEY);
     ls('jb_signedout', '1');
     document.documentElement.classList.remove('jb-ghost');
     if (document.body) document.body.classList.remove('jb-ghost');

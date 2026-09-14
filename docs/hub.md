@@ -5,7 +5,7 @@ Ponto de entrada do Joelboard — launcher dos apps, temas globais do Hub e pain
 ## O que você encontra
 
 - **Calendar** — calendário compacto à esquerda dos cards (hoje / semana / mês). Ampla opcional no topo. Lê as planilhas já vinculadas; ↻ tenta de novo se alguma falhar. Mais de 5 itens por app viram “Ver mais…”.
-- **Google Calendar (opcional)** — em **Ajustes → Calendar**, *Publicar no Google Calendar* cria uma agenda **Joelboard** na sua conta (escopo só dessa agenda). Cópia de mão única do que o Hub já mostra; **sem lembretes** por enquanto. Desligar para de gravar e não apaga a agenda no Google.
+- **Google Calendar (opcional)** — em **Ajustes → Calendar**, *Publicar no Google Calendar* cria uma agenda **Joelboard** na sua conta (escopo só dessa agenda). Cópia de mão única do que o Hub já mostra; **sem lembretes** por enquanto. Desligar para de gravar e **apaga** a agenda Joelboard no Google (o Calendar do Hub continua no site).
 - **Cards dos apps** — Finance, Fit, Study, Notes, Planner, Recipes e Mini (extensões Chrome).
 - **Novidades** — sidebar com as 5 últimas mudanças. Fallback no código; se `VITE_HUB_NEWS_SHEET_ID` estiver configurado, lê de uma planilha Google pública (aba `Novidades`: colunas App, Kind, Text).
 - **Editar novidades (admin)** — com login `joaogabrielpabarbosa@gmail.com`, aparece ✏ no painel. Salva na planilha para todos. Na primeira vez cria a planilha; depois copie o ID para `VITE_HUB_NEWS_SHEET_ID` no Vercel.

@@ -247,15 +247,18 @@
       var date = sheetsDate(p.date || p.data);
       var r = byR[p.recipeId];
       var book = r && byB[r.cookbookId];
-      var title = r ? ((r.icon ? r.icon + ' ' : '') + (r.title || 'Receita')) : 'Receita';
+      var icon = (r && r.icon) || p.icon || '';
+      var title = r
+        ? ((r.icon ? r.icon + ' ' : '') + (r.title || 'Receita'))
+        : (p.title ? ((icon ? icon + ' ' : '') + p.title) : 'Receita');
       var sub = 'fazer até';
       if (book && book.name) sub += ' · ' + book.name;
       return ev({
         app: 'recipes', id: 'recipes:' + p.id, rawId: String(p.recipeId || ''),
         date: date, title: title, subtitle: sub,
         href: '/recipes/?r=' + encodeURIComponent(p.recipeId || ''),
-        color: (book && book.color) || APP_META.recipes.color,
-        kind: 'prazo', icone: (r && r.icon) || ''
+        color: (book && book.color) || p.color || APP_META.recipes.color,
+        kind: 'prazo', icone: icon
       });
     });
   }
@@ -316,6 +319,9 @@
   }
   function isCollabNotasGrid(grid) {
     return !!(grid && grid.Meta != null && grid.Membros != null && grid.Notas == null);
+  }
+  function isCollabRecipesGrid(grid) {
+    return !!(grid && grid.Meta != null && grid.Membros != null && grid.Cookbooks == null);
   }
   function tabsPresent(grid, names) {
     return (names || []).filter(function (t) { return grid && grid[t] != null; });
@@ -401,6 +407,7 @@
     return cachedSheetTabs(sid).then(function (grid) {
       if (app === 'planner' && isCollabPlannerGrid(grid)) return [];
       if (app === 'notas' && isCollabNotasGrid(grid)) return [];
+      if (app === 'recipes' && isCollabRecipesGrid(grid)) return [];
       return loadAppEventsFromGrid(app, sid, grid, start, end);
     });
   }
@@ -500,7 +507,10 @@
       if (rt.indexOf('Plans') < 0) return [];
       return batchGet(sid, rt).then(function (by) {
         var plans = body(by.Plans).filter(function (r) { return r[0] && r[2]; }).map(function (r) {
-          return { id: String(r[0]), recipeId: String(r[1] || ''), date: sheetsDate(r[2]), created: String(r[3] || '') };
+          return {
+            id: String(r[0]), recipeId: String(r[1] || ''), date: sheetsDate(r[2]), created: String(r[3] || ''),
+            title: String(r[4] || ''), icon: String(r[5] || ''), color: String(r[6] || '')
+          };
         });
         var recipes = body(by.Recipes).filter(function (r) { return r[0]; }).map(function (r) {
           return { id: String(r[0]), cookbookId: String(r[1] || ''), title: String(r[2] || ''), icon: String(r[3] || '') };
@@ -1335,7 +1345,7 @@
     eventsFromFit: eventsFromFit, eventsFromStudy: eventsFromStudy,
     eventsFromNotas: eventsFromNotas, eventsFromPlanner: eventsFromPlanner,
     eventsFromRecipes: eventsFromRecipes,
-    isCollabPlannerGrid: isCollabPlannerGrid, isCollabNotasGrid: isCollabNotasGrid,
+    isCollabPlannerGrid: isCollabPlannerGrid, isCollabNotasGrid: isCollabNotasGrid, isCollabRecipesGrid: isCollabRecipesGrid,
     eventRowHtml: eventRowHtml, plannerPeekHtml: plannerPeekHtml, relLabel: relLabel, nearClass: nearClass, daysUntil: daysUntil, fmtBR: fmtBR,
     loadHubEvents: loadHubEvents, loadAppEvents: loadAppEvents, mount: mount, capByApp: capByApp, clearHubCache: clearHubCache, appsInDay: appsInDay, splitByWhen: splitByWhen, orderWithinApp: orderWithinApp,
     groupByDay: groupByDay, groupByDayAgenda: groupByDayAgenda, dayBlocksHtml: dayBlocksHtml

@@ -113,12 +113,20 @@
     }
     if (app === 'recipes') {
       return {
-        grid: { Cookbooks: 0, Recipes: 1, Ingredients: 2, Steps: 3, Plans: 4, Parts: 5, Settings: 6 },
+        grid: { Cookbooks: 0, Recipes: 1, Ingredients: 2, Steps: 3, Plans: 4, Parts: 5, Settings: 6, Compartilhadas: 7 },
         data: {
           cookbooks: [
             { id: 'ghost-cb1', name: 'Rápido', icon: '🍳', color: '#e07a5f', order: 0, created: iso },
             { id: 'ghost-cb2', name: 'Doces', icon: '🧁', color: '#f472b6', order: 1, created: iso },
-            { id: 'ghost-cb3', name: 'Sopas', icon: '🍲', color: '#34d399', order: 2, created: iso }
+            { id: 'ghost-cb3', name: 'Sopas', icon: '🍲', color: '#34d399', order: 2, created: iso },
+            {
+              id: 'ghost-cb-share', name: 'Cozinha da casa', icon: '🏡', color: '#60a5fa', order: 3, created: iso,
+              collabSheetId: 'ghost-rc-share-sheet', collabRole: 'owner', collabOwner: 'cursor-ghost@localhost',
+              collabMembers: [
+                { email: 'cursor-ghost@localhost', nome: 'Cursor', icone: '👻', papel: 'owner', status: 'active' },
+                { email: 'amigo@localhost', nome: 'Amigo', icone: '🧑', papel: 'editor', status: 'active' }
+              ]
+            }
           ],
           recipes: [
             { id: 'ghost-r1', cookbookId: 'ghost-cb1', title: 'Macarrão de alho', icon: '🍝', imageUrl: '', servings: '2', minutes: '20', notes: 'Clássico de segunda.', order: 0, source: '', sourceId: '', created: iso },
@@ -126,7 +134,8 @@
             { id: 'ghost-r3', cookbookId: 'ghost-cb1', title: 'Arroz de forno', icon: '🍚', imageUrl: '', servings: '4', minutes: '45', notes: '', order: 2, source: '', sourceId: '', created: iso },
             { id: 'ghost-r4', cookbookId: 'ghost-cb2', title: 'Brigadeiro', icon: '🍫', imageUrl: '', servings: '20', minutes: '30', notes: '', order: 0, source: '', sourceId: '', created: iso },
             { id: 'ghost-r5', cookbookId: 'ghost-cb2', title: 'Pudim da vó', icon: '🍮', imageUrl: '', servings: '8', minutes: '90', notes: '', order: 1, source: '', sourceId: '', created: iso },
-            { id: 'ghost-r6', cookbookId: 'ghost-cb3', title: 'Caldo verde', icon: '🥬', imageUrl: '', servings: '4', minutes: '40', notes: '', order: 0, source: '', sourceId: '', created: iso }
+            { id: 'ghost-r6', cookbookId: 'ghost-cb3', title: 'Caldo verde', icon: '🥬', imageUrl: '', servings: '4', minutes: '40', notes: '', order: 0, source: '', sourceId: '', created: iso },
+            { id: 'ghost-r7', cookbookId: 'ghost-cb-share', title: 'Arroz de carreteiro', icon: '🥘', imageUrl: '', servings: '6', minutes: '50', notes: 'Livro da casa.', order: 0, source: '', sourceId: '', created: iso, collabSheetId: 'ghost-rc-share-sheet' }
           ],
           ingredients: [
             { id: 'ghost-ri1', recipeId: 'ghost-r1', text: 'espaguete', qty: '250', unit: 'g', order: 0 },
@@ -151,7 +160,9 @@
             { id: 'ghost-ri23', recipeId: 'ghost-r5', text: 'creme de leite', qty: '1/2', unit: 'caixa', order: 1, partId: 'ghost-pt2' },
             { id: 'ghost-ri15', recipeId: 'ghost-r6', text: 'batatas', qty: '3', unit: '', order: 0 },
             { id: 'ghost-ri16', recipeId: 'ghost-r6', text: 'couve fatiada', qty: '1', unit: 'maço', order: 1 },
-            { id: 'ghost-ri17', recipeId: 'ghost-r6', text: 'linguiça', qty: '1', unit: '', order: 2 }
+            { id: 'ghost-ri17', recipeId: 'ghost-r6', text: 'linguiça', qty: '1', unit: '', order: 2 },
+            { id: 'ghost-ri24', recipeId: 'ghost-r7', text: 'arroz', qty: '2', unit: 'xícaras', order: 0 },
+            { id: 'ghost-ri25', recipeId: 'ghost-r7', text: 'carne seca', qty: '300', unit: 'g', order: 1 }
           ],
           steps: [
             { id: 'ghost-rs1', recipeId: 'ghost-r1', text: 'Cozinhe o macarrão al dente.', order: 0 },
@@ -168,11 +179,13 @@
             { id: 'ghost-rs14', recipeId: 'ghost-r5', text: 'Derreta o açúcar até dourar e junte a água com cuidado.', order: 0, partId: 'ghost-pt1' },
             { id: 'ghost-rs15', recipeId: 'ghost-r5', text: 'Misture o chocolate no creme e cubra o pudim frio.', order: 0, partId: 'ghost-pt2' },
             { id: 'ghost-rs12', recipeId: 'ghost-r6', text: 'Cozinhe as batatas e bata com o caldo.', order: 0 },
-            { id: 'ghost-rs13', recipeId: 'ghost-r6', text: 'Junte a couve e a linguiça em rodelas.', order: 1 }
+            { id: 'ghost-rs13', recipeId: 'ghost-r6', text: 'Junte a couve e a linguiça em rodelas.', order: 1 },
+            { id: 'ghost-rs16', recipeId: 'ghost-r7', text: 'Dessalgue a carne e refogue com o arroz.', order: 0 }
           ],
           plans: [
             { id: 'ghost-rp1', recipeId: 'ghost-r1', date: jbGhostYmdFrom(today, 2), created: iso },
-            { id: 'ghost-rp2', recipeId: 'ghost-r4', date: jbGhostYmdFrom(today, 5), created: iso }
+            { id: 'ghost-rp2', recipeId: 'ghost-r4', date: jbGhostYmdFrom(today, 5), created: iso },
+            { id: 'ghost-rp3', recipeId: 'ghost-r7', date: jbGhostYmdFrom(today, 3), created: iso, title: 'Arroz de carreteiro', icon: '🥘', color: '#60a5fa' }
           ],
           parts: [
             { id: 'ghost-pt1', recipeId: 'ghost-r5', name: 'Calda', order: 0, sourceIngId: 'ghost-ri20' },
@@ -2815,6 +2828,11 @@
       return ensureFolder({ name: 'Compartilhados', parentId: plannerId, cacheKey: 'planner:shared' });
     });
   }
+  function ensureRecipesSharedFolder() {
+    return ensureAppFolder('recipes').then(function (recipesId) {
+      return ensureFolder({ name: 'Compartilhados', parentId: recipesId, cacheKey: 'recipes:shared' });
+    });
+  }
   function ensureStudyAnexosFolder() {
     return ensureAppFolder('study').then(function (studyId) {
       return ensureFolder({ name: 'Anexos', parentId: studyId, cacheKey: 'study:anexos' });
@@ -2943,6 +2961,7 @@
     }
     var notesId = getSheetId('notas');
     var plannerId = getSheetId('planner');
+    var recipesId = getSheetId('recipes');
     var jobs = [];
     if (notesId) {
       jobs.push(Promise.all([
@@ -2990,6 +3009,22 @@
         });
       }));
     }
+    if (recipesId) {
+      jobs.push(sheetValues(recipesId, 'Compartilhadas').then(function (vals) {
+        var regs = (vals || []).slice(1);
+        if (!regs.length) return null;
+        return ensureRecipesSharedFolder().then(function (folderId) {
+          var chain = Promise.resolve();
+          regs.forEach(function (reg) {
+            if (!isCollabRegistryOwner(reg)) return;
+            var sid = String(reg[1] || '');
+            if (!sid) return;
+            chain = chain.then(function () { return moveOwned(sid, folderId); });
+          });
+          return chain;
+        });
+      }));
+    }
     return Promise.all(jobs).then(function () { return moved; }, function () { return moved; });
   }
   function migrateJoinedCollabShortcuts() {
@@ -3009,6 +3044,7 @@
     }
     var notesId = getSheetId('notas');
     var plannerId = getSheetId('planner');
+    var recipesId = getSheetId('recipes');
     var jobs = [];
     if (notesId) {
       jobs.push(Promise.all([
@@ -3056,6 +3092,25 @@
             if (!sid) return;
             chain = chain.then(function () {
               return ensureJoined(sid, folderId, titulo || 'Plano compartilhado');
+            });
+          });
+          return chain;
+        });
+      }));
+    }
+    if (recipesId) {
+      jobs.push(sheetValues(recipesId, 'Compartilhadas').then(function (vals) {
+        var regs = (vals || []).slice(1);
+        if (!regs.length) return null;
+        return ensureRecipesSharedFolder().then(function (folderId) {
+          var chain = Promise.resolve();
+          regs.forEach(function (reg) {
+            if (isCollabRegistryOwner(reg)) return;
+            var sid = String(reg[1] || '');
+            var titulo = String(reg[0] || '').trim();
+            if (!sid) return;
+            chain = chain.then(function () {
+              return ensureJoined(sid, folderId, titulo || 'Livro compartilhado');
             });
           });
           return chain;
@@ -3894,7 +3949,7 @@
     pullAccountPrefs: pullAccountPrefs, pushAccountPrefs: pushAccountPrefs, schedulePrefsPush: schedulePrefsPush, markTourDone: markTourDone,
     ensureFolder: ensureFolder, moveFile: moveFile, ensureJoelboardRoot: ensureJoelboardRoot, ensureAppFolder: ensureAppFolder,
     ensureNotesSharedFolder: ensureNotesSharedFolder, ensureNotesKitSharedFolder: ensureNotesKitSharedFolder,
-    ensurePlannerSharedFolder: ensurePlannerSharedFolder, ensureStudyAnexosFolder: ensureStudyAnexosFolder,
+    ensurePlannerSharedFolder: ensurePlannerSharedFolder, ensureRecipesSharedFolder: ensureRecipesSharedFolder, ensureStudyAnexosFolder: ensureStudyAnexosFolder,
     placeFileInFolder: placeFileInFolder, placeSpreadsheetInAppFolder: placeSpreadsheetInAppFolder,
     createDriveShortcut: createDriveShortcut, ensureDriveShortcut: ensureDriveShortcut,
     uploadFileToFolder: uploadFileToFolder, driveFolderWebLink: driveFolderWebLink,

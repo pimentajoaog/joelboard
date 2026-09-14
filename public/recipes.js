@@ -36,8 +36,9 @@ var RECIPES_TABS = [
   ['Ingredients', ['ID', 'RecipeID', 'Texto', 'Qtd', 'Unidade', 'Ordem', 'PartID']],
   ['Steps', ['ID', 'RecipeID', 'Texto', 'Ordem', 'PartID']],
   ['Parts', ['ID', 'RecipeID', 'Nome', 'Ordem', 'SourceIngID']],
-  ['Plans', ['ID', 'RecipeID', 'Data', 'Criado']],
-  ['Settings', ['Chave', 'Valor']]
+  ['Plans', ['ID', 'RecipeID', 'Data', 'Criado', 'Titulo', 'Icone', 'Cor']],
+  ['Settings', ['Chave', 'Valor']],
+  ['Compartilhadas', ['Titulo', 'SheetID', 'Papel', 'Owner', 'CookbookID', 'Atualizado']]
 ];
 
 var FOOD_ICONS = [
@@ -64,7 +65,60 @@ function loadingHtml(h) { $('loading').style.display = 'block'; $('loading').inn
 function showApp() { $('loading').style.display = 'none'; $('app').style.display = 'block'; }
 function toast(m) { JB.toast(m); }
 function todayISO() { return JB.todayYmd ? JB.todayYmd() : new Date().toISOString().slice(0, 10); }
-function ssUrl(p) { return 'https://sheets.googleapis.com/v4/spreadsheets/' + JB.getSheetId(APP) + p; }
+function personalSid() { return JB.getSheetId(APP); }
+function sheetUrl(sid, p) { return 'https://sheets.googleapis.com/v4/spreadsheets/' + sid + p; }
+function personalSsUrl(p) { return sheetUrl(personalSid(), p); }
+function ssUrl(p) { return personalSsUrl(p); }
+function rcSidForBook(book) {
+  if (book && book.collabSheetId) return book.collabSheetId;
+  return personalSid();
+}
+function rcGridForSid(sid) {
+  if (!sid || sid === personalSid()) return recipesGrid;
+  return (typeof collabGrids !== 'undefined' && collabGrids[sid]) || {};
+}
+var _rowCache = {};
+function rowCacheKeySid(sid, tab) { return sid + '|' + tab; }
+function seedRowCacheForSid(sid, tab, rows, idCol) {
+  var map = {};
+  for (var i = 1; i < (rows || []).length; i++) {
+    var id = String((rows[i] || [])[idCol] || '');
+    if (id) map[id] = i + 1;
+  }
+  _rowCache[rowCacheKeySid(sid, tab)] = map;
+}
+function invalidateRowCacheForSid(sid, tab) { delete _rowCache[rowCacheKeySid(sid, tab)]; }
+function findRowInSid(sid, tab, idCol, id) {
+  var key = rowCacheKeySid(sid, tab), cached = _rowCache[key];
+  if (cached && cached[String(id)] != null) return Promise.resolve(cached[String(id)]);
+  return JB.api('GET', sheetUrl(sid, '/values/' + encodeURIComponent(tab) + '?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
+    seedRowCacheForSid(sid, tab, res.values || [], idCol);
+    var row = _rowCache[key] ? _rowCache[key][String(id)] : null;
+    return row != null ? row : -1;
+  });
+}
+function bookRowVals(b) {
+  return [b.id, b.name, b.icon || '📖', b.color || '#e07a5f', String(b.order || 0), b.created || todayISO()];
+}
+function recipeRowVals(r) {
+  return [
+    r.id, r.cookbookId, r.title, r.icon || '🍽️', r.imageUrl || '',
+    r.servings || '', r.minutes || '', r.notes || '', String(r.order || 0),
+    r.source || '', r.sourceId || '', r.created || todayISO()
+  ];
+}
+function ingRowVals(x) {
+  return [x.id, x.recipeId, x.text || '', x.qty || '', x.unit || '', String(x.order || 0), x.partId || ''];
+}
+function stepRowVals(x) {
+  return [x.id, x.recipeId, x.text || '', String(x.order || 0), x.partId || ''];
+}
+function partRowVals(p) {
+  return [p.id, p.recipeId, p.name || '', String(p.order || 0), p.sourceIngId || ''];
+}
+function planRowVals(p) {
+  return [p.id, p.recipeId, p.date, p.created, p.title || '', p.icon || '', p.color || ''];
+}
 function loadViewPref() {
   try {
     var v = localStorage.getItem(VIEW_KEY);
@@ -250,7 +304,8 @@ function startRecipes() {
     if (!DATA.plans) DATA.plans = [];
     if (!DATA.parts) DATA.parts = [];
     showApp();
-    render();
+    if (JB.onRoute) JB.onRoute(applyRoute);
+    applyRoute();
     return;
   }
   if (JB.cachedToken && JB.cachedToken()) {
@@ -300,7 +355,13 @@ function bootSheet() {
     requiredTabs: RECIPES_TABS.map(function (t) { return t[0]; })
   }).then(function (ctx) {
     recipesGrid = (ctx && ctx.grid) || {};
-    return ensureTabs().then(loadAll);
+    if (typeof rcIsCollabSpreadsheetGrid === 'function' && rcIsCollabSpreadsheetGrid(recipesGrid)) {
+      JB.clearSheetId(APP);
+      gate();
+      toast('Essa planilha é um livro compartilhado — crie ou vincule sua planilha pessoal.');
+      return;
+    }
+    return ensureTabs().then(ensurePlanSnapshotHeaders).then(loadAll);
   }).catch(function (e) {
     var m = String((e && e.message) || '');
     if (m.indexOf('silent_timeout') > -1 || m.indexOf('auth_failed') > -1 || m.indexOf('401') > -1 || m.indexOf('cancelled') > -1) {
@@ -438,6 +499,8 @@ function seedIntoSheet() {
 
 function loadAll() {
   return fetchRecipeTabs().then(function () {
+    return (typeof rcLoadCollabBooks === 'function') ? rcLoadCollabBooks() : null;
+  }).then(function () {
     showApp();
     render();
     if (!window._rcTabSync) {
@@ -446,7 +509,12 @@ function loadAll() {
       JB.watchSheet(APP, refreshQuiet);
     }
     if (JB.onRoute) JB.onRoute(applyRoute);
-    applyRoute();
+    if (typeof rcCheckJoinParam === 'function' && /[?&]join=/.test(location.search)) {
+      rcCheckJoinParam();
+    } else {
+      applyRoute();
+    }
+    if (typeof rcStartCollabPoll === 'function') rcStartCollabPoll();
   }).catch(function (e) {
     var m = String(e.message || '');
     if (m.indexOf('403') > -1 || m.indexOf('404') > -1) {
@@ -461,7 +529,20 @@ function loadAll() {
 function refreshQuiet() {
   if (!JB.isSignedIn()) return Promise.resolve();
   if (JB.isGhost && JB.isGhost()) { render(); return Promise.resolve(); }
-  return fetchRecipeTabs().then(function () { render(); }).catch(function () {});
+  return fetchRecipeTabs().then(function () {
+    return (typeof rcLoadCollabBooks === 'function') ? rcLoadCollabBooks() : null;
+  }).then(function () { render(); }).catch(function () {});
+}
+
+function ensurePlanSnapshotHeaders() {
+  if (recipesGrid.Plans == null) return Promise.resolve();
+  return JB.api('GET', personalSsUrl('/values/Plans!1:1')).then(function (res) {
+    var h = (res.values && res.values[0]) || [];
+    if (h[4] === 'Titulo' && h[5] === 'Icone' && h[6] === 'Cor') return;
+    return JB.api('PUT', personalSsUrl('/values/Plans!E1:G1?valueInputOption=RAW'), {
+      values: [['Titulo', 'Icone', 'Cor']]
+    });
+  }).catch(function () {});
 }
 
 function fetchRecipeTabs() {
@@ -476,6 +557,8 @@ function fetchRecipeTabs() {
       DATA.steps = parseSteps(vr[3] && vr[3].values);
       DATA.plans = parsePlans(vr[4] && vr[4].values);
       DATA.parts = recipesGrid.Parts != null ? parseParts(vr[5] && vr[5].values) : [];
+      seedRowCacheForSid(personalSid(), 'Cookbooks', vr[0] && vr[0].values, 0);
+      seedRowCacheForSid(personalSid(), 'Recipes', vr[1] && vr[1].values, 0);
     });
 }
 
@@ -564,7 +647,8 @@ function parsePlans(rows) {
     var r = rows[i] || [];
     if (!r[0]) continue;
     out.push({
-      id: String(r[0]), recipeId: String(r[1] || ''), date: sheetsDateLocal(r[2]), created: String(r[3] || '')
+      id: String(r[0]), recipeId: String(r[1] || ''), date: sheetsDateLocal(r[2]), created: String(r[3] || ''),
+      title: String(r[4] || ''), icon: String(r[5] || ''), color: String(r[6] || '')
     });
   }
   out.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)) || String(a.id).localeCompare(String(b.id)); });
@@ -681,6 +765,7 @@ function render() {
   if (view === 'shelf') main.innerHTML = renderShelf();
   else if (view === 'book') main.innerHTML = renderBook();
   else if (view === 'recipe') main.innerHTML = renderDetail();
+  if (typeof rcSyncWatch === 'function') rcSyncWatch();
   if (sameSpread) {
     var bodies = main.querySelectorAll('.leaf-body');
     if (keepScroll.length === bodies.length) {
@@ -693,8 +778,9 @@ function render() {
     fab.title = view === 'shelf' ? 'Novo livro' : 'Nova receita';
   }
   patchRoute();
-  var grid = main.querySelector('.bookcase-row, .recipes-grid');
-  if (grid && JB.staggerChildren) JB.staggerChildren(grid, view);
+  main.querySelectorAll('.bookcase-row, .recipes-grid').forEach(function (grid) {
+    if (JB.staggerChildren) JB.staggerChildren(grid, view);
+  });
   if (view === 'shelf') {
     layoutShelf();
     bindShelfLayout();
@@ -736,26 +822,26 @@ function bookSpineDims(b, i, count) {
 }
 
 function layoutShelf() {
-  var row = document.querySelector('.bookcase-row');
-  if (!row) return;
-  var slots = row.querySelectorAll('.book-slot');
-  var n = slots.length;
-  if (!n) return;
-  var gap = 8;
-  var avail = Math.max(240, row.clientWidth - 32);
-  var minW = 42;
-  var w = parseFloat(slots[0].style.getPropertyValue('--bw')) || 70;
-  var need = n * w + (n - 1) * gap;
-  if (need > avail) {
-    w = Math.max(minW, Math.floor((avail - (n - 1) * gap) / n));
-    slots.forEach(function (el) { el.style.setProperty('--bw', w + 'px'); });
-    need = n * w + (n - 1) * gap;
-  }
-  row.classList.toggle('is-scroll', need > avail);
-  var maxSpread = Math.max(260, Math.min(640, row.clientWidth - w - 48));
-  slots.forEach(function (el) {
-    var h = parseFloat(el.style.getPropertyValue('--bh')) || 380;
-    el.style.setProperty('--spread', Math.round(Math.min(maxSpread, Math.max(280, h * 1.16))) + 'px');
+  document.querySelectorAll('.bookcase-row').forEach(function (row) {
+    var slots = row.querySelectorAll('.book-slot');
+    var n = slots.length;
+    if (!n) return;
+    var gap = 8;
+    var avail = Math.max(240, row.clientWidth - 32);
+    var minW = 42;
+    var w = parseFloat(slots[0].style.getPropertyValue('--bw')) || 70;
+    var need = n * w + (n - 1) * gap;
+    if (need > avail) {
+      w = Math.max(minW, Math.floor((avail - (n - 1) * gap) / n));
+      slots.forEach(function (el) { el.style.setProperty('--bw', w + 'px'); });
+      need = n * w + (n - 1) * gap;
+    }
+    row.classList.toggle('is-scroll', need > avail);
+    var maxSpread = Math.max(260, Math.min(640, row.clientWidth - w - 48));
+    slots.forEach(function (el) {
+      var h = parseFloat(el.style.getPropertyValue('--bh')) || 380;
+      el.style.setProperty('--spread', Math.round(Math.min(maxSpread, Math.max(280, h * 1.16))) + 'px');
+    });
   });
 }
 
@@ -780,14 +866,13 @@ function centerOpenBook(el) {
 }
 
 function bindShelfLayout() {
-  var row = document.querySelector('.bookcase-row');
-  if (row) {
+  document.querySelectorAll('.bookcase-row').forEach(function (row) {
     row.querySelectorAll('.book-slot').forEach(function (el) {
       fillBookPeek(el);
       el.addEventListener('mouseenter', function () { centerOpenBook(el); fillBookPeek(el); });
       el.addEventListener('focus', function () { centerOpenBook(el); fillBookPeek(el); });
     });
-  }
+  });
   if (bindShelfLayout._on) return;
   bindShelfLayout._on = true;
   window.addEventListener('resize', function () {
@@ -816,9 +901,7 @@ function onBookActivate(id) {
 }
 
 function syncShelfPeek() {
-  var row = document.querySelector('.bookcase-row');
-  if (!row) return;
-  row.querySelectorAll('.book-slot').forEach(function (el) {
+  document.querySelectorAll('.book-slot').forEach(function (el) {
     var on = el.getAttribute('data-id') === _peekBookId;
     if (on) { centerOpenBook(el); fillBookPeek(el); }
     el.classList.toggle('is-peek', on);
@@ -917,17 +1000,17 @@ function clearBookPeek(ev) {
   syncShelfPeek();
 }
 
-function renderShelf() {
-  var books = DATA.cookbooks;
-  var spines = books.map(function (b, i) {
+function renderBookSpines(books) {
+  return books.map(function (b, i) {
     var d = bookSpineDims(b, i, books.length);
     var n = countInBook(b.id);
     var peeked = _peekBookId === b.id;
-    var cls = 'book-slot' + (peeked ? ' is-peek' : '') + (d.curved ? ' is-curved' : '');
+    var avs = (b.collabSheetId && typeof rcMemberAvatarsHtml === 'function') ? rcMemberAvatarsHtml(b) : '';
+    var cls = 'book-slot' + (peeked ? ' is-peek' : '') + (d.curved ? ' is-curved' : '') + (b.collabSheetId ? ' is-shared' : '');
     return '<div role="button" tabindex="0" class="' + cls + '"'
       + ' data-id="' + esc(b.id) + '"'
       + ' style="--kc:' + esc(b.color || '#e07a5f') + ';--bw:' + d.w + 'px;--bh:' + d.h + 'px;--spread:' + d.spread + 'px;--tilt:' + d.tilt + 'deg;--jb-i:' + i + '"'
-      + ' aria-label="' + esc(b.name) + ', ' + n + ' receita' + (n === 1 ? '' : 's') + '"'
+      + ' aria-label="' + esc(b.name) + ', ' + n + ' receita' + (n === 1 ? '' : 's') + (b.collabSheetId ? ', compartilhado' : '') + '"'
       + ' aria-expanded="' + (peeked ? 'true' : 'false') + '"'
       + ' onclick="onBookActivate(\'' + escAttr(b.id) + '\')"'
       + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();onBookActivate(\'' + escAttr(b.id) + '\')}"'
@@ -940,6 +1023,7 @@ function renderShelf() {
       + '<div class="book-spine-face">'
       + '<span class="book-spine-ico" aria-hidden="true">' + esc(b.icon || '📖') + '</span>'
       + '<span class="book-spine-title">' + esc(b.name) + '</span>'
+      + (avs ? '<span class="book-spine-avs">' + avs + '</span>' : '')
       + '</div>'
       + '<div class="book-open" aria-hidden="true">'
       + '<div class="book-leaf is-left"><span class="book-page-lines"></span><div class="book-page"></div></div>'
@@ -948,12 +1032,29 @@ function renderShelf() {
       + '</div>'
       + '</div>';
   }).join('');
-  return (spines
-    ? '<div class="bookcase">'
-      + '<div class="bookcase-row" style="--n:' + books.length + '">' + spines + '</div>'
-      + '<div class="bookcase-ledge" aria-hidden="true"></div>'
-      + '</div>'
-    : '<div class="empty">Nenhum livro ainda. Toque em + para criar o primeiro.</div>');
+}
+function renderBookcase(books, tight) {
+  var spines = renderBookSpines(books);
+  if (!spines) return '';
+  return '<div class="bookcase' + (tight ? ' is-tight' : '') + '">'
+    + '<div class="bookcase-row" style="--n:' + books.length + '">' + spines + '</div>'
+    + '<div class="bookcase-ledge" aria-hidden="true"></div>'
+    + '</div>';
+}
+function renderShelf() {
+  var shared = DATA.cookbooks.filter(function (b) { return b.collabSheetId; });
+  var mine = DATA.cookbooks.filter(function (b) { return !b.collabSheetId; });
+  if (!shared.length && !mine.length) {
+    return '<div class="empty">Nenhum livro ainda. Toque em + para criar o primeiro.</div>';
+  }
+  if (!shared.length) return renderBookcase(mine, false);
+  var html = '<div class="secbar"><div class="sect">Compartilhados</div></div>'
+    + renderBookcase(shared, !!mine.length);
+  if (mine.length) {
+    html += '<div class="secbar"><div class="sect">Seus livros</div></div>'
+      + renderBookcase(mine, true);
+  }
+  return html;
 }
 
 function norm(s) { return String(s || '').trim().toLowerCase(); }
@@ -1067,6 +1168,9 @@ function plaqueSvg(kind) {
   if (kind === 'pencil') {
     return '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.1 3.1l2.8 2.8-7.4 7.4H2.7v-2.8zM11.3 1.9l.9-.9c.4-.4 1-.4 1.4 0l1.4 1.4c.4.4.4 1 0 1.4l-.9.9z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/></svg>';
   }
+  if (kind === 'share') {
+    return '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6" cy="5.2" r="2.1" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M2.6 12.4c.3-2.2 1.7-3.4 3.4-3.4s3.1 1.2 3.4 3.4" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><circle cx="11.2" cy="5.6" r="1.7" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M10.2 12.4c.2-1.5 1.1-2.4 2.2-2.4" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg>';
+  }
   return '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.2 10.2L13.4 13.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
 }
 
@@ -1087,6 +1191,8 @@ function bookCrest(book) {
     + '</button>'
     + '<button type="button" class="book-tool" onclick="openBookModal(\'' + escAttr(book.id) + '\')"'
     + ' title="Editar livro" aria-label="Editar livro">' + plaqueSvg('pencil') + '</button>'
+    + '<button type="button" class="book-tool" onclick="rcShareBookClick()"'
+    + ' title="Compartilhar" aria-label="Compartilhar">' + plaqueSvg('share') + '</button>'
     + '<button type="button" class="book-tool book-find-btn' + (findOn ? ' is-on' : '') + (bookQuery ? ' has-q' : '') + '"'
     + ' onclick="toggleBookSearch(event)" title="Buscar receita" aria-label="Buscar receita"'
     + ' aria-expanded="' + (findOn ? 'true' : 'false') + '">' + plaqueSvg('search') + '</button>'
@@ -1815,7 +1921,15 @@ function openBookModal(id) {
   paintIconWrap('book');
   paintBookColors();
   var del = $('bookDelBtn');
-  if (del) del.style.display = b ? '' : 'none';
+  if (del) {
+    del.style.display = b ? '' : 'none';
+    if (b && b.collabSheetId) {
+      var owner = b.collabRole === 'owner' || String(b.collabOwner || '').toLowerCase() === String(JB.email() || '').toLowerCase();
+      del.textContent = owner ? 'Remover livro compartilhado' : 'Sair do livro';
+    } else {
+      del.textContent = 'Excluir livro';
+    }
+  }
   $('bookOverlay').classList.add('open');
 }
 function closeBookModal() { $('bookOverlay').classList.remove('open'); }
@@ -1848,14 +1962,28 @@ function saveBookModal() {
     if (cur) order = cur.order;
   }
   var color = (JB.colorControlValue && JB.colorControlValue($('bookColorWrap'))) || _bookColor;
+  var cur = _editBookId ? bookById(_editBookId) : null;
   var row = [id, name, _iconDraft || '📖', color, String(order), created];
-  var p = _editBookId
-    ? findRow('Cookbooks', 0, id).then(function (rn) {
+  var p;
+  if (cur && cur.collabSheetId) {
+    var meta = [name, _iconDraft || '📖', color, String(order), cur.created || created, new Date().toISOString(), id, cur.collabOwner || ''];
+    p = (typeof rcGuardWrite === 'function' ? rcGuardWrite : function (x) { return x; })(
+      JB.api('PUT', sheetUrl(cur.collabSheetId, '/values/Meta!A2:H2?valueInputOption=RAW'), { values: [meta] })
+    );
+  } else if (_editBookId) {
+    p = findRowInSid(personalSid(), 'Cookbooks', 0, id).then(function (rn) {
       if (rn < 0) throw new Error('Livro não encontrado');
-      return JB.api('PUT', ssUrl('/values/Cookbooks!A' + rn + ':F' + rn + '?valueInputOption=RAW'), { values: [row] });
-    })
-    : JB.api('POST', ssUrl('/values/Cookbooks!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] });
+      return JB.api('PUT', personalSsUrl('/values/Cookbooks!A' + rn + ':F' + rn + '?valueInputOption=RAW'), { values: [row] });
+    });
+  } else {
+    p = JB.api('POST', personalSsUrl('/values/Cookbooks!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] });
+  }
   p.then(function () {
+    if (JB.isGhost && JB.isGhost() && cur) {
+      cur.name = name;
+      cur.icon = _iconDraft || cur.icon;
+      cur.color = color;
+    }
     closeBookModal();
     return refreshQuiet();
   }).catch(function (e) { toast(e.message || 'Falha ao salvar'); });
@@ -1865,6 +1993,12 @@ function deleteBookModal() {
   if (!_editBookId) return;
   var id = _editBookId;
   var book = bookById(id);
+  if (book && book.collabSheetId && typeof rcLeaveOrDelete === 'function') {
+    closeBookModal();
+    openBookId = id;
+    rcLeaveOrDelete();
+    return;
+  }
   var recs = recipesInBook(id);
   var title = 'Excluir livro?';
   var msg = recs.length
@@ -1985,7 +2119,12 @@ function addRecipePlan(recipeId, date) {
     return p.recipeId === recipeId && p.date === date;
   });
   if (dup) { toast('Já agendado para esse dia'); return; }
-  var plan = { id: uuid(), recipeId: recipeId, date: date, created: todayISO() };
+  var rec = recipeById(recipeId);
+  var book = rec && bookById(rec.cookbookId);
+  var plan = {
+    id: uuid(), recipeId: recipeId, date: date, created: todayISO(),
+    title: rec ? rec.title : '', icon: rec ? rec.icon : '', color: book ? book.color : ''
+  };
   if (JB.isGhost && JB.isGhost()) {
     DATA.plans = (DATA.plans || []).concat([plan]);
     if (JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();
@@ -1993,8 +2132,8 @@ function addRecipePlan(recipeId, date) {
     toast('Prazo adicionado');
     return;
   }
-  JB.api('POST', ssUrl('/values/Plans!A:D:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {
-    values: [[plan.id, plan.recipeId, plan.date, plan.created]]
+  JB.api('POST', personalSsUrl('/values/Plans!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {
+    values: [planRowVals(plan)]
   }).then(function () {
     DATA.plans = (DATA.plans || []).concat([plan]);
     if (JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();
@@ -2449,16 +2588,21 @@ function saveRecipeModal() {
       String(order), _editRecipeId ? (recipeById(_editRecipeId).source || '') : 'manual',
       _editRecipeId ? (recipeById(_editRecipeId).sourceId || '') : '', created
     ];
-    var p = _editRecipeId
-      ? findRow('Recipes', 0, id).then(function (rn) {
+    var book = bookById(openBookId);
+    var sid = rcSidForBook(book);
+    var write = _editRecipeId
+      ? findRowInSid(sid, 'Recipes', 0, id).then(function (rn) {
         if (rn < 0) throw new Error('Receita não encontrada');
-        return JB.api('PUT', ssUrl('/values/Recipes!A' + rn + ':L' + rn + '?valueInputOption=RAW'), { values: [row] })
+        return JB.api('PUT', sheetUrl(sid, '/values/Recipes!A' + rn + ':L' + rn + '?valueInputOption=RAW'), { values: [row] })
           .then(function () { return replaceRecipeChildren(id); });
       })
-      : JB.api('POST', ssUrl('/values/Recipes!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
+      : JB.api('POST', sheetUrl(sid, '/values/Recipes!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
         .then(function () { return replaceRecipeChildren(id); });
+    var p = (typeof rcGuardWrite === 'function') ? rcGuardWrite(write) : write;
     var inBook = view === 'book';
     return p.then(function () {
+      return (typeof rcTouchBook === 'function') ? rcTouchBook(book) : null;
+    }).then(function () {
       closeRecipeModal();
       if (!inBook) {
         openRecipeId = id;
@@ -2489,6 +2633,8 @@ function focusRecipePage(id) {
 }
 
 function replaceRecipeChildren(recipeId) {
+  var book = bookById(openBookId) || bookById((recipeById(recipeId) || {}).cookbookId);
+  var sid = rcSidForBook(book);
   return clearChildren(recipeId).then(function () {
     var ings = _ingDraft.filter(function (x) { return String(x.text || '').trim(); }).map(function (x, i) {
       if (!x.id) x.id = uuid();
@@ -2518,17 +2664,20 @@ function replaceRecipeChildren(recipeId) {
     var chain = Promise.resolve();
     if (ings.length) {
       chain = chain.then(function () {
-        return JB.api('POST', ssUrl('/values/Ingredients!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
+        invalidateRowCacheForSid(sid, 'Ingredients');
+        return JB.api('POST', sheetUrl(sid, '/values/Ingredients!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
       });
     }
     if (steps.length) {
       chain = chain.then(function () {
-        return JB.api('POST', ssUrl('/values/Steps!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
+        invalidateRowCacheForSid(sid, 'Steps');
+        return JB.api('POST', sheetUrl(sid, '/values/Steps!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
       });
     }
     if (parts.length) {
       chain = chain.then(function () {
-        return JB.api('POST', ssUrl('/values/Parts!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: parts });
+        invalidateRowCacheForSid(sid, 'Parts');
+        return JB.api('POST', sheetUrl(sid, '/values/Parts!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: parts });
       });
     }
     return chain;
@@ -2536,11 +2685,15 @@ function replaceRecipeChildren(recipeId) {
 }
 
 function clearChildren(recipeId) {
+  var rec = recipeById(recipeId);
+  var book = bookById((rec && rec.cookbookId) || openBookId);
+  var sid = rcSidForBook(book);
+  var grid = rcGridForSid(sid);
   return Promise.all([
-    JB.api('GET', ssUrl('/values/Ingredients?valueRenderOption=UNFORMATTED_VALUE')),
-    JB.api('GET', ssUrl('/values/Steps?valueRenderOption=UNFORMATTED_VALUE')),
-    recipesGrid.Parts != null
-      ? JB.api('GET', ssUrl('/values/Parts?valueRenderOption=UNFORMATTED_VALUE'))
+    JB.api('GET', sheetUrl(sid, '/values/Ingredients?valueRenderOption=UNFORMATTED_VALUE')),
+    JB.api('GET', sheetUrl(sid, '/values/Steps?valueRenderOption=UNFORMATTED_VALUE')),
+    grid.Parts != null
+      ? JB.api('GET', sheetUrl(sid, '/values/Parts?valueRenderOption=UNFORMATTED_VALUE'))
       : Promise.resolve({ values: [] })
   ]).then(function (pack) {
     var ingRows = collectRowNums(pack[0].values, 1, recipeId);
@@ -2553,11 +2706,14 @@ function clearChildren(recipeId) {
         reqs.push({ deleteDimension: { range: { sheetId: sheetId, dimension: 'ROWS', startIndex: rn - 1, endIndex: rn } } });
       });
     }
-    pushDeletes(recipesGrid.Ingredients, ingRows);
-    pushDeletes(recipesGrid.Steps, stepRows);
-    pushDeletes(recipesGrid.Parts, partRows);
+    pushDeletes(grid.Ingredients, ingRows);
+    pushDeletes(grid.Steps, stepRows);
+    pushDeletes(grid.Parts, partRows);
     if (!reqs.length) return null;
-    return JB.api('POST', ssUrl(':batchUpdate'), { requests: reqs });
+    invalidateRowCacheForSid(sid, 'Ingredients');
+    invalidateRowCacheForSid(sid, 'Steps');
+    invalidateRowCacheForSid(sid, 'Parts');
+    return JB.api('POST', sheetUrl(sid, ':batchUpdate'), { requests: reqs });
   });
 }
 
@@ -2583,34 +2739,40 @@ function deleteRecipeModal() {
 }
 
 function deleteRecipeCascade(id) {
-  return clearChildren(id).then(function () {
+  var rec = recipeById(id);
+  var book = rec && bookById(rec.cookbookId);
+  var sid = rcSidForBook(book);
+  var write = clearChildren(id).then(function () {
     return deletePlansForRecipes([id]);
   }).then(function () {
-    return findRow('Recipes', 0, id).then(function (rn) {
+    return findRowInSid(sid, 'Recipes', 0, id).then(function (rn) {
       if (rn < 0) return;
-      return deleteSheetRow('Recipes', rn);
+      return deleteSheetRowInSid(sid, 'Recipes', rn);
     });
+  }).then(function () {
+    if (typeof rcTouchBook === 'function') return rcTouchBook(book);
   }).then(function () {
     if (JB.cal && JB.cal.clearHubCache) JB.cal.clearHubCache();
   });
+  return (typeof rcGuardWrite === 'function') ? rcGuardWrite(write) : write;
 }
 
 function findRow(tab, idCol, id) {
-  return JB.api('GET', ssUrl('/values/' + encodeURIComponent(tab) + '?valueRenderOption=UNFORMATTED_VALUE')).then(function (res) {
-    var rows = res.values || [];
-    for (var i = 1; i < rows.length; i++) {
-      if (String((rows[i] || [])[idCol] || '') === String(id)) return i + 1;
-    }
-    return -1;
+  return findRowInSid(personalSid(), tab, idCol, id);
+}
+
+function deleteSheetRowInSid(sid, tab, rowNum) {
+  var grid = rcGridForSid(sid);
+  var gid = grid[tab];
+  if (gid == null) return Promise.reject(new Error('Aba ' + tab + ' ausente'));
+  invalidateRowCacheForSid(sid, tab);
+  return JB.api('POST', sheetUrl(sid, ':batchUpdate'), {
+    requests: [{ deleteDimension: { range: { sheetId: gid, dimension: 'ROWS', startIndex: rowNum - 1, endIndex: rowNum } } }]
   });
 }
 
 function deleteSheetRow(tab, rowNum) {
-  var sid = recipesGrid[tab];
-  if (sid == null) return Promise.reject(new Error('Aba ' + tab + ' ausente'));
-  return JB.api('POST', ssUrl(':batchUpdate'), {
-    requests: [{ deleteDimension: { range: { sheetId: sid, dimension: 'ROWS', startIndex: rowNum - 1, endIndex: rowNum } } }]
-  });
+  return deleteSheetRowInSid(personalSid(), tab, rowNum);
 }
 
 /* ---- search / online recipes (Spoonacular → TheMealDB) ---- */
@@ -2735,7 +2897,9 @@ function importMeal(source, sourceId) {
       var icon = guessIcon(m.category);
       var src = m.source || source || 'themealdb';
       var row = [id, _searchImportBookId, m.title, icon, m.image || '', '', '', '', String(order), src, String(m.sourceId || sourceId), created];
-      return JB.api('POST', ssUrl('/values/Recipes!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
+      var book = bookById(_searchImportBookId);
+      var sid = rcSidForBook(book);
+      var write = JB.api('POST', sheetUrl(sid, '/values/Recipes!A:L:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [row] })
         .then(function () {
           var ings = (m.ingredients || []).map(function (x, i) {
             return [uuid(), id, x.text || '', x.qty || '', x.unit || '', String(i), ''];
@@ -2746,16 +2910,21 @@ function importMeal(source, sourceId) {
           var chain = Promise.resolve();
           if (ings.length) {
             chain = chain.then(function () {
-              return JB.api('POST', ssUrl('/values/Ingredients!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
+              invalidateRowCacheForSid(sid, 'Ingredients');
+              return JB.api('POST', sheetUrl(sid, '/values/Ingredients!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
             });
           }
           if (steps.length) {
             chain = chain.then(function () {
-              return JB.api('POST', ssUrl('/values/Steps!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
+              invalidateRowCacheForSid(sid, 'Steps');
+              return JB.api('POST', sheetUrl(sid, '/values/Steps!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
             });
           }
-          return chain.then(function () { return id; });
+          return chain.then(function () {
+            if (typeof rcTouchBook === 'function') return rcTouchBook(book);
+          }).then(function () { return id; });
         });
+      return (typeof rcGuardWrite === 'function') ? rcGuardWrite(write) : write;
     }).then(function (id) {
       closeSearch();
       var inBook = view === 'book' && openBookId === _searchImportBookId;

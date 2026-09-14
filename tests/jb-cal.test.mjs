@@ -64,6 +64,36 @@ test('collab Planner sheet is not treated as the personal workbook', function ()
   assert.equal(cal.isCollabPlannerGrid({ Meta: 1, Membros: 2, Planos: 3 }), false);
   assert.equal(cal.isCollabNotasGrid({ Meta: 1, Membros: 2, Itens: 3 }), true);
   assert.equal(cal.isCollabNotasGrid({ Notas: 1, Itens: 2 }), false);
+  assert.equal(cal.isCollabRecipesGrid({ Meta: 1, Membros: 2, Recipes: 3 }), true);
+  assert.equal(cal.isCollabRecipesGrid({ Cookbooks: 1, Recipes: 2, Plans: 3 }), false);
+  assert.equal(cal.isCollabRecipesGrid({ Meta: 1, Membros: 2, Cookbooks: 3 }), false);
+});
+
+test('eventsFromRecipes uses the plan snapshot when the recipe is missing', function () {
+  var plans = [{
+    id: 'p1', recipeId: 'shared-r', date: '2026-09-20',
+    title: 'Arroz de carreteiro', icon: '🥘', color: '#60a5fa'
+  }];
+  var evs = cal.eventsFromRecipes(plans, [], []);
+  assert.equal(evs.length, 1);
+  assert.equal(evs[0].title, '🥘 Arroz de carreteiro');
+  assert.equal(evs[0].color, '#60a5fa');
+  assert.equal(evs[0].href, '/recipes/?r=shared-r');
+  var withRecipe = cal.eventsFromRecipes(plans, [
+    { id: 'shared-r', cookbookId: 'cb', title: 'Live title', icon: '🍲' }
+  ], [{ id: 'cb', name: 'Casa', color: '#111' }]);
+  assert.equal(withRecipe[0].title, '🍲 Live title');
+  assert.match(withRecipe[0].subtitle, /Casa/);
+});
+
+test('Hub Calendar does not read Plans from shared cookbooks', function () {
+  var fromGrid = src.slice(src.indexOf('function loadAppEventsFromGrid'));
+  var recipesBlock = fromGrid.split("if (app === 'recipes')")[1] || '';
+  assert.ok(recipesBlock, 'recipes loadAppEventsFromGrid branch');
+  var chunk = recipesBlock.slice(0, 1200);
+  assert.match(chunk, /Plans/);
+  assert.doesNotMatch(chunk, /Compartilhadas/);
+  assert.match(src, /isCollabRecipesGrid\(grid\)/);
 });
 
 test('capByApp hides the 6th item per app until expanded', function () {

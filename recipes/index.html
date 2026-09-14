@@ -119,6 +119,41 @@
   </div>
 </div>
 
+<div class="overlay" id="shareOverlay" onclick="if(event.target===this)rcCloseShare()">
+  <div class="modal modal-wide">
+    <div class="mh"><div class="mt">Compartilhar — <span id="shareListTitle"></span></div><button class="x" onclick="rcCloseShare()">✕</button></div>
+    <div class="fg">
+      <label class="fl">Convidar por e-mail</label>
+      <div class="share-invite-row">
+        <input class="field" id="shareInviteEmail" placeholder="amigo@gmail.com" type="email">
+        <button class="btn" type="button" onclick="rcInviteMember()">Convidar</button>
+      </div>
+      <div class="rg">Salva o convite, tenta dar acesso <b>Editor</b> no Drive e abre o e-mail com o <b>link Joelboard</b> (é esse que o outro precisa abrir).</div>
+    </div>
+    <div class="fg">
+      <label class="fl">Membros</label>
+      <div id="shareMembers" class="share-members"></div>
+    </div>
+    <div class="fg">
+      <label class="fl">Link Joelboard</label>
+      <div class="share-copy-row">
+        <input class="field share-link-inp" id="shareJoinLink" type="text" readonly>
+        <button class="share-copy-btn" type="button" onclick="rcCopyShareField('shareJoinLink')">Copiar</button>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Link da planilha (Google Drive)</label>
+      <div class="share-copy-row">
+        <input class="field share-link-inp" id="shareSheetLink" type="text" readonly>
+        <button class="share-copy-btn" type="button" onclick="rcCopyShareField('shareSheetLink')">Copiar</button>
+      </div>
+      <div class="rg" style="margin-top:8px">Se o convite automático falhar, abra a planilha e compartilhe com <b>Editor</b>. O outro entra pelo <b>link Joelboard</b>, não só pelo link do Drive.</div>
+      <button class="btn ghost" style="width:100%;margin-top:8px" type="button" onclick="rcOpenDriveShare()">↗ Abrir planilha no Drive</button>
+    </div>
+    <button class="btn-primary" onclick="rcCloseShare()">Pronto</button>
+  </div>
+</div>
+
 <div class="overlay" id="setOverlay" onclick="if(event.target===this)closeSettings()">
   <div class="modal">
     <div class="mh"><div class="mt">Ajustes</div><button class="x" onclick="closeSettings()">✕</button></div>
@@ -153,5 +188,6 @@
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="/joelboard.js"></script>
 <script src="/recipes.js"></script>
+<script src="/recipes-collab.js"></script>
 </body>
 </html>

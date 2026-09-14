@@ -38,8 +38,8 @@ var _spreadIntro = true;
 var RECIPES_TABS = [
   ['Cookbooks', ['ID', 'Nome', 'Icone', 'Cor', 'Ordem', 'Criado']],
   ['Recipes', ['ID', 'CookbookID', 'Titulo', 'Icone', 'ImageUrl', 'Porcoes', 'Minutos', 'Notas', 'Ordem', 'Source', 'SourceID', 'Criado']],
-  ['Ingredients', ['ID', 'RecipeID', 'Texto', 'Qtd', 'Unidade', 'Ordem', 'PartID', 'Qtd2', 'Unidade2']],
-  ['Steps', ['ID', 'RecipeID', 'Texto', 'Ordem', 'PartID']],
+  ['Ingredients', ['ID', 'RecipeID', 'Texto', 'Qtd', 'Unidade', 'Ordem', 'PartID', 'Qtd2', 'Unidade2', 'Opcional']],
+  ['Steps', ['ID', 'RecipeID', 'Texto', 'Ordem', 'PartID', 'Opcional']],
   ['Parts', ['ID', 'RecipeID', 'Nome', 'Ordem', 'SourceIngID']],
   ['Plans', ['ID', 'RecipeID', 'Data', 'Criado', 'Titulo', 'Icone', 'Cor']],
   ['Settings', ['Chave', 'Valor']],
@@ -176,6 +176,14 @@ function formatIngAlt(ing, r) {
   var bits = [amt, ing.unit2, ing.text].filter(Boolean).join(' ').trim();
   return bits ? '(ou ' + bits + ')' : '';
 }
+function isOptional(x) {
+  if (!x) return false;
+  if (x.optional === true || x.optional === 1) return true;
+  var s = String(x.optional == null ? '' : x.optional).trim().toLowerCase();
+  return s === '1' || s === 'sim' || s === 'true' || s === 'opcional' || s === 'x';
+}
+function optionalCell(x) { return isOptional(x) ? '1' : ''; }
+function formatIngOpt(ing) { return isOptional(ing) ? '(opcional)' : ''; }
 function unitHintText(ing, r) {
   var u = matchUnit(ing && ing.unit);
   if (!u || !u.si) return '';
@@ -275,10 +283,10 @@ function recipeRowVals(r) {
   ];
 }
 function ingRowVals(x) {
-  return [x.id, x.recipeId, x.text || '', x.qty || '', x.unit || '', String(x.order || 0), x.partId || '', x.qty2 || '', x.unit2 || ''];
+  return [x.id, x.recipeId, x.text || '', x.qty || '', x.unit || '', String(x.order || 0), x.partId || '', x.qty2 || '', x.unit2 || '', optionalCell(x)];
 }
 function stepRowVals(x) {
-  return [x.id, x.recipeId, x.text || '', String(x.order || 0), x.partId || ''];
+  return [x.id, x.recipeId, x.text || '', String(x.order || 0), x.partId || '', optionalCell(x)];
 }
 function partRowVals(p) {
   return [p.id, p.recipeId, p.name || '', String(p.order || 0), p.sourceIngId || ''];
@@ -807,7 +815,8 @@ function parseIngredients(rows) {
     out.push({
       id: String(r[0]), recipeId: String(r[1] || ''), text: String(r[2] || ''),
       qty: String(r[3] || ''), unit: String(r[4] || ''), order: Number(r[5]) || 0,
-      partId: String(r[6] || ''), qty2: String(r[7] || ''), unit2: String(r[8] || '')
+      partId: String(r[6] || ''), qty2: String(r[7] || ''), unit2: String(r[8] || ''),
+      optional: String(r[9] || '')
     });
   }
   out.sort(function (a, b) { return a.order - b.order; });
@@ -820,7 +829,7 @@ function parseSteps(rows) {
     if (!r[0]) continue;
     out.push({
       id: String(r[0]), recipeId: String(r[1] || ''), text: String(r[2] || ''),
-      order: Number(r[3]) || 0, partId: String(r[4] || '')
+      order: Number(r[3]) || 0, partId: String(r[4] || ''), optional: String(r[5] || '')
     });
   }
   out.sort(function (a, b) { return a.order - b.order; });
@@ -1461,7 +1470,8 @@ function shopIngLabel(ing, r) {
   if (typeof formatIngLabel === 'function') {
     var main = formatIngLabel(ing, r);
     var alt = typeof formatIngAlt === 'function' ? formatIngAlt(ing, r) : '';
-    return [main, alt].filter(Boolean).join(' ').trim();
+    var opt = typeof formatIngOpt === 'function' ? formatIngOpt(ing) : '';
+    return [main, alt, opt].filter(Boolean).join(' ').trim();
   }
   return [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ').trim();
 }
@@ -1826,7 +1836,10 @@ function paintServView(recipeId) {
     var label = formatIngLabel(ing, r);
     var t = li.querySelector('.ck-t');
     var alt = formatIngAlt(ing, r);
-    if (t) t.innerHTML = esc(label) + (alt ? ' <span class="ing-alt">' + esc(alt) + '</span>' : '');
+    var opt = formatIngOpt(ing);
+    if (t) t.innerHTML = esc(label)
+      + (alt ? ' <span class="ing-alt">' + esc(alt) + '</span>' : '')
+      + (opt ? ' <span class="ing-alt">' + esc(opt) + '</span>' : '');
     var hint = unitHintText(ing, r);
     var h = li.querySelector('.ing-hint');
     if (hint) {
@@ -1838,7 +1851,7 @@ function paintServView(recipeId) {
       if (h) h.textContent = hint;
     } else if (h && h.parentNode) h.parentNode.removeChild(h);
     var btn = li.querySelector('.ichk');
-    if (btn) btn.setAttribute('aria-label', [label, alt].filter(Boolean).join(' '));
+    if (btn) btn.setAttribute('aria-label', [label, alt, opt].filter(Boolean).join(' '));
   });
 }
 function servingsStepper(r) {
@@ -2024,14 +2037,21 @@ function revealRecipePart(el) {
 function formatIngTextHtml(ing, r) {
   var label = formatIngLabel(ing, r);
   var alt = formatIngAlt(ing, r);
+  var opt = formatIngOpt(ing);
   var hint = unitHintText(ing, r);
   return '<span class="ck-t">' + esc(label)
     + (alt ? ' <span class="ing-alt">' + esc(alt) + '</span>' : '')
+    + (opt ? ' <span class="ing-alt">' + esc(opt) + '</span>' : '')
     + '</span>'
     + (hint ? '<span class="ing-hint">' + esc(hint) + '</span>' : '');
 }
 function formatIngAria(ing, r) {
-  return [formatIngLabel(ing, r), formatIngAlt(ing, r)].filter(Boolean).join(' ');
+  return [formatIngLabel(ing, r), formatIngAlt(ing, r), formatIngOpt(ing)].filter(Boolean).join(' ');
+}
+function formatStepTextHtml(st) {
+  return '<span class="ck-t">' + esc(st.text)
+    + (isOptional(st) ? ' <span class="ing-alt">(opcional)</span>' : '')
+    + '</span>';
 }
 function miseIngRow(r, ing) {
   var on = isChecked(r.id, ing.id);
@@ -2079,7 +2099,7 @@ function stepsSection(r) {
       + ' onclick="toggleStepCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(st.id) + '\')"'
       + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="Passo ' + (i + 1) + '">'
       + (on ? '✓' : (i + 1)) + '</button>'
-      + '<span><span class="ck-t">' + esc(st.text) + '</span></span></li>';
+      + '<span>' + formatStepTextHtml(st) + '</span></li>';
   }).join('');
   return '<div class="leaf-sec">'
     + '<h3>Passo a passo' + (steps.length ? '<em data-tally="' + esc(r.id + '|step') + '">' + done + '/' + steps.length + '</em>' : '') + '</h3>'
@@ -2119,7 +2139,7 @@ function partSection(r, p) {
       + ' onclick="toggleStepCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(st.id) + '\')"'
       + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="Passo ' + (i + 1) + '">'
       + (on ? '✓' : (i + 1)) + '</button>'
-      + '<span><span class="ck-t">' + esc(st.text) + '</span></span></li>';
+      + '<span>' + formatStepTextHtml(st) + '</span></li>';
   }).join('');
   return '<div class="leaf-part' + (open ? ' is-open' : '') + '" id="rc-part-' + esc(r.id) + '-' + esc(p.id) + '" data-part-key="' + esc(key) + '">'
     + '<button type="button" class="leaf-part-head" onclick="toggleRecipePart(\'' + escAttr(r.id) + '\',\'' + escAttr(p.id) + '\',event)"'
@@ -2349,7 +2369,7 @@ function renderDetail() {
       + ' onclick="toggleStepCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(st.id) + '\')"'
       + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="Passo ' + (i + 1) + '">'
       + (on ? '✓' : (i + 1)) + '</button>'
-      + '<span><span class="ck-t">' + esc(st.text) + '</span></span></li>';
+      + '<span>' + formatStepTextHtml(st) + '</span></li>';
   }).join('');
   return '<div class="detail">'
     + '<div class="secbar"><button class="back" onclick="backToBook()">← ' + esc((book && book.name) || 'Livro') + '</button></div>'
@@ -2729,23 +2749,19 @@ function openRecipeModal(id) {
   $('recipeMinutes').value = r ? r.minutes : '';
   $('recipeNotes').value = r ? r.notes : '';
   _ingDraft = r ? ingsFor(r.id).map(draftIngFrom) : [blankIng()];
-  _stepDraft = r ? stepsFor(r.id).map(function (x) {
-    return { id: x.id, text: x.text };
-  }) : [{ id: '', text: '' }];
+  _stepDraft = r ? stepsFor(r.id).map(draftStepFrom) : [blankStep()];
   _partDraft = r ? partsFor(r.id).map(function (p) {
     return {
       id: p.id,
       name: p.name,
       sourceIngId: p.sourceIngId || '',
       ings: ingsFor(r.id, p.id).map(draftIngFrom),
-      steps: stepsFor(r.id, p.id).map(function (x) {
-        return { id: x.id, text: x.text };
-      })
+      steps: stepsFor(r.id, p.id).map(draftStepFrom)
     };
   }) : [];
   _partDraft.forEach(function (p) {
     if (!p.ings.length) p.ings.push(blankIng());
-    if (!p.steps.length) p.steps.push({ id: '', text: '' });
+    if (!p.steps.length) p.steps.push(blankStep());
   });
   paintIconWrap('recipe');
   paintIngLines();
@@ -3030,9 +3046,46 @@ function rcDragEnd() {
   rcPaintList(d.listId);
 }
 
-function blankIng() { return { id: '', text: '', qty: '', unit: '', qty2: '', unit2: '' }; }
+function blankIng() { return { id: '', text: '', qty: '', unit: '', qty2: '', unit2: '', optional: false }; }
 function draftIngFrom(x) {
-  return { id: x.id, text: x.text, qty: x.qty, unit: x.unit, qty2: x.qty2 || '', unit2: x.unit2 || '' };
+  return { id: x.id, text: x.text, qty: x.qty, unit: x.unit, qty2: x.qty2 || '', unit2: x.unit2 || '', optional: isOptional(x) };
+}
+function blankStep() { return { id: '', text: '', optional: false }; }
+function draftStepFrom(x) {
+  return { id: x.id, text: x.text, optional: isOptional(x) };
+}
+function lineMoreHtml(on, toggleFn) {
+  return '<div class="jb-dd edit-more up' + (on ? ' is-on' : '') + '">'
+    + '<button type="button" class="edit-more-btn" onclick="JB.ddToggle(this)" title="Mais opções" aria-label="Mais opções">⋯</button>'
+    + '<div class="jb-dd-menu">'
+    + '<div class="jb-dd-opt' + (on ? ' is-sel' : '') + '" onclick="' + toggleFn + '">Opcional</div>'
+    + '</div></div>';
+}
+function toggleIngOptional(i) {
+  if (window.JB && JB.ddClose) JB.ddClose();
+  if (!_ingDraft[i]) return;
+  _ingDraft[i].optional = !isOptional(_ingDraft[i]);
+  paintIngLines();
+}
+function toggleStepOptional(i) {
+  if (window.JB && JB.ddClose) JB.ddClose();
+  if (!_stepDraft[i]) return;
+  _stepDraft[i].optional = !isOptional(_stepDraft[i]);
+  paintStepLines();
+}
+function togglePartIngOptional(pi, j) {
+  if (window.JB && JB.ddClose) JB.ddClose();
+  var p = _partDraft[pi];
+  if (!p || !p.ings || !p.ings[j]) return;
+  p.ings[j].optional = !isOptional(p.ings[j]);
+  paintPartBlocks();
+}
+function togglePartStepOptional(pi, j) {
+  if (window.JB && JB.ddClose) JB.ddClose();
+  var p = _partDraft[pi];
+  if (!p || !p.steps || !p.steps[j]) return;
+  p.steps[j].optional = !isOptional(p.steps[j]);
+  paintPartBlocks();
 }
 function ingHasAlt(line) {
   return !!(line && (line._altOn || String(line.qty2 || '').trim() || String(line.unit2 || '').trim()));
@@ -3142,18 +3195,19 @@ function paintIngLines() {
   el.innerHTML = _ingDraft.map(function (line, i) {
     var linked = !!draftPartFromIng(line.id);
     var altOn = ingHasAlt(line);
-    return '<div class="edit-line has-part-btn has-alt-btn' + (altOn ? ' is-alt' : '') + '" data-i="' + i + '">'
+    return '<div class="edit-line has-part-btn has-alt-btn has-more-btn' + (altOn ? ' is-alt' : '') + '" data-i="' + i + '">'
       + editHandle('ing')
       + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_ingDraft[' + i + '].text=this.value">'
       + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_ingDraft[' + i + '].qty=this.value">'
       + unitPickerHtml(line, 'pickIngUnit(' + i + ',', '_ingDraft[' + i + '].unit=this.value')
       + ingAltBtn(altOn, 'toggleIngAlt(' + i + ')')
       + '<button type="button" class="ing-part-make' + (linked ? ' is-on' : '') + '" onclick="makePartFromDraftIng(' + i + ')"'
-      + ' title="' + (linked ? 'Já é uma parte' : 'Criar parte') + '" aria-label="' + (linked ? 'Já é uma parte' : 'Criar parte') + '">'
+      + ' title="' + (linked ? 'Remover parte' : 'Criar parte') + '" aria-label="' + (linked ? 'Remover parte' : 'Criar parte') + '">'
       + (linked
         ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v9M4.2 8.2L8 12l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3.5h8v4.2c0 2.2-1.8 4-4 4s-4-1.8-4-4z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M8 7.2v5.3M6.2 11.2L8 13l1.8-1.8" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>')
       + '</button>'
+      + lineMoreHtml(isOptional(line), 'toggleIngOptional(' + i + ')')
       + '<button type="button" class="rm" onclick="rmIngLine(' + i + ')">×</button>'
       + (altOn ? ingAltFields(line, '_ingDraft[' + i + '].qty2=this.value', 'pickIngUnit2(' + i + ',', '_ingDraft[' + i + '].unit2=this.value') : '')
       + '</div>';
@@ -3163,14 +3217,15 @@ function paintStepLines() {
   var el = $('recipeStepList');
   if (!el) return;
   el.innerHTML = _stepDraft.map(function (line, i) {
-    return '<div class="edit-line step" data-i="' + i + '">'
+    return '<div class="edit-line step has-more-btn" data-i="' + i + '">'
       + editHandle('step')
       + '<input class="field" placeholder="Passo ' + (i + 1) + '" value="' + esc(line.text) + '" oninput="_stepDraft[' + i + '].text=this.value">'
+      + lineMoreHtml(isOptional(line), 'toggleStepOptional(' + i + ')')
       + '<button type="button" class="rm" onclick="rmStepLine(' + i + ')">×</button></div>';
   }).join('');
 }
 function addIngLine() { _ingDraft.push(blankIng()); paintIngLines(); }
-function addStepLine() { _stepDraft.push({ id: '', text: '' }); paintStepLines(); }
+function addStepLine() { _stepDraft.push(blankStep()); paintStepLines(); }
 function rmIngLine(i) {
   var gone = _ingDraft[i] && _ingDraft[i].id;
   _ingDraft.splice(i, 1);
@@ -3185,19 +3240,23 @@ function rmIngLine(i) {
 function makePartFromDraftIng(i) {
   var line = _ingDraft[i];
   if (!line) return;
-  var name = String(line.text || '').trim();
-  if (!name) { toast('Dê um nome ao ingrediente'); return; }
   if (!line.id) line.id = uuid();
-  if (draftPartFromIng(line.id)) {
-    toast('Essa parte já existe');
+  var existing = draftPartFromIng(line.id);
+  if (existing) {
+    var pi = _partDraft.indexOf(existing);
+    if (pi >= 0) _partDraft.splice(pi, 1);
+    paintIngLines();
+    paintPartBlocks();
     return;
   }
+  var name = String(line.text || '').trim();
+  if (!name) { toast('Dê um nome ao ingrediente'); return; }
   _partDraft.push({
     id: uuid(),
     name: name,
     sourceIngId: line.id,
     ings: [blankIng()],
-    steps: [{ id: '', text: '' }]
+    steps: [blankStep()]
   });
   paintIngLines();
   paintPartBlocks();
@@ -3207,7 +3266,7 @@ function makePartFromDraftIng(i) {
     if (last && last.scrollIntoView) last.scrollIntoView({ block: 'nearest' });
   }, 30);
 }
-function rmStepLine(i) { _stepDraft.splice(i, 1); if (!_stepDraft.length) _stepDraft.push({ id: '', text: '' }); paintStepLines(); }
+function rmStepLine(i) { _stepDraft.splice(i, 1); if (!_stepDraft.length) _stepDraft.push(blankStep()); paintStepLines(); }
 
 function addPartBlock() {
   _partDraft.push({
@@ -3215,7 +3274,7 @@ function addPartBlock() {
     name: '',
     sourceIngId: '',
     ings: [blankIng()],
-    steps: [{ id: '', text: '' }]
+    steps: [blankStep()]
   });
   paintPartBlocks();
 }
@@ -3230,7 +3289,7 @@ function addPartIng(pi) {
 }
 function addPartStep(pi) {
   if (!_partDraft[pi]) return;
-  _partDraft[pi].steps.push({ id: '', text: '' });
+  _partDraft[pi].steps.push(blankStep());
   paintPartBlocks();
 }
 function rmPartIng(pi, i) {
@@ -3244,7 +3303,7 @@ function rmPartStep(pi, i) {
   var p = _partDraft[pi];
   if (!p) return;
   p.steps.splice(i, 1);
-  if (!p.steps.length) p.steps.push({ id: '', text: '' });
+  if (!p.steps.length) p.steps.push(blankStep());
   paintPartBlocks();
 }
 function paintPartBlocks() {
@@ -3253,20 +3312,22 @@ function paintPartBlocks() {
   el.innerHTML = _partDraft.map(function (p, i) {
     var ings = (p.ings || []).map(function (line, j) {
       var altOn = ingHasAlt(line);
-      return '<div class="edit-line has-alt-btn' + (altOn ? ' is-alt' : '') + '" data-i="' + j + '">'
+      return '<div class="edit-line has-alt-btn has-more-btn' + (altOn ? ' is-alt' : '') + '" data-i="' + j + '">'
         + editHandle('ping-' + i)
         + '<input class="field" placeholder="Ingrediente" value="' + esc(line.text) + '" oninput="_partDraft[' + i + '].ings[' + j + '].text=this.value">'
         + '<input class="field qty-field" placeholder="Qtd" value="' + esc(line.qty) + '" oninput="_partDraft[' + i + '].ings[' + j + '].qty=this.value">'
         + unitPickerHtml(line, 'pickPartUnit(' + i + ',' + j + ',', '_partDraft[' + i + '].ings[' + j + '].unit=this.value')
         + ingAltBtn(altOn, 'togglePartIngAlt(' + i + ',' + j + ')')
+        + lineMoreHtml(isOptional(line), 'togglePartIngOptional(' + i + ',' + j + ')')
         + '<button type="button" class="rm" onclick="rmPartIng(' + i + ',' + j + ')">×</button>'
         + (altOn ? ingAltFields(line, '_partDraft[' + i + '].ings[' + j + '].qty2=this.value', 'pickPartUnit2(' + i + ',' + j + ',', '_partDraft[' + i + '].ings[' + j + '].unit2=this.value') : '')
         + '</div>';
     }).join('');
     var steps = (p.steps || []).map(function (line, j) {
-      return '<div class="edit-line step" data-i="' + j + '">'
+      return '<div class="edit-line step has-more-btn" data-i="' + j + '">'
         + editHandle('pstep-' + i)
         + '<input class="field" placeholder="Passo ' + (j + 1) + '" value="' + esc(line.text) + '" oninput="_partDraft[' + i + '].steps[' + j + '].text=this.value">'
+        + lineMoreHtml(isOptional(line), 'togglePartStepOptional(' + i + ',' + j + ')')
         + '<button type="button" class="rm" onclick="rmPartStep(' + i + ',' + j + ')">×</button></div>';
     }).join('');
     return '<div class="part-edit">'
@@ -3353,10 +3414,10 @@ function replaceRecipeChildren(recipeId) {
   return clearChildren(recipeId).then(function () {
     var ings = _ingDraft.filter(function (x) { return String(x.text || '').trim(); }).map(function (x, i) {
       if (!x.id) x.id = uuid();
-      return [x.id, recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), '', String(x.qty2 || '').trim(), String(x.unit2 || '').trim()];
+      return [x.id, recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), '', String(x.qty2 || '').trim(), String(x.unit2 || '').trim(), optionalCell(x)];
     });
     var steps = _stepDraft.filter(function (x) { return String(x.text || '').trim(); }).map(function (x, i) {
-      return [x.id || uuid(), recipeId, String(x.text).trim(), String(i), ''];
+      return [x.id || uuid(), recipeId, String(x.text).trim(), String(i), '', optionalCell(x)];
     });
     var savedIng = {};
     ings.forEach(function (row) { savedIng[row[0]] = true; });
@@ -3370,23 +3431,23 @@ function replaceRecipeChildren(recipeId) {
       var src = savedIng[String(p.sourceIngId || '')] ? String(p.sourceIngId) : '';
       parts.push([pid, recipeId, name || 'Parte', String(pi), src]);
       pIngs.forEach(function (x, i) {
-        ings.push([x.id || uuid(), recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), pid, String(x.qty2 || '').trim(), String(x.unit2 || '').trim()]);
+        ings.push([x.id || uuid(), recipeId, String(x.text).trim(), String(x.qty || '').trim(), String(x.unit || '').trim(), String(i), pid, String(x.qty2 || '').trim(), String(x.unit2 || '').trim(), optionalCell(x)]);
       });
       pSteps.forEach(function (x, i) {
-        steps.push([x.id || uuid(), recipeId, String(x.text).trim(), String(i), pid]);
+        steps.push([x.id || uuid(), recipeId, String(x.text).trim(), String(i), pid, optionalCell(x)]);
       });
     });
     var chain = Promise.resolve();
     if (ings.length) {
       chain = chain.then(function () {
         invalidateRowCacheForSid(sid, 'Ingredients');
-        return JB.api('POST', sheetUrl(sid, '/values/Ingredients!A:I:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
+        return JB.api('POST', sheetUrl(sid, '/values/Ingredients!A:J:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
       });
     }
     if (steps.length) {
       chain = chain.then(function () {
         invalidateRowCacheForSid(sid, 'Steps');
-        return JB.api('POST', sheetUrl(sid, '/values/Steps!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
+        return JB.api('POST', sheetUrl(sid, '/values/Steps!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
       });
     }
     if (parts.length) {
@@ -3626,13 +3687,13 @@ function importMeal(source, sourceId) {
           if (ings.length) {
             chain = chain.then(function () {
               invalidateRowCacheForSid(sid, 'Ingredients');
-              return JB.api('POST', sheetUrl(sid, '/values/Ingredients!A:I:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
+              return JB.api('POST', sheetUrl(sid, '/values/Ingredients!A:J:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: ings });
             });
           }
           if (steps.length) {
             chain = chain.then(function () {
               invalidateRowCacheForSid(sid, 'Steps');
-              return JB.api('POST', sheetUrl(sid, '/values/Steps!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
+              return JB.api('POST', sheetUrl(sid, '/values/Steps!A:F:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: steps });
             });
           }
           return chain.then(function () {

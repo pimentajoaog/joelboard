@@ -1064,8 +1064,21 @@ button.step-num{ cursor:pointer; }
 .edit-line.has-alt-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 28px; }
 .edit-line.has-part-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 28px; }
 .edit-line.has-part-btn.has-alt-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 32px 28px; }
+.edit-line.has-alt-btn.has-more-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 28px 28px; }
+.edit-line.has-part-btn.has-alt-btn.has-more-btn{ grid-template-columns:22px minmax(0,1fr) 56px minmax(92px,120px) 32px 32px 28px 28px; }
 .edit-line.is-alt .edit-alt{ grid-column:3 / 5; display:grid; grid-template-columns:56px minmax(0,1fr); gap:6px; }
 .edit-line.step{ grid-template-columns:22px 1fr 28px; }
+.edit-line.step.has-more-btn{ grid-template-columns:22px 1fr 28px 28px; }
+.edit-more{ min-width:0; }
+.edit-more-btn{
+  width:28px; height:36px; padding:0; border-radius:8px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:var(--surface2); border:1px solid var(--border); color:var(--muted);
+  font:inherit; font-size:16px; font-weight:800; line-height:1;
+}
+.edit-more-btn:hover{ color:var(--text); border-color:var(--primary); }
+.edit-more.is-on .edit-more-btn{ color:var(--primary); border-color:var(--primary); }
+.edit-more .jb-dd-menu{ min-width:148px; left:auto; right:0; z-index:600; }
 .edit-handle{
   width:22px; height:36px; padding:0; border:0; background:transparent;
   color:var(--muted); cursor:grab; font-size:14px; line-height:1;

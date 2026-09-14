@@ -141,7 +141,7 @@
             { id: 'ghost-ri1', recipeId: 'ghost-r1', text: 'espaguete', qty: '250', unit: 'g', order: 0 },
             { id: 'ghost-ri2', recipeId: 'ghost-r1', text: 'dentes de alho', qty: '4', unit: '', order: 1 },
             { id: 'ghost-ri3', recipeId: 'ghost-r1', text: 'azeite', qty: '3', unit: 'colheres', order: 2 },
-            { id: 'ghost-ri4', recipeId: 'ghost-r1', text: 'salsinha', qty: '', unit: '', order: 3 },
+            { id: 'ghost-ri4', recipeId: 'ghost-r1', text: 'salsinha', qty: '', unit: '', optional: true, order: 3 },
             { id: 'ghost-ri5', recipeId: 'ghost-r2', text: 'ovos', qty: '3', unit: '', order: 0 },
             { id: 'ghost-ri6', recipeId: 'ghost-r2', text: 'queijo ralado', qty: '50', unit: 'g', order: 1 },
             { id: 'ghost-ri7', recipeId: 'ghost-r3', text: 'arroz cozido', qty: '3', unit: 'xícaras', order: 0 },

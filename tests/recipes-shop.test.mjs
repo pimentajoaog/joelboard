@@ -49,6 +49,16 @@ test('shopping list includes the secondary measure', function () {
   assert.equal(pack.itens[1].texto, '200 g Creme de Leite (ou 2 caixas Creme de Leite)');
 });
 
+test('shopping list marks optional ingredients', function () {
+  var pack = ctx.buildShopList(
+    { id: 'cb1', name: 'Doces', icon: '🧁' },
+    [{ id: 'ro', cookbookId: 'cb1', title: 'Bolo', order: 0, servings: '1' }],
+    [{ id: 'io', recipeId: 'ro', qty: '', unit: '', text: 'salsinha', optional: true, order: 0 }],
+    { io: {} }
+  );
+  assert.equal(pack.itens[1].texto, 'salsinha (opcional)');
+});
+
 test('shopping list uses the current view scale', function () {
   ctx._scaleByRecipe.rs = 4;
   var pack = ctx.buildShopList(

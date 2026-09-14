@@ -21,6 +21,15 @@ test('reorderDraft permutes in place and rejects bad index lists', function () {
   assert.equal(ctx.reorderDraft(arr, [0, 1, 3]), false);
 });
 
+test('parte toggle deletes an existing parte instead of no-op', function () {
+  assert.match(js, /function makePartFromDraftIng/);
+  assert.match(js, /var existing = draftPartFromIng/);
+  assert.match(js, /_partDraft\.splice\(pi, 1\)/);
+  assert.match(js, /function lineMoreHtml/);
+  assert.match(js, /toggleIngOptional/);
+  assert.match(js, /Opcional/);
+});
+
 test('editor paints drag handles on ingredients and steps, not partes', function () {
   assert.match(js, /function rcDragBegin/);
   assert.match(js, /editHandle\('ing'\)/);

@@ -99,6 +99,19 @@ test('snapServings rounds to .0 or .5 when close', function () {
   assert.equal(ctx.setRecipeServings('rsnap', 3.4), 3.5);
 });
 
+test('optional ingredients get a muted marker and stay optional when scaled', function () {
+  var r = { id: 'r5', servings: '2' };
+  var ing = { qty: '1', unit: 'pitada', text: 'noz-moscada', optional: true };
+  assert.equal(ctx.isOptional(ing), true);
+  assert.equal(ctx.formatIngOpt(ing), '(opcional)');
+  ctx._scaleByRecipe.r5 = 6;
+  assert.equal(ctx.formatIngLabel(ing, r), '3 pitada noz-moscada');
+  assert.equal(ctx.formatIngOpt(ing), '(opcional)');
+  assert.equal(ctx.formatIngOpt({ text: 'sal' }), '');
+  assert.equal(ctx.isOptional({ optional: '1' }), true);
+  assert.equal(ctx.isOptional({ optional: '' }), false);
+});
+
 test('secondary measure is muted and scales with the view', function () {
   var r = { id: 'r4', servings: '2' };
   var ing = { qty: '200', unit: 'g', qty2: '2', unit2: 'caixas', text: 'Creme de Leite' };

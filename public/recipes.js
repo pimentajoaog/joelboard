@@ -57,6 +57,7 @@ var FOOD_ICONS = [
 ];
 var BOOK_COLORS = ['#e07a5f', '#f59e0b', '#34d399', '#22d3ee', '#60a5fa', '#a78bfa', '#f472b6', '#fb7185', '#94a3b8'];
 var _scaleByRecipe = {};
+var _servOpenId = '';
 var MEASURE_UNITS = [
   { id: 'cha', label: 'colher de chá', aliases: ['colher de cha', 'colheres de chá', 'colheres de cha', 'cchá', 'ccha', 'tsp', 'teaspoon', 'teaspoons'], si: { n: 5, u: 'ml' } },
   { id: 'sobremesa', label: 'colher de sobremesa', aliases: ['colheres de sobremesa'], si: { n: 10, u: 'ml' } },
@@ -176,14 +177,35 @@ function unitHintText(ing, r) {
   if (u.si.u === 'g' && total >= 1000) return '≈ ' + formatQty(total / 1000) + ' kg';
   return '≈ ' + formatQty(total) + ' ' + u.si.u;
 }
+function snapServings(n) {
+  if (n == null || !isFinite(n)) return null;
+  n = Math.max(0.5, Math.min(99, n));
+  var half = Math.round(n * 2) / 2;
+  if (Math.abs(n - half) <= 0.2 + 1e-9) return half;
+  return Math.round(n * 10) / 10;
+}
+function writeRecipeServings(recipeId, n) {
+  if (n == null || !isFinite(n)) return null;
+  n = Math.max(0.5, Math.min(99, n));
+  var r = typeof recipeById === 'function' ? recipeById(recipeId) : null;
+  var base = recipeBaseServings(r);
+  if (base != null && Math.abs(n - base) < 1e-6) delete _scaleByRecipe[recipeId];
+  else _scaleByRecipe[recipeId] = n;
+  return n;
+}
+function setRecipeServings(recipeId, n) {
+  return writeRecipeServings(recipeId, snapServings(n));
+}
+function formatServInput(n) {
+  if (n == null || !isFinite(n)) return '';
+  var s = String(Math.round(n * 10) / 10);
+  return s.replace('.', ',');
+}
 function bumpRecipeServings(recipeId, dir) {
   var r = typeof recipeById === 'function' ? recipeById(recipeId) : null;
   var cur = recipeViewServings(r) || recipeBaseServings(r);
   if (!cur) return;
-  var next = Math.max(1, Math.round(cur + (dir < 0 ? -1 : 1)));
-  var base = recipeBaseServings(r);
-  if (base && next === base) delete _scaleByRecipe[recipeId];
-  else _scaleByRecipe[recipeId] = next;
+  setRecipeServings(recipeId, cur + (dir < 0 ? -0.5 : 0.5));
   if (typeof render === 'function') render();
 }
 /* ---- measure helpers end ---- */
@@ -469,6 +491,7 @@ function toggleFlipPref() {
 /* ---- boot / sheet ---- */
 function startRecipes() {
   bindBookSearchEsc();
+  bindServChrome();
   loadViewPref();
   loadSpreadPref();
   loadShelfTab();
@@ -1347,8 +1370,20 @@ function bindBookSearchEsc() {
   if (bindBookSearchEsc._on) return;
   bindBookSearchEsc._on = true;
   document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Escape' || !_bookSearchOpen || view !== 'book') return;
+    if (e.key !== 'Escape') return;
     if (document.querySelector('.overlay.open')) return;
+    if (_shopOn) {
+      e.preventDefault();
+      toggleShopMode(false);
+      return;
+    }
+    if (_servOpenId) {
+      e.preventDefault();
+      _servOpenId = '';
+      if (typeof render === 'function') render();
+      return;
+    }
+    if (!_bookSearchOpen || view !== 'book') return;
     e.preventDefault();
     closeBookSearch();
   });
@@ -1720,17 +1755,99 @@ function rcShotFail(img) {
   if (fig && fig.parentNode) fig.parentNode.removeChild(fig);
 }
 
+function bindServChrome() {
+  if (bindServChrome._on) return;
+  bindServChrome._on = true;
+  document.addEventListener('pointerdown', function (e) {
+    if (!_servOpenId) return;
+    if (e.target && e.target.closest && e.target.closest('.serv-panel, .serv-tag')) return;
+    _servOpenId = '';
+    if (typeof render === 'function') render();
+  });
+}
+function toggleServPanel(recipeId) {
+  _servOpenId = _servOpenId === recipeId ? '' : recipeId;
+  if (typeof render === 'function') render();
+}
+function onServSlide(recipeId, raw, commit) {
+  var n = Number(raw);
+  if (!isFinite(n)) return;
+  if (commit) setRecipeServings(recipeId, n);
+  else writeRecipeServings(recipeId, n);
+  paintServView(recipeId);
+}
+function onServType(recipeId, raw, live) {
+  var n = parseQty(raw);
+  if (n == null) {
+    if (!live) paintServView(recipeId);
+    return;
+  }
+  if (live) writeRecipeServings(recipeId, n);
+  else setRecipeServings(recipeId, n);
+  paintServView(recipeId);
+}
+function paintServView(recipeId) {
+  var r = typeof recipeById === 'function' ? recipeById(recipeId) : null;
+  if (!r) return;
+  var viewN = recipeViewServings(r);
+  var shown = formatQty(viewN);
+  document.querySelectorAll('[data-serv="' + recipeId + '"]').forEach(function (el) {
+    var inp = el.querySelector('.serv-input');
+    var range = el.querySelector('.serv-range');
+    var lab = el.querySelector('.serv-n');
+    if (inp && document.activeElement !== inp) inp.value = formatServInput(viewN);
+    if (range) range.value = String(Math.max(1, Math.min(5, viewN || 1)));
+    if (lab) lab.textContent = shown + ' porções';
+  });
+  document.querySelectorAll('.ing-list li[data-chk]').forEach(function (li) {
+    var chk = li.getAttribute('data-chk') || '';
+    if (chk.split('|')[0] !== recipeId) return;
+    var ing = typeof ingById === 'function' ? ingById(li.getAttribute('data-ing')) : null;
+    if (!ing) return;
+    var label = formatIngLabel(ing, r);
+    var t = li.querySelector('.ck-t');
+    if (t) t.textContent = label;
+    var hint = unitHintText(ing, r);
+    var h = li.querySelector('.ing-hint');
+    if (hint) {
+      if (!h && t && t.parentNode) {
+        h = document.createElement('span');
+        h.className = 'ing-hint';
+        t.parentNode.appendChild(h);
+      }
+      if (h) h.textContent = hint;
+    } else if (h && h.parentNode) h.parentNode.removeChild(h);
+    var btn = li.querySelector('.ichk');
+    if (btn) btn.setAttribute('aria-label', label);
+  });
+}
 function servingsStepper(r) {
   var base = recipeBaseServings(r);
   if (!base) {
     return r && r.servings ? '<span class="ftag">' + esc(r.servings) + ' porções</span>' : '';
   }
-  var view = recipeViewServings(r) || base;
-  return '<span class="ftag serv-step">'
-    + '<button type="button" class="serv-btn" onclick="event.stopPropagation();bumpRecipeServings(\'' + escAttr(r.id) + '\',-1)" aria-label="Menos porções">−</button>'
-    + '<span class="serv-n">' + esc(formatQty(view)) + ' porções</span>'
-    + '<button type="button" class="serv-btn" onclick="event.stopPropagation();bumpRecipeServings(\'' + escAttr(r.id) + '\',1)" aria-label="Mais porções">+</button>'
-    + '</span>';
+  var viewN = recipeViewServings(r) || base;
+  var id = escAttr(r.id);
+  if (_servOpenId === r.id) {
+    var slide = Math.max(1, Math.min(5, viewN));
+    return '<span class="serv-panel" data-serv="' + esc(r.id) + '" onclick="event.stopPropagation()">'
+      + '<span class="serv-panel-head">'
+      + '<input class="serv-input" inputmode="decimal" aria-label="Porções" value="' + esc(formatServInput(viewN)) + '"'
+      + ' oninput="onServType(\'' + id + '\',this.value,true)"'
+      + ' onchange="onServType(\'' + id + '\',this.value,false)"'
+      + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();onServType(\'' + id + '\',this.value,false);this.blur()}">'
+      + '<button type="button" class="serv-lab" onclick="event.stopPropagation();toggleServPanel(\'' + id + '\')">porções</button>'
+      + '</span>'
+      + '<input class="serv-range" type="range" min="1" max="5" step="0.1" value="' + slide + '"'
+      + ' aria-label="Ajustar porções" oninput="onServSlide(\'' + id + '\',this.value)"'
+      + ' onchange="onServSlide(\'' + id + '\',this.value,true)">'
+      + '</span>';
+  }
+  return '<button type="button" class="ftag serv-tag" data-serv="' + esc(r.id) + '"'
+    + ' onclick="event.stopPropagation();toggleServPanel(\'' + id + '\')"'
+    + ' aria-expanded="false" aria-label="' + esc(formatQty(viewN) + ' porções') + '">'
+    + '<span class="serv-n">' + esc(formatQty(viewN)) + ' porções</span>'
+    + '</button>';
 }
 function recipeTags(r) {
   var tags = '';

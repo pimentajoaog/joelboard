@@ -56,5 +56,6 @@ test('plaque Notes icon and jb-link are wired', function () {
   assert.match(js, /book-shop-btn/);
   assert.match(js, /plaqueSvg\('notes'\)/);
   assert.match(js, /JB\.link\.createList/);
+  assert.match(js, /e\.key !== 'Escape'[\s\S]*if \(_shopOn\)[\s\S]*toggleShopMode\(false\)/);
   assert.match(html, /jb-link\.js/);
 });

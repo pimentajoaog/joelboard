@@ -89,13 +89,24 @@ test('no stepper base when servings are missing', function () {
   assert.equal(ctx.recipeBaseServings({ servings: '4' }), 4);
 });
 
+test('snapServings rounds to .0 or .5 when close', function () {
+  assert.equal(ctx.snapServings(1.4), 1.5);
+  assert.equal(ctx.snapServings(1.1), 1);
+  assert.equal(ctx.snapServings(2), 2);
+  assert.equal(ctx.snapServings(2.3), 2.5);
+  assert.equal(ctx.snapServings(1.24), 1.2);
+  assert.equal(ctx.snapServings(0.2), 0.5);
+  assert.equal(ctx.setRecipeServings('rsnap', 3.4), 3.5);
+});
+
 test('editor and leaf wire unit picker, stepper, and hints', function () {
   assert.match(js, /function unitPickerHtml/);
   assert.match(js, /function pickIngUnit/);
   assert.match(js, /function pickPartUnit/);
   assert.match(js, /Outra…/);
   assert.match(js, /function servingsStepper/);
-  assert.match(js, /bumpRecipeServings/);
+  assert.match(js, /function toggleServPanel/);
+  assert.match(js, /function snapServings/);
   assert.match(js, /ing-hint/);
   assert.match(js, /shopIngLabel\(ing, r\)/);
 });

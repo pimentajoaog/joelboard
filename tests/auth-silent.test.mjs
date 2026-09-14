@@ -17,6 +17,7 @@ test('silent GIS is gated on a focused visible tab', function () {
 
 test('background refresh does not call requestAccessToken', function () {
   assert.match(src, /if \(!tabAllowsSilentGis\(\)\) \{\s*scheduleTokenRefresh\(\);/s);
-  assert.match(src, /tokenClient\.requestAccessToken\(\{ prompt: pmt \}\)/);
+  assert.match(src, /tokenClient\.requestAccessToken\(\{/);
+  assert.match(src, /prompt: pmt/);
   assert.match(src, /lastSilentGisAt && Date\.now\(\) - lastSilentGisAt < FOCUS_BOUNCE_MS/);
 });

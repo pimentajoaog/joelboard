@@ -139,6 +139,23 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; }
   font:inherit; font-size:13px; font-weight:800;
 }
 .hub-limit-n:focus{ outline:none; border-color:var(--primary); }
+.hub-gcal{ margin:18px 0 0; padding:16px 0 0; border-top:1px solid var(--border); }
+.hub-gcal-hint{ font-size:12px; color:var(--muted); line-height:1.55; margin:0 0 12px; }
+.hub-gcal-tg{
+  display:block; width:100%; text-align:left; cursor:pointer;
+  background:var(--surface2); border:1px solid var(--border); color:var(--muted);
+  border-radius:11px; padding:12px 14px; font:inherit; font-size:13px; font-weight:700;
+  margin:0 0 10px;
+}
+.hub-gcal-tg.on{
+  color:var(--success, #34d399);
+  border-color:color-mix(in srgb, var(--success, #34d399) 50%, var(--border));
+  background:color-mix(in srgb, var(--success, #34d399) 14%, var(--surface));
+}
+.hub-gcal-tg:disabled{ opacity:.55; cursor:not-allowed; }
+.hub-gcal-status{ font-size:12px; color:var(--muted); margin:0 0 8px; min-height:1.4em; line-height:1.45; }
+.hub-gcal-open{ display:none; text-align:center; text-decoration:none; color:inherit; }
+.hub-gcal-open.on{ display:block; }
 
 /* Feedback viewer (Hub admin, owner-only) */
 .empty{ text-align:center; color:var(--muted); padding:40px 16px; font-size:13px; }

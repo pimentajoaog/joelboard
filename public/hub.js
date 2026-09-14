@@ -594,6 +594,7 @@ function refreshHubAgenda(force){
     else _agendaApi.setEvents(pack.events);
     paintAgendaHint(_agendaMissed);
     if(btn) btn.disabled=false;
+    if(JB.gcal && JB.gcal.scheduleSync) JB.gcal.scheduleSync(pack);
   }).catch(function(){
     if(seq!==_agendaSeq) return;
     _agendaMissed=['agenda'];
@@ -762,7 +763,9 @@ function setHubAgendaLimit(raw){
   paintHubAgendaLimit();
   if(_agendaApi && _agendaApi.setAppLimit) _agendaApi.setAppLimit(n);
 }
-function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); var ghost=JB.isGhost&&JB.isGhost(); document.getElementById("hubAcct").textContent = ghost?("Ghost · "+em+" — sem Google, só neste computador."):(on?("Conectado: "+em):"Você não está conectado."); document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; if(JB.prepareProfileEditor) JB.prepareProfileEditor(); else paintHubProfile(); JB.renderSkinPicker('hub', document.getElementById("hubSkins")); paintHubAgendaLimit(); switchHubSet('tema'); document.getElementById("hubSet").classList.add("open"); }
+function paintHubGcal(){ if(JB.gcal && JB.gcal.paint) JB.gcal.paint(); }
+function toggleHubGcal(){ if(JB.gcal && JB.gcal.toggle) JB.gcal.toggle(); }
+function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); var ghost=JB.isGhost&&JB.isGhost(); document.getElementById("hubAcct").textContent = ghost?("Ghost · "+em+" — sem Google, só neste computador."):(on?("Conectado: "+em):"Você não está conectado."); document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; if(JB.prepareProfileEditor) JB.prepareProfileEditor(); else paintHubProfile(); JB.renderSkinPicker('hub', document.getElementById("hubSkins")); paintHubAgendaLimit(); paintHubGcal(); switchHubSet('tema'); document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
 function switchHubSet(name){ if(JB.switchSet) JB.switchSet(name, document.getElementById('hubSet')); }
 function hubAuth(){ var on=JB.isSignedIn(); closeHubSet(); if(on) doOut(); else doIn(); }

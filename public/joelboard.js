@@ -3,7 +3,8 @@
   var CLIENT_ID = '49262188240-l70ka2666t315gb2gmsvu357f2h7769i.apps.googleusercontent.com';
   // Phones use implicit redirect to /oauth.html — add that URI on this OAuth client.
   var SCOPES = 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
-  var TOK = 'jb_tok', EXP = 'jb_tok_exp', EML = 'jb_email';
+  var CAL_SCOPE = 'https://www.googleapis.com/auth/calendar.app.created';
+  var TOK = 'jb_tok', EXP = 'jb_tok_exp', EML = 'jb_email', SCOPE_KEY = 'jb_scope';
   var tokenClient = null, pendingRes = null, pendingRej = null, inflightToken = null, refreshTimer = null;
   var silentTimer = null, authGen = 0, authChain = Promise.resolve();
   var pendingInteractive = false, silentCooldownUntil = 0;
@@ -323,9 +324,44 @@
       });
     }, Math.min(ms, 2147483647));
   }
-  function saveToken(tok, expiresIn){
+  function normalizeScopes(s){ return String(s || '').replace(/\+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function mergeGrantedScopes(granted){
+    granted = normalizeScopes(granted);
+    if (!granted) return;
+    var prev = normalizeScopes(lg(SCOPE_KEY) || '');
+    if (!prev) { ls(SCOPE_KEY, granted); return; }
+    var seen = {};
+    var out = [];
+    (prev + ' ' + granted).split(' ').forEach(function (sc) {
+      if (!sc || seen[sc]) return;
+      seen[sc] = 1;
+      out.push(sc);
+    });
+    ls(SCOPE_KEY, out.join(' '));
+  }
+  function hasGrantedScope(scope){
+    scope = normalizeScopes(scope);
+    if (!scope) return false;
+    var g = normalizeScopes(lg(SCOPE_KEY) || '');
+    if (!g) return false;
+    if (g.indexOf(scope) > -1) return true;
+    if (scope === CAL_SCOPE) return jbOAuthHasCalendarScope(g) === true;
+    return false;
+  }
+  function extraTokenScope(){
+    if (hasGrantedScope(CAL_SCOPE)) return CAL_SCOPE;
+    return '';
+  }
+  function tokenRequestScope(override){
+    var extra = normalizeScopes(override || extraTokenScope());
+    if (!extra) return SCOPES;
+    if (extra.indexOf('spreadsheets') > -1) return extra;
+    return normalizeScopes(SCOPES + ' ' + extra);
+  }
+  function saveToken(tok, expiresIn, grantedScope){
     var exp = Date.now() + (Number(expiresIn) || 3600) * 1000 - 120000;
     var wrote = persistTokenStore(tok, exp);
+    if (grantedScope) mergeGrantedScopes(grantedScope);
     lr('jb_signedout');
     silentFailStreak = 0;
     hideReLoginBar();
@@ -402,6 +438,11 @@
     if (!granted) return null;
     return granted.indexOf('spreadsheets') > -1 && jbOAuthHasDriveScope(granted);
   }
+  function jbOAuthHasCalendarScope(granted){
+    granted = String(granted || '').replace(/\+/g, ' ');
+    if (!granted) return false;
+    return /https:\/\/www\.googleapis\.com\/auth\/calendar(?:\.app\.created)?(?:\s|$)/.test(granted);
+  }
   function authPopupUnreliable(){
     var standalone = false;
     try { standalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || !!navigator.standalone; } catch (_) {}
@@ -452,7 +493,7 @@
       return { upgrading: true };
     }
     sr(AUTH_REDIR); sr(AUTH_REDIR_STATE); sr(AUTH_REDIR_UPGRADE);
-    if (got.token) saveToken(got.token, got.expiresIn);
+    if (got.token) saveToken(got.token, got.expiresIn, got.scope);
     return got;
   }
   function toastOAuthReturnError(){
@@ -710,8 +751,10 @@
       if (!tokenClient) {
         tokenClient = google.accounts.oauth2.initTokenClient({
           client_id: CLIENT_ID, scope: SCOPES, prompt: '',
+          include_granted_scopes: true,
+          enable_granular_consent: false,
           callback: function (r) {
-            if (r && r.access_token) { saveToken(r.access_token, r.expires_in); finishPending(null, r.access_token); }
+            if (r && r.access_token) { saveToken(r.access_token, r.expires_in, r.scope); finishPending(null, r.access_token); }
             else finishPending(new Error('auth_failed'));
           },
           error_callback: function (err) {
@@ -740,8 +783,9 @@
       + '<div style="color:#cdd3e3">Planilhas no <b>seu</b> Google Drive (Finance, Fit, Study, Notes) e e-mail/nome s\u00f3 para te identificar. Sem login, os apps n\u00e3o funcionam.</div>'
       + '<div style="color:#cdd3e3;margin-top:8px"><b>Notes:</b> listas compartilhadas criam outra planilha no seu Drive; convites por e-mail Google.</div>'
       + '<div style="color:#cdd3e3;margin-top:8px"><b>Fit:</b> pode pedir <b>notifica\u00e7\u00f5es</b> do navegador para o timer de descanso \u2014 s\u00f3 se voc\u00ea permitir.</div>'
+      + '<div style="color:#cdd3e3;margin-top:8px"><b>Calendar:</b> publicar no Google Calendar \u00e9 opcional (Ajustes do Hub). Cria s\u00f3 uma agenda Joelboard \u2014 n\u00e3o l\u00ea as outras. Lembretes ficam desligados por enquanto.</div>'
       + '<div style="font-weight:700;color:#fb7185;margin:12px 0 4px">\u2715 O que ele N\u00c3O acessa</div>'
-      + '<div style="color:#cdd3e3">Seus outros arquivos, e-mails ou contatos. Nada \u00e9 enviado a servidores Joelboard \u2014 tudo fica na sua conta Google (ou no navegador).</div>'
+      + '<div style="color:#cdd3e3">Seus outros arquivos, e-mails, contatos ou agendas Google que voc\u00ea n\u00e3o pediu para publicar. Nada \u00e9 enviado a servidores Joelboard \u2014 tudo fica na sua conta Google (ou no navegador).</div>'
       + '</div>'
       + '<div style="font-size:12px;color:#8a93a8;line-height:1.5;margin-bottom:16px">Detalhes: <a href="/privacy.html" style="color:#818cf8">pol\u00edtica de privacidade</a> \u00b7 <a href="/aviso.html" style="color:#818cf8">aviso legal</a> (estimativas Fit, macros, etc.).</div>'
       + '<button id="jbcGo" style="background:#fff;color:#1f2430;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;width:100%;cursor:pointer;font-family:inherit">Continuar com Google</button>'
@@ -765,7 +809,7 @@
         if (interactive) pmt = opts.prompt != null ? opts.prompt : (email() ? '' : 'select_account');
         if (interactive && authPopupUnreliable()) {
           if (gen !== authGen) { rej(new Error('auth_cancelled')); return; }
-          try { startOAuthRedirect(pmt); }
+          try { startOAuthRedirect(pmt, { scope: tokenRequestScope(opts.scope) }); }
           catch (e) { rej(e); }
           return;
         }
@@ -780,7 +824,14 @@
           }
           // GIS always opens a Google window, even with prompt:none — it flashes
           // and steals OS focus. Callers must already have checked tabAllowsSilentGis.
-          try { tokenClient.requestAccessToken({ prompt: pmt }); }
+          try {
+            tokenClient.requestAccessToken({
+              prompt: pmt,
+              scope: tokenRequestScope(opts.scope),
+              include_granted_scopes: true,
+              enable_granular_consent: false
+            });
+          }
           catch (e) { finishPending(e); }
         });
       }
@@ -826,6 +877,13 @@
     authChain = authChain.catch(function () {}).then(function () { return p; });
     return inflightToken;
   }
+  function requestExtraScope(scope){
+    scope = normalizeScopes(scope);
+    if (!scope) return Promise.resolve(readToken());
+    if (isGhost()) return Promise.reject(new Error('ghost'));
+    if (hasGrantedScope(scope) && isTokenValid()) return Promise.resolve(readToken());
+    return requestToken(true, { prompt: 'consent', scope: scope });
+  }
 
   function fetchEmail(tok){
     if (isGhost()) return Promise.resolve(GHOST_EMAIL);
@@ -842,11 +900,13 @@
   function obId(){ return 'ob' + Date.now().toString(36) + Math.random().toString(36).slice(2, 9); }
   function obOwner(){ return email() || lg(EML) || ''; }
   function isGoogleApiUrl(url){ return String(url || '').indexOf('googleapis.com') > -1; }
+  function isCalendarApiUrl(url){ return String(url || '').indexOf('googleapis.com/calendar/') > -1; }
   function needsResponse(method, url, body){
     if ((method || 'GET').toUpperCase() !== 'POST') return false;
     var u = String(url || '').split('?')[0];
     if (/\/spreadsheets$/.test(u)) return true;
     if (/drive\/v3\/files$/.test(u)) return true;
+    if (/\/calendar\/v3\//.test(u)) return true;
     if (body && body.requests && body.requests.some(function (r) { return r && r.addSheet; })) return true;
     return false;
   }
@@ -1016,7 +1076,19 @@
         return delay(jbRetryDelayMs(attempt)).then(function () { return run(attempt + 1, false); });
       }
       if (!r.ok) return r.text().then(function (tx) {
+        if (r.status === 403 && isCalendarApiUrl(url) && /ACCESS_NOT_CONFIGURED|has not been used/i.test(tx)) {
+          var calOff = new Error('A API Google Calendar não está habilitada neste projeto.');
+          calOff.status = 403;
+          calOff.code = 'JB_CALENDAR_API_OFF';
+          throw calOff;
+        }
         if (r.status === 403 && /insufficient authentication scopes/i.test(tx)) {
+          if (isCalendarApiUrl(url)) {
+            var calScope = new Error('Falta permissão do Google Calendar.');
+            calScope.status = 403;
+            calScope.code = 'JB_NEED_CALENDAR_SCOPE';
+            throw calScope;
+          }
           clearTokenStorage();
           promptReLogin('scopes');
           var scopeErr = new Error('Falta permissão do Google (planilhas). Toque em Entrar de novo e aceite Sheets e Drive.');
@@ -3979,9 +4051,9 @@
   }
 
   window.JB = {
-    CLIENT_ID: CLIENT_ID, SCOPES: SCOPES,
+    CLIENT_ID: CLIENT_ID, SCOPES: SCOPES, CAL_SCOPE: CAL_SCOPE,
     cachedToken: cachedToken, isSignedIn: isSignedIn, hasSession: hasSession, needsReLogin: needsReLogin, bootAuthIfExpired: bootAuthIfExpired, onSessionExpired: onSessionExpired, onAuthRestored: onAuthRestored, ensureToken: ensureToken, email: email, fetchEmail: fetchEmail, isGhost: isGhost, ghostHostOk: jbGhostHostOk, GHOST_EMAIL: GHOST_EMAIL, ghostFixture: ghostFixture,
-    requestToken: requestToken, signIn: signIn, signOut: signOut, api: api,
+    requestToken: requestToken, requestExtraScope: requestExtraScope, hasGrantedScope: hasGrantedScope, signIn: signIn, signOut: signOut, api: api,
     isTransientErr: isTransientErr, transientErrMessage: jbTransientErrMessage, bootRetryHtml: bootRetryHtml,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet, sheetPickHtml: sheetPickHtml,

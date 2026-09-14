@@ -1,6 +1,6 @@
-const C = 'joelboard-905c60d';
+const C = 'joelboard-b521529';
 const SHELL = ['/', '/icon-192.png', '/icon-512.png', '/favicon-32.png', '/apple-touch-icon.png'];
-const CORE = /\/(joelboard|themes|finance|finance-math|finance-sheets|fit|fit-macros|study|hub|notas|notas-collab|planner|planner-collab|recipes|recipes-collab|mini|prateleira|movies|jb-editor|jb-cal|jb-link)\.(js|css)$/;
+const CORE = /\/(joelboard|themes|finance|finance-math|finance-sheets|fit|fit-macros|study|hub|notas|notas-collab|planner|planner-collab|recipes|recipes-collab|mini|prateleira|movies|jb-editor|jb-cal|jb-gcal|jb-link)\.(js|css)$/;
 const CORE_JSON = /^\/(fit-foods|recipes-seed)\.json$/;
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

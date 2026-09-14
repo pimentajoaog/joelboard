@@ -29,8 +29,9 @@ joelboard/
     notas-collab.js       # shared Notes lists
     planner-collab.js     # shared Planner plans
     recipes-collab.js     # shared Recipes cookbooks
-    jb-link.js            # Notes ↔ Planner list stickers
     jb-cal.js             # Hub calendar strip
+    jb-gcal.js            # optional Hub → Google Calendar publish
+    jb-link.js            # Notes ↔ Planner list stickers
     fit-macros.js         # Fit Macros tab (loads after fit.js)
     finance-math.js       # bundled from scripts/bundle-finance-math.mjs
     finance-sheets.js     # Finance sheet I/O

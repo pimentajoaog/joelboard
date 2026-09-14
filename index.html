@@ -159,6 +159,13 @@
         <button type="button" class="hub-limit-chip" data-hub-limit="5" onclick="setHubAgendaLimit(5)">5</button>
         <input class="hub-limit-n" id="hubAgendaLimitN" type="number" min="1" max="99" inputmode="numeric" aria-label="Quantidade personalizada" onchange="setHubAgendaLimit(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
       </div>
+      <div class="hub-gcal">
+        <div class="hub-limit-cap">Google Calendar</div>
+        <p class="hub-gcal-hint">Publica o Calendar do Hub numa agenda <b>Joelboard</b> na sua conta. Só essa agenda — o app não lê as outras. Lembretes ficam desligados; avisos por app a gente liga depois, um a um.</p>
+        <button type="button" class="hub-gcal-tg" id="hubGcalTg" onclick="toggleHubGcal()" aria-pressed="false">Publicar no Google Calendar</button>
+        <p class="hub-gcal-status" id="hubGcalStatus"></p>
+        <a class="mbtn hub-gcal-open" id="hubGcalOpen" href="#" target="_blank" rel="noopener noreferrer" hidden>Abrir agenda no Google</a>
+      </div>
     </div>
     <div class="set-pane" data-pane="sobre" style="display:none">
       <button class="mbtn" onclick="hubVerTutorial()">🧭 Ver tutorial</button>
@@ -238,6 +245,7 @@
 <script src="/joelboard.js"></script>
 <script src="/jb-link.js"></script>
 <script src="/jb-cal.js"></script>
+<script src="/jb-gcal.js"></script>
 <script src="/hub.js"></script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}</script>
 </body>

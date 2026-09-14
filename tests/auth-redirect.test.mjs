@@ -18,6 +18,7 @@ vm.runInContext(
     + 'this.jbOAuthAuthUrl=jbOAuthAuthUrl;'
     + 'this.jbOAuthRedirectPrompt=jbOAuthRedirectPrompt;'
     + 'this.jbOAuthHasAppScopes=jbOAuthHasAppScopes;'
+    + 'this.jbOAuthHasCalendarScope=jbOAuthHasCalendarScope;'
     + 'this.jbOAuthHasDriveScope=jbOAuthHasDriveScope;'
     + 'this.takeOAuthReturn=takeOAuthReturn;',
   ctx
@@ -82,6 +83,14 @@ test('jbOAuthHasAppScopes requires Sheets and Drive', function () {
   assert.equal(ctx.jbOAuthHasDriveScope('email profile'), false);
 });
 
+test('jbOAuthHasCalendarScope is only the Calendar scopes', function () {
+  assert.equal(ctx.jbOAuthHasCalendarScope(''), false);
+  assert.equal(ctx.jbOAuthHasCalendarScope('email https://www.googleapis.com/auth/spreadsheets'), false);
+  assert.equal(ctx.jbOAuthHasCalendarScope('https://www.googleapis.com/auth/calendar.app.created'), true);
+  assert.equal(ctx.jbOAuthHasCalendarScope('email https://www.googleapis.com/auth/calendar'), true);
+  assert.equal(ctx.jbOAuthHasCalendarScope('https://www.googleapis.com/auth/calendar.events'), false);
+});
+
 test('takeOAuthReturn saves the token and rejects a bad state', function () {
   var ok = ctx.takeOAuthReturn('#access_token=tok&expires_in=3599&state=jb1&scope=email%20https://www.googleapis.com/auth/spreadsheets', '', 'jb1', '/notas/');
   assert.equal(ok.token, 'tok');
@@ -98,6 +107,10 @@ test('takeOAuthReturn saves the token and rejects a bad state', function () {
 test('phone login leaves the GIS popup path', function () {
   assert.match(src, /function startOAuthRedirect/);
   assert.match(src, /interactive && authPopupUnreliable\(\)/);
+  assert.match(src, /startOAuthRedirect\(pmt, \{ scope: tokenRequestScope\(opts\.scope\) \}\)/);
+  assert.match(src, /var SCOPES = 'openid email profile https:\/\/www\.googleapis\.com\/auth\/spreadsheets/);
+  assert.match(src, /var CAL_SCOPE = 'https:\/\/www\.googleapis\.com\/auth\/calendar\.app\.created'/);
+  assert.doesNotMatch(src, /var SCOPES = '[^']*calendar/);
   assert.match(src, /jbOAuthRedirectPrompt\(prompt\)/);
   assert.match(src, /insufficient authentication scopes/);
   assert.match(src, /location\.origin \+ '\/oauth\.html'/);

@@ -1,6 +1,6 @@
 # Joelboard — Shared Kit & New-App Starter
 
-The Joelboard suite (Hub, Finance, Fit, Study, Notes, Planner, Mini) is **one Vite multi-page app** with **Tailwind**.
+The Joelboard suite (Hub, Finance, Fit, Study, Notes, Planner, Recipes, Mini) is **one Vite multi-page app** with **Tailwind**.
 Every app shares core logic, styles, design tokens, and interaction conventions.
 **Read this before building a new app or extending shared UI.**
 
@@ -18,6 +18,7 @@ joelboard/
   study/index.html
   notas/index.html
   planner/index.html
+  recipes/index.html
   mini/index.html         # redirects to Hub Mini panel
   src/<app>.css           # Tailwind per app (@tailwind + :root + @apply)
   public/
@@ -25,6 +26,11 @@ joelboard/
     joelboard.css         # shared components + animation/polish kit
     themes.css            # body[data-skin] palettes
     <app>.js              # per-app logic (global script, not a module)
+    notas-collab.js       # shared Notes lists
+    planner-collab.js     # shared Planner plans
+    recipes-collab.js     # shared Recipes cookbooks
+    jb-link.js            # Notes ↔ Planner list stickers
+    jb-cal.js             # Hub calendar strip
     fit-macros.js         # Fit Macros tab (loads after fit.js)
     finance-math.js       # bundled from scripts/bundle-finance-math.mjs
     finance-sheets.js     # Finance sheet I/O
@@ -180,10 +186,48 @@ Tailwind maps via `tailwind.config.js`. **Do not** introduce `--accent`/`--ok` o
 | Finance | `finance` | All: Transactions, Budget, Goals, … (see finance-sheets.js) |
 | Fit | `fit` | Exercicios, Treinos, Sessoes, Series, Peso, MacroFoods, MacroLog, … |
 | Study | `study` | Materias, Eventos (not Config alone) |
-| Notes | `notas` | Notas, Itens (not Config alone) |
-| Planner | `planner` | Planos (not Config alone; shared files use Meta) |
+| Notes | `notas` | Notas, Itens (not Config alone). Registry: Compartilhadas. Shared list files: Meta + Itens + Membros |
+| Planner | `planner` | Planos (not Config alone). Registry: Compartilhadas. Shared plan files: Meta + Dias + Eventos + Membros |
+| Recipes | `recipes` | Cookbooks, Recipes (not Settings alone). Registry: Compartilhadas |
 
 Each app: gate → create/link sheet → `loadData` → `show`.
+
+---
+
+## Shared lists and plans (collab)
+
+Notes, Planner, and Recipes keep **private** rows in the personal workbook and **one spreadsheet per shared item**. The personal `Compartilhadas` tab is only a registry (`Titulo`, `SheetID`, `Papel`, `Owner`, item id, `Atualizado`).
+
+Scripts: `public/notas-collab.js`, `public/planner-collab.js`, `public/recipes-collab.js`. List stickers: `public/jb-link.js` (`JB.link`).
+
+### Tell the files apart by tabs, never by title
+
+Both Notes lists and Planner plans have `Meta` + `Membros`. The discriminator is the rest of the grid:
+
+| Kind | Must have | Must not have |
+|------|-----------|----------------|
+| Notes collab list | Meta, Itens, Membros | Dias, Planos, Notas |
+| Planner collab plan | Meta, Dias, Eventos, Membros | Itens, Planos |
+
+`ncIsCollabSpreadsheetGrid` / `plIsCollabSpreadsheetGrid` follow that. If Notes opens a planner-shaped file, skip it (`ncGridLooksLikePlanner`), do **not** write Notes headers, and `ncRestoreMisfiledPlannerSheet` moves it back to the Planner shared folder.
+
+Notes collab Meta: `Titulo, Tipo, Cor, Fixado, Criado, Atualizado, ID, Vence, OwnerEmail, Marcacao`
+
+Planner collab Meta: `Titulo, Subtitulo, Inicio, Fim, Icone, Criado, Atualizado, ID, OwnerEmail, Listas`
+
+If Notes leaked list columns onto a plan sheet, `plHealCollabPlanMeta` rewrites `Meta!A1:J2` from the registry + Dias dates (plan id in col H). Saves use `findPlanMetaRow` (col H, then row 2 on a collab sheet).
+
+### Kits vs live lists
+
+Default kits **Viagem nacional** / **Viagem internacional** are `preset: true`. Treat a note as a kit only from that flag (`n.preset` or `config['preset_'+id]`), **not** because the title matches a kit. A shared trip with a kit name is a live list (`ncHealCollabKitFlags`). `ncLooksLikeKit` also refuses kit-title collab notes.
+
+### Drive parents
+
+`JB.moveFile(fileId, newParentId, { onlyReplace: [notesShared, notesKits] })` when migrating Notes collab files — only swap Notes folders; do not yank a plan out of Planner/Compartilhados. `keepOtherParents` is the other opt-in.
+
+### Planner stickers
+
+`JB.link.loadSnapshots` / catalog: personal Notes `Notas`+`Itens` first, then Notes `Compartilhadas` + each list’s Meta/Itens so a shared list attached to a shared plan is not “Lista anexada”.
 
 ---
 
@@ -195,7 +239,7 @@ Each app: gate → create/link sheet → `loadData` → `show`.
 4. **Tokens:** `:root` in `src/newapp.css`; copy reset from `src/fit.css`.
 5. **Shell:** Hub door `location.href='/'`; `#setOverlay` settings with **`.set-tabs` / `.set-pane`** (Tema first); **Ajustes → feedback + tutorial**.
 6. **Data:** `JB.resolveSheet({ app:'newapp', namePart:'Joelboard', requiredTabs:[...] })` → `JB.api`.
-7. **Hub tile** in `index.html` + optional `HUB_NEWS` entry.
+7. **Hub tile** in `index.html`. Do **not** add Hub Novidades (`HUB_NEWS`) — owner-only.
 8. **Tour:** `JB.tour('newapp', STEPS)` on first boot; replay from settings.
 9. **Validate:** `node --check public/newapp.js`; `npm run build`.
 

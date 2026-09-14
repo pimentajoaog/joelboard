@@ -9,6 +9,8 @@ Dados na planilha **Joelboard Notes** no seu Drive.
 - **Buscar listas** — filtra por título ou conteúdo dos itens (focus ring + botão limpar).
 - Cards com tipo, progresso (feitos/total), prazo relativo.
 - **Fixadas** aparecem no topo.
+- **✦ Kits** — faixa de modelos no topo (não são listas vivas).
+- **Compartilhadas** — seção à parte para listas com outras pessoas.
 - **+ (FAB)** cria lista (título, tipo, prazo opcional).
 
 ## Tipos de lista
@@ -39,6 +41,14 @@ Dados na planilha **Joelboard Notes** no seu Drive.
 
 Tema, tutorial, feedback.
 
+## Kits
+
+Modelos na faixa **✦ Kits** (os padrão são **Viagem nacional** e **Viagem internacional**). **Usar** copia o conteúdo para uma **lista nova**. Kits não entram no Planner nem na busca das listas do dia a dia.
+
+Uma lista de verdade — inclusive compartilhada com alguém — pode ter o mesmo nome de um kit. Ela continua na home e no Planner; o nome sozinho não a transforma num segundo kit.
+
+No ⋯ da lista: **Tornar preset** / **Tirar dos presets**. Preset compartilhado mora na pasta de kits do Drive; lista viva, na de compartilhadas.
+
 ## Listas compartilhadas
 
 Ao tornar uma lista compartilhada, escolha como itens marcáveis funcionam:
@@ -46,11 +56,21 @@ Ao tornar uma lista compartilhada, escolha como itens marcáveis funcionam:
 - **Uma marcação para todos** (padrão) — um ✓ vale para toda a lista.
 - **Cada um marca o seu** — o mesmo item fica aberto para os outros (útil em mala de viagem). Dá para mudar depois em Compartilhar.
 
+Isso cria outra planilha no Drive (**Joelboard Lista — …**). A planilha pessoal só guarda o atalho na aba `Compartilhadas`. Envie o **link Joelboard** (`/notas/?join=…`); o outro entra com Google e precisa de acesso **Editor** no Drive.
+
 Na planilha da lista: Meta coluna `Marcacao`; Itens coluna `FeitoPor` (JSON por e-mail) no modo pessoal.
+
+## No Planner
+
+**Liberar no Planner** (⋯) deixa a lista no catálogo de colar. Num plano compartilhado, a lista compartilhada anexada continua visível — o Planner lê as listas do Notes pessoal **e** as da aba `Compartilhadas`.
+
+Uma planilha de **plano** (abas Meta + Dias) não é uma lista. O Notes ignora esse arquivo e devolve para a pasta do Planner se ele tiver ido parar nas pastas de notas.
 
 ## Planilha (abas)
 
-`Notas`, `Itens`, `Config`.
+Pessoal: `Notas`, `Itens`, `Config`, `Compartilhadas`.
+
+Compartilhada: `Meta` (`Titulo`, `Tipo`, `Cor`, `Fixado`, `Criado`, `Atualizado`, `ID`, `Vence`, `OwnerEmail`, `Marcacao`), `Itens`, `Membros`.
 
 ## Offline / fila
 

@@ -16,6 +16,7 @@ Personal productivity suite by **Joel Soluções LTDA** — Finance, Fit, Study,
 | **Study** | `/study` | Calendar, subjects, exams, focus mode, attachments |
 | **Notes** | `/notas` | Lists (shopping, tasks, notes, travel), checkboxes, due dates |
 | **Planner** | `/planner` | Dated plans (trips, hangouts) with a day timeline and optional share |
+| **Recipes** | `/recipes` | Cookbooks, recipes, shopping lists; optional share |
 | **Mini** | Hub → Mini panel | Chrome extension **Joelboard Mini**: Replace + Refresh in one install |
 
 User guides: **[docs/](docs/README.md)**
@@ -70,12 +71,12 @@ Each deploy bumps the service-worker cache id (`scripts/bump-sw.mjs`). Core asse
 
 ## Architecture (short)
 
-- **Vite MPA** — one HTML entry per app (`vite.config.js` → `index.html`, `finance/`, `fit/`, `study/`, `notas/`, `mini/`).
+- **Vite MPA** — one HTML entry per app (`vite.config.js` → `index.html`, `finance/`, `fit/`, `study/`, `notas/`, `planner/`, `recipes/`, `mini/`).
 - **Shared core** — `public/joelboard.js` → `window.JB` (auth, Sheets API, UI helpers).
 - **Shared styles** — `public/joelboard.css`, `public/themes.css`.
-- **Per-app logic** — `public/<app>.js` (classic globals, not ES modules).
+- **Per-app logic** — `public/<app>.js` (classic globals, not ES modules). Shared collab lives in `public/<app>-collab.js` (Notes, Planner, Recipes). Notes ↔ Planner list stickers: `public/jb-link.js`.
 - **Per-app Tailwind** — `src/<app>.css` (`@tailwind` + `@apply`, preflight off).
-- **Data** — each app stores data in the user’s own Google Spreadsheet on Drive (OAuth `spreadsheets` + `drive.file`). Sheet id cached per app in `localStorage` (`jb_sheet_<app>`).
+- **Data** — each app stores data in the user’s own Google Spreadsheet on Drive (OAuth `spreadsheets` + `drive.file`). Shared lists/plans/cookbooks are **separate** spreadsheets; the personal workbook only stores a `Compartilhadas` registry. Sheet id cached per app in `localStorage` (`jb_sheet_<app>`).
 
 ---
 

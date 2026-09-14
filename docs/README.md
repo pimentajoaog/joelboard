@@ -8,8 +8,8 @@ Guias de uso por app. Para desenvolvimento, veja [STARTER.md](../STARTER.md). Vi
 | [finance.md](finance.md) | Finanças pessoais |
 | [fit.md](fit.md) | Treinos, progresso, macros |
 | [study.md](study.md) | Calendário, matérias, foco |
-| [notas.md](notas.md) | Notes — listas e itens |
-| [planner.md](planner.md) | Roteiros e linha do tempo |
+| [notas.md](notas.md) | Notes — listas, kits e compartilhadas |
+| [planner.md](planner.md) | Roteiros, listas coladas e planos compartilhados |
 | [mini.md](mini.md) | Extensão Mini (Replace + Refresh) |
 
 **Primeira vez:** entre com Google em qualquer app. Na primeira abertura, o app cria (ou vincula) uma planilha no seu Drive. O login é compartilhado entre todos os apps do Hub.

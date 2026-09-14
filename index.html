@@ -161,10 +161,16 @@
       </div>
       <div class="hub-gcal">
         <div class="hub-limit-cap">Google Calendar</div>
-        <p class="hub-gcal-hint">Publica o Calendar do Hub numa agenda <b>Joelboard</b> na sua conta. Só essa agenda — o app não lê as outras. Lembretes ficam desligados; avisos por app a gente liga depois, um a um. Desligar <b>apaga</b> essa agenda no Google.</p>
+        <p class="hub-gcal-hint">Publica o Calendar do Hub numa agenda <b>Joelboard</b> na sua conta. Só essa agenda — o app não lê as outras. Desligar <b>apaga</b> essa agenda no Google.</p>
         <button type="button" class="hub-gcal-tg" id="hubGcalTg" onclick="toggleHubGcal()" aria-pressed="false">Publicar no Google Calendar</button>
         <p class="hub-gcal-status" id="hubGcalStatus"></p>
         <a class="mbtn hub-gcal-open" id="hubGcalOpen" href="#" target="_blank" rel="noopener noreferrer" hidden>Abrir agenda no Google</a>
+        <div class="hub-gcal-remind" id="hubGcalRemind">
+          <div class="hub-limit-cap">Avisos</div>
+          <p class="hub-gcal-hint">Lembretes do Google Calendar na agenda Joelboard — <b>desligados</b> até você ligar. Cada app tem o próprio horário (e dá para somar até 5). Fit não avisa: treinos são rotina.</p>
+          <button type="button" class="hub-gcal-tg" id="hubGcalRemindTg" onclick="toggleHubGcalRemind()" aria-pressed="false">Avisar no Google Calendar</button>
+          <div id="hubGcalRemindApps"></div>
+        </div>
       </div>
     </div>
     <div class="set-pane" data-pane="sobre" style="display:none">

@@ -156,6 +156,47 @@ a.tile:hover, .tile.clickable:hover{ @apply border-primary; }
 .hub-gcal-status{ font-size:12px; color:var(--muted); margin:0 0 8px; min-height:1.4em; line-height:1.45; }
 .hub-gcal-open{ display:none; text-align:center; text-decoration:none; color:inherit; }
 .hub-gcal-open.on{ display:block; }
+.hub-gcal-remind{ margin:18px 0 0; padding:16px 0 0; border-top:1px solid var(--border); }
+.hub-gcal-app{
+  margin:10px 0 0; padding:12px; border:1px solid var(--border); border-radius:12px;
+  background:var(--surface2);
+}
+.hub-gcal-app-h{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.hub-gcal-app-n{ font-size:13px; font-weight:800; }
+.hub-gcal-app-tg{
+  flex:none; cursor:pointer; font:inherit; font-size:12px; font-weight:700;
+  border-radius:999px; padding:6px 10px;
+  border:1px solid var(--border); background:var(--surface); color:var(--muted);
+}
+.hub-gcal-app-tg.on{
+  color:var(--success, #34d399);
+  border-color:color-mix(in srgb, var(--success, #34d399) 50%, var(--border));
+  background:color-mix(in srgb, var(--success, #34d399) 14%, var(--surface));
+}
+.hub-gcal-offs{ display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 0; }
+.hub-gcal-off{
+  font:inherit; font-size:12px; font-weight:700; cursor:pointer;
+  border-radius:999px; padding:5px 10px;
+  border:1px solid var(--border); background:var(--surface); color:var(--text);
+}
+.hub-gcal-off span{ margin-left:4px; color:var(--muted); }
+.hub-gcal-add{ display:flex; align-items:center; gap:6px; margin:10px 0 0; }
+.hub-gcal-addn{
+  width:56px; height:34px; border-radius:10px; padding:0 8px; text-align:center;
+  border:1px solid var(--border); background:var(--surface); color:var(--text);
+  font:inherit; font-size:13px; font-weight:800;
+}
+.hub-gcal-addu{
+  height:34px; border-radius:10px; padding:0 8px;
+  border:1px solid var(--border); background:var(--surface); color:var(--text);
+  font:inherit; font-size:12px; font-weight:700;
+}
+.hub-gcal-addbtn{
+  width:34px; height:34px; border-radius:10px; cursor:pointer;
+  border:1px solid var(--border); background:var(--surface); color:var(--text);
+  font:inherit; font-size:18px; font-weight:800; line-height:1;
+}
+.hub-gcal-fit{ font-size:12px; color:var(--muted); line-height:1.5; margin:12px 0 0; }
 
 /* Feedback viewer (Hub admin, owner-only) */
 .empty{ text-align:center; color:var(--muted); padding:40px 16px; font-size:13px; }

@@ -765,6 +765,7 @@ function setHubAgendaLimit(raw){
 }
 function paintHubGcal(){ if(JB.gcal && JB.gcal.paint) JB.gcal.paint(); }
 function toggleHubGcal(){ if(JB.gcal && JB.gcal.toggle) JB.gcal.toggle(); }
+function toggleHubGcalRemind(){ if(JB.gcal && JB.gcal.toggleRemind) JB.gcal.toggleRemind(); }
 function openHubSet(){ var em=JB.email(); var on=JB.isSignedIn(); var ghost=JB.isGhost&&JB.isGhost(); document.getElementById("hubAcct").textContent = ghost?("Ghost · "+em+" — sem Google, só neste computador."):(on?("Conectado: "+em):"Você não está conectado."); document.getElementById("hubAuthBtn").textContent = on?"Sair":"Entrar com Google"; if(JB.prepareProfileEditor) JB.prepareProfileEditor(); else paintHubProfile(); JB.renderSkinPicker('hub', document.getElementById("hubSkins")); paintHubAgendaLimit(); paintHubGcal(); switchHubSet('tema'); document.getElementById("hubSet").classList.add("open"); }
 function closeHubSet(){ document.getElementById("hubSet").classList.remove("open"); }
 function switchHubSet(name){ if(JB.switchSet) JB.switchSet(name, document.getElementById('hubSet')); }

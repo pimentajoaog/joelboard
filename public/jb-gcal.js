@@ -1,6 +1,7 @@
 /* Joelboard → Google Calendar (opt-in Hub publish). © 2026 Joel Soluções LTDA.
    Classic global; loads after /joelboard.js. Exposes JB.gcal / JB_GCAL.
-   One-way: Hub events into an app-created "Joelboard" agenda. No reminders. */
+   One-way: Hub events into an app-created "Joelboard" agenda.
+   Google popup reminders are off by default and scoped per app (never Fit). */
 (function () {
   var CAL_SCOPE = 'https://www.googleapis.com/auth/calendar.app.created';
   var API = 'https://www.googleapis.com/calendar/v3';
@@ -11,8 +12,19 @@
   var KEY_ERR = 'jb_gcal_err';
   var KEY_WANT = 'jb_gcal_want';
   var CAL_NAME = 'Joelboard';
-  var CAL_DESC = 'Eventos do Calendar do Hub Joelboard. Lembretes desligados — avisos por app vêm depois.';
+  var CAL_DESC = 'Eventos do Calendar do Hub Joelboard. Avisos só se você ligar em Ajustes, por app.';
   var APP_LABEL = { finance: 'Finance', fit: 'Fit', study: 'Study', notas: 'Notes', planner: 'Planner', recipes: 'Recipes' };
+  var KEY_REMIND = 'jb_gcal_remind';
+  var REMIND_MAX = 5;
+  var REMIND_CAP = 40320;
+  var REMIND_APPS = ['finance', 'study', 'notas', 'planner', 'recipes'];
+  var REMIND_DEFAULTS = {
+    finance: [10080],
+    study: [4320],
+    notas: [1440],
+    planner: [1440],
+    recipes: [1440]
+  };
   var syncTimer = null;
   var lastPack = null;
   var syncing = false;
@@ -72,6 +84,98 @@
     return origin + (href.charAt(0) === '/' ? href : '/' + href);
   }
   function appLabel(app){ return APP_LABEL[app] || 'Joelboard'; }
+  function clampMinutes(n){
+    n = Math.round(Number(n) || 0);
+    if (n < 0) n = 0;
+    if (n > REMIND_CAP) n = REMIND_CAP;
+    return n;
+  }
+  function normalizeMinutes(list){
+    var seen = {};
+    var out = [];
+    (list || []).forEach(function (n) {
+      n = clampMinutes(n);
+      if (seen[n]) return;
+      seen[n] = 1;
+      out.push(n);
+    });
+    out.sort(function (a, b) { return b - a; });
+    return out.slice(0, REMIND_MAX);
+  }
+  function defaultRemindPrefs(){
+    var apps = {};
+    REMIND_APPS.forEach(function (app) {
+      apps[app] = { on: true, minutes: (REMIND_DEFAULTS[app] || [1440]).slice() };
+    });
+    return { on: false, apps: apps };
+  }
+  function readRemindPrefs(){
+    var base = defaultRemindPrefs();
+    var raw = null;
+    try { raw = JSON.parse(lg(KEY_REMIND) || 'null'); } catch (_) { raw = null; }
+    if (!raw || typeof raw !== 'object') return base;
+    base.on = raw.on === true;
+    REMIND_APPS.forEach(function (app) {
+      var row = raw.apps && raw.apps[app];
+      if (!row || typeof row !== 'object') return;
+      if (row.on === false) base.apps[app].on = false;
+      if (Object.prototype.hasOwnProperty.call(row, 'minutes')) {
+        base.apps[app].minutes = normalizeMinutes(row.minutes);
+      }
+    });
+    return base;
+  }
+  function writeRemindPrefs(prefs){
+    prefs = prefs || readRemindPrefs();
+    var apps = {};
+    REMIND_APPS.forEach(function (app) {
+      var row = (prefs.apps && prefs.apps[app]) || {};
+      apps[app] = { on: row.on !== false, minutes: normalizeMinutes(row.minutes) };
+    });
+    ls(KEY_REMIND, JSON.stringify({ on: !!prefs.on, apps: apps }));
+  }
+  function remindersFor(e, prefs){
+    prefs = prefs || readRemindPrefs();
+    if (!prefs.on || !e || e.done || e.app === 'fit') {
+      return { useDefault: false, overrides: [] };
+    }
+    var row = prefs.apps && prefs.apps[e.app];
+    if (!row || row.on === false) return { useDefault: false, overrides: [] };
+    return {
+      useDefault: false,
+      overrides: normalizeMinutes(row.minutes).map(function (m) {
+        return { method: 'popup', minutes: m };
+      })
+    };
+  }
+  function formatOffset(min){
+    min = clampMinutes(min);
+    if (min % 10080 === 0 && min >= 20160) {
+      var w = min / 10080;
+      return w + (w === 1 ? ' semana' : ' semanas');
+    }
+    if (min % 1440 === 0 && min >= 1440) {
+      var d = min / 1440;
+      return d + (d === 1 ? ' dia' : ' dias');
+    }
+    if (min % 60 === 0 && min >= 60) {
+      var h = min / 60;
+      return h + (h === 1 ? ' hora' : ' horas');
+    }
+    return min + (min === 1 ? ' minuto' : ' minutos');
+  }
+  function remindKey(r){
+    if (!r) return '';
+    if (r.useDefault) return 'def';
+    return (r.overrides || []).map(function (o) {
+      return String(o.method || 'popup') + ':' + String(Number(o.minutes) || 0);
+    }).sort().join(',');
+  }
+  function persistRemind(prefs){
+    writeRemindPrefs(prefs);
+    paint();
+    if (isOn()) scheduleSync(lastPack);
+  }
 
   function eventBody(e, opts){
     opts = opts || {};
@@ -101,7 +205,7 @@
       end: end,
       source: { title: 'Joelboard', url: url },
       extendedProperties: { private: { jb: String(e.id || '') } },
-      reminders: { useDefault: false, overrides: [] },
+      reminders: remindersFor(e, opts.remind),
       status: 'confirmed',
       transparency: e.done ? 'transparent' : 'opaque'
     };
@@ -126,7 +230,7 @@
       boundKey(body.end),
       String(body.description || '').replace(/\r\n/g, '\n'),
       body.transparency || 'opaque',
-      (body.reminders && body.reminders.useDefault) ? '1' : '0'
+      remindKey(body.reminders)
     ].join('\n');
   }
   function sameEvent(g, body){
@@ -136,7 +240,7 @@
       end: g && g.end,
       description: g && g.description,
       transparency: (g && g.transparency) || 'opaque',
-      reminders: { useDefault: !!(g && g.reminders && g.reminders.useDefault) }
+      reminders: g && g.reminders
     }) === eventStamp(body);
   }
 
@@ -204,7 +308,7 @@
       else if (lastErr()) st.textContent = lastErr();
       else if (isOn() && lastAt()) {
         var d = new Date(lastAt());
-        st.textContent = 'Última publicação: ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + '. Sem lembretes.';
+        st.textContent = 'Última publicação: ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + (readRemindPrefs().on ? '. Com avisos por app.' : '. Sem avisos.');
       } else if (isOn()) st.textContent = 'Ligado — publica depois que o Calendar do Hub carregar.';
       else st.textContent = '';
     }
@@ -215,6 +319,78 @@
       open.hidden = !show;
       if (href) open.href = href;
     }
+    paintRemind();
+  }
+
+  function paintRemind(){
+    var tg = document.getElementById('hubGcalRemindTg');
+    var host = document.getElementById('hubGcalRemindApps');
+    var prefs = readRemindPrefs();
+    if (tg) {
+      tg.classList.toggle('on', !!prefs.on);
+      tg.setAttribute('aria-pressed', prefs.on ? 'true' : 'false');
+      tg.textContent = prefs.on ? 'Avisando no Google Calendar' : 'Avisar no Google Calendar';
+    }
+    if (!host) return;
+    if (!prefs.on) { host.innerHTML = ''; return; }
+    var html = REMIND_APPS.map(function (app) {
+      var row = prefs.apps[app];
+      var chips = (row.minutes || []).map(function (m) {
+        return '<button type="button" class="hub-gcal-off" data-app="' + app + '" data-min="' + m + '" onclick="JB.gcal.removeRemind(\'' + app + '\',' + m + ')">'
+          + formatOffset(m) + ' antes <span aria-hidden="true">×</span></button>';
+      }).join('');
+      var add = row.minutes && row.minutes.length >= REMIND_MAX ? '' : (
+        '<div class="hub-gcal-add">'
+          + '<input class="hub-gcal-addn" id="hubGcalAddN-' + app + '" type="number" min="1" max="40320" value="1" inputmode="numeric" aria-label="Quanto antes em ' + APP_LABEL[app] + '">'
+          + '<select class="hub-gcal-addu" id="hubGcalAddU-' + app + '" aria-label="Unidade">'
+            + '<option value="1">minutos</option>'
+            + '<option value="60">horas</option>'
+            + '<option value="1440" selected>dias</option>'
+            + '<option value="10080">semanas</option>'
+          + '</select>'
+          + '<button type="button" class="hub-gcal-addbtn" onclick="JB.gcal.addRemind(\'' + app + '\')">+</button>'
+        + '</div>'
+      );
+      return '<div class="hub-gcal-app">'
+        + '<div class="hub-gcal-app-h">'
+          + '<div class="hub-gcal-app-n">' + APP_LABEL[app] + '</div>'
+          + '<button type="button" class="hub-gcal-app-tg' + (row.on ? ' on' : '') + '" onclick="JB.gcal.toggleRemindApp(\'' + app + '\')" aria-pressed="' + (row.on ? 'true' : 'false') + '">'
+          + (row.on ? 'Avisos ligados' : 'Avisos desligados') + '</button>'
+        + '</div>'
+        + (row.on ? ('<div class="hub-gcal-offs">' + chips + '</div>' + add) : '')
+      + '</div>';
+    }).join('')
+      + '<p class="hub-gcal-fit">Fit não avisa — treinos são rotina. O timer de descanso no app continua separado.</p>';
+    host.innerHTML = html;
+  }
+
+  function toggleRemind(){
+    var prefs = readRemindPrefs();
+    prefs.on = !prefs.on;
+    persistRemind(prefs);
+  }
+  function toggleRemindApp(app){
+    if (REMIND_APPS.indexOf(app) < 0) return;
+    var prefs = readRemindPrefs();
+    prefs.apps[app].on = !prefs.apps[app].on;
+    persistRemind(prefs);
+  }
+  function removeRemind(app, minutes){
+    if (REMIND_APPS.indexOf(app) < 0) return;
+    var prefs = readRemindPrefs();
+    prefs.apps[app].minutes = normalizeMinutes((prefs.apps[app].minutes || []).filter(function (m) { return m !== minutes; }));
+    persistRemind(prefs);
+  }
+  function addRemind(app){
+    if (REMIND_APPS.indexOf(app) < 0) return;
+    var nEl = document.getElementById('hubGcalAddN-' + app);
+    var uEl = document.getElementById('hubGcalAddU-' + app);
+    var n = Math.round(Number(nEl && nEl.value) || 0);
+    var unit = Number(uEl && uEl.value) || 1440;
+    if (n < 1) return;
+    var prefs = readRemindPrefs();
+    prefs.apps[app].minutes = normalizeMinutes((prefs.apps[app].minutes || []).concat([clampMinutes(n * unit)]));
+    persistRemind(prefs);
   }
 
   function setBusy(v){ busy = !!v; paint(); }
@@ -479,9 +655,17 @@
     sameEvent: sameEvent,
     syncPlan: syncPlan,
     addDaysYmd: addDaysYmd,
+    remindersFor: remindersFor,
+    formatOffset: formatOffset,
+    normalizeMinutes: normalizeMinutes,
+    readRemindPrefs: readRemindPrefs,
     isOn: isOn,
     paint: paint,
     toggle: toggle,
+    toggleRemind: toggleRemind,
+    toggleRemindApp: toggleRemindApp,
+    addRemind: addRemind,
+    removeRemind: removeRemind,
     scheduleSync: scheduleSync,
     sync: function (pack, opts) { return runSync(pack, opts); }
   };

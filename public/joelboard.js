@@ -796,7 +796,7 @@
       + '<div style="color:#cdd3e3">Planilhas no <b>seu</b> Google Drive (Finance, Fit, Study, Notes) e e-mail/nome s\u00f3 para te identificar. Sem login, os apps n\u00e3o funcionam.</div>'
       + '<div style="color:#cdd3e3;margin-top:8px"><b>Notes:</b> listas compartilhadas criam outra planilha no seu Drive; convites por e-mail Google.</div>'
       + '<div style="color:#cdd3e3;margin-top:8px"><b>Fit:</b> pode pedir <b>notifica\u00e7\u00f5es</b> do navegador para o timer de descanso \u2014 s\u00f3 se voc\u00ea permitir.</div>'
-      + '<div style="color:#cdd3e3;margin-top:8px"><b>Calendar:</b> publicar no Google Calendar \u00e9 opcional (Ajustes do Hub). Cria s\u00f3 uma agenda Joelboard \u2014 n\u00e3o l\u00ea as outras. Lembretes ficam desligados por enquanto.</div>'
+      + '<div style="color:#cdd3e3;margin-top:8px"><b>Calendar:</b> publicar no Google Calendar \u00e9 opcional (Ajustes do Hub). Cria s\u00f3 uma agenda Joelboard \u2014 n\u00e3o l\u00ea as outras. Avisos no Google s\u00e3o outro interruptor, desligado por padr\u00e3o, e v\u00e3o por app.</div>'
       + '<div style="font-weight:700;color:#fb7185;margin:12px 0 4px">\u2715 O que ele N\u00c3O acessa</div>'
       + '<div style="color:#cdd3e3">Seus outros arquivos, e-mails, contatos ou agendas Google que voc\u00ea n\u00e3o pediu para publicar. Nada \u00e9 enviado a servidores Joelboard \u2014 tudo fica na sua conta Google (ou no navegador).</div>'
       + '</div>'

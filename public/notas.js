@@ -141,6 +141,12 @@ function startAuth(){
     var fx=JB.ghostFixture&&JB.ghostFixture('notas');
     notasGrid=(fx&&fx.grid)||{ Notas:0, Itens:1, Config:2, Compartilhadas:3 };
     DATA=(fx&&fx.data)||{ notas:[], itens:[], config:{} };
+    if (JB.link && JB.link.bornGhostLists) {
+      JB.link.bornGhostLists().forEach(function (c) {
+        if (c && c.note) DATA.notas.push(c.note);
+        if (c && c.itens && c.itens.length) DATA.itens = DATA.itens.concat(c.itens);
+      });
+    }
     setTimeout(show, 0);
     return;
   }

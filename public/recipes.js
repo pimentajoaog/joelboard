@@ -28,6 +28,9 @@ var VIEW_KEY = 'jb_recipes_view';
 var SPREAD_KEY = 'jb_recipes_spread';
 var SHELF_KEY = 'jb_recipes_shelf';
 var shelfTab = 'mine'; /* mine | shared */
+var _shopOn = false;
+var _shopBookId = null;
+var _shopPicks = {}; /* ingId -> { recipeId, ingId } */
 var spreadMode = 'pair'; /* pair = 2 receitas por spread | recipe = 1 receita nas duas folhas */
 var _turnDir = 0;
 var _spreadIntro = true;
@@ -706,6 +709,13 @@ function recipeById(id) {
   for (var i = 0; i < DATA.recipes.length; i++) if (DATA.recipes[i].id === id) return DATA.recipes[i];
   return null;
 }
+function ingById(id) {
+  id = String(id || '');
+  for (var i = 0; i < (DATA.ingredients || []).length; i++) {
+    if (DATA.ingredients[i].id === id) return DATA.ingredients[i];
+  }
+  return null;
+}
 function recipesInBook(bookId) {
   return DATA.recipes.filter(function (r) { return r.cookbookId === bookId; });
 }
@@ -806,6 +816,7 @@ function render() {
   if (JB.paintAcct) JB.paintAcct();
   document.body.classList.toggle('recipes-shelf', view === 'shelf');
   document.body.classList.toggle('recipes-book', view === 'book' && bookViewMode === 'flip');
+  document.body.classList.toggle('recipes-shop', !!_shopOn);
   paintShelfTabs();
   /* marcar um ingrediente repinta a página: mantém a rolagem das folhas.
      Virar a página ou abrir o livro começa do topo. */
@@ -1225,6 +1236,9 @@ function plaqueSvg(kind) {
   if (kind === 'share') {
     return '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6" cy="5.2" r="2.1" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M2.6 12.4c.3-2.2 1.7-3.4 3.4-3.4s3.1 1.2 3.4 3.4" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><circle cx="11.2" cy="5.6" r="1.7" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M10.2 12.4c.2-1.5 1.1-2.4 2.2-2.4" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg>';
   }
+  if (kind === 'notes') {
+    return '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.6h5.4L12.2 5.4v8H4z" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M9.3 2.6v2.9h2.9" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M6 8.2h4M6 10.6h2.8" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg>';
+  }
   return '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.2 10.2L13.4 13.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
 }
 
@@ -1247,6 +1261,8 @@ function bookCrest(book) {
     + ' title="Editar livro" aria-label="Editar livro">' + plaqueSvg('pencil') + '</button>'
     + '<button type="button" class="book-tool" onclick="rcShareBookClick()"'
     + ' title="Compartilhar" aria-label="Compartilhar">' + plaqueSvg('share') + '</button>'
+    + '<button type="button" class="book-tool book-shop-btn' + (_shopOn ? ' is-on' : '') + (shopPickCount() ? ' has-q' : '') + '"'
+    + ' onclick="toggleShopMode()" title="Lista de compras" aria-label="Lista de compras">' + plaqueSvg('notes') + '</button>'
     + '<button type="button" class="book-tool book-find-btn' + (findOn ? ' is-on' : '') + (bookQuery ? ' has-q' : '') + '"'
     + ' onclick="toggleBookSearch(event)" title="Buscar receita" aria-label="Buscar receita"'
     + ' aria-expanded="' + (findOn ? 'true' : 'false') + '">' + plaqueSvg('search') + '</button>'
@@ -1263,12 +1279,135 @@ function bookCrest(book) {
     + '</div>';
 }
 
+function shopPickCount() {
+  return Object.keys(_shopPicks || {}).length;
+}
+function shopIngLabel(ing) {
+  if (!ing) return '';
+  return [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ').trim();
+}
+function buildShopList(book, recipes, ingredients, picks) {
+  book = book || {};
+  var byRec = {};
+  Object.keys(picks || {}).forEach(function (id) {
+    var pick = picks[id] || {};
+    var ing = null;
+    (ingredients || []).forEach(function (x) { if (x && x.id === id) ing = x; });
+    if (!ing) return;
+    if (book.id && ing.recipeId) {
+      var rec = null;
+      (recipes || []).forEach(function (r) { if (r.id === ing.recipeId) rec = r; });
+      if (rec && rec.cookbookId && rec.cookbookId !== book.id) return;
+    }
+    var rid = ing.recipeId || pick.recipeId;
+    if (!rid) return;
+    if (!byRec[rid]) byRec[rid] = [];
+    byRec[rid].push(ing);
+  });
+  var recs = (recipes || []).filter(function (r) { return byRec[r.id]; });
+  recs.sort(function (a, b) { return (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.title || '').localeCompare(String(b.title || '')); });
+  var itens = [];
+  recs.forEach(function (r) {
+    itens.push({ texto: r.title || 'Receita', marcavel: false, tipo: 'g' });
+    byRec[r.id].sort(function (a, b) { return (Number(a.order) || 0) - (Number(b.order) || 0); }).forEach(function (ing) {
+      var label = shopIngLabel(ing);
+      if (label) itens.push({ texto: label, marcavel: true, tipo: '' });
+    });
+  });
+  return {
+    titulo: book.name || 'Compras',
+    tipo: 'compras',
+    cor: book.icon || '',
+    itens: itens
+  };
+}
+function shopBarHtml() {
+  if (!_shopOn) return '';
+  var n = shopPickCount();
+  var book = bookById(_shopBookId || openBookId);
+  return '<div class="shop-bar">'
+    + '<span class="shop-bar-lab">Compras' + (book && book.name ? ' · ' + esc(book.name) : '') + '</span>'
+    + '<span class="shop-bar-n" id="shopCount">' + n + (n === 1 ? ' item' : ' itens') + '</span>'
+    + '<button type="button" class="shop-bar-go" id="shopCreate" onclick="createShopList()"' + (n ? '' : ' disabled') + '>Criar lista</button>'
+    + '<button type="button" class="shop-bar-x" onclick="toggleShopMode(false)" title="Sair do modo compras" aria-label="Sair do modo compras">✕</button>'
+    + '</div>';
+}
+function toggleShopMode(on) {
+  if (on === false) {
+    _shopOn = false;
+    _shopBookId = null;
+    _shopPicks = {};
+  } else if (on === true || !_shopOn) {
+    if (!openBookId && !_shopBookId) { toast('Abra um livro para montar a lista'); return; }
+    _shopOn = true;
+    _shopBookId = openBookId || _shopBookId;
+    if (_bookSearchOpen) closeBookSearch();
+    if (!shopPickCount()) toast('Toque nos ingredientes do Mise');
+  } else {
+    _shopOn = false;
+    _shopBookId = null;
+    _shopPicks = {};
+  }
+  render();
+}
+function toggleShopIng(recipeId, ingId, ev) {
+  if (ev) ev.stopPropagation();
+  if (!_shopOn) return;
+  var ing = ingById(ingId);
+  var rec = recipeById(recipeId) || (ing && recipeById(ing.recipeId));
+  if (_shopBookId && rec && rec.cookbookId && rec.cookbookId !== _shopBookId) {
+    var locked = bookById(_shopBookId);
+    toast('Essa lista é do livro ' + ((locked && locked.name) || 'aberto'));
+    return;
+  }
+  if (_shopPicks[ingId]) delete _shopPicks[ingId];
+  else _shopPicks[ingId] = { recipeId: recipeId, ingId: ingId };
+  paintShopState();
+}
+function onIngRowClick(recipeId, ingId, ev) {
+  if (!_shopOn) return;
+  if (ev && ev.target && ev.target.closest && ev.target.closest('.ing-part-go, .ichk')) return;
+  toggleShopIng(recipeId, ingId, ev);
+}
+function paintShopState() {
+  document.body.classList.toggle('recipes-shop', !!_shopOn);
+  document.querySelectorAll('.ing-list li[data-ing]').forEach(function (li) {
+    var id = li.getAttribute('data-ing');
+    li.classList.toggle('is-shop', !!(id && _shopPicks[id]));
+  });
+  var n = shopPickCount();
+  var count = $('shopCount');
+  if (count) count.textContent = n + (n === 1 ? ' item' : ' itens');
+  var go = $('shopCreate');
+  if (go) go.disabled = !n;
+  document.querySelectorAll('.book-shop-btn').forEach(function (btn) {
+    btn.classList.toggle('is-on', !!_shopOn);
+    btn.classList.toggle('has-q', !!n);
+  });
+}
+function createShopList() {
+  var book = bookById(_shopBookId || openBookId);
+  if (!book) { toast('Abra um livro'); return; }
+  var payload = buildShopList(book, DATA.recipes, DATA.ingredients, _shopPicks);
+  var marked = payload.itens.filter(function (x) { return x.marcavel; });
+  if (!marked.length) { toast('Toque nos ingredientes do Mise'); return; }
+  if (!JB.link || !JB.link.createList) { toast('Notes indisponível'); return; }
+  JB.link.createList(payload).then(function () {
+    toggleShopMode(false);
+    toast('✓ Lista criada no Notes');
+  }).catch(function (e) {
+    var m = String((e && e.message) || '');
+    if (m === 'no-notas') toast('Abra o Notes uma vez para criar sua planilha');
+    else toast(m || 'Falha ao criar lista');
+  });
+}
+
 function renderBook() {
   var book = bookById(openBookId);
   if (!book) return '<div class="empty">Livro não encontrado.</div><button class="back" onclick="goShelf()">← Estante</button>';
   var total = countInBook(book.id);
   var list = visibleRecipes(book.id);
-  var head = '<div class="secbar"><button class="back" onclick="goShelf()">← Estante</button></div>';
+  var head = '<div class="secbar"><button class="back" onclick="goShelf()">← Estante</button></div>' + shopBarHtml();
   var kc = esc(book.color || '#e07a5f');
   if (!total) {
     return head
@@ -1612,9 +1751,9 @@ function miseIngRow(r, ing) {
       + '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v9M4.2 8.2L8 12l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
       + '</button>';
   }
-  return '<li class="' + (on ? 'on' : '') + (part ? ' has-part' : '') + '" data-chk="' + esc(r.id + '|' + ing.id) + '">'
+  return '<li class="' + (on ? 'on' : '') + (part ? ' has-part' : '') + (_shopOn && _shopPicks[ing.id] ? ' is-shop' : '') + '" data-ing="' + esc(ing.id) + '" data-chk="' + esc(r.id + '|' + ing.id) + '" onclick="onIngRowClick(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\',event)">'
     + '<button type="button" class="ichk' + (on ? ' on' : '') + '"'
-    + ' onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\')"'
+    + ' onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\',event)"'
     + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
     + '<span><span class="ck-t">' + esc(label) + '</span></span>'
     + go
@@ -1674,9 +1813,9 @@ function partSection(r, p) {
   var ingRows = ings.map(function (ing) {
     var on = isChecked(r.id, ing.id);
     var label = [ing.qty, ing.unit, ing.text].filter(Boolean).join(' ');
-    return '<li class="' + (on ? 'on' : '') + '" data-chk="' + esc(r.id + '|' + ing.id) + '">'
-      + '<button type="button" class="ichk' + (on ? ' on' : '') + '"'
-      + ' onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\')"'
+    return '<li class="' + (on ? 'on' : '') + (_shopOn && _shopPicks[ing.id] ? ' is-shop' : '') + '" data-ing="' + esc(ing.id) + '" data-chk="' + esc(r.id + '|' + ing.id) + '" onclick="onIngRowClick(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\',event)">'
+    + '<button type="button" class="ichk' + (on ? ' on' : '') + '"'
+    + ' onclick="toggleIngCheck(\'' + escAttr(r.id) + '\',\'' + escAttr(ing.id) + '\',event)"'
       + ' aria-pressed="' + (on ? 'true' : 'false') + '" aria-label="' + esc(label) + '"></button>'
       + '<span><span class="ck-t">' + esc(label) + '</span></span></li>';
   }).join('');
@@ -1921,6 +2060,7 @@ function renderDetail() {
   }).join('');
   return '<div class="detail">'
     + '<div class="secbar"><button class="back" onclick="backToBook()">← ' + esc((book && book.name) || 'Livro') + '</button></div>'
+    + shopBarHtml()
     + hero
     + '<div class="detail-title">' + esc(r.title) + '</div>'
     + '<div class="detail-meta">' + meta + '</div>'
@@ -1943,7 +2083,11 @@ function renderDetail() {
     + '</div></div>';
 }
 
-function toggleIngCheck(recipeId, ingId) {
+function toggleIngCheck(recipeId, ingId, ev) {
+  if (_shopOn) {
+    toggleShopIng(recipeId, ingId, ev);
+    return;
+  }
   toggleCheck(recipeId, ingId);
   applyCheck(recipeId, ingId);
 }

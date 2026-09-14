@@ -55,7 +55,20 @@
       return packSnapshot(n, itens);
     });
   }
+  var GHOST_BORN_KEY = 'jb_ghost_notes_born';
   var ghostClones = [];
+  function readGhostBorn() {
+    try { return JSON.parse(sessionStorage.getItem(GHOST_BORN_KEY) || '[]') || []; } catch (_) { return []; }
+  }
+  function persistGhostBorn() {
+    try { sessionStorage.setItem(GHOST_BORN_KEY, JSON.stringify(ghostClones)); } catch (_) {}
+  }
+  try { ghostClones = readGhostBorn(); } catch (_) { ghostClones = []; }
+  function rememberGhostList(note, itens) {
+    ghostClones.push({ note: note, itens: itens || [] });
+    persistGhostBorn();
+    return packSnapshot(note, itens);
+  }
   function notesFromGhost() {
     if (!window.JB || !JB.ghostFixture) return { notas: [], itens: [] };
     var fx = JB.ghostFixture('notas');
@@ -148,19 +161,50 @@
         return { id: uid(), notaId: nid, ordem: i + 1, texto: s.texto, marcavel: s.marcavel, feito: false, tipo: s.tipo || '' };
       });
       if (window.JB && JB.isGhost && JB.isGhost()) {
-        ghostClones.push({ note: note, itens: itens });
-        return packSnapshot(note, itens);
+        return Promise.resolve(rememberGhostList(note, itens));
       }
-      var sid = window.JB && JB.getSheetId && JB.getSheetId('notas');
-      if (!sid || !JB.api) return Promise.reject(new Error('no-notas'));
-      var nvals = [note.titulo, note.tipo, note.cor || '', '', note.criado, note.atualizado, note.id, '', '', note.sticker ? '1' : ''];
-      return JB.api('POST', sheetUrl(sid, '/values/Notas:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [nvals] }).then(function () {
-        if (!itens.length) return packSnapshot(note, itens);
-        return JB.api('POST', sheetUrl(sid, '/values/Itens:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {
-          values: itens.map(function (it) { return [it.notaId, it.ordem, it.texto, it.marcavel ? '1' : '', '', it.id, it.tipo]; })
-        }).then(function () { return packSnapshot(note, itens); });
-      });
+      return writePersonalList(note, itens);
     });
+  }
+  function writePersonalList(note, itens) {
+    var sid = window.JB && JB.getSheetId && JB.getSheetId('notas');
+    if (!sid || !JB.api) return Promise.reject(new Error('no-notas'));
+    var nvals = [note.titulo, note.tipo, note.cor || '', '', note.criado, note.atualizado, note.id, '', '', note.sticker ? '1' : ''];
+    return JB.api('POST', sheetUrl(sid, '/values/Notas:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), { values: [nvals] }).then(function () {
+      if (!itens.length) return packSnapshot(note, itens);
+      return JB.api('POST', sheetUrl(sid, '/values/Itens:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {
+        values: itens.map(function (it) { return [it.notaId, it.ordem, it.texto, it.marcavel ? '1' : '', '', it.id, it.tipo]; })
+      }).then(function () { return packSnapshot(note, itens); });
+    });
+  }
+  function createList(opts) {
+    opts = opts || {};
+    var now = new Date().toISOString();
+    var nid = uid();
+    var note = {
+      id: nid,
+      titulo: String(opts.titulo || '').trim() || 'Lista',
+      tipo: String(opts.tipo || 'tarefas'),
+      cor: opts.cor || '',
+      preset: false,
+      sticker: false,
+      criado: now,
+      atualizado: now,
+      vence: ''
+    };
+    var itens = (opts.itens || []).map(function (s, i) {
+      return {
+        id: uid(),
+        notaId: nid,
+        ordem: i + 1,
+        texto: String(s.texto || ''),
+        marcavel: !!s.marcavel,
+        feito: false,
+        tipo: s.tipo || ''
+      };
+    });
+    if (window.JB && JB.isGhost && JB.isGhost()) return Promise.resolve(rememberGhostList(note, itens));
+    return writePersonalList(note, itens);
   }
   function groupDepthTipo(t) {
     if (!isGroupTipo(t)) return -1;
@@ -319,7 +363,7 @@
     parseIds: parseIds, formatIds: formatIds, mergeIds: mergeIds, uniq: uniq,
     packSnapshot: packSnapshot, snapshotsFromLists: snapshotsFromLists,
     snapshotsFromGhost: snapshotsFromGhost, loadSnapshots: loadSnapshots,
-    loadCatalog: loadCatalog, clonePreset: clonePreset, bornListTitle: bornListTitle,
+    loadCatalog: loadCatalog, clonePreset: clonePreset, createList: createList, bornGhostLists: function () { return ghostClones.slice(); }, bornListTitle: bornListTitle,
     peekPending: peekPending, peekItems: peekItems, peekRows: peekRows, peekHtml: peekHtml,
     mergeCalEvents: mergeCalEvents, decorateCalEvents: decorateCalEvents,
     defaultPresets: defaultPresets, barCss: barCss, dotCss: dotCss

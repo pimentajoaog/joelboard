@@ -427,9 +427,10 @@ body.recipes-shelf .foot{ display:none; }
 }
 .book-tool svg{ width:13px; height:13px; display:block; }
 .book-tool:hover{ background:rgba(0,0,0,.36); transform:scale(1.04); }
-.book-find-btn.is-on, .book-find-btn.has-q{ background:rgba(255,255,255,.16); }
-.book-find-btn.has-q{ position:relative; }
-.book-find-btn.has-q::after{
+.book-find-btn.is-on, .book-find-btn.has-q,
+.book-shop-btn.is-on, .book-shop-btn.has-q{ background:rgba(255,255,255,.16); }
+.book-find-btn.has-q, .book-shop-btn.has-q{ position:relative; }
+.book-find-btn.has-q::after, .book-shop-btn.has-q::after{
   content:''; position:absolute; top:3px; right:3px; width:5px; height:5px;
   border-radius:999px; background:#fff; box-shadow:0 0 0 1px rgba(0,0,0,.25);
 }
@@ -902,6 +903,33 @@ body.recipes-book .secbar{ margin-bottom:10px; }
   position:relative; transition:opacity .3s ease;
 }
 .ing-list li.on, .step-list li.on{ opacity:.55; }
+body.recipes-shop .ing-list li{ cursor:pointer; }
+body.recipes-shop .ing-list li.is-shop{
+  border-color:#f59e0b;
+  box-shadow:0 0 0 2px color-mix(in srgb, #f59e0b 28%, transparent);
+  opacity:1;
+}
+.shop-bar{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  margin:-4px 0 14px;
+  padding:8px 10px;
+  border-radius:12px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+}
+.shop-bar-lab{ font-size:12px; font-weight:800; color:var(--text); }
+.shop-bar-n{ font-size:11px; font-weight:700; color:var(--muted); margin-right:auto; }
+.shop-bar-go{
+  background:var(--primary); border:0; border-radius:999px;
+  padding:6px 12px; font-size:12px; font-weight:800;
+  color:var(--on-brand); cursor:pointer; font-family:inherit;
+}
+.shop-bar-go:disabled{ opacity:.4; cursor:default; }
+.shop-bar-x{
+  width:28px; height:28px; border-radius:999px; padding:0;
+  border:1px solid var(--border); background:var(--surface);
+  color:var(--muted); font-size:13px; cursor:pointer; font-family:inherit;
+}
 .ing-list li.has-part{ padding-right:8px; }
 .ing-part-go{
   flex:none; align-self:center; width:26px; height:26px; margin-left:auto; padding:0;

@@ -90,6 +90,24 @@ test('mergeCalEvents hides a Notes due that is already stuck on a plan', functio
   assert.equal(evs[0].linkedNotes, true);
 });
 
+test('createList builds a personal compras note in ghost', async function () {
+  ctx.JB = { isGhost: function () { return true; } };
+  var snap = await link.createList({
+    titulo: 'Doces',
+    tipo: 'compras',
+    cor: '🧁',
+    itens: [
+      { texto: 'Brigadeiro', marcavel: false, tipo: 'g' },
+      { texto: '1 lata leite condensado', marcavel: true, tipo: '' }
+    ]
+  });
+  assert.equal(snap.titulo, 'Doces');
+  assert.equal(snap.tipo, 'compras');
+  assert.equal(snap.total, 1);
+  assert.equal(snap.items[0].tipo, 'g');
+  assert.equal(link.bornGhostLists().length >= 1, true);
+});
+
 test('defaultPresets seed the two travel kits', function () {
   var packs = link.defaultPresets();
   assert.equal(packs.length, 2);

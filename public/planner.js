@@ -1275,11 +1275,21 @@ function saveConfig(k,v){
   });
 }
 
-function openSettings(){ $('setOverlay').classList.add('open'); JB.renderSkinPicker('planner',$('setSkins')); if(typeof plInitProfileSettings==='function') plInitProfileSettings(); switchSet('tema'); }
+function mountPlannerSheetSettings(){
+  if(!JB.mountSheetSettings) return;
+  var host=$('jbSheetSettings'); if(!host) return;
+  JB.mountSheetSettings(host,{ app:'planner', requiredTabs:['Planos'], onPick:function(){ bootSheet(); }, onCreateName:'createPersonalPlannerSpreadsheet' });
+}
+function openSettings(){ $('setOverlay').classList.add('open'); JB.renderSkinPicker('planner',$('setSkins')); mountPlannerSheetSettings(); if(typeof plInitProfileSettings==='function') plInitProfileSettings(); switchSet('tema'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function switchSet(name){
   document.querySelectorAll('#setOverlay .set-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-st')===name); });
-  document.querySelectorAll('#setOverlay .set-pane').forEach(function(p){ p.style.display=p.getAttribute('data-pane')===name?'block':'none'; });
+  document.querySelectorAll('#setOverlay .set-pane').forEach(function(p){
+    var on=p.getAttribute('data-pane')===name;
+    p.style.display=on?'':'none';
+    p.classList.toggle('active', on);
+  });
+  if(name==='dados') mountPlannerSheetSettings();
 }
 function plVerTutorial(){ closeSettings(); JB.tour('planner', PL_TOUR); }
 

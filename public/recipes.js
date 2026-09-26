@@ -519,9 +519,21 @@ function applyCheck(recipeId, itemId) {
 }
 
 function recipesSignOut() { JB.signOut(); location.href = '/'; }
+function mountRecipesSheetSettings() {
+  if (!JB.mountSheetSettings) return;
+  var host = $('jbSheetSettings');
+  if (!host) return;
+  JB.mountSheetSettings(host, {
+    app: APP,
+    requiredTabs: RECIPES_TABS.map(function (t) { return t[0]; }),
+    onPick: function () { bootSheet(); },
+    onCreateName: 'createSheet'
+  });
+}
 function openSettings() {
   switchSet('tema');
   JB.renderSkinPicker(APP, $('setSkins'));
+  mountRecipesSheetSettings();
   var flip = $('setFlipPref');
   if (flip) flip.classList.toggle('on', bookViewMode === 'flip');
   paintSpreadPref();
@@ -552,6 +564,7 @@ function switchSet(name) {
     p.style.display = on ? '' : 'none';
     p.classList.toggle('active', on);
   });
+  if (name === 'dados') mountRecipesSheetSettings();
 }
 var RECIPES_TOUR = [
   { go: function () { if (typeof goShelf === 'function') goShelf(); }, title: 'Joelboard Recipes', body: 'Livros na estante. Passe o mouse (ou toque) para um preview de páginas reais do livro.' },

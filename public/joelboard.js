@@ -1477,6 +1477,231 @@
       + '</div>';
   }
 
+  var sheetSettingsCfg = {};
+  function sheetSetEsc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function sheetShowIdKey(app){ return 'jb_sheet_show_id_' + String(app || ''); }
+  function parseSheetIdInput(raw){
+    raw = String(raw || '').trim();
+    if (!raw) return '';
+    var m = raw.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (m) return m[1];
+    m = raw.match(/\/spreadsheets\/([a-zA-Z0-9_-]{20,})/);
+    if (m) return m[1];
+    if (/^[a-zA-Z0-9_-]{20,}$/.test(raw)) return raw;
+    m = raw.match(/[a-zA-Z0-9_-]{30,}/);
+    return m ? m[0] : '';
+  }
+  function sheetValidForTabs(grid, need){
+    need = need || [];
+    if (!need.length) return true;
+    return need.some(function (t) { return grid && grid[t] != null; });
+  }
+  function sheetSettingsLabels(cfg){
+    var folder = DRIVE_APP_NAMES[resolveAppFolderKey(cfg.app)] || '';
+    var d = {
+      cap: 'Planilha no Google Drive',
+      hint: 'Seus dados ficam numa planilha sua — em Joelboard/' + folder + ' quando organizada.',
+      showId: 'Mostrar ID da planilha',
+      noSheet: 'Nenhuma planilha vinculada.',
+      browse: 'Escolher na pasta Joelboard',
+      linkPh: 'Cole o link ou ID da planilha',
+      linkBtn: 'Vincular',
+      openSheet: 'Abrir planilha no Google',
+      openFolder: 'Abrir pasta Joelboard/' + folder,
+      create: 'Criar nova planilha',
+      pickerTitle: 'Planilhas em Joelboard/' + folder,
+      pickerEmpty: 'Nenhuma planilha nesta pasta ainda.',
+      pickerLoading: 'Carregando planilhas…',
+      linkErr: 'Link ou ID inválido.',
+      tabErr: 'Esta planilha não parece ser deste app.',
+      accessErr: 'Sem acesso — confira o link ou peça permissão de Editor.',
+      ghost: 'Ghost não vincula planilhas reais.',
+      copied: 'ID copiado.'
+    };
+    var L = cfg.labels || {};
+    Object.keys(d).forEach(function (k) { if (L[k]) d[k] = L[k]; });
+    return d;
+  }
+  function ensureSheetPickerOverlay(){
+    var el = document.getElementById('jbSheetPicker');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'jbSheetPicker';
+    el.className = 'overlay';
+    el.setAttribute('onclick', 'if(event.target===this)JB.closeSheetPicker()');
+    el.innerHTML = '<div class="modal jb-sheet-picker" style="max-width:440px">'
+      + '<div class="mh"><div class="mt" id="jbSheetPickerTitle">Planilhas</div><button type="button" class="x" onclick="JB.closeSheetPicker()">✕</button></div>'
+      + '<div class="jb-sheet-picker-body" id="jbSheetPickerBody"></div>'
+      + '</div>';
+    document.body.appendChild(el);
+    return el;
+  }
+  function closeSheetPicker(){
+    var el = document.getElementById('jbSheetPicker');
+    if (el) el.classList.remove('open');
+  }
+  function sheetSettingsPick(app, id, opts){
+    opts = opts || {};
+    var cfg = sheetSettingsCfg[app];
+    if (!cfg || !id) return Promise.resolve();
+    var L = sheetSettingsLabels(cfg);
+    if (isGhost()) { jbToast(L.ghost); return Promise.resolve(); }
+    return sheetTabs(id).then(function (grid) {
+      if (!sheetValidForTabs(grid, cfg.requiredTabs)) throw new Error('tabs');
+      setSheetId(app, id);
+      paintSheetSettings(app);
+      closeSheetPicker();
+      if (opts.toast !== false) jbToast('✓ Planilha vinculada.');
+      if (cfg.onPick) cfg.onPick(id, grid);
+    }).catch(function (err) {
+      var m = String((err && err.message) || '');
+      if (m === 'tabs') jbToast(L.tabErr);
+      else if (m.indexOf('403') > -1 || m.indexOf('404') > -1) jbToast(L.accessErr);
+      else jbToast(L.accessErr);
+    });
+  }
+  function sheetSettingsLink(app){
+    var cfg = sheetSettingsCfg[app];
+    if (!cfg || !cfg.host) return;
+    var L = sheetSettingsLabels(cfg);
+    if (isGhost()) { jbToast(L.ghost); return; }
+    var inEl = cfg.host.querySelector('[data-jb-sheet-in]');
+    var errEl = cfg.host.querySelector('[data-jb-sheet-err]');
+    var id = parseSheetIdInput(inEl && inEl.value);
+    if (!id) {
+      if (errEl) errEl.textContent = L.linkErr;
+      return;
+    }
+    if (errEl) errEl.textContent = '';
+    sheetSettingsPick(app, id);
+  }
+  function sheetSettingsBrowse(app){
+    var cfg = sheetSettingsCfg[app];
+    if (!cfg) return;
+    var L = sheetSettingsLabels(cfg);
+    if (isGhost()) { jbToast(L.ghost); return; }
+    ensureSheetPickerOverlay();
+    var ov = document.getElementById('jbSheetPicker');
+    var body = document.getElementById('jbSheetPickerBody');
+    var title = document.getElementById('jbSheetPickerTitle');
+    if (title) title.textContent = L.pickerTitle;
+    if (body) body.innerHTML = '<div class="rg">' + sheetSetEsc(L.pickerLoading) + '</div>';
+    if (ov) ov.classList.add('open');
+    var folderKey = resolveAppFolderKey(app);
+    ensureAppFolder(folderKey).then(function (folderId) {
+      cfg._folderId = folderId;
+      return searchSheetsInFolder(folderId);
+    }).then(function (files) {
+      if (!body) return;
+      files = files || [];
+      if (!files.length) {
+        body.innerHTML = '<div class="rg">' + sheetSetEsc(L.pickerEmpty) + '</div>'
+          + (cfg.onCreateName ? ('<button type="button" class="btn-primary" style="width:100%;margin-top:12px" onclick="JB.closeSheetPicker();' + cfg.onCreateName + '()">' + sheetSetEsc(L.create) + '</button>') : '');
+        return;
+      }
+      body.innerHTML = files.map(function (f) {
+        var sid = String(f.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        if (!sid) return '';
+        return '<button type="button" class="jb-sheet-pick" onclick="JB.sheetSettingsPick(\'' + app + '\',\'' + sid + '\')">📊 '
+          + sheetSetEsc(f.name || sid) + '</button>';
+      }).join('')
+        + (cfg.onCreateName ? ('<button type="button" class="btn ghost" style="width:100%;margin-top:10px" onclick="JB.closeSheetPicker();' + cfg.onCreateName + '()">' + sheetSetEsc(L.create) + '</button>') : '');
+    }).catch(function () {
+      if (body) body.innerHTML = '<div class="rg">' + sheetSetEsc(L.accessErr) + '</div>';
+    });
+  }
+  function sheetSettingsToggleId(app){
+    var on = lg(sheetShowIdKey(app)) === '1';
+    if (on) lr(sheetShowIdKey(app)); else ls(sheetShowIdKey(app), '1');
+    paintSheetSettings(app);
+  }
+  function sheetSettingsCopyId(app){
+    var sid = getSheetId(app);
+    if (!sid) return;
+    function done(){ jbToast(sheetSettingsLabels(sheetSettingsCfg[app] || {}).copied); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(sid).then(done, done);
+      return;
+    }
+    done();
+  }
+  function paintSheetSettings(app){
+    var cfg = sheetSettingsCfg[app];
+    if (!cfg || !cfg.host) return;
+    var L = sheetSettingsLabels(cfg);
+    var sid = getSheetId(app);
+    var showId = lg(sheetShowIdKey(app)) === '1';
+    var infoEl = cfg.host.querySelector('[data-jb-sheet-info]');
+    var idEl = cfg.host.querySelector('[data-jb-sheet-id]');
+    var tg = cfg.host.querySelector('[data-jb-sheet-show]');
+    var openSheet = cfg.host.querySelector('[data-jb-sheet-open]');
+    var openFolder = cfg.host.querySelector('[data-jb-sheet-folder]');
+    var copyBtn = cfg.host.querySelector('.jb-sheet-copy');
+    if (infoEl) infoEl.textContent = sid ? ('ID: ' + sid) : L.noSheet;
+    if (idEl) {
+      idEl.textContent = sid || '—';
+      idEl.hidden = !(showId && sid);
+    }
+    if (tg) {
+      tg.classList.toggle('on', showId);
+      tg.setAttribute('aria-pressed', showId ? 'true' : 'false');
+    }
+    if (copyBtn) copyBtn.hidden = !(showId && sid);
+    if (openSheet) {
+      openSheet.href = sid ? ('https://docs.google.com/spreadsheets/d/' + encodeURIComponent(sid) + '/edit') : '#';
+      openSheet.hidden = !sid;
+    }
+    if (openFolder && !cfg._folderBound) {
+      cfg._folderBound = true;
+      var folderKey = resolveAppFolderKey(app);
+      ensureAppFolder(folderKey).then(function (folderId) {
+        cfg._folderId = folderId;
+        if (openFolder) {
+          openFolder.href = driveFolderWebLink(folderId);
+          openFolder.hidden = false;
+        }
+      }, function () {
+        if (openFolder) openFolder.hidden = true;
+      });
+    }
+  }
+  function mountSheetSettings(host, opts){
+    opts = opts || {};
+    var app = opts.app;
+    if (!host || !app) return null;
+    var L = sheetSettingsLabels(opts);
+    sheetSettingsCfg[app] = {
+      app: app,
+      host: host,
+      requiredTabs: opts.requiredTabs || [],
+      onPick: opts.onPick || null,
+      onCreateName: opts.onCreateName || '',
+      labels: opts.labels || null
+    };
+    host.innerHTML = '<div class="jb-sheet-set">'
+      + '<div class="jb-sheet-cap">' + sheetSetEsc(L.cap) + '</div>'
+      + '<p class="jb-sheet-hint">' + sheetSetEsc(L.hint) + '</p>'
+      + '<p class="jb-sheet-info rg" data-jb-sheet-info>' + sheetSetEsc(L.noSheet) + '</p>'
+      + '<button type="button" class="tg" data-jb-sheet-show onclick="JB.sheetSettingsToggleId(\'' + app + '\')" aria-pressed="false">' + sheetSetEsc(L.showId) + '</button>'
+      + '<code class="jb-sheet-id" data-jb-sheet-id hidden>—</code>'
+      + '<button type="button" class="btn ghost jb-sheet-copy" onclick="JB.sheetSettingsCopyId(\'' + app + '\')">Copiar ID</button>'
+      + '<button type="button" class="btn ghost" style="width:100%;margin-top:10px" onclick="JB.sheetSettingsBrowse(\'' + app + '\')">' + sheetSetEsc(L.browse) + '</button>'
+      + '<div class="jb-sheet-link">'
+        + '<input class="field" data-jb-sheet-in placeholder="' + sheetSetEsc(L.linkPh) + '" aria-label="' + sheetSetEsc(L.linkPh) + '">'
+        + '<button type="button" class="btn" onclick="JB.sheetSettingsLink(\'' + app + '\')">' + sheetSetEsc(L.linkBtn) + '</button>'
+      + '</div>'
+      + '<div class="form-err" data-jb-sheet-err></div>'
+      + '<a class="jb-sheet-open mbtn" data-jb-sheet-open target="_blank" rel="noopener noreferrer" hidden>' + sheetSetEsc(L.openSheet) + '</a>'
+      + '<a class="jb-sheet-open mbtn" data-jb-sheet-folder target="_blank" rel="noopener noreferrer" hidden>' + sheetSetEsc(L.openFolder) + '</a>'
+      + (opts.onCreateName ? ('<button type="button" class="btn ghost" style="width:100%;margin-top:8px" onclick="' + opts.onCreateName + '()">' + sheetSetEsc(L.create) + '</button>') : '')
+      + '</div>';
+    paintSheetSettings(app);
+    return { paint: function () { paintSheetSettings(app); } };
+  }
+
   function signOut(){
     ghostOn = false;
     lr(GHOST_KEY);
@@ -4074,6 +4299,9 @@
     isTransientErr: isTransientErr, transientErrMessage: jbTransientErrMessage, bootRetryHtml: bootRetryHtml,
     getSheetId: getSheetId, setSheetId: setSheetId, clearSheetId: clearSheetId,
     sheetTabs: sheetTabs, resolveSheet: resolveSheet, sheetPickHtml: sheetPickHtml,
+    parseSheetIdInput: parseSheetIdInput, mountSheetSettings: mountSheetSettings, paintSheetSettings: paintSheetSettings,
+    sheetSettingsPick: sheetSettingsPick, sheetSettingsLink: sheetSettingsLink, sheetSettingsBrowse: sheetSettingsBrowse,
+    sheetSettingsToggleId: sheetSettingsToggleId, sheetSettingsCopyId: sheetSettingsCopyId, closeSheetPicker: closeSheetPicker,
     feedback: feedback, uploadFeedbackFiles: uploadFeedbackFiles, fbValidateFiles: fbValidateFiles, fbAttachHint: fbAttachHint, fbFormatBytes: fbFormatBytes, FB_ATTACH: FB_ATTACH, initFilePick: initFilePick, getFilePickFiles: getFilePickFiles, resetFilePick: resetFilePick,
     toast: jbToast, persist: persist, writeErrMessage: writeErrMessage, onTabVisible: onTabVisible, watchSheet: watchSheet, watchSheetId: watchSheetId, unwatchSheetId: unwatchSheetId, confirm: confirm, whenReady: whenReady, ensureEditor: ensureEditor, editor: null, wireEggFooter: wireEggFooter, refreshNumberSteppers: scanNumberSteppers,
     outboxCount: function () { return obCount; }, flushOutbox: flushOutbox, onOutboxChange: onOutboxChange,

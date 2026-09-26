@@ -243,6 +243,15 @@ const I18N = {
     'sheet.haveOne':'I already have a sheet', 'sheet.linkLabel':'Paste your spreadsheet link',
     'sheet.linkPh':'https://docs.google.com/spreadsheets/…', 'sheet.linkBtn':'Link it', 'sheet.linking':'Linking…',
     'sheet.created':'✓ Sheet ready!', 'sheet.linkErr':'Could not open that sheet — check the link and that you have access.',
+    'sheet.set.cap':'Google Drive spreadsheet', 'sheet.set.hint':'Your data lives in your sheet — usually in Joelboard/Finance when organized.',
+    'sheet.set.showId':'Show spreadsheet ID', 'sheet.set.noSheet':'No spreadsheet linked.',
+    'sheet.set.browse':'Choose from Joelboard folder', 'sheet.set.linkPh':'Paste spreadsheet link or ID',
+    'sheet.set.linkBtn':'Link', 'sheet.set.openSheet':'Open spreadsheet in Google',
+    'sheet.set.openFolder':'Open Joelboard/Finance folder', 'sheet.set.create':'Create new spreadsheet',
+    'sheet.set.pickerTitle':'Spreadsheets in Joelboard/Finance', 'sheet.set.pickerEmpty':'No spreadsheets in this folder yet.',
+    'sheet.set.pickerLoading':'Loading spreadsheets…', 'sheet.set.linkErr':'Invalid link or ID.',
+    'sheet.set.tabErr':'This spreadsheet does not look like a Finance sheet.', 'sheet.set.accessErr':'No access — check the link or ask for Editor permission.',
+    'sheet.set.ghost':'Ghost cannot link real spreadsheets.', 'sheet.set.copied':'ID copied.',
     'settled.badge':'✓ All settled this month', 'ph.search':'Search transactions…',
     'set.tabData':'Data', 'export.hint':'Save a full backup of all your data as a CSV in your Google Drive.',
     'export.btn':'Export backup', 'export.working':'Exporting…', 'export.done':'✓ Backup saved to your Drive', 'export.doneLocal':'✓ Backup ready to download', 'export.open':'Open file',
@@ -519,6 +528,15 @@ const I18N = {
     'sheet.haveOne':'Já tenho uma planilha', 'sheet.linkLabel':'Cole o link da sua planilha',
     'sheet.linkPh':'https://docs.google.com/spreadsheets/…', 'sheet.linkBtn':'Vincular', 'sheet.linking':'Vinculando…',
     'sheet.created':'✓ Planilha pronta!', 'sheet.linkErr':'Não consegui abrir essa planilha — verifique o link e se você tem acesso.',
+    'sheet.set.cap':'Planilha no Google Drive', 'sheet.set.hint':'Seus dados ficam numa planilha sua — em Joelboard/Finance quando organizada.',
+    'sheet.set.showId':'Mostrar ID da planilha', 'sheet.set.noSheet':'Nenhuma planilha vinculada.',
+    'sheet.set.browse':'Escolher na pasta Joelboard', 'sheet.set.linkPh':'Cole o link ou ID da planilha',
+    'sheet.set.linkBtn':'Vincular', 'sheet.set.openSheet':'Abrir planilha no Google',
+    'sheet.set.openFolder':'Abrir pasta Joelboard/Finance', 'sheet.set.create':'Criar nova planilha',
+    'sheet.set.pickerTitle':'Planilhas em Joelboard/Finance', 'sheet.set.pickerEmpty':'Nenhuma planilha nesta pasta ainda.',
+    'sheet.set.pickerLoading':'Carregando planilhas…', 'sheet.set.linkErr':'Link ou ID inválido.',
+    'sheet.set.tabErr':'Esta planilha não parece ser do Finance.', 'sheet.set.accessErr':'Sem acesso — confira o link ou peça permissão de Editor.',
+    'sheet.set.ghost':'Ghost não vincula planilhas reais.', 'sheet.set.copied':'ID copiado.',
     'settled.badge':'✓ Tudo quitado este mês', 'ph.search':'Buscar lançamentos…',
     'set.tabData':'Dados', 'export.hint':'Salve um backup completo de todos os seus dados em CSV no seu Google Drive.',
     'export.btn':'Exportar backup', 'export.working':'Exportando…', 'export.done':'✓ Backup salvo no seu Drive', 'export.doneLocal':'✓ Backup pronto para baixar', 'export.open':'Abrir arquivo',
@@ -2122,6 +2140,7 @@ function openSettings() {
   document.getElementById('setExch').value = Number(s.exchange_rate) || 0;
   setSettingsMode(setFormMode); setSettingsConvert(setFormConvert); setSettingsOtVis(); syncCurLabels(); csSyncAll();
   const _ae=document.getElementById('acctEmail'); if (_ae) _ae.textContent = (DATA && DATA.email) ? ('👤 ' + DATA.email) : '—';
+  mountFinanceSheetSettings();
   switchSetTab('income');
   document.getElementById('setOverlay').classList.add('open');
 }
@@ -2146,6 +2165,40 @@ function syncCurLabels() {
   document.querySelectorAll('.cur-from-lbl').forEach(e=>e.textContent=from);
   document.getElementById('setExchLbl').textContent = t('set.exchUnit',{to:to,from:from});
 }
+function financeSheetSettingsLabels() {
+  return {
+    cap: t('sheet.set.cap'),
+    hint: t('sheet.set.hint'),
+    showId: t('sheet.set.showId'),
+    noSheet: t('sheet.set.noSheet'),
+    browse: t('sheet.set.browse'),
+    linkPh: t('sheet.set.linkPh'),
+    linkBtn: t('sheet.set.linkBtn'),
+    openSheet: t('sheet.set.openSheet'),
+    openFolder: t('sheet.set.openFolder'),
+    create: t('sheet.set.create'),
+    pickerTitle: t('sheet.set.pickerTitle'),
+    pickerEmpty: t('sheet.set.pickerEmpty'),
+    pickerLoading: t('sheet.set.pickerLoading'),
+    linkErr: t('sheet.set.linkErr'),
+    tabErr: t('sheet.set.tabErr'),
+    accessErr: t('sheet.set.accessErr'),
+    ghost: t('sheet.set.ghost'),
+    copied: t('sheet.set.copied')
+  };
+}
+function mountFinanceSheetSettings() {
+  if (!JB.mountSheetSettings) return;
+  var host = document.getElementById('jbSheetSettings');
+  if (!host) return;
+  JB.mountSheetSettings(host, {
+    app: 'finance',
+    requiredTabs: typeof JB_TABS !== 'undefined' ? JB_TABS : ['Transactions'],
+    labels: financeSheetSettingsLabels(),
+    onPick: function () { if (typeof jbBootSheet === 'function') jbBootSheet(); },
+    onCreateName: 'jbCreateSheet'
+  });
+}
 function switchSetTab(t) {
   document.getElementById('setTabGeneral').classList.toggle('active', t==='income');
   document.getElementById('setTabCats').classList.toggle('active', t==='cats');
@@ -2160,6 +2213,7 @@ function switchSetTab(t) {
   if (t==='cats') renderCatList();
   if (t==='themes') renderThemePicker();
   if (t==='lang') renderLangPicker();
+  if (t==='data') mountFinanceSheetSettings();
 }
 function renderCatList() {
   const el = document.getElementById('catList'); if (!el) return;

@@ -1443,9 +1443,14 @@ function exportCurrentList(){
   notasDownloadCsv(safeFilename(n.titulo)+'.csv', buildListCsv(n));
   toast('✓ Lista exportada');
 }
-function openSettings(){ switchSet('tema'); JB.renderSkinPicker('notas', $('setSkins')); $('setNudge').classList.toggle('on', (DATA.config&&DATA.config.nudgePref)!=='off'); $('setHideDone').classList.toggle('on', hideDonePref()); if(typeof ncInitProfileSettings==='function') ncInitProfileSettings(); $('setOverlay').classList.add('open'); }
+function mountNotasSheetSettings(){
+  if(!JB.mountSheetSettings) return;
+  var host=$('jbSheetSettings'); if(!host) return;
+  JB.mountSheetSettings(host,{ app:'notas', requiredTabs:['Notas'], onPick:function(){ bootSheet(); }, onCreateName:'createPersonalNotasSpreadsheet' });
+}
+function openSettings(){ switchSet('tema'); JB.renderSkinPicker('notas', $('setSkins')); mountNotasSheetSettings(); $('setNudge').classList.toggle('on', (DATA.config&&DATA.config.nudgePref)!=='off'); $('setHideDone').classList.toggle('on', hideDonePref()); if(typeof ncInitProfileSettings==='function') ncInitProfileSettings(); $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
-function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++){ var on=ps[j].getAttribute('data-pane')===name; ps[j].style.display=on?'':'none'; ps[j].classList.toggle('active', on); } }
+function switchSet(name){ var ts=document.querySelectorAll('#setOverlay .set-tab'); for(var i=0;i<ts.length;i++) ts[i].classList.toggle('active',ts[i].getAttribute('data-st')===name); var ps=document.querySelectorAll('#setOverlay .set-pane'); for(var j=0;j<ps.length;j++){ var on=ps[j].getAttribute('data-pane')===name; ps[j].style.display=on?'':'none'; ps[j].classList.toggle('active', on); } if(name==='dados') mountNotasSheetSettings(); }
 function toggleNudgePref(){ var off=(DATA.config&&DATA.config.nudgePref)==='off'; var nv=off?'on':'off'; saveConfig('nudgePref', nv); $('setNudge').classList.toggle('on', nv!=='off'); }
 var NOTAS_TOUR=[
   { title:'Bem-vindo ao Notes 📝', body:'Listas marcáveis — compras, tarefas, viagem ou nota livre. Listas compartilhadas aparecem na seção 👥 Compartilhadas.' },

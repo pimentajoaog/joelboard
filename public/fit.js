@@ -547,7 +547,12 @@ function renderProgresso(){
   el.innerHTML=weightSecHtml()+volSec+exSec;
 }
 function fillGroupSelect(val){ var sel=$('exGroup'); var tags=(DATA.config&&DATA.config.tags)||DEFAULT_TAGS; var opts='<option value="">— sem grupo —</option>'; if(val && tags.indexOf(val)<0) opts+='<option value="'+esc(val)+'">'+esc(val)+'</option>'; opts+=tags.map(function(t){return '<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join(''); sel.innerHTML=opts; sel.value=val||''; }
-function openSettings(tab){ renderSettings(); switchSet(tab||'geral'); var em=$('setAcctEmail'); if(em) em.textContent=JB.email()||'—'; $('setOverlay').classList.add('open'); }
+function mountFitSheetSettings(){
+  if(!JB.mountSheetSettings) return;
+  var host=$('jbSheetSettings'); if(!host) return;
+  JB.mountSheetSettings(host,{ app:'fit', requiredTabs:['Exercicios','Treinos'], onPick:function(){ bootSheet(); }, onCreateName:'createSheet' });
+}
+function openSettings(tab){ renderSettings(); switchSet(tab||'geral'); mountFitSheetSettings(); var em=$('setAcctEmail'); if(em) em.textContent=JB.email()||'—'; $('setOverlay').classList.add('open'); }
 function closeSettings(){ $('setOverlay').classList.remove('open'); }
 function renderSettings(){
   var u=unit();
@@ -563,7 +568,7 @@ function renderSettings(){
   renderSched(); renderVolGoals();
   if(typeof renderMacroSettingsPanel==='function') renderMacroSettingsPanel();
 }
-function switchSet(name){ document.querySelectorAll('#setOverlay .set-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-st')===name); }); document.querySelectorAll('#setOverlay .set-pane').forEach(function(p){ var on=p.getAttribute('data-pane')===name; p.style.display=on?'':'none'; p.classList.toggle('active', on); }); if(name==='macros'&&typeof initMacroMealsSort==='function') initMacroMealsSort(); }
+function switchSet(name){ document.querySelectorAll('#setOverlay .set-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-st')===name); }); document.querySelectorAll('#setOverlay .set-pane').forEach(function(p){ var on=p.getAttribute('data-pane')===name; p.style.display=on?'':'none'; p.classList.toggle('active', on); }); if(name==='dados') mountFitSheetSettings(); if(name==='macros'&&typeof initMacroMealsSort==='function') initMacroMealsSort(); }
 function loadDefaults(){ var have={}; (DATA.exercicios||[]).forEach(function(e){ have[(e.name||'').toLowerCase()]=1; }); var add=STARTER.filter(function(e){ return !have[e[0].toLowerCase()]; }); if(!add.length){ toast('Biblioteca já está completa ✓'); return; } var rows=add.map(function(e){ var id=uuid(); DATA.exercicios.push({id:id,name:e[0],group:e[1]}); return [e[0],e[1],id]; }); renderExercicios(); renderSettings(); toast('+'+add.length+' exercícios adicionados'); JB.api('POST', ssUrl('/values/'+encodeURIComponent('Exercicios')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'), {values:rows}).catch(function(){ toast('Erro ao salvar — recarregue'); }); }
 function setUnitS(u){ DATA.config=DATA.config||{}; DATA.config.unit=u; saveConfig('unit',u); renderSettings(); renderHoje(); }
 function persistTags(){ saveConfig('tags', JSON.stringify(DATA.config.tags||[])); }

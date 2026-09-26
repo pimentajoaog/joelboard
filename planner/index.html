@@ -89,10 +89,14 @@
     <div class="set-tabs">
       <button class="set-tab active" data-st="tema" onclick="switchSet('tema')">Tema</button>
       <button class="set-tab" data-st="perfil" onclick="switchSet('perfil')">Perfil</button>
+      <button class="set-tab" data-st="dados" onclick="switchSet('dados')">Dados</button>
       <button class="set-tab" data-st="sobre" onclick="switchSet('sobre')">Sobre</button>
     </div>
     <div class="set-pane" data-pane="tema">
       <div class="fg"><label class="fl">Tema do app</label><div id="setSkins"></div></div>
+    </div>
+    <div class="set-pane" data-pane="dados" style="display:none">
+      <div id="jbSheetSettings"></div>
     </div>
     <div class="set-pane" data-pane="perfil" style="display:none">
       <div class="fg">

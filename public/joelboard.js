@@ -1505,6 +1505,9 @@
       cap: 'Planilha no Google Drive',
       hint: 'Seus dados ficam numa planilha sua — em Joelboard/' + folder + ' quando organizada.',
       showId: 'Mostrar ID da planilha',
+      hideId: 'Ocultar ID da planilha',
+      linked: 'Planilha vinculada.',
+      copyId: 'Copiar ID',
       noSheet: 'Nenhuma planilha vinculada.',
       browse: 'Escolher na pasta Joelboard',
       linkPh: 'Cole o link ou ID da planilha',
@@ -1640,16 +1643,16 @@
     var openSheet = cfg.host.querySelector('[data-jb-sheet-open]');
     var openFolder = cfg.host.querySelector('[data-jb-sheet-folder]');
     var copyBtn = cfg.host.querySelector('.jb-sheet-copy');
-    if (infoEl) infoEl.textContent = sid ? ('ID: ' + sid) : L.noSheet;
-    if (idEl) {
-      idEl.textContent = sid || '—';
-      idEl.hidden = !(showId && sid);
-    }
+    if (infoEl) infoEl.textContent = sid ? L.linked : L.noSheet;
+    var idBlock = cfg.host.querySelector('[data-jb-sheet-id-block]');
+    if (idBlock) idBlock.hidden = !(showId && sid);
+    if (idEl) idEl.textContent = sid || '—';
     if (tg) {
+      tg.textContent = showId ? L.hideId : L.showId;
       tg.classList.toggle('on', showId);
       tg.setAttribute('aria-pressed', showId ? 'true' : 'false');
     }
-    if (copyBtn) copyBtn.hidden = !(showId && sid);
+    if (copyBtn) copyBtn.textContent = L.copyId;
     if (openSheet) {
       openSheet.href = sid ? ('https://docs.google.com/spreadsheets/d/' + encodeURIComponent(sid) + '/edit') : '#';
       openSheet.hidden = !sid;
@@ -1681,22 +1684,29 @@
       onCreateName: opts.onCreateName || '',
       labels: opts.labels || null
     };
+    if (host.getAttribute('data-jb-sheet-app') === app && host.querySelector('.jb-sheet-set')) {
+      paintSheetSettings(app);
+      return { paint: function () { paintSheetSettings(app); } };
+    }
+    host.setAttribute('data-jb-sheet-app', app);
     host.innerHTML = '<div class="jb-sheet-set">'
       + '<div class="jb-sheet-cap">' + sheetSetEsc(L.cap) + '</div>'
       + '<p class="jb-sheet-hint">' + sheetSetEsc(L.hint) + '</p>'
-      + '<p class="jb-sheet-info rg" data-jb-sheet-info>' + sheetSetEsc(L.noSheet) + '</p>'
-      + '<button type="button" class="tg" data-jb-sheet-show onclick="JB.sheetSettingsToggleId(\'' + app + '\')" aria-pressed="false">' + sheetSetEsc(L.showId) + '</button>'
-      + '<code class="jb-sheet-id" data-jb-sheet-id hidden>—</code>'
-      + '<button type="button" class="btn ghost jb-sheet-copy" onclick="JB.sheetSettingsCopyId(\'' + app + '\')">Copiar ID</button>'
-      + '<button type="button" class="btn ghost" style="width:100%;margin-top:10px" onclick="JB.sheetSettingsBrowse(\'' + app + '\')">' + sheetSetEsc(L.browse) + '</button>'
-      + '<div class="jb-sheet-link">'
-        + '<input class="field" data-jb-sheet-in placeholder="' + sheetSetEsc(L.linkPh) + '" aria-label="' + sheetSetEsc(L.linkPh) + '">'
-        + '<button type="button" class="btn" onclick="JB.sheetSettingsLink(\'' + app + '\')">' + sheetSetEsc(L.linkBtn) + '</button>'
+      + '<p class="jb-sheet-info" data-jb-sheet-info>' + sheetSetEsc(L.noSheet) + '</p>'
+      + '<button type="button" class="jb-sheet-tg" data-jb-sheet-show onclick="JB.sheetSettingsToggleId(\'' + app + '\')" aria-pressed="false">' + sheetSetEsc(L.showId) + '</button>'
+      + '<div class="jb-sheet-id-block" data-jb-sheet-id-block hidden>'
+        + '<code class="jb-sheet-id" data-jb-sheet-id>—</code>'
+        + '<button type="button" class="jb-sheet-copy" onclick="JB.sheetSettingsCopyId(\'' + app + '\')">' + sheetSetEsc(L.copyId) + '</button>'
       + '</div>'
-      + '<div class="form-err" data-jb-sheet-err></div>'
-      + '<a class="jb-sheet-open mbtn" data-jb-sheet-open target="_blank" rel="noopener noreferrer" hidden>' + sheetSetEsc(L.openSheet) + '</a>'
-      + '<a class="jb-sheet-open mbtn" data-jb-sheet-folder target="_blank" rel="noopener noreferrer" hidden>' + sheetSetEsc(L.openFolder) + '</a>'
-      + (opts.onCreateName ? ('<button type="button" class="btn ghost" style="width:100%;margin-top:8px" onclick="' + opts.onCreateName + '()">' + sheetSetEsc(L.create) + '</button>') : '')
+      + '<button type="button" class="jb-sheet-btn" onclick="JB.sheetSettingsBrowse(\'' + app + '\')">' + sheetSetEsc(L.browse) + '</button>'
+      + '<div class="jb-sheet-link">'
+        + '<input class="field jb-sheet-in" data-jb-sheet-in placeholder="' + sheetSetEsc(L.linkPh) + '" aria-label="' + sheetSetEsc(L.linkPh) + '">'
+        + '<button type="button" class="jb-sheet-link-btn" onclick="JB.sheetSettingsLink(\'' + app + '\')">' + sheetSetEsc(L.linkBtn) + '</button>'
+      + '</div>'
+      + '<div class="jb-sheet-err" data-jb-sheet-err></div>'
+      + '<a class="jb-sheet-action" data-jb-sheet-open target="_blank" rel="noopener noreferrer" hidden>' + sheetSetEsc(L.openSheet) + '</a>'
+      + '<a class="jb-sheet-action" data-jb-sheet-folder target="_blank" rel="noopener noreferrer" hidden>' + sheetSetEsc(L.openFolder) + '</a>'
+      + (opts.onCreateName ? ('<button type="button" class="jb-sheet-btn jb-sheet-btn-muted" onclick="' + opts.onCreateName + '()">' + sheetSetEsc(L.create) + '</button>') : '')
       + '</div>';
     paintSheetSettings(app);
     return { paint: function () { paintSheetSettings(app); } };

@@ -15,6 +15,9 @@ test('mountSheetSettings lists folder spreadsheets and accepts pasted links', fu
   assert.match(src, /function sheetSettingsBrowse\(app\)/);
   assert.match(src, /searchSheetsInFolder\(folderId\)/);
   assert.match(src, /data-jb-sheet-in/);
+  assert.match(src, /jb-sheet-tg/);
+  assert.match(src, /jb-sheet-link-btn/);
+  assert.match(src, /jb-sheet-action/);
   assert.match(src, /sheetSettingsToggleId/);
   assert.match(src, /mountSheetSettings: mountSheetSettings/);
 });
@@ -22,5 +25,8 @@ test('mountSheetSettings lists folder spreadsheets and accepts pasted links', fu
 test('sheet settings CSS ships in joelboard.css', function () {
   const css = readFileSync(new URL('../public/joelboard.css', import.meta.url), 'utf8');
   assert.match(css, /\.jb-sheet-set/);
+  assert.match(css, /\.jb-sheet-tg/);
+  assert.match(css, /\.jb-sheet-link-btn/);
+  assert.match(css, /\.jb-sheet-action/);
   assert.match(css, /\.jb-sheet-picker-body/);
 });

@@ -2049,6 +2049,7 @@ function switchTab(name, opts) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
   document.querySelectorAll('.tab-page').forEach(p=>p.classList.toggle('active', p.id==='tab-'+name));
   if (name==='overview') renderBreakdown();
+  if (typeof renderPrecosWidget === 'function') renderPrecosWidget();
   if (!opts.fromRoute) financeSyncRoute(false);
 }
 const FINANCE_VAULT_SKIN = [{ id:'vault', name:'Vault', bg:'#14140f', card:'#222218', accent:'#cba86a', text:'#e9e4d6' }];

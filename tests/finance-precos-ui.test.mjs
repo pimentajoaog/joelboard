@@ -23,11 +23,12 @@ function fakeEl() {
   };
 }
 
-function boot(data) {
+function boot(data, extra) {
   const els = {};
   const calls = [];
   let n = 0;
   const ctx = {
+    ...extra,
     console,
     DATA: Object.assign({ settings: {}, precosBuscas: [], precosCapturas: [], precosLojas: [], precosManual: [], precosConferidas: [] }, data),
     document: { getElementById: (id) => (els[id] = els[id] || fakeEl()) },
@@ -149,6 +150,100 @@ test('no captures yet shows an empty chart, not a blank space', () => {
   assert.match(els.precosFetchRow.innerHTML, /Buscar preços de hoje/);
   ctx.renderPrecos();
   assert.match(els.precosList.innerHTML, /Toque para buscar o primeiro preço/);
+});
+
+const SSD = { id: 'ssd', termo: 'SSD 2TB', teto: '', obrigatorias: '', proibidas: '', arquivada: false, criado: 2 };
+const kabumAt = (preco) => [{ loja: 'KaBuM!', titulo: 'Produto', preco, precoTexto: 'R$ ' + preco, link: 'https://www.kabum.com.br/p' }];
+
+test('card arrow opens the cheapest stores when none are pinned', () => {
+  const { ctx, els } = boot({ precosBuscas: [Object.assign({}, BUSCA)], precosCapturas: [capture(TODAY, OFFERS)] });
+  ctx.renderPrecos();
+  assert.doesNotMatch(els.precosList.innerHTML, /precos-card-drop/);
+  ctx.precosToggleCard('gpu');
+  const html = els.precosList.innerHTML;
+  assert.match(html, /aria-expanded="true"/);
+  assert.match(html, /Mais baratas por loja · hoje/);
+  assert.equal(count(html, 'class="precos-drop-row'), 5);
+  assert.match(html, /\+ 2 lojas mais caras/);
+  assert.match(html, /Escolher lojas/);
+  ctx.precosToggleCard('gpu');
+  assert.doesNotMatch(els.precosList.innerHTML, /precos-card-drop/);
+});
+
+test('card arrow lists every pinned store, including ones without an offer today', () => {
+  const pins = ['Mercado Livre', 'Pichau', 'Kabum'].map((nome, i) => ({ id: 'p' + i, buscaId: 'gpu', tipo: 'permitida', nome, dominio: '', criado: 1 }));
+  const { ctx, els } = boot({
+    precosBuscas: [Object.assign({}, BUSCA)],
+    precosCapturas: [capture('2026-10-07', kabumAt(4999)), capture(TODAY, OFFERS)],
+    precosLojas: pins
+  });
+  ctx.precosToggleCard('gpu');
+  const html = els.precosList.innerHTML;
+  assert.match(html, /Lojas marcadas · hoje/);
+  assert.equal(count(html, 'class="precos-drop-row'), 3);
+  const names = [...html.matchAll(/precos-drop-name">([^<]+)/g)].map((m) => m[1].trim());
+  assert.deepEqual(names, ['Mercado Livre', 'Pichau', 'KaBuM!']);
+  assert.match(html, /mais barata/);
+  assert.match(html, /% que a mais barata/);
+  assert.match(html, /sem oferta hoje · última R\$\s4\.999,00 ontem/);
+});
+
+test('widget shows starred products collapsed and every product expanded', () => {
+  const { ctx, els } = boot({
+    settings: { precos_favoritas: 'gpu' },
+    precosBuscas: [Object.assign({}, BUSCA), Object.assign({}, SSD)],
+    precosCapturas: [capture('2026-10-07', kabumAt(5000)), capture(TODAY, kabumAt(4500))]
+  });
+  ctx.renderPrecos();
+  assert.equal(els.precosWidget.hidden, false);
+  const pill = els.precosWidget.innerHTML;
+  assert.match(pill, /pw-pill/);
+  assert.match(pill, /RX 9070 XT/);
+  assert.match(pill, /R\$\s4\.500,00/);
+  assert.match(pill, /▼10%/);
+  assert.doesNotMatch(pill, /SSD 2TB/);
+  ctx.precosWidgetToggle(true);
+  const panel = els.precosWidget.innerHTML;
+  assert.match(panel, /▼ R\$\s500,00 · 10% vs ontem/);
+  assert.match(panel, /SSD 2TB/);
+  assert.match(panel, /sem busca ainda/);
+  assert.ok(panel.indexOf('RX 9070 XT') < panel.indexOf('SSD 2TB'));
+  assert.match(panel, /Buscar preços de hoje \(1\)/);
+  assert.match(panel, /1 de 2 atualizadas hoje/);
+});
+
+test('widget without favorites shows a count and only appears on Visão geral', () => {
+  const { ctx, els } = boot({ precosBuscas: [Object.assign({}, BUSCA), Object.assign({}, SSD)] });
+  ctx.renderPrecos();
+  assert.match(els.precosWidget.innerHTML, /💰 Preços<\/span><span class="pw-count">2</);
+  ctx.precosToggleFav('ssd');
+  assert.equal(ctx.DATA.settings.precos_favoritas, 'ssd');
+  assert.match(els.precosWidget.innerHTML, /SSD 2TB/);
+  ctx.currentTab = 'bills';
+  ctx.renderPrecosWidget();
+  assert.equal(els.precosWidget.hidden, true);
+  assert.equal(els.precosWidget.innerHTML, '');
+});
+
+test('Buscar todas searches only products not updated today, then all again', async () => {
+  const urls = [];
+  const fetch = (url) => {
+    urls.push(url);
+    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ offers: kabumAt(4400) }) });
+  };
+  const { ctx, els, calls } = boot({
+    precosBuscas: [Object.assign({}, BUSCA), Object.assign({}, SSD)],
+    precosCapturas: [capture(TODAY, kabumAt(4500))]
+  }, { fetch });
+  await ctx.precosFetchAll();
+  assert.deepEqual(calls.filter((c) => c[0] === 'savePrecosCaptura').map((c) => c[1].buscaId), ['ssd']);
+  assert.equal(urls.length, 1);
+  assert.match(urls[0], /SSD%202TB/);
+  ctx.precosWidgetToggle(true);
+  assert.match(els.precosWidget.innerHTML, /Buscar todas de novo/);
+  assert.match(els.precosWidget.innerHTML, /2 de 2 atualizadas hoje/);
+  await ctx.precosFetchAll();
+  assert.equal(urls.length, 3);
 });
 
 test('empty list has no example button', () => {

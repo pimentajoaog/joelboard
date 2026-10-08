@@ -13,7 +13,7 @@ var PK = {
   emptyHint: 'Monitore o menor preço do dia e veja se vale a pena comprar.',
   newSearch: '+ Nova busca',
   sampleNotice: 'Dados de exemplo — só para testar a interface.',
-  awaitingWatch: 'Aguardando entrar no watch (precos-watch.json) para atualização automática.',
+  awaitingWatch: 'Ofertas automáticas na próxima atualização diária (até ~24h após criar a busca).',
   todayLow: 'Menor hoje',
   median30: 'Mediana 30 dias',
   allTimeLow: 'Menor histórico',
@@ -41,7 +41,7 @@ var PK = {
   newSearchTitle: 'Nova busca',
   term: 'Termo de busca',
   watchCopy: 'Copiar entrada do watch',
-  watchHint: 'Cole este bloco em public/data/precos-watch.json para o job diário passar a consultar.',
+  watchHint: 'Com sync no servidor, a busca entra sozinha na fila. JSON abaixo só se você mantém o repo manualmente.',
   save: 'Salvar',
   cancel: 'Cancelar',
   teto: 'Preço-alvo (opcional)',
@@ -396,7 +396,7 @@ function submitPrecosNew() {
   jbRun('addPrecosBusca', data).then(function (res) {
     (DATA.precosBuscas = DATA.precosBuscas || []).push(Object.assign({}, data, { id: res.id || id }));
     renderPrecos();
-    showToast('✓ Busca criada — copie o JSON do watch abaixo.');
+    showToast('✓ Busca criada — ofertas automáticas na próxima atualização diária.');
   }).catch(function (e) { showToast(t('err.prefix') + e.message, 'error'); });
 }
 

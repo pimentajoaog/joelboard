@@ -41,6 +41,12 @@ Registre um gasto (só você ou compartilhado), divida itens entre pessoas e aco
 
 Backup: **Ajustes → Export backup** (CSV).
 
+## Preços (Contas)
+
+Monitor de preços com histórico, filtros e conferência manual. Buscas ficam na aba **`PrecosBuscas`** da planilha Finance.
+
+Atualização automática de ofertas (Google Shopping via SerpApi) roda no GitHub Actions e publica JSON em `/data/precos/<id>/`. Para o **dono do deploy**, a lista de buscas ativas vem da sua planilha — ver **`scripts/PRECOS-OWNER-SETUP.md`**.
+
 ## Dicas
 
 - Use o **month picker** no topo para navegar meses.

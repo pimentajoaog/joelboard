@@ -345,6 +345,16 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .check:hover { border-color: var(--income); }
 .check.on { background: var(--income); border-color: var(--income); color: var(--on-income, #fff); }
 .check.sm { width: 18px; height: 18px; border-radius: 6px; font-size: 11px; }
+.bill-paid-edit { margin: 2px 0 10px; }
+.bill-paid-edit[hidden] { display: none !important; }
+.bill-paid-edit-btn {
+  display: inline-flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 10px; margin: 0; border: 1px solid transparent; border-radius: 10px;
+  background: transparent; color: var(--muted); font-size: 13px; font-weight: 600;
+  cursor: pointer; text-align: left; transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.bill-paid-edit-btn:hover { color: var(--text); background: var(--surface); border-color: var(--border); }
+.bill-paid-edit-btn .check { pointer-events: none; }
 
 .goals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px,1fr)); gap: 14px; }
 .goal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); position: relative; overflow: hidden; display: flex; flex-direction: column; }

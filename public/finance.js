@@ -100,6 +100,7 @@ const I18N = {
     'tx.save':'Save Transaction', 'tx.update':'Update Transaction', 'tx.delete':'Delete Transaction',
     'bill.add':'Add Bill', 'bill.edit':'Edit Bill', 'bill.save':'Save Bill',
     'bill.update':'Update Bill', 'bill.delete':'Delete Bill',
+    'bill.markPaidThisMonth':'Mark as paid this month', 'bill.paidThisMonth':'Paid this month',
     'budget.add':'Add Budget Category', 'budget.edit':'Edit Budget Category',
     'budget.save':'Save Budget', 'budget.update':'Update Budget', 'budget.delete':'Delete Category',
     'goal.add':'Add Savings Goal', 'goal.edit':'Edit Savings Goal',
@@ -386,6 +387,7 @@ const I18N = {
     'tx.save':'Salvar lançamento', 'tx.update':'Atualizar lançamento', 'tx.delete':'Excluir lançamento',
     'bill.add':'Adicionar conta', 'bill.edit':'Editar conta', 'bill.save':'Salvar conta',
     'bill.update':'Atualizar conta', 'bill.delete':'Excluir conta',
+    'bill.markPaidThisMonth':'Marcar como pago neste mês', 'bill.paidThisMonth':'Pago neste mês',
     'budget.add':'Adicionar categoria de orçamento', 'budget.edit':'Editar categoria de orçamento',
     'budget.save':'Salvar orçamento', 'budget.update':'Atualizar orçamento', 'budget.delete':'Excluir categoria',
     'goal.add':'Adicionar meta de poupança', 'goal.edit':'Editar meta de poupança',
@@ -1358,7 +1360,46 @@ function setCcDate(which) {
   document.getElementById('ccDateToday').className = 'cc-date-btn'+(which==='today'?' on':'');
   document.getElementById('ccDateBack').className = 'cc-date-btn'+(which==='back'?' on':'');
 }
-function cancelConfirm() { document.getElementById('confirmCard').classList.remove('show'); confirmCtx = null; }
+let _billPaidFromForm = false;
+function cancelConfirm() {
+  document.getElementById('confirmCard').classList.remove('show');
+  if (confirmCtx && confirmCtx.kind === 'paid') _billPaidFromForm = false;
+  confirmCtx = null;
+}
+function syncBillPaidRow() {
+  const row = document.getElementById('billPaidRow');
+  const chk = document.getElementById('billPaidCheck');
+  const lbl = document.getElementById('billPaidLbl');
+  if (!row || !chk || !lbl) return;
+  if (!editing.id || editing.type !== 'recurring') {
+    row.hidden = true;
+    return;
+  }
+  row.hidden = false;
+  const paid = isPaidBill(editing.id);
+  chk.className = 'check sm' + (paid ? ' on' : '');
+  chk.textContent = paid ? '✓' : '';
+  lbl.textContent = paid ? t('bill.paidThisMonth') : t('bill.markPaidThisMonth');
+}
+function toggleBillPaidInForm(ev) {
+  if (ev) ev.preventDefault();
+  const id = editing.id;
+  if (!id || editing.type !== 'recurring') return;
+  const m = ymStr(selY, selM);
+  if (isPaidBill(id)) {
+    applyPaid('bill', id, false, m);
+    syncBillPaidRow();
+    renderAll();
+    return;
+  }
+  _billPaidFromForm = true;
+  promptActual(id, m);
+}
+function afterBillPaidFromForm() {
+  if (!_billPaidFromForm) return;
+  _billPaidFromForm = false;
+  syncBillPaidRow();
+}
 function showActualInput() { document.getElementById('ccYesNo').style.display='none'; document.getElementById('ccInputWrap').style.display='flex'; const i=document.getElementById('ccInput'); i.focus(); i.select(); }
 function commitOT(ds, ot) { const st = dayState(ds); commitDay(ds, st.worked, st.hours, Math.max(Number(ot)||0, 0)); }
 function confirmActual() {
@@ -1366,7 +1407,7 @@ function confirmActual() {
   if (confirmCtx.kind==='ot') { const ex=confirmCtx.excess, ds=confirmCtx.date; cancelConfirm(); commitOT(ds, ex); showToast(t('toast.otLogged',{h:fmtHours(ex)})); return; }
   applyPaid('bill', confirmCtx.id, true, confirmCtx.month, undefined, confirmCtx.paidDate);
   window._jbStrikeSel = 'bill:'+confirmCtx.id;
-  cancelConfirm(); renderAll(); showToast(t('toast.markedPaid'));
+  cancelConfirm(); renderAll(); afterBillPaidFromForm(); showToast(t('toast.markedPaid'));
 }
 function confirmActualInput() {
   if (!confirmCtx) return;
@@ -1379,7 +1420,7 @@ function confirmActualInput() {
   }
   applyPaid('bill', confirmCtx.id, true, confirmCtx.month, v, confirmCtx.paidDate);
   window._jbStrikeSel = 'bill:'+confirmCtx.id;
-  cancelConfirm(); renderAll(); showToast(t('toast.paidActual',{amt:brl(v)}));
+  cancelConfirm(); renderAll(); afterBillPaidFromForm(); showToast(t('toast.paidActual',{amt:brl(v)}));
 }
 
 /* ---------- Transactions ---------- */
@@ -1497,6 +1538,7 @@ function openBill() {
   document.getElementById('billCount').value=''; document.getElementById('billStart').value='';
   setBillRecur(true);
   mSync('billStart'); updateBillPreview();
+  syncBillPaidRow();
   document.getElementById('billOverlay').classList.add('open');
 }
 function editBill(id) {
@@ -1507,6 +1549,7 @@ function editBill(id) {
   document.getElementById('billCount').value=b.installments>1?b.installments:''; document.getElementById('billStart').value=b.startMonth||'';
   setBillRecur(b.installments!==1);
   mSync('billStart'); updateBillPreview();
+  syncBillPaidRow();
   document.getElementById('billOverlay').classList.add('open');
 }
 function updateBillPreview() {

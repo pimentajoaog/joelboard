@@ -266,6 +266,12 @@
       <input type="hidden" id="billStart" oninput="updateBillPreview()">
     </div>
     <div class="preview" id="billPreview" style="display:none;"></div>
+    <div class="bill-paid-edit" id="billPaidRow" hidden>
+      <button type="button" class="bill-paid-edit-btn" id="billPaidBtn" onclick="toggleBillPaidInForm(event)">
+        <span class="check sm" id="billPaidCheck" aria-hidden="true"></span>
+        <span id="billPaidLbl" data-i18n="bill.markPaidThisMonth">Mark as paid this month</span>
+      </button>
+    </div>
     <div class="form-err" id="billErr"></div><button class="btn-primary" id="billSave" onclick="submitBill()">Save Bill</button>
     <button class="del-btn" id="billDel" onclick="deleteBillScoped()" style="display:none;" data-i18n="bill.delete">Delete Bill</button>
   </div>

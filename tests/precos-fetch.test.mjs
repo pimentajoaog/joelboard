@@ -19,4 +19,12 @@ describe('mapSerpOffer', () => {
     assert.match(o.precoTexto, /R\$/);
     assert.ok(o.link);
   });
+
+  it("keeps Google's normal price and low-price tag", () => {
+    const raw = JSON.parse(readFileSync(samplePath, 'utf8'));
+    const tagged = raw.shopping_results.map(mapSerpOffer).filter((o) => o && o.tag);
+    assert.ok(tagged.length > 0);
+    assert.ok(tagged.every((o) => o.precoNormal > 0));
+    assert.match(tagged[0].tag, /pre[cç]o baixo/i);
+  });
 });

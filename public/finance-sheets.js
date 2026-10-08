@@ -123,7 +123,7 @@ var JB_IMPL = {
       for(var i=1;i<vals.length;i++){
         var r=vals[i]||[];
         if(String(r[1])===buscaId && jbDate(r[2])===day){
-          return jbPutRange('PrecosCapturas!A'+(i+1)+':E'+(i+1), [[r[0]||id, buscaId, day, json, Number(r[4])||Date.now()]]);
+          return jbPutRange('PrecosCapturas!A'+(i+1)+':E'+(i+1), [[r[0]||id, buscaId, day, json, Number(data.criado)||Date.now()]]);
         }
       }
       return jbAppend('PrecosCapturas', [id, buscaId, day, json, Number(data.criado)||Date.now()]);

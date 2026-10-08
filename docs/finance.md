@@ -43,7 +43,12 @@ Backup: **Ajustes → Export backup** (CSV).
 
 ## Preços (Contas)
 
-Monitor de preços: **Buscar preços agora** consulta Google Shopping (SerpApi no servidor) e grava o dia na aba **`PrecosCapturas`**. Filtros, gráfico, mediana e “desconto real” usam esse histórico na planilha. Configure **`SERPAPI_KEY`** no deploy — ver **`scripts/PRECOS-OWNER-SETUP.md`**.
+Monitor de preços manual: **Buscar preços de hoje** consulta Google Shopping (`/api/precos`, SerpApi no servidor) e grava as ofertas do dia na aba **`PrecosCapturas`** (buscar de novo no mesmo dia substitui o dia). O gráfico, a mediana de 30 dias e o “desconto real” usam esse histórico; com menos de 3 dias, o veredito usa o “preço normal” / “preço baixo” que o Google mostra.
+
+- **Filtros** (por busca): marque várias lojas em **★ Só estas** ou **Ocultar**; palavras que o título precisa ter / não pode ter; preço-alvo. A contagem “X de Y ofertas aparecem” atualiza ao vivo. Variações da mesma loja (ex.: `mercadolivre.com.br` e “Mercado Livre”, vendedores “AliExpress - …”) viram uma loja só (`storeKey` em `lib/precos-math.mjs`).
+- **Exibição** (todas as buscas): preço cheio ou à vista, mostrar PIX junto, ocultar preços fora de reais.
+- Abas: `PrecosBuscas`, `PrecosCapturas`, `PrecosManual`, `PrecosConferidas`, `PrecosLojas` (criadas sozinhas).
+- Deploy: **`SERPAPI_KEY`** nas env vars da Vercel; localmente no `.env` (o Vite faz proxy de `/api/precos`). Não precisa de GitHub Actions nem conta de serviço.
 
 ## Dicas
 

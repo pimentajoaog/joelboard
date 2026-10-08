@@ -498,24 +498,28 @@ function renderPrecosWidget() {
   precosWidgetPlace();
 }
 
-/** Sits under the header while it is on screen, then floats in the top-right corner; aligned to the app column on wide screens. */
+/** Drops just under the header while it is on screen, then sits in the top-left corner. Left never changes, so opening the panel cannot shift it. */
 function precosWidgetPlace() {
   var el = document.getElementById('precosWidget');
   if (!el || el.hidden || typeof window === 'undefined' || !document.querySelector) return;
-  var header = document.querySelector('.header');
   var app = document.getElementById('app');
+  var laidOut = app && app.getBoundingClientRect && app.getBoundingClientRect().width > 0;
+  if (!laidOut) {
+    if (!el._pwWait) {
+      el._pwWait = 1;
+      requestAnimationFrame(function () { el._pwWait = 0; precosWidgetPlace(); });
+    }
+    return;
+  }
+  var header = document.querySelector('.header');
   var top = 16;
   if (header && header.getBoundingClientRect) {
     var hb = header.getBoundingClientRect().bottom;
-    if (hb > 0) top = Math.max(16, hb - 10);
-  }
-  var right = 16;
-  if (app && app.getBoundingClientRect) {
-    var ab = app.getBoundingClientRect();
-    if (ab.width) right = Math.max(16, window.innerWidth - ab.right);
+    if (hb > 0) top = Math.max(16, Math.round(hb + 8));
   }
   el.style.top = top + 'px';
-  el.style.right = right + 'px';
+  el.style.left = '';
+  el.style.right = '';
 }
 
 function precosWidgetPrice(item) {
@@ -528,6 +532,13 @@ function precosWidgetBatchTxt() {
   return PRECOS_BATCH ? 'Buscando ' + Math.min(PRECOS_BATCH.done + 1, PRECOS_BATCH.total) + ' de ' + PRECOS_BATCH.total + '…' : '';
 }
 
+/** Same short verdict the search card shows, only when there is a real gap (discount, above normal, or Google's low-price tag). */
+function precosWidgetVerdict(item) {
+  var s = precosVerdictShort(item.snap && item.snap.verdict);
+  if (!s || !s.cls) return '';
+  return '<span class="pw-verdict ' + s.cls + '">' + esc(s.txt) + '</span>';
+}
+
 function precosWidgetPillHtml(items) {
   var favs = items.filter(function (x) { return x.fav; });
   var today = precosTodayKey();
@@ -536,8 +547,9 @@ function precosWidgetPillHtml(items) {
   if (favs.length) {
     body = favs.slice(0, PRECOS_PILL_MAX).map(function (x) {
       var p = precosWidgetPrice(x);
-      return '<span class="pw-line"><span class="pw-name">' + esc(x.busca.termo) + '</span>'
-        + '<span class="pw-val">' + esc(p.txt) + '</span>' + precosChangeHtml(x.change, true) + '</span>';
+      return '<span class="pw-item"><span class="pw-line"><span class="pw-name">' + esc(x.busca.termo) + '</span>'
+        + '<span class="pw-val">' + esc(p.txt) + '</span>' + precosChangeHtml(x.change, true) + '</span>'
+        + precosWidgetVerdict(x) + '</span>';
     }).join('');
     if (favs.length > PRECOS_PILL_MAX) body += '<span class="pw-more">+' + (favs.length - PRECOS_PILL_MAX) + ' favoritos</span>';
   } else {
@@ -562,7 +574,7 @@ function precosWidgetPanelHtml(items) {
       + '<button type="button" class="pw-star' + (x.fav ? ' on' : '') + '" aria-pressed="' + x.fav + '" aria-label="' + escAttr(PK.favorite + ': ' + x.busca.termo) + '" title="' + escAttr(PK.favorite) + '" onclick="precosToggleFav(\'' + id + '\')">' + (x.fav ? '★' : '☆') + '</button>'
       + '<button type="button" class="pw-main" onclick="precosWidgetOpenSearch(\'' + id + '\')">'
       + '<span class="pw-row-top"><span class="pw-name">' + esc(x.busca.termo) + '</span><span class="pw-val">' + esc(p.txt) + '</span></span>'
-      + '<span class="pw-row-sub">' + precosChangeHtml(x.change, false) + (p.when ? '<span class="pw-when">' + esc(p.when) + '</span>' : '') + '</span>'
+      + '<span class="pw-row-sub">' + precosChangeHtml(x.change, false) + precosWidgetVerdict(x) + (p.when ? '<span class="pw-when">' + esc(p.when) + '</span>' : '') + '</span>'
       + '</button></div>';
   }).join('');
   var pending = items.filter(function (x) { return !x.snap.last || x.snap.last.data !== today; }).length;

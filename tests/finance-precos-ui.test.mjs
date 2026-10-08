@@ -203,6 +203,7 @@ test('widget shows starred products collapsed and every product expanded', () =>
   assert.match(pill, /▼10%/);
   assert.match(pill, /pw-ico stale/);
   assert.match(pill, /1 sem busca hoje/);
+  assert.doesNotMatch(pill, /pw-verdict/);
   assert.doesNotMatch(pill, /SSD 2TB/);
   ctx.precosWidgetToggle(true);
   const panel = els.precosWidget.innerHTML;
@@ -212,6 +213,37 @@ test('widget shows starred products collapsed and every product expanded', () =>
   assert.ok(panel.indexOf('RX 9070 XT') < panel.indexOf('SSD 2TB'));
   assert.match(panel, /Buscar preços de hoje \(1\)/);
   assert.match(panel, /1 de 2 atualizadas hoje/);
+});
+
+test('widget shows a real discount the same way the search card does', () => {
+  const { ctx, els } = boot({
+    settings: { precos_favoritas: 'gpu' },
+    precosBuscas: [Object.assign({}, BUSCA)],
+    precosCapturas: [
+      capture('2026-10-06', kabumAt(5000)),
+      capture('2026-10-07', kabumAt(5000)),
+      capture(TODAY, kabumAt(4000))
+    ]
+  });
+  ctx.renderPrecos();
+  assert.match(els.precosList.innerHTML, /vs sua mediana/);
+  assert.match(els.precosWidget.innerHTML, /pw-verdict good/);
+  assert.match(els.precosWidget.innerHTML, /−20% vs sua mediana/);
+  ctx.precosWidgetToggle(true);
+  assert.match(els.precosWidget.innerHTML, /pw-verdict good/);
+});
+
+test('widget shows Google low price before there is a history', () => {
+  const offer = Object.assign({}, kabumAt(4000)[0], { precoNormal: 5000, tag: 'PREÇO BAIXO' });
+  const { ctx, els } = boot({
+    settings: { precos_favoritas: 'gpu' },
+    precosBuscas: [Object.assign({}, BUSCA)],
+    precosCapturas: [capture(TODAY, [offer])]
+  });
+  ctx.renderPrecos();
+  assert.match(els.precosWidget.innerHTML, /Google: preço baixo/);
+  ctx.precosWidgetToggle(true);
+  assert.match(els.precosWidget.innerHTML, /pw-verdict good/);
 });
 
 test('widget without favorites shows a count and only appears on Visão geral', () => {

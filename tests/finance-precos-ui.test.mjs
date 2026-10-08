@@ -201,6 +201,8 @@ test('widget shows starred products collapsed and every product expanded', () =>
   assert.match(pill, /RX 9070 XT/);
   assert.match(pill, /R\$\s4\.500,00/);
   assert.match(pill, /▼10%/);
+  assert.match(pill, /pw-ico stale/);
+  assert.match(pill, /1 sem busca hoje/);
   assert.doesNotMatch(pill, /SSD 2TB/);
   ctx.precosWidgetToggle(true);
   const panel = els.precosWidget.innerHTML;
@@ -215,7 +217,8 @@ test('widget shows starred products collapsed and every product expanded', () =>
 test('widget without favorites shows a count and only appears on Visão geral', () => {
   const { ctx, els } = boot({ precosBuscas: [Object.assign({}, BUSCA), Object.assign({}, SSD)] });
   ctx.renderPrecos();
-  assert.match(els.precosWidget.innerHTML, /💰 Preços<\/span><span class="pw-count">2</);
+  assert.match(els.precosWidget.innerHTML, /pw-ico/);
+  assert.match(els.precosWidget.innerHTML, /pw-name">Preços<\/span><span class="pw-count">2 produtos</);
   ctx.precosToggleFav('ssd');
   assert.equal(ctx.DATA.settings.precos_favoritas, 'ssd');
   assert.match(els.precosWidget.innerHTML, /SSD 2TB/);

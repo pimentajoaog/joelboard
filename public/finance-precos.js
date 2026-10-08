@@ -306,6 +306,7 @@ function renderPrecos() {
 }
 
 var PRECOS_CHEVRON = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var PRECOS_TAG_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><circle cx="7.5" cy="7.5" r="1.6" fill="currentColor" stroke="none"/></svg>';
 
 function renderPrecosList() {
   var list = document.getElementById('precosList');
@@ -494,6 +495,27 @@ function renderPrecosWidget() {
   el.hidden = false;
   el.classList.toggle('open', PRECOS_WIDGET_OPEN);
   el.innerHTML = PRECOS_WIDGET_OPEN ? precosWidgetPanelHtml(items) : precosWidgetPillHtml(items);
+  precosWidgetPlace();
+}
+
+/** Sits under the header while it is on screen, then floats in the top-right corner; aligned to the app column on wide screens. */
+function precosWidgetPlace() {
+  var el = document.getElementById('precosWidget');
+  if (!el || el.hidden || typeof window === 'undefined' || !document.querySelector) return;
+  var header = document.querySelector('.header');
+  var app = document.getElementById('app');
+  var top = 16;
+  if (header && header.getBoundingClientRect) {
+    var hb = header.getBoundingClientRect().bottom;
+    if (hb > 0) top = Math.max(16, hb - 10);
+  }
+  var right = 16;
+  if (app && app.getBoundingClientRect) {
+    var ab = app.getBoundingClientRect();
+    if (ab.width) right = Math.max(16, window.innerWidth - ab.right);
+  }
+  el.style.top = top + 'px';
+  el.style.right = right + 'px';
 }
 
 function precosWidgetPrice(item) {
@@ -508,19 +530,26 @@ function precosWidgetBatchTxt() {
 
 function precosWidgetPillHtml(items) {
   var favs = items.filter(function (x) { return x.fav; });
-  var lines;
+  var today = precosTodayKey();
+  var stale = items.filter(function (x) { return !x.snap.last || x.snap.last.data !== today; }).length;
+  var body;
   if (favs.length) {
-    lines = favs.slice(0, PRECOS_PILL_MAX).map(function (x) {
+    body = favs.slice(0, PRECOS_PILL_MAX).map(function (x) {
       var p = precosWidgetPrice(x);
       return '<span class="pw-line"><span class="pw-name">' + esc(x.busca.termo) + '</span>'
         + '<span class="pw-val">' + esc(p.txt) + '</span>' + precosChangeHtml(x.change, true) + '</span>';
     }).join('');
-    if (favs.length > PRECOS_PILL_MAX) lines += '<span class="pw-more">+' + (favs.length - PRECOS_PILL_MAX) + ' favoritos</span>';
+    if (favs.length > PRECOS_PILL_MAX) body += '<span class="pw-more">+' + (favs.length - PRECOS_PILL_MAX) + ' favoritos</span>';
   } else {
-    lines = '<span class="pw-line"><span class="pw-name">' + esc(PK.widgetTitle) + '</span><span class="pw-count">' + items.length + '</span></span>';
+    body = '<span class="pw-line"><span class="pw-name">Preços</span><span class="pw-count">' + items.length + (items.length === 1 ? ' produto' : ' produtos') + '</span></span>';
   }
-  if (PRECOS_BATCH) lines += '<span class="pw-more">' + esc(precosWidgetBatchTxt()) + '</span>';
-  return '<button type="button" class="pw-pill" aria-expanded="false" aria-label="' + escAttr(PK.widgetOpen) + '" onclick="precosWidgetToggle(true)">' + lines + '</button>';
+  if (PRECOS_BATCH) body += '<span class="pw-more">' + esc(precosWidgetBatchTxt()) + '</span>';
+  else if (favs.length && stale) body += '<span class="pw-more">' + stale + ' sem busca hoje</span>';
+  var dot = PRECOS_BATCH ? ' busy' : stale ? ' stale' : '';
+  return '<button type="button" class="pw-pill" aria-expanded="false" aria-label="' + escAttr(PK.widgetOpen) + '" onclick="precosWidgetToggle(true)">'
+    + '<span class="pw-ico' + dot + '">' + PRECOS_TAG_ICON + '</span>'
+    + '<span class="pw-body">' + body + '</span>'
+    + '<span class="pw-caret">' + PRECOS_CHEVRON + '</span></button>';
 }
 
 function precosWidgetPanelHtml(items) {
@@ -541,7 +570,8 @@ function precosWidgetPanelHtml(items) {
   var meta = (items.length - pending) + ' de ' + items.length + (items.length === 1 ? ' atualizada hoje' : ' atualizadas hoje');
   var hint = items.some(function (x) { return x.fav; }) ? '' : '<div class="pw-hint">' + esc(PK.widgetFavHint) + '</div>';
   return '<div class="pw-panel" role="dialog" aria-label="' + escAttr(PK.widgetTitle) + '">'
-    + '<div class="pw-head"><span class="pw-title">' + esc(PK.widgetTitle) + '</span>'
+    + '<div class="pw-head"><span class="pw-ico">' + PRECOS_TAG_ICON + '</span>'
+    + '<span class="pw-titles"><span class="pw-title">Preços</span><span class="pw-sub">' + items.length + (items.length === 1 ? ' produto acompanhado' : ' produtos acompanhados') + '</span></span>'
     + '<button type="button" class="pw-close" aria-label="Fechar" onclick="precosWidgetToggle(false)">' + PRECOS_CHEVRON + '</button></div>'
     + hint + '<div class="pw-list">' + rows + '</div>'
     + '<div class="pw-foot"><button type="button" class="btn-primary pw-fetch" onclick="precosFetchAll()"' + (PRECOS_FETCHING ? ' disabled' : '') + '>' + esc(label) + '</button>'
@@ -1285,4 +1315,12 @@ function initPrecosOnBoot() {
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && PRECOS_WIDGET_OPEN) precosWidgetToggle(false);
   });
+  var ticking = false;
+  function onMove() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () { ticking = false; precosWidgetPlace(); });
+  }
+  window.addEventListener('scroll', onMove, { passive: true });
+  window.addEventListener('resize', onMove);
 }

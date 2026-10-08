@@ -517,7 +517,6 @@
   <div class="modal precos-detail-modal">
     <div class="modal-head"><div class="modal-title" id="precosDetailTitle">—</div><button class="close-btn" type="button" onclick="closePrecosSearch()">✕</button></div>
     <div class="precos-notice" id="precosSampleNotice" style="display:none"></div>
-    <div class="precos-notice warn" id="precosWatchNotice" style="display:none"></div>
     <div id="precosChart"></div>
     <div class="precos-summary">
       <div><span class="precos-sum-lbl">Menor hoje</span><div class="precos-sum-val" id="precosTodayVal">—</div></div>
@@ -529,6 +528,7 @@
     <div class="sec-title" style="margin:14px 0 8px">Ofertas de hoje</div>
     <div id="precosOffersList"></div>
     <div class="precos-actions">
+      <button type="button" class="btn-primary" id="precosFetchBtn" onclick="refreshPrecosSearch()">Buscar preços agora</button>
       <button type="button" class="wiz-back" onclick="openPrecosManual()">Registrar preço manual</button>
       <button type="button" class="wiz-back" onclick="openPrecosFilters()">Filtros e teto</button>
       <button type="button" class="wiz-back" onclick="openPrecosSettingsPanel()">Ajustes</button>
@@ -543,9 +543,6 @@
     <div class="fg"><label class="flabel">Preço-alvo (opcional)</label><input type="number" class="field" id="precosNewTeto" min="0" step="1" placeholder=""></div>
     <div class="fg"><label class="flabel">Palavras obrigatórias</label><input type="text" class="field" id="precosNewObr"></div>
     <div class="fg"><label class="flabel">Palavras proibidas</label><input type="text" class="field" id="precosNewPro"></div>
-    <div class="cat-hint">Nova busca entra na fila diária quando o sync da planilha está ativo. JSON abaixo: fallback manual no repositório.</div>
-    <textarea class="field" id="precosWatchJson" rows="4" readonly style="font-family:var(--font-mono,monospace);font-size:12px"></textarea>
-    <button type="button" class="wiz-back" style="width:100%;margin-top:8px" onclick="copyPrecosWatchJson()">Copiar entrada do watch</button>
     <button type="button" class="btn-primary" style="margin-top:12px" onclick="submitPrecosNew()">Salvar busca</button>
   </div>
 </div>

@@ -5,9 +5,10 @@ var JB_CLIENT_ID = '49262188240-l70ka2666t315gb2gmsvu357f2h7769i.apps.googleuser
 var JB_SCOPES = 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 var JB_LS_SHEET = 'joelboard_sheet_id';
 var JB_TABS = ['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings'];
-var PRECOS_TABS = ['PrecosBuscas','PrecosManual','PrecosConferidas','PrecosLojas'];
+var PRECOS_TABS = ['PrecosBuscas','PrecosCapturas','PrecosManual','PrecosConferidas','PrecosLojas'];
 var PRECOS_HEADERS = [
   ['PrecosBuscas',['ID','Termo','Teto','Obrigatorias','Proibidas','Arquivada','Criado']],
+  ['PrecosCapturas',['ID','BuscaID','Data','Json','Criado']],
   ['PrecosManual',['ID','BuscaID','Data','Valor','Loja','Obs','Criado']],
   ['PrecosConferidas',['BuscaID','ChaveOferta','Data','Preco','ConferidoEm']],
   ['PrecosLojas',['ID','BuscaID','Tipo','Nome','Dominio','Criado']]
@@ -113,6 +114,21 @@ var JB_IMPL = {
   addPrecosBusca: function(data){ var id=data.id||jbUuid(); return jbAppend('PrecosBuscas', [id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now()]).then(function(){ return { success:true, id:id }; }); },
   updatePrecosBusca: function(id,data){ var row=[id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now()]; return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) throw new Error('Busca não encontrada.'); return jbPutRange('PrecosBuscas!A'+r+':G'+r,[row]); }).then(function(){ return {success:true}; }); },
   deletePrecosBusca: function(id){ return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) return {}; return jbDeleteRow('PrecosBuscas', r); }).then(function(){ return {success:true}; }); },
+  savePrecosCaptura: function(data){
+    var buscaId=String(data.buscaId||'');
+    var day=String(data.data||'');
+    var json=String(data.json||'[]');
+    var id=data.id||jbUuid();
+    return jbGetVals('PrecosCapturas').then(function(vals){
+      for(var i=1;i<vals.length;i++){
+        var r=vals[i]||[];
+        if(String(r[1])===buscaId && jbDate(r[2])===day){
+          return jbPutRange('PrecosCapturas!A'+(i+1)+':E'+(i+1), [[r[0]||id, buscaId, day, json, Number(r[4])||Date.now()]]);
+        }
+      }
+      return jbAppend('PrecosCapturas', [id, buscaId, day, json, Number(data.criado)||Date.now()]);
+    }).then(function(){ return { success:true, id:id }; });
+  },
   addPrecosManual: function(data){ var id=data.id||jbUuid(); return jbAppend('PrecosManual', [id, data.buscaId, data.data, Number(data.valor), data.loja||'', data.obs||'', Number(data.criado)||Date.now()]).then(function(){ return { success:true, id:id }; }); },
   setPrecosConferida: function(buscaId, chave, data, preco, on){ var now=Date.now(); return jbGetVals('PrecosConferidas').then(function(vals){ var row=-1; for(var i=1;i<vals.length;i++){ var r=vals[i]||[]; if(String(r[0])===String(buscaId)&&String(r[1])===String(chave)){ row=i+1; break; } } if(on){ var rr=[buscaId,chave,data,preco,now]; return row<0?jbAppend('PrecosConferidas',rr):jbPutRange('PrecosConferidas!A'+row+':E'+row,[rr]); } return row>0?jbDeleteRow('PrecosConferidas',row):{}; }).then(function(){ return {success:true}; }); },
   addPrecosLoja: function(data){ var id=data.id||jbUuid(); return jbAppend('PrecosLojas', [id, data.buscaId||'', data.tipo, data.nome, data.dominio||'', Number(data.criado)||Date.now()]).then(function(){ return { success:true, id:id }; }); },
@@ -320,9 +336,10 @@ function jbBuildData(t){
   var settings = { hourly_rate:0, exchange_rate:0, off_weekdays:[0,6], mode:'hourly', monthly_salary:0, daily_hours:8, default_due_day:'', overtime_mode:'off', overtime_mult:1.5, convert_enabled:'true', currency_from:'USD', currency_to:'BRL', profile_set:'true' };
   jbBody(t.Settings).forEach(function(r){ if (!r[0]) return; if (r[0]==='off_weekdays'){ var mm=String(r[1]).match(/\d+/g); settings.off_weekdays = mm?mm.map(Number):[]; } else { var n=Number(r[1]); settings[r[0]]=(r[1]===''||isNaN(n))?r[1]:n; } });
   var precosBuscas = jbBody(t.PrecosBuscas||[]).filter(function(r){ return r[0]&&r[1]; }).map(function(r){ return { id:String(r[0]), termo:r[1], teto:(r[2]===''||r[2]==null)?'':jbNum(r[2]), obrigatorias:r[3]||'', proibidas:r[4]||'', arquivada:jbBool(r[5]), criado:jbNum(r[6])||Date.now() }; });
+  var precosCapturas = jbBody(t.PrecosCapturas||[]).filter(function(r){ return r[1]&&r[2]; }).map(function(r){ return { id:r[0], buscaId:String(r[1]), data:jbDate(r[2]), json:String(r[3]||'[]'), criado:jbNum(r[4])||Date.now() }; });
   var precosManual = jbBody(t.PrecosManual||[]).filter(function(r){ return r[0]&&r[1]; }).map(function(r){ return { id:r[0], buscaId:String(r[1]), data:jbDate(r[2]), valor:jbNum(r[3]), loja:r[4]||'', obs:r[5]||'', criado:jbNum(r[6])||Date.now() }; });
   var precosConferidas = jbBody(t.PrecosConferidas||[]).filter(function(r){ return r[0]&&r[1]; }).map(function(r){ return { buscaId:String(r[0]), chave:String(r[1]), data:jbDate(r[2]), preco:jbNum(r[3]), conferidoEm:jbNum(r[4])||0 }; });
   var precosLojas = jbBody(t.PrecosLojas||[]).filter(function(r){ return r[0]&&r[3]; }).map(function(r){ return { id:r[0], buscaId:r[1]?String(r[1]):'', tipo:r[2]||'bloqueada', nome:r[3], dominio:r[4]||'', criado:jbNum(r[5])||Date.now() }; });
-  return { transactions:transactions, budget:budget, goals:goals, recurring:recurring, allocations:allocations, bundles:bundles, categories:categories, debts:debts, workLog:workLog, payments:payments, settings:settings, precosBuscas:precosBuscas, precosManual:precosManual, precosConferidas:precosConferidas, precosLojas:precosLojas, email:jbEmail };
+  return { transactions:transactions, budget:budget, goals:goals, recurring:recurring, allocations:allocations, bundles:bundles, categories:categories, debts:debts, workLog:workLog, payments:payments, settings:settings, precosBuscas:precosBuscas, precosCapturas:precosCapturas, precosManual:precosManual, precosConferidas:precosConferidas, precosLojas:precosLojas, email:jbEmail };
 }
 /* ============================ end Joelboard data layer ============================ */

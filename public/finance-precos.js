@@ -2,10 +2,10 @@
 var PRECOS_RAW = {};
 var PRECOS_RAW_BY_ID = {};
 function precosUid(){ return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-var PRECOS_WATCH = null;
 var PRECOS_OPEN_ID = null;
 var PRECOS_CHART_RANGE = null;
 var PRECOS_USE_SAMPLE = false;
+var PRECOS_FETCHING = false;
 
 var PK = {
   title: '💰 Preços',
@@ -13,7 +13,9 @@ var PK = {
   emptyHint: 'Monitore o menor preço do dia e veja se vale a pena comprar.',
   newSearch: '+ Nova busca',
   sampleNotice: 'Dados de exemplo — só para testar a interface.',
-  awaitingWatch: 'Ofertas automáticas na próxima atualização diária (até ~24h após criar a busca).',
+  fetchNow: 'Buscar preços agora',
+  fetching: 'Buscando…',
+  offersEmptyToday: 'Nenhuma oferta hoje — toque em Buscar preços.',
   todayLow: 'Menor hoje',
   median30: 'Mediana 30 dias',
   allTimeLow: 'Menor histórico',
@@ -33,15 +35,13 @@ var PK = {
   filters: 'Filtros e teto',
   settings: 'Ajustes de Preços',
   deleteSearch: 'Arquivar busca',
-  chartEmpty: 'Ainda não há histórico suficiente para o gráfico.',
+  chartEmpty: 'Busque preços em dias diferentes para ver o gráfico (ou registre manual).',
   range30: '30 dias',
   range90: '90 dias',
   rangeAll: 'Tudo',
   vsMedian: 'vs mediana',
   newSearchTitle: 'Nova busca',
   term: 'Termo de busca',
-  watchCopy: 'Copiar entrada do watch',
-  watchHint: 'Com sync no servidor, a busca entra sozinha na fila. JSON abaixo só se você mantém o repo manualmente.',
   save: 'Salvar',
   cancel: 'Cancelar',
   teto: 'Preço-alvo (opcional)',
@@ -104,20 +104,19 @@ function precosFilterOpts(busca) {
   };
 }
 
-function precosWatchIds() {
-  return (PRECOS_WATCH || []).map(function (w) { return String(w.id); });
-}
-
-function precosInWatch(id) {
-  return precosWatchIds().indexOf(String(id)) > -1;
-}
-
-function fetchPrecosWatch() {
-  if (PRECOS_WATCH) return Promise.resolve(PRECOS_WATCH);
-  return fetch('/data/precos-watch.json').then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }).then(function (j) {
-    PRECOS_WATCH = j || [];
-    return PRECOS_WATCH;
+function precosRawFromSheet(buscaId) {
+  var raw = {};
+  var id = String(buscaId);
+  ((DATA && DATA.precosCapturas) || []).forEach(function (c) {
+    if (String(c.buscaId) !== id) return;
+    var day = String(c.data || '').slice(0, 10);
+    if (!day) return;
+    try {
+      var offers = JSON.parse(c.json || '[]');
+      if (offers && offers.length) raw[day] = offers;
+    } catch (_) {}
   });
+  return raw;
 }
 
 function precosMonthKeys(startDay, endDay) {
@@ -145,22 +144,26 @@ function fetchPrecosMonth(searchId, ym) {
 }
 
 function loadPrecosRaw(searchId) {
+  var merged = precosRawFromSheet(searchId);
+  if (!PRECOS_USE_SAMPLE || searchId !== 'rx-9070-xt') {
+    PRECOS_RAW_BY_ID[searchId] = merged;
+    return Promise.resolve(merged);
+  }
   var today = todayStr();
   var start = new Date(today + 'T12:00:00');
   start.setDate(start.getDate() - 120);
   var months = precosMonthKeys(start.toISOString().slice(0, 10), today);
-  var merged = {};
-  return fetchPrecosWatch().then(function () {
-    return months.reduce(function (ch, ym) {
-      return ch.then(function () {
-        return fetchPrecosMonth(searchId, ym).then(function (part) {
-          Object.keys(part || {}).forEach(function (d) { merged[d] = part[d]; });
+  return months.reduce(function (ch, ym) {
+    return ch.then(function () {
+      return fetchPrecosMonth(searchId, ym).then(function (part) {
+        Object.keys(part || {}).forEach(function (d) {
+          if (!merged[d]) merged[d] = part[d];
         });
       });
-    }, Promise.resolve()).then(function () {
-      PRECOS_RAW_BY_ID[searchId] = merged;
-      return merged;
     });
+  }, Promise.resolve()).then(function () {
+    PRECOS_RAW_BY_ID[searchId] = merged;
+    return merged;
   });
 }
 
@@ -191,8 +194,8 @@ function precosTodayKey() { return todayStr(); }
 function renderPrecos() {
   var list = document.getElementById('precosList');
   if (!list) return;
-  fetchPrecosWatch().finally(function () {
-    var buscas = precosActiveBuscas();
+  var buscas = precosActiveBuscas();
+  (function renderList() {
     if (!buscas.length) {
       list.innerHTML = JB.emptyState({
         icon: '💰',
@@ -215,7 +218,6 @@ function renderPrecos() {
           var med = PrecosMath.medianLastNDays(series, 30, today);
           var hit = b.teto !== '' && b.teto != null && low && PrecosMath.targetHit(low.price, b.teto);
           var pct = low && med != null ? PrecosMath.pctBelowMedian(low.price, med) : null;
-          var watch = precosInWatch(b.id);
           html += '<button type="button" class="precos-card' + (hit ? ' target-hit' : '') + '" onclick="openPrecosSearch(\'' + escAttr(b.id) + '\')">'
             + '<div class="precos-card-top"><span class="precos-term">' + esc(b.termo) + '</span>'
             + (hit ? '<span class="precos-badge">' + esc(PK.targetHit) + '</span>' : '')
@@ -223,7 +225,6 @@ function renderPrecos() {
             + '<div class="precos-card-mid">' + (low ? precosFmt(low.price) : '—') + '</div>'
             + '<div class="precos-card-meta">'
             + (pct != null ? '<span>' + (pct >= 0 ? '−' + Math.round(pct) : '+' + Math.abs(Math.round(pct))) + '% ' + esc(PK.vsMedian) + '</span>' : '')
-            + (!watch ? '<span class="precos-warn">' + esc(PK.awaitingWatch) + '</span>' : '')
             + '</div></button>';
         });
       });
@@ -231,7 +232,7 @@ function renderPrecos() {
     chain.then(function () {
       list.innerHTML = html || JB.emptyState({ icon: '💰', title: PK.emptyTitle, hint: PK.emptyHint, action: PK.newSearch, onclick: 'openPrecosNew()' });
     });
-  });
+  })();
 }
 
 function openPrecosSearch(id) {
@@ -250,12 +251,13 @@ function paintPrecosSearch(reloadRaw) {
   if (!busca) return;
   document.getElementById('precosDetailTitle').textContent = busca.termo;
   var notice = document.getElementById('precosSampleNotice');
-  var hasFile = PRECOS_USE_SAMPLE || precosInWatch(busca.id);
   notice.style.display = PRECOS_USE_SAMPLE ? 'block' : 'none';
   notice.textContent = PK.sampleNotice;
-  var watchEl = document.getElementById('precosWatchNotice');
-  watchEl.style.display = !precosInWatch(busca.id) ? 'block' : 'none';
-  watchEl.textContent = PK.awaitingWatch;
+  var fetchBtn = document.getElementById('precosFetchBtn');
+  if (fetchBtn) {
+    fetchBtn.disabled = PRECOS_FETCHING;
+    fetchBtn.textContent = PRECOS_FETCHING ? PK.fetching : PK.fetchNow;
+  }
   var paint = function (raw) {
     var opts = precosFilterOpts(busca);
     var series = precosBuildSeries(busca, raw);
@@ -292,6 +294,10 @@ function renderPrecosOffers(busca, raw, today, opts) {
   });
   var conf = precosConferidaMap(busca.id);
   var prefs = precosPrefs();
+  if (!day.length) {
+    list.innerHTML = '<div class="empty">' + esc(PK.offersEmptyToday) + '</div>';
+    return;
+  }
   if (!offers.length) {
     list.innerHTML = '<div class="empty">' + esc('Nenhuma oferta passou nos filtros hoje.') + '</div>';
     return;
@@ -370,7 +376,6 @@ function openPrecosNew() {
   document.getElementById('precosNewTeto').value = '';
   document.getElementById('precosNewObr').value = PrecosMath.DEFAULT_RX_KEYWORDS.obrigatorias.replace(/,/g, ', ');
   document.getElementById('precosNewPro').value = PrecosMath.DEFAULT_RX_KEYWORDS.proibidas.replace(/,/g, ', ');
-  document.getElementById('precosWatchJson').value = '';
   document.getElementById('precosNewOverlay').classList.add('open');
 }
 
@@ -390,20 +395,46 @@ function submitPrecosNew() {
     proibidas: document.getElementById('precosNewPro').value.trim(),
     arquivada: false, criado: Date.now()
   };
-  var watchJson = JSON.stringify([{ id: id, termo: term }], null, 2);
-  document.getElementById('precosWatchJson').value = watchJson;
-  document.getElementById('precosWatchJson').value = watchJson;
   jbRun('addPrecosBusca', data).then(function (res) {
     (DATA.precosBuscas = DATA.precosBuscas || []).push(Object.assign({}, data, { id: res.id || id }));
+    closeOverlay('precosNewOverlay');
     renderPrecos();
-    showToast('✓ Busca criada — ofertas automáticas na próxima atualização diária.');
+    openPrecosSearch(res.id || id);
+    showToast('✓ Busca criada — toque em Buscar preços quando quiser.');
   }).catch(function (e) { showToast(t('err.prefix') + e.message, 'error'); });
 }
 
-function copyPrecosWatchJson() {
-  var ta = document.getElementById('precosWatchJson');
-  ta.select();
-  try { document.execCommand('copy'); showToast('✓ Copiado'); } catch (_) { showToast('Copie manualmente', 'error'); }
+function refreshPrecosSearch() {
+  if (!PRECOS_OPEN_ID || PRECOS_FETCHING) return;
+  var busca = precosActiveBuscas().find(function (b) { return String(b.id) === String(PRECOS_OPEN_ID); });
+  if (!busca) return;
+  PRECOS_FETCHING = true;
+  paintPrecosSearch(false);
+  fetch('/api/precos?q=' + encodeURIComponent(busca.termo))
+    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+    .then(function (res) {
+      var body = res.j || {};
+      if (!res.ok || body.error) throw new Error(body.error || 'Falha na busca');
+      var today = body.date || precosTodayKey();
+      var offers = body.offers || [];
+      var json = JSON.stringify(offers);
+      return jbRun('savePrecosCaptura', { buscaId: busca.id, data: today, json: json, criado: Date.now() }).then(function () {
+        DATA.precosCapturas = DATA.precosCapturas || [];
+        var hit = false;
+        DATA.precosCapturas.forEach(function (c) {
+          if (String(c.buscaId) === String(busca.id) && c.data === today) { c.json = json; hit = true; }
+        });
+        if (!hit) DATA.precosCapturas.push({ id: precosUid(), buscaId: busca.id, data: today, json: json, criado: Date.now() });
+        PRECOS_RAW_BY_ID[busca.id] = precosRawFromSheet(busca.id);
+        showToast('✓ ' + offers.length + ' ofertas guardadas · ' + today);
+      });
+    })
+    .catch(function (e) { showToast(t('err.prefix') + (e.message || e), 'error'); })
+    .finally(function () {
+      PRECOS_FETCHING = false;
+      paintPrecosSearch(false);
+      renderPrecos();
+    });
 }
 
 function precosSeedExample() {
@@ -568,7 +599,6 @@ function archivePrecosSearch() {
 }
 
 function initPrecosOnBoot() {
-  fetchPrecosWatch();
   if (typeof JB !== 'undefined' && JB.onTabVisible) {
     JB.onTabVisible(function () { if (document.getElementById('tab-bills').classList.contains('active')) renderPrecos(); });
   }

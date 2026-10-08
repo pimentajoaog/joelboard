@@ -43,9 +43,7 @@ Backup: **Ajustes → Export backup** (CSV).
 
 ## Preços (Contas)
 
-Monitor de preços com histórico, filtros e conferência manual. Buscas ficam na aba **`PrecosBuscas`** da planilha Finance.
-
-Atualização automática de ofertas (Google Shopping via SerpApi) roda no GitHub Actions e publica JSON em `/data/precos/<id>/`. Para o **dono do deploy**, a lista de buscas ativas vem da sua planilha — ver **`scripts/PRECOS-OWNER-SETUP.md`**.
+Monitor de preços: **Buscar preços agora** consulta Google Shopping (SerpApi no servidor) e grava o dia na aba **`PrecosCapturas`**. Filtros, gráfico, mediana e “desconto real” usam esse histórico na planilha. Configure **`SERPAPI_KEY`** no deploy — ver **`scripts/PRECOS-OWNER-SETUP.md`**.
 
 ## Dicas
 

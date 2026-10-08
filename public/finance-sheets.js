@@ -5,6 +5,13 @@ var JB_CLIENT_ID = '49262188240-l70ka2666t315gb2gmsvu357f2h7769i.apps.googleuser
 var JB_SCOPES = 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 var JB_LS_SHEET = 'joelboard_sheet_id';
 var JB_TABS = ['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings'];
+var PRECOS_TABS = ['PrecosBuscas','PrecosManual','PrecosConferidas','PrecosLojas'];
+var PRECOS_HEADERS = [
+  ['PrecosBuscas',['ID','Termo','Teto','Obrigatorias','Proibidas','Arquivada','Criado']],
+  ['PrecosManual',['ID','BuscaID','Data','Valor','Loja','Obs','Criado']],
+  ['PrecosConferidas',['BuscaID','ChaveOferta','Data','Preco','ConferidoEm']],
+  ['PrecosLojas',['ID','BuscaID','Tipo','Nome','Dominio','Criado']]
+];
 var jbToken = '', jbTokenClient = null, jbEmail = '', jbGrid = {}, jbAuthDone = false;
 function jbLoadingHtml(h){ var el = document.getElementById('loading'); if (el){ el.style.display='block'; el.innerHTML = h; } }
 /* ----- write layer: Sheets API ops (JB_IMPL + jbRun) ----- */
@@ -102,7 +109,14 @@ var JB_IMPL = {
   logMonthlySalary: function(targetMonth,data){ return jbGetVals('Transactions').then(function(vals){ var reqs=[]; for(var i=vals.length-1;i>=1;i--){ var r=vals[i]||[]; var dv=r[0]; var ym=(typeof dv==='number')?jbDate(dv).slice(0,7):String(dv).slice(0,7); if(String(r[4])==='Income' && String(r[2])===String(data.category) && ym===targetMonth) reqs.push({ deleteDimension:{ range:{ sheetId:jbGrid['Transactions'], dimension:'ROWS', startIndex:i, endIndex:i+1 } } }); } return reqs.length ? jbReq('POST', jbBatchUrl(), { requests:reqs }) : {}; }).then(function(){ var id=jbUuid(); return jbAppend('Transactions', JB_COLS.transactions(data,id)).then(function(){ return {success:true,id:id}; }); }); },
   importTransactions: function(rows){ var ch=Promise.resolve(); var n=0; (rows||[]).forEach(function(d){ if(!d||!d.date||!(Number(d.amount)>0)) return; n++; ch=ch.then(function(){ return jbAppend('Transactions', JB_COLS.transactions(d, jbUuid())); }); }); return ch.then(function(){ return {success:true,count:n}; }); },
   renameCategory: function(id,newName){ newName=String(newName||'').trim(); if(!newName) return Promise.reject(new Error('Nome não pode ser vazio.')); var oldName=''; return jbGetVals('Categories').then(function(vals){ var row=-1, names=[]; for(var i=1;i<vals.length;i++){ var r=vals[i]||[]; names.push(String(r[0])); if(String(r[2])===String(id)){ row=i+1; oldName=String(r[0]); } } if(row<0) throw new Error('Categoria não encontrada.'); if(oldName===newName) return 'skip'; if(names.indexOf(newName)>-1) throw new Error('Já existe uma categoria com esse nome.'); return jbPutRange('Categories!A'+row, [[newName]]).then(function(){ return 'go'; }); }).then(function(st){ if(st==='skip') return {success:true}; return jbCascade('Transactions',2,oldName,newName).then(function(){ return jbCascade('Recurring',4,oldName,newName); }).then(function(){ return jbCascade('Budget',0,oldName,newName); }).then(function(){ return {success:true}; }); }); },
-  exportBackup: function(){ var tabs=['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings']; var out=[]; var ch=Promise.resolve(); tabs.forEach(function(tb){ ch=ch.then(function(){ return jbGetVals(tb).then(function(vals){ if(!vals.length) return; out.push('### '+tb); vals.forEach(function(row){ out.push((row||[]).map(jbCsvCell).join(',')); }); out.push(''); }).catch(function(){}); }); }); return ch.then(function(){ var name='joelboard-backup-'+JB.todayYmd()+'.csv'; var csv='﻿'+out.join('\r\n'); var blob=new Blob([csv],{type:'text/csv'}); var localUrl=URL.createObjectURL(blob); if(!JB.uploadFileToFolder||!JB.ensureAppFolder) return { url:localUrl, name:name, drive:false }; return JB.ensureAppFolder('finance').then(function(folderId){ return JB.uploadFileToFolder(blob, name, folderId); }).then(function(f){ return { url:(f&&f.webViewLink)||localUrl, name:name, drive:true, fileId:f&&f.id }; }).catch(function(){ return { url:localUrl, name:name, drive:false }; }); }); },
+  exportBackup: function(){ var tabs=JB_TABS.concat(PRECOS_TABS); var out=[]; var ch=Promise.resolve(); tabs.forEach(function(tb){ ch=ch.then(function(){ return jbGetVals(tb).then(function(vals){ if(!vals.length) return; out.push('### '+tb); vals.forEach(function(row){ out.push((row||[]).map(jbCsvCell).join(',')); }); out.push(''); }).catch(function(){}); }); }); return ch.then(function(){ var name='joelboard-backup-'+JB.todayYmd()+'.csv'; var csv='﻿'+out.join('\r\n'); var blob=new Blob([csv],{type:'text/csv'}); var localUrl=URL.createObjectURL(blob); if(!JB.uploadFileToFolder||!JB.ensureAppFolder) return { url:localUrl, name:name, drive:false }; return JB.ensureAppFolder('finance').then(function(folderId){ return JB.uploadFileToFolder(blob, name, folderId); }).then(function(f){ return { url:(f&&f.webViewLink)||localUrl, name:name, drive:true, fileId:f&&f.id }; }).catch(function(){ return { url:localUrl, name:name, drive:false }; }); }); },
+  addPrecosBusca: function(data){ var id=data.id||jbUuid(); return jbAppend('PrecosBuscas', [id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now()]).then(function(){ return { success:true, id:id }; }); },
+  updatePrecosBusca: function(id,data){ var row=[id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now()]; return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) throw new Error('Busca não encontrada.'); return jbPutRange('PrecosBuscas!A'+r+':G'+r,[row]); }).then(function(){ return {success:true}; }); },
+  deletePrecosBusca: function(id){ return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) return {}; return jbDeleteRow('PrecosBuscas', r); }).then(function(){ return {success:true}; }); },
+  addPrecosManual: function(data){ var id=data.id||jbUuid(); return jbAppend('PrecosManual', [id, data.buscaId, data.data, Number(data.valor), data.loja||'', data.obs||'', Number(data.criado)||Date.now()]).then(function(){ return { success:true, id:id }; }); },
+  setPrecosConferida: function(buscaId, chave, data, preco, on){ var now=Date.now(); return jbGetVals('PrecosConferidas').then(function(vals){ var row=-1; for(var i=1;i<vals.length;i++){ var r=vals[i]||[]; if(String(r[0])===String(buscaId)&&String(r[1])===String(chave)){ row=i+1; break; } } if(on){ var rr=[buscaId,chave,data,preco,now]; return row<0?jbAppend('PrecosConferidas',rr):jbPutRange('PrecosConferidas!A'+row+':E'+row,[rr]); } return row>0?jbDeleteRow('PrecosConferidas',row):{}; }).then(function(){ return {success:true}; }); },
+  addPrecosLoja: function(data){ var id=data.id||jbUuid(); return jbAppend('PrecosLojas', [id, data.buscaId||'', data.tipo, data.nome, data.dominio||'', Number(data.criado)||Date.now()]).then(function(){ return { success:true, id:id }; }); },
+  deletePrecosLoja: function(id){ return jbFindRow('PrecosLojas',0,id).then(function(r){ if(r<0) return {}; return jbDeleteRow('PrecosLojas', r); }).then(function(){ return {success:true}; }); },
   createUserSheet: function(){
     var title = '💰 Joelboard — ' + (jbEmail ? jbEmail.split('@')[0] : 'Pessoal');
     var body = { properties:{ title:title }, sheets: JB_HEADERS.map(function(t){ return { properties:{ title:t[0] } }; }) };
@@ -223,7 +237,16 @@ var JB_HEADERS = [
   ['WorkLog',['Date','Worked','Hours','OT Hours']],
   ['Payments',['Month','Type','Item ID','Paid','Actual Amount','Paid Date']],
   ['Settings',['Key','Value']]
-];
+].concat(PRECOS_HEADERS);
+function jbEnsurePrecosTabs(){
+  var missing = PRECOS_HEADERS.filter(function(t){ return jbGrid[t[0]]==null; });
+  if (!missing.length) return Promise.resolve();
+  return jbReq('POST', jbBatchUrl(), { requests: missing.map(function(t){ return { addSheet:{ properties:{ title:t[0] } } }; }) })
+    .then(function(res){
+      (res.replies||[]).forEach(function(rep){ if(rep&&rep.addSheet){ jbGrid[rep.addSheet.properties.title]=rep.addSheet.properties.sheetId; } });
+      return jbReq('POST','https://sheets.googleapis.com/v4/spreadsheets/'+jbSid()+'/values:batchUpdate', { valueInputOption:'RAW', data: missing.map(function(t){ return { range:t[0]+'!A1', values:[t[1]] }; }) });
+    }).catch(function(){});
+}
 function jbCreateSheet(){
   jbLoadingHtml('<div style="text-align:center;padding:44px;color:var(--muted)">Criando sua planilha…</div>');
   var title = '💰 Joelboard — ' + (jbEmail ? jbEmail.split('@')[0] : 'Pessoal');
@@ -247,7 +270,7 @@ function jbApi(url){ return JB.api('GET', url); }
 function jbLoad(){
   var id = JB.getSheetId('finance');
   if (!id) return Promise.reject(new Error('no sheet'));
-  var want = JB_TABS.filter(function(tb){ return jbGrid && jbGrid[tb] != null; });
+  var want = JB_TABS.concat(PRECOS_TABS).filter(function(tb){ return jbGrid && jbGrid[tb] != null; });
   var ranges = want.map(function(tb){ return 'ranges=' + encodeURIComponent(tb); }).join('&');
   return jbApi('https://sheets.googleapis.com/v4/spreadsheets/' + id + '/values:batchGet?' + ranges + '&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER').then(function(res){
     var byTitle = {}; (res.valueRanges || []).forEach(function(vr, i){ byTitle[want[i]] = vr.values || []; });
@@ -255,7 +278,7 @@ function jbLoad(){
   });
 }
 var jbRecovered=false;
-function jbLoadAndBoot(){ jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando seus dados…</div>'); jbLoad().then(function(data){ jbRecovered=false; boot(data); }).catch(function(e){ var m=String((e&&e.message)||'');     if (JB.isTransientErr && JB.isTransientErr(e)) {
+function jbLoadAndBoot(){ jbLoadingHtml('<div style="text-align:center;padding:40px;color:var(--muted)">Carregando seus dados…</div>'); jbEnsurePrecosTabs().then(function(){ return jbLoad(); }).then(function(data){ jbRecovered=false; boot(data); }).catch(function(e){ var m=String((e&&e.message)||'');     if (JB.isTransientErr && JB.isTransientErr(e)) {
       jbLoadingHtml(JB.bootRetryHtml('jbLoadAndBoot()', { inputId: 'jbSheetUrl', pasteCall: 'jbLink()', errId: 'jbLinkErr' }));
       return;
     } if ((m.indexOf('403')>-1 || m.indexOf('404')>-1 || m.indexOf('PERMISSION')>-1 || m.indexOf('not found')>-1) && !jbRecovered) { jbRecovered=true; try{ JB.clearSheetId('finance'); }catch(_){} jbBootSheet(); return; } jbLoadingHtml(JB.bootRetryHtml('jbLoadAndBoot()', { inputId: 'jbSheetUrl', pasteCall: 'jbLink()', errId: 'jbLinkErr', msg: 'Erro ao carregar: ' + m })); }); }
@@ -296,6 +319,10 @@ function jbBuildData(t){
   var payments = jbBody(t.Payments).filter(function(r){ return r[0] && r[2]; }).map(function(r){ return { month:String(r[0]).replace(/^m/,'').slice(0,7), type:r[1], itemId:String(r[2]), paid:jbBool(r[3]), actualAmount:(r[4]===''||r[4]==null)?null:jbNum(r[4]), paidDate:(typeof r[5]==='number'?jbDate(r[5]):(r[5]?String(r[5]).slice(0,10):'')) }; });
   var settings = { hourly_rate:0, exchange_rate:0, off_weekdays:[0,6], mode:'hourly', monthly_salary:0, daily_hours:8, default_due_day:'', overtime_mode:'off', overtime_mult:1.5, convert_enabled:'true', currency_from:'USD', currency_to:'BRL', profile_set:'true' };
   jbBody(t.Settings).forEach(function(r){ if (!r[0]) return; if (r[0]==='off_weekdays'){ var mm=String(r[1]).match(/\d+/g); settings.off_weekdays = mm?mm.map(Number):[]; } else { var n=Number(r[1]); settings[r[0]]=(r[1]===''||isNaN(n))?r[1]:n; } });
-  return { transactions:transactions, budget:budget, goals:goals, recurring:recurring, allocations:allocations, bundles:bundles, categories:categories, debts:debts, workLog:workLog, payments:payments, settings:settings, email:jbEmail };
+  var precosBuscas = jbBody(t.PrecosBuscas||[]).filter(function(r){ return r[0]&&r[1]; }).map(function(r){ return { id:String(r[0]), termo:r[1], teto:(r[2]===''||r[2]==null)?'':jbNum(r[2]), obrigatorias:r[3]||'', proibidas:r[4]||'', arquivada:jbBool(r[5]), criado:jbNum(r[6])||Date.now() }; });
+  var precosManual = jbBody(t.PrecosManual||[]).filter(function(r){ return r[0]&&r[1]; }).map(function(r){ return { id:r[0], buscaId:String(r[1]), data:jbDate(r[2]), valor:jbNum(r[3]), loja:r[4]||'', obs:r[5]||'', criado:jbNum(r[6])||Date.now() }; });
+  var precosConferidas = jbBody(t.PrecosConferidas||[]).filter(function(r){ return r[0]&&r[1]; }).map(function(r){ return { buscaId:String(r[0]), chave:String(r[1]), data:jbDate(r[2]), preco:jbNum(r[3]), conferidoEm:jbNum(r[4])||0 }; });
+  var precosLojas = jbBody(t.PrecosLojas||[]).filter(function(r){ return r[0]&&r[3]; }).map(function(r){ return { id:r[0], buscaId:r[1]?String(r[1]):'', tipo:r[2]||'bloqueada', nome:r[3], dominio:r[4]||'', criado:jbNum(r[5])||Date.now() }; });
+  return { transactions:transactions, budget:budget, goals:goals, recurring:recurring, allocations:allocations, bundles:bundles, categories:categories, debts:debts, workLog:workLog, payments:payments, settings:settings, precosBuscas:precosBuscas, precosManual:precosManual, precosConferidas:precosConferidas, precosLojas:precosLojas, email:jbEmail };
 }
 /* ============================ end Joelboard data layer ============================ */

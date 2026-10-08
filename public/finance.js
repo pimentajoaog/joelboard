@@ -699,6 +699,7 @@ function boot(data) {
   document.getElementById('app').style.display = 'block';
   if (!profileIsSet()) startWizard();
   if (!window._jbTabSync) { window._jbTabSync = 1; JB.onTabVisible(function(){ if (document.getElementById('app').style.display !== 'none') reload(); }); JB.watchSheet('finance', reload); }
+  if (typeof initPrecosOnBoot === 'function') initPrecosOnBoot();
 }
 function reload() { jbLoad().then(function(d){ DATA = d; rebuildCatColors(); populateCategoryDropdowns(); renderAll(); renderCatList(); }).catch(function(e){ showToast(t('err.prefix')+e.message,'error'); }); }
 function manualRefresh() {
@@ -836,6 +837,7 @@ function renderAll() {
   renderWeekDigest(); renderMoMDeltas();
   renderBudget(); renderBreakdown();
   renderCalendar(); renderTransactions(); renderRecurring(); renderGoals(); renderBundles(); renderSettledBadge(); renderSavingsBalance(); renderGeneralSavings(); renderSalaryControl(); renderTrend(); renderDebts();
+  if (typeof renderPrecos === 'function') renderPrecos();
   applyDim();
   playQueuedStrike();
 }
@@ -2105,6 +2107,7 @@ function closeFab() { fabOpen=false; document.getElementById('fab').classList.re
 function clearFormErrors() { document.querySelectorAll('.form-err').forEach(e=>{ e.textContent=''; e.classList.remove('show'); }); }
 function closeOverlay(id) {
   if (id==='splitOverlay') { requestSplitClose(); return; }
+  if (id==='precosDetailOverlay' && typeof closePrecosSearch === 'function') { closePrecosSearch(); return; }
   if (id==='billDelOverlay') billScopeCtx=null;
   if (mOpen) mOpen();
   document.getElementById(id).classList.remove('open');

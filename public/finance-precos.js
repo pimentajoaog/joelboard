@@ -16,6 +16,8 @@ var PK = {
   fetchNow: 'Buscar preços agora',
   fetching: 'Buscando…',
   offersEmptyToday: 'Nenhuma oferta hoje — toque em Buscar preços.',
+  filtersRelaxed: 'Nenhuma oferta passou nos filtros atuais — mostrando todas as ofertas brutas de hoje. Ajuste em Filtros e teto (palavras ou lojas permitidas).',
+  allowOnlyHint: 'Só esta loja (restringe a busca)',
   todayLow: 'Menor hoje',
   median30: 'Mediana 30 dias',
   allTimeLow: 'Menor histórico',
@@ -104,6 +106,32 @@ function precosFilterOpts(busca) {
   };
 }
 
+function precosResolveFilterOpts(busca, raw, today) {
+  var opts = precosFilterOpts(busca);
+  var day = (raw && raw[today]) || [];
+  if (!day.length || PrecosMath.filterOffers(day, opts).length) {
+    return { opts: opts, relaxed: false };
+  }
+  var relaxed = Object.assign({}, opts, { obrigatorias: '', proibidas: '', searchAllows: [] });
+  return { opts: relaxed, relaxed: true };
+}
+
+function precosCompactOffersForSheet(offers) {
+  return (offers || []).map(function (o) {
+    var link = String(o.link || '');
+    if (link.length > 400) {
+      try {
+        var u = new URL(link);
+        link = u.origin + u.pathname;
+      } catch (_) { link = link.slice(0, 400); }
+    }
+    return {
+      loja: o.loja, titulo: o.titulo, preco: o.preco, precoTexto: o.precoTexto,
+      precoAvista: o.precoAvista, link: link, extra: o.extra
+    };
+  });
+}
+
 function precosRawFromSheet(buscaId) {
   var raw = {};
   var id = String(buscaId);
@@ -183,8 +211,8 @@ function precosConferidaMap(buscaId) {
   return m;
 }
 
-function precosBuildSeries(busca, raw) {
-  var opts = precosFilterOpts(busca);
+function precosBuildSeries(busca, raw, opts) {
+  opts = opts || precosFilterOpts(busca);
   var auto = PrecosMath.lowestPricePerDay(raw, opts);
   return PrecosMath.mergeManualSeries(auto, precosManualFor(busca.id), opts);
 }
@@ -211,9 +239,9 @@ function renderPrecos() {
     buscas.forEach(function (b) {
       chain = chain.then(function () {
         return loadPrecosRaw(b.id).then(function (raw) {
-          var opts = precosFilterOpts(b);
-          var series = precosBuildSeries(b, raw);
           var today = precosTodayKey();
+          var opts = precosResolveFilterOpts(b, raw, today).opts;
+          var series = precosBuildSeries(b, raw, opts);
           var low = PrecosMath.todayLowestFromRaw(raw, today, opts);
           var med = PrecosMath.medianLastNDays(series, 30, today);
           var hit = b.teto !== '' && b.teto != null && low && PrecosMath.targetHit(low.price, b.teto);
@@ -259,11 +287,17 @@ function paintPrecosSearch(reloadRaw) {
     fetchBtn.textContent = PRECOS_FETCHING ? PK.fetching : PK.fetchNow;
   }
   var paint = function (raw) {
-    var opts = precosFilterOpts(busca);
-    var series = precosBuildSeries(busca, raw);
+    var today = precosTodayKey();
+    var resolved = precosResolveFilterOpts(busca, raw, today);
+    var opts = resolved.opts;
+    var filterNotice = document.getElementById('precosFilterNotice');
+    if (filterNotice) {
+      filterNotice.style.display = resolved.relaxed ? 'block' : 'none';
+      filterNotice.textContent = PK.filtersRelaxed;
+    }
+    var series = precosBuildSeries(busca, raw, opts);
     var prefs = precosPrefs();
     var range = PRECOS_CHART_RANGE || prefs.chartRange || '30';
-    var today = precosTodayKey();
     var low = PrecosMath.todayLowestFromRaw(raw, today, opts);
     var med = PrecosMath.medianLastNDays(series, 30, today);
     var atl = PrecosMath.allTimeLow(series);
@@ -296,10 +330,6 @@ function renderPrecosOffers(busca, raw, today, opts) {
   var prefs = precosPrefs();
   if (!day.length) {
     list.innerHTML = '<div class="empty">' + esc(PK.offersEmptyToday) + '</div>';
-    return;
-  }
-  if (!offers.length) {
-    list.innerHTML = '<div class="empty">' + esc('Nenhuma oferta passou nos filtros hoje.') + '</div>';
     return;
   }
   list.innerHTML = offers.map(function (o) {
@@ -374,8 +404,8 @@ function precosSetRange(r) {
 function openPrecosNew() {
   document.getElementById('precosNewTerm').value = '';
   document.getElementById('precosNewTeto').value = '';
-  document.getElementById('precosNewObr').value = PrecosMath.DEFAULT_RX_KEYWORDS.obrigatorias.replace(/,/g, ', ');
-  document.getElementById('precosNewPro').value = PrecosMath.DEFAULT_RX_KEYWORDS.proibidas.replace(/,/g, ', ');
+  document.getElementById('precosNewObr').value = '';
+  document.getElementById('precosNewPro').value = '';
   document.getElementById('precosNewOverlay').classList.add('open');
 }
 
@@ -415,8 +445,8 @@ function refreshPrecosSearch() {
     .then(function (res) {
       var body = res.j || {};
       if (!res.ok || body.error) throw new Error(body.error || 'Falha na busca');
-      var today = body.date || precosTodayKey();
-      var offers = body.offers || [];
+      var today = precosTodayKey();
+      var offers = precosCompactOffersForSheet(body.offers || []);
       var json = JSON.stringify(offers);
       return jbRun('savePrecosCaptura', { buscaId: busca.id, data: today, json: json, criado: Date.now() }).then(function () {
         DATA.precosCapturas = DATA.precosCapturas || [];
@@ -537,7 +567,7 @@ function openPrecosFilters() {
     document.getElementById('precosStoresSeen').innerHTML = seen.map(function (s) {
       return '<div class="precos-store-row"><span>' + esc(s.nome) + ' <span class="muted">(' + s.count + ')</span></span>'
         + '<span class="precos-store-actions">'
-        + '<button type="button" class="sec-action" onclick="precosAllowStore(\'' + escAttr(b.id) + '\',\'' + escAttr(s.nome) + '\',\'' + escAttr(s.dominio || '') + '\')">Permitir</button>'
+        + '<button type="button" class="sec-action" onclick="precosAllowStore(\'' + escAttr(b.id) + '\',\'' + escAttr(s.nome) + '\',\'' + escAttr(s.dominio || '') + '\')" title="' + escAttr(PK.allowOnlyHint) + '">Só esta loja</button>'
         + '<button type="button" class="sec-action muted" onclick="precosBlockStore(\'' + escAttr(s.nome) + '\',\'' + escAttr(s.dominio || '') + '\')">Bloquear</button>'
         + '</span></div>';
     }).join('') || '<div class="muted">Nenhuma loja recente.</div>';

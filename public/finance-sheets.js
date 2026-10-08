@@ -294,7 +294,7 @@ function jbBuildData(t){
   });
   var workLog = jbBody(t.WorkLog).filter(function(r){ return r[0]; }).map(function(r){ return { date:jbDate(r[0]), worked:jbBool(r[1]), hours:jbNum(r[2]), otHours:jbNum(r[3]) }; });
   var payments = jbBody(t.Payments).filter(function(r){ return r[0] && r[2]; }).map(function(r){ return { month:String(r[0]).replace(/^m/,'').slice(0,7), type:r[1], itemId:String(r[2]), paid:jbBool(r[3]), actualAmount:(r[4]===''||r[4]==null)?null:jbNum(r[4]), paidDate:(typeof r[5]==='number'?jbDate(r[5]):(r[5]?String(r[5]).slice(0,10):'')) }; });
-  var settings = { hourly_rate:0, exchange_rate:0, off_weekdays:[0,6], mode:'hourly', monthly_salary:0, daily_hours:8, overtime_mode:'off', overtime_mult:1.5, convert_enabled:'true', currency_from:'USD', currency_to:'BRL', profile_set:'true' };
+  var settings = { hourly_rate:0, exchange_rate:0, off_weekdays:[0,6], mode:'hourly', monthly_salary:0, daily_hours:8, default_due_day:'', overtime_mode:'off', overtime_mult:1.5, convert_enabled:'true', currency_from:'USD', currency_to:'BRL', profile_set:'true' };
   jbBody(t.Settings).forEach(function(r){ if (!r[0]) return; if (r[0]==='off_weekdays'){ var mm=String(r[1]).match(/\d+/g); settings.off_weekdays = mm?mm.map(Number):[]; } else { var n=Number(r[1]); settings[r[0]]=(r[1]===''||isNaN(n))?r[1]:n; } });
   return { transactions:transactions, budget:budget, goals:goals, recurring:recurring, allocations:allocations, bundles:bundles, categories:categories, debts:debts, workLog:workLog, payments:payments, settings:settings, email:jbEmail };
 }

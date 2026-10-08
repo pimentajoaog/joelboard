@@ -117,7 +117,10 @@ const I18N = {
     'set.tabThemes':'Themes', 'set.tabLang':'Language',
     'set.payModel':'Pay model', 'set.hourly':'⏱ Hourly', 'set.salaried':'📅 Salaried',
     'set.hourlyRate':'Hourly rate', 'set.monthlySalary':'Monthly salary',
-    'set.stdHours':'Standard hours per day', 'set.overtime':'Overtime',
+    'set.stdHours':'Standard hours per day',
+    'set.defaultDueDay':'Default bill due day', 'set.defaultDueDayPh':'e.g. 10',
+    'set.defaultDueDayHint':'Optional. Pre-fills the due day when you add a new bill (1–31).',
+    'set.overtime':'Overtime',
     'set.otMult':'Overtime multiplier (× base rate)', 'set.currency':'Currency',
     'set.singleCur':'Single currency', 'set.convert':'Convert', 'set.paidIn':'Paid in',
     'set.trackIn':'Track & display in', 'set.exchRate':'Exchange rate',
@@ -156,7 +159,7 @@ const I18N = {
     'toast.nMarkedPaid': v => '✓ ' + v.n + ' marked paid',
 
     'err.prefix':'Error: ', 'err.allFields':'Please fill in all fields.',
-    'err.billFields':'Please fill in name, amount and due day (1–31).',
+    'err.billFields':'Please fill in name, amount and due day (1–31).', 'err.dueDayRange':'Due day must be between 1 and 31.',
     'err.budgetFields':'Please pick a category and amount.',
     'err.goalFields':'Please enter a name and target amount.',
     'err.amount':'Enter an amount.', 'err.numMonths':'Enter the number of months.',
@@ -404,7 +407,10 @@ const I18N = {
     'set.tabThemes':'Temas', 'set.tabLang':'Idioma',
     'set.payModel':'Modelo de pagamento', 'set.hourly':'⏱ Por hora', 'set.salaried':'📅 Salário',
     'set.hourlyRate':'Valor por hora', 'set.monthlySalary':'Salário mensal',
-    'set.stdHours':'Horas padrão por dia', 'set.overtime':'Hora extra',
+    'set.stdHours':'Horas padrão por dia',
+    'set.defaultDueDay':'Dia do vencimento padrão', 'set.defaultDueDayPh':'ex.: 10',
+    'set.defaultDueDayHint':'Opcional. Preenche o vencimento ao criar uma conta nova (1–31).',
+    'set.overtime':'Hora extra',
     'set.otMult':'Multiplicador de hora extra (× valor base)', 'set.currency':'Moeda',
     'set.singleCur':'Moeda única', 'set.convert':'Converter', 'set.paidIn':'Recebido em',
     'set.trackIn':'Acompanhar e exibir em', 'set.exchRate':'Taxa de câmbio',
@@ -443,7 +449,7 @@ const I18N = {
     'toast.nMarkedPaid': v => '✓ ' + v.n + (v.n===1?' marcado como pago':' marcados como pagos'),
 
     'err.prefix':'Erro: ', 'err.allFields':'Preencha todos os campos.',
-    'err.billFields':'Preencha nome, valor e dia do vencimento (1–31).',
+    'err.billFields':'Preencha nome, valor e dia do vencimento (1–31).', 'err.dueDayRange':'O dia do vencimento deve ser entre 1 e 31.',
     'err.budgetFields':'Escolha uma categoria e um valor.',
     'err.goalFields':'Informe um nome e o valor da meta.',
     'err.amount':'Informe um valor.', 'err.numMonths':'Informe o número de meses.',
@@ -850,6 +856,14 @@ const CURRENCIES = {
 function P() { return DATA && DATA.settings || {}; }
 function mode() { return P().mode === 'salaried' ? 'salaried' : 'hourly'; }
 function dailyHours() { const h = Number(P().daily_hours); return h > 0 ? h : 8; }
+function defaultBillDueDay() {
+  const v = P().default_due_day;
+  if (v === '' || v == null) return null;
+  const n = parseInt(v, 10);
+  if (isNaN(n) || n < 1 || n > 31) return null;
+  return n;
+}
+function billDueDayPrefill() { const d = defaultBillDueDay(); return d != null ? d : ''; }
 function overtimeMode() { const o = P().overtime_mode; return (o === 'automatic' || o === 'manual') ? o : 'off'; }
 function overtimeMult() { const m = Number(P().overtime_mult); return m > 0 ? m : 1.5; }
 function convertEnabled() { const v = P().convert_enabled; return v === true || v === 1 || v === '1' || String(v).toLowerCase() === 'true'; }
@@ -1337,7 +1351,7 @@ function togglePaid(type, id) {
 function promptActual(id, m) {
   const b = (DATA.recurring||[]).find(x=>x.id===id);
   const dim = daysInMonth(selY,selM), occDate = dayStr(selY,selM, Math.min((b&&b.dueDay)||1, dim)), overdue = isPast();
-  if (!b) { applyPaid('bill', id, true, m, '', overdue?todayStr():occDate); window._jbStrikeSel = 'bill:'+id; renderAll(); return; }
+  if (!b) { applyPaid('bill', id, true, m, '', overdue?todayStr():occDate); window._jbStrikeSel = 'bill:'+id; renderAll(); afterBillPaidFromForm(); return; }
   confirmCtx = { kind:'paid', id:id, month:m, overdue:overdue, occDate:occDate, paidDate: overdue?todayStr():occDate };
   document.getElementById('ccTitle').textContent = '✓ ' + b.name;
   document.getElementById('ccQ').innerHTML = t('cc.wasAmount',{amt:brl(b.amount)});
@@ -1534,7 +1548,7 @@ function setBillRecur(v) {
 function openBill() {
   closeFab(); editing={type:null,id:null};
   document.getElementById('billTitle').textContent=t('bill.add'); document.getElementById('billDel').style.display='none'; document.getElementById('billSave').textContent=t('bill.save');
-  document.getElementById('billName').value=''; document.getElementById('billAmt').value=''; document.getElementById('billDay').value=''; resetCategorySelect('billCat');
+  document.getElementById('billName').value=''; document.getElementById('billAmt').value=''; document.getElementById('billDay').value=billDueDayPrefill(); resetCategorySelect('billCat');
   document.getElementById('billCount').value=''; document.getElementById('billStart').value='';
   setBillRecur(true);
   mSync('billStart'); updateBillPreview();
@@ -2180,6 +2194,7 @@ function openSettings() {
   document.getElementById('setHourly').value = hourlyRate();
   document.getElementById('setSalary').value = monthlySalary();
   document.getElementById('setDaily').value = dailyHours();
+  { const _dd = defaultBillDueDay(); document.getElementById('setDefaultDueDay').value = _dd != null ? _dd : ''; }
   document.getElementById('setOtMode').value = overtimeMode();
   document.getElementById('setOtMult').value = overtimeMult();
   document.getElementById('setExch').value = Number(s.exchange_rate) || 0;
@@ -2340,7 +2355,14 @@ function submitSettings() {
   if (setFormMode==='hourly' && hourly<=0) { setFormError('setErr',t('err.hourlyRate')); return; }
   if (setFormMode==='salaried' && salary<=0) { setFormError('setErr',t('err.salary')); return; }
   if (setFormConvert && exch<=0) { setFormError('setErr',t('err.exchRate')); return; }
-  const profile={ mode:setFormMode, hourly_rate:hourly, monthly_salary:salary, daily_hours:daily, overtime_mode:otMode, overtime_mult:otMult, convert_enabled:setFormConvert?'true':'false', currency_from:from, currency_to:to, exchange_rate:exch, profile_set:'true' };
+  const dueRaw = String(document.getElementById('setDefaultDueDay').value || '').trim();
+  let default_due_day = '';
+  if (dueRaw !== '') {
+    const dueDay = parseInt(dueRaw, 10);
+    if (isNaN(dueDay) || dueDay < 1 || dueDay > 31) { setFormError('setErr', t('err.dueDayRange')); return; }
+    default_due_day = dueDay;
+  }
+  const profile={ mode:setFormMode, hourly_rate:hourly, monthly_salary:salary, daily_hours:daily, default_due_day:default_due_day, overtime_mode:otMode, overtime_mult:otMult, convert_enabled:setFormConvert?'true':'false', currency_from:from, currency_to:to, exchange_rate:exch, profile_set:'true' };
   Object.assign(DATA.settings, profile);
   const btn=document.getElementById('setSave'); btn.disabled=true; btn.textContent=t('action.saving');
   jbRun('saveProfile', profile)
@@ -3170,7 +3192,7 @@ function ensureSplitBill(rows){
   const title = (document.getElementById('spTitle').value || '').trim() || t('split.untitled');
   const billName = t('split.billName', { title: title });
   const startMonth = (document.getElementById('spBillMonth').value || ymStr(selY, selM));
-  const dueDay = Math.min(Math.max(now.getDate(), 1), 31);
+  const dueDay = defaultBillDueDay() || Math.min(Math.max(now.getDate(), 1), 31);
   const cat = splitBillCategory();
   const financeMonth = ymStr(selY, selM);
   const markPaid = startMonth === financeMonth && document.getElementById('spBillPaid') && document.getElementById('spBillPaid').checked;

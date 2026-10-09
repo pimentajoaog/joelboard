@@ -1637,6 +1637,8 @@ html.jb-ink-full .fab {
 }
 .jb-cal-orb-btn.on { box-shadow: 0 0 0 1px var(--ink); }
 .jb-cal-orb svg, .jb-cal-orb-btn svg, .jb-cal-appt-ico svg { width: 12px; height: 12px; display: block; }
+.jb-cal-orb, .jb-cal-orb-btn, .jb-cal-appt-ico { overflow: hidden; }
+.jb-cal-recipe { width: 100%; height: 100%; display: block; object-fit: cover; border-radius: inherit; }
 .jb-cal-app {
   margin: 0 0 8px; padding: 7px 7px 3px; border-radius: 12px;
   background: color-mix(in srgb, var(--ink) 9%, var(--surface, #191d2c));

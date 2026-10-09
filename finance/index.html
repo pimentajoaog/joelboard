@@ -51,7 +51,7 @@
       </div>
       <div class="today-slot"><button class="today-pill" id="todayBtn" onclick="goToday()" data-i18n="nav.today">Today</button></div>
     </div>
-    <div class="header-right"><span class="month-badge" id="projBadge"></span><button class="gear-btn" id="refreshBtn" onclick="manualRefresh()" title="Refresh data" data-i18n-title="action.refresh"><span class="ref-ico">↻</span></button><button class="gear-btn eye-btn" id="eyeBtn" onclick="toggleReveal()" style="display:none;">👁</button><button class="gear-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme" data-i18n-title="action.toggleTheme">🌙</button><button class="gear-btn" id="settingsBtn" onclick="openSettings()">⚙️</button></div>
+    <div class="header-right"><div class="precos-widget pw-inline" id="precosWidget" hidden></div><span class="month-badge" id="projBadge"></span><button class="gear-btn" id="refreshBtn" onclick="manualRefresh()" title="Refresh data" data-i18n-title="action.refresh"><span class="ref-ico">↻</span></button><button class="gear-btn eye-btn" id="eyeBtn" onclick="toggleReveal()" style="display:none;">👁</button><button class="gear-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme" data-i18n-title="action.toggleTheme">🌙</button><button class="gear-btn" id="settingsBtn" onclick="openSettings()">⚙️</button></div>
   </div>
 
   <div class="tabbar">
@@ -181,7 +181,6 @@
 
 </div>
 
-<div class="precos-widget" id="precosWidget" hidden></div>
 <div class="fab-wrap">
   <div class="fab-menu" id="fabMenu">
     <div class="fab-option" onclick="openTx()" data-i18n="fab.transaction">💸 Transaction</div>

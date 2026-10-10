@@ -172,6 +172,7 @@ function precosRowsSameTerm(term, mode) {
 function precosBuscaPatch(b, arquivada) {
   return {
     termo: b.termo, teto: b.teto, obrigatorias: b.obrigatorias, proibidas: b.proibidas,
+    obrigatoriasOr: b.obrigatoriasOr || '',
     arquivada: arquivada != null ? arquivada : !!b.arquivada, criado: b.criado
   };
 }
@@ -291,6 +292,7 @@ function precosStoreName(offer) {
 function precosOptsFromParts(buscaId, parts) {
   return {
     obrigatorias: parts.obrigatorias || '',
+    obrigatoriasOr: parts.obrigatoriasOr || '',
     proibidas: parts.proibidas || '',
     globalBlocks: parts.hides || [],
     searchAllows: (parts.pins || []).map(function (p) { return { buscaId: buscaId, nome: p.nome, dominio: p.dominio || '' }; }),
@@ -305,7 +307,7 @@ function precosFilterOpts(busca) {
   var p = precosPrefs();
   return precosOptsFromParts(busca.id, {
     pins: rules.pins, hides: rules.hides,
-    obrigatorias: busca.obrigatorias, proibidas: busca.proibidas,
+    obrigatorias: busca.obrigatorias, obrigatoriasOr: busca.obrigatoriasOr || '', proibidas: busca.proibidas,
     hideNonBrl: p.hideNonBrl, priceKind: p.priceKind
   });
 }
@@ -316,6 +318,7 @@ function precosActiveFilterCount(busca) {
   rules.pins.concat(rules.hides).forEach(function (r) { keys[r.tipo + ':' + precosRuleKey(r)] = 1; });
   return Object.keys(keys).length
     + PrecosMath.parseWordList(busca.obrigatorias).length
+    + PrecosMath.parseWordList(busca.obrigatoriasOr || '').length
     + PrecosMath.parseWordList(busca.proibidas).length;
 }
 
@@ -1152,7 +1155,7 @@ function submitPrecosNew() {
   var data = {
     id: precosSlug(term), termo: term,
     teto: document.getElementById('precosNewTeto').value.trim(),
-    obrigatorias: '', proibidas: '',
+    obrigatorias: '', obrigatoriasOr: '', proibidas: '',
     arquivada: false, criado: Date.now()
   };
   PRECOS_NEW_BUSY = true;
@@ -1254,6 +1257,7 @@ function openPrecosFilters(cleared, focusId) {
     buscaId: b.id,
     pins: {}, hides: {}, globalHide: {}, labels: {},
     obr: PrecosMath.parseWordList(b.obrigatorias),
+    obrOr: PrecosMath.parseWordList(b.obrigatoriasOr || ''),
     pro: PrecosMath.parseWordList(b.proibidas),
     hideNonBrl: prefs.hideNonBrl, priceKind: prefs.priceKind, showBoth: prefs.showBoth,
     previewDay: previewDay,
@@ -1287,6 +1291,7 @@ function openPrecosFilters(cleared, focusId) {
   if (cleared) precosDraftClear();
   document.getElementById('pfTeto').value = b.teto !== '' && b.teto != null ? b.teto : '';
   document.getElementById('pfObrInput').value = '';
+  document.getElementById('pfObrOrInput').value = '';
   document.getElementById('pfProInput').value = '';
   var saveBtn = document.getElementById('pfSaveBtn');
   if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = PK.saveFilters; }
@@ -1306,7 +1311,7 @@ function precosDraftOpts(d) {
   var toRules = function (map) { return Object.keys(map).filter(function (k) { return map[k]; }).map(function (k) { return { nome: d.labels[k] || k }; }); };
   return precosOptsFromParts(d.buscaId, {
     pins: toRules(d.pins), hides: toRules(d.hides),
-    obrigatorias: d.obr.join(', '), proibidas: d.pro.join(', '),
+    obrigatorias: d.obr.join(', '), obrigatoriasOr: d.obrOr.join(', '), proibidas: d.pro.join(', '),
     hideNonBrl: d.hideNonBrl, priceKind: d.priceKind
   });
 }
@@ -1349,10 +1354,11 @@ function precosRenderDraftStores() {
 function precosRenderDraftWords() {
   var d = PRECOS_DRAFT;
   if (!d) return;
-  ['obr', 'pro'].forEach(function (which) {
+  var wordUi = { obr: ['pfObrList', 'req'], obrOr: ['pfObrOrList', 'reqOr'], pro: ['pfProList', 'ban'] };
+  ['obr', 'obrOr', 'pro'].forEach(function (which) {
     var words = d[which];
-    var kind = which === 'obr' ? 'req' : 'ban';
-    precosSetHtml(which === 'obr' ? 'pfObrList' : 'pfProList', words.map(function (w, i) {
+    var kind = wordUi[which][1];
+    precosSetHtml(wordUi[which][0], words.map(function (w, i) {
       var n = PrecosMath.wordImpact(d.preview, w, kind);
       return '<span class="pf-chip">' + esc(w) + (n ? '<small>−' + n + '</small>' : '')
         + '<button type="button" aria-label="Remover ' + escAttr(w) + '" onclick="precosChipRemove(\'' + which + '\',' + i + ')">×</button></span>';
@@ -1411,12 +1417,19 @@ function precosDraftClear() {
   d.pins = {};
   d.hides = {};
   d.obr = [];
+  d.obrOr = [];
   d.pro = [];
+}
+
+function precosChipInputId(which) {
+  if (which === 'obr') return 'pfObrInput';
+  if (which === 'obrOr') return 'pfObrOrInput';
+  return 'pfProInput';
 }
 
 function precosChipCommit(which) {
   var d = PRECOS_DRAFT;
-  var input = document.getElementById(which === 'obr' ? 'pfObrInput' : 'pfProInput');
+  var input = document.getElementById(precosChipInputId(which));
   if (!d || !input || !input.value.trim()) return;
   var have = {};
   d[which].forEach(function (w) { have[PrecosMath.normCompact(w)] = 1; });
@@ -1449,7 +1462,7 @@ function precosChipRemove(which, i) {
 
 function precosChipFocus(e, which) {
   if (e.target.closest && e.target.closest('button')) return;
-  var input = document.getElementById(which === 'obr' ? 'pfObrInput' : 'pfProInput');
+  var input = document.getElementById(precosChipInputId(which));
   if (input) input.focus();
 }
 
@@ -1472,6 +1485,7 @@ function submitPrecosFilters() {
   var b = d && precosBusca(d.buscaId);
   if (!b) return;
   precosChipCommit('obr');
+  precosChipCommit('obrOr');
   precosChipCommit('pro');
   var rules = precosRules(b.id);
   var ops = [];
@@ -1487,8 +1501,15 @@ function submitPrecosFilters() {
     });
   });
   var teto = document.getElementById('pfTeto').value.trim();
-  var patch = { termo: b.termo, teto: teto, obrigatorias: d.obr.join(', '), proibidas: d.pro.join(', '), arquivada: b.arquivada, criado: b.criado };
-  var buscaChanged = String(patch.teto) !== String(b.teto == null ? '' : b.teto) || patch.obrigatorias !== (b.obrigatorias || '') || patch.proibidas !== (b.proibidas || '');
+  var patch = {
+    termo: b.termo, teto: teto,
+    obrigatorias: d.obr.join(', '), obrigatoriasOr: d.obrOr.join(', '), proibidas: d.pro.join(', '),
+    arquivada: b.arquivada, criado: b.criado
+  };
+  var buscaChanged = String(patch.teto) !== String(b.teto == null ? '' : b.teto)
+    || patch.obrigatorias !== (b.obrigatorias || '')
+    || patch.obrigatoriasOr !== (b.obrigatoriasOr || '')
+    || patch.proibidas !== (b.proibidas || '');
   var prefs = precosPrefs();
   var btn = document.getElementById('pfSaveBtn');
   if (btn) { btn.disabled = true; btn.textContent = PK.saving; }

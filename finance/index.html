@@ -570,10 +570,14 @@
         <div class="pf-chips" onclick="precosChipFocus(event,'obr')"><span id="pfObrList"></span><input type="text" class="pf-chip-input" id="pfObrInput" placeholder="ex.: 2tb, nvme" autocomplete="off" onkeydown="precosChipKey(event,'obr')" onblur="precosChipCommit('obr')"></div>
       </div>
       <div class="fg">
+        <label class="flabel" for="pfObrOrInput">Precisa ter (qualquer uma)</label>
+        <div class="pf-chips" onclick="precosChipFocus(event,'obrOr')"><span id="pfObrOrList"></span><input type="text" class="pf-chip-input" id="pfObrOrInput" placeholder="ex.: placa de vídeo, gpu" autocomplete="off" onkeydown="precosChipKey(event,'obrOr')" onblur="precosChipCommit('obrOr')"></div>
+      </div>
+      <div class="fg">
         <label class="flabel" for="pfProInput">Não pode ter</label>
         <div class="pf-chips" onclick="precosChipFocus(event,'pro')"><span id="pfProList"></span><input type="text" class="pf-chip-input" id="pfProInput" placeholder="ex.: notebook, kit, usado" autocomplete="off" onkeydown="precosChipKey(event,'pro')" onblur="precosChipCommit('pro')"></div>
       </div>
-      <div class="cat-hint">Enter ou vírgula adiciona. O número na palavra mostra quantas ofertas ela esconde.</div>
+      <div class="cat-hint">Enter ou vírgula adiciona. Use <b>todas</b> para AND e <b>qualquer uma</b> para OR (ex.: “placa de vídeo” ou “gpu”). O número na palavra mostra quantas ofertas ficam de fora por causa dela.</div>
     </div>
     <div class="pf-sec">
       <div class="sec-title">Preço-alvo</div>

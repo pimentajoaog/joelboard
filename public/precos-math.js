@@ -78,12 +78,13 @@ var PrecosMath = (() => {
       return true;
     });
   }
-  function parseRequiredForbidden(obrigatorias, proibidas) {
+  function parseRequiredForbidden(obrigatorias, proibidas, obrigatoriasOr) {
     const req = parseWordList(obrigatorias).map(normCompact).filter(Boolean);
+    const reqOr = parseWordList(obrigatoriasOr).map(normCompact).filter(Boolean);
     const ban = parseWordList(proibidas).map(function(w) {
       return normText(w).trim();
     }).filter(Boolean);
-    return { req, ban };
+    return { req, reqOr, ban };
   }
   function titleHasRequired(t, tc, w) {
     return tc.indexOf(w) > -1 || t.indexOf(w.replace(/(.)/g, "$1 ").trim()) > -1;

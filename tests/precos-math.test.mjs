@@ -43,6 +43,14 @@ describe('keyword filter', () => {
     assert.equal(titlePassesKeywordFilter('RX 9070XT Gaming', o.obrigatorias, o.proibidas), true);
     assert.equal(titlePassesKeywordFilter('Water block RX 9070 XT', o.obrigatorias, o.proibidas), false);
   });
+  it('OR group requires at least one phrase', () => {
+    const orOnly = { obrigatorias: '', obrigatoriasOr: 'placa de video, gpu', proibidas: '' };
+    assert.equal(titlePassesKeywordFilter('Placa de Vídeo RX 9070', orOnly.obrigatorias, orOnly.proibidas, orOnly.obrigatoriasOr), true);
+    assert.equal(titlePassesKeywordFilter('GPU RX 9070 XT', orOnly.obrigatorias, orOnly.proibidas, orOnly.obrigatoriasOr), true);
+    assert.equal(titlePassesKeywordFilter('Memória DDR5 32GB', orOnly.obrigatorias, orOnly.proibidas, orOnly.obrigatoriasOr), false);
+    assert.equal(titlePassesKeywordFilter('GPU RX 9070 XT', GPU_WORDS.obrigatorias, GPU_WORDS.proibidas, 'gpu, placa de video'), true);
+    assert.equal(titlePassesKeywordFilter('Water block RX 9070 XT', GPU_WORDS.obrigatorias, GPU_WORDS.proibidas, 'gpu'), false);
+  });
   it('forbidden words match at word starts, not inside other words', () => {
     assert.equal(titlePassesKeywordFilter('Cabos de força 9070 XT', '', 'cabo'), false);
     assert.equal(titlePassesKeywordFilter('Placa Skit 9070', '', 'kit'), true);

@@ -28,6 +28,10 @@ function jbGetVals(tab){ return jbApi(jbValuesUrl(tab)+'?valueRenderOption=UNFOR
 function jbDeleteRow(tab,rowNum){ return jbReq('POST', jbBatchUrl(), { requests:[{ deleteDimension:{ range:{ sheetId:jbGrid[tab], dimension:'ROWS', startIndex:rowNum-1, endIndex:rowNum } } }] }); }
 function jbFindRow(tab,idColIdx,id){ return jbGetVals(tab).then(function(vals){ for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[idColIdx])===String(id)) return i+1; } return -1; }); }
 function jbCsvCell(v){ return FinMath.csvCell(v); }
+/** Same key as PrecosMath.normCompact(termo) — one active busca per product. */
+function jbPrecosTermKey(term){
+  return String(term == null ? '' : term).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '').replace(/\s+/g, '');
+}
 function jbCascade(tab,colIdx,oldName,newName){ return jbGetVals(tab).then(function(vals){ var data=[]; for(var i=1;i<vals.length;i++){ if(String((vals[i]||[])[colIdx])===oldName) data.push({ range:tab+'!'+jbColLetter(colIdx)+(i+1), values:[[newName]] }); } if(!data.length) return {}; return jbReq('POST','https://sheets.googleapis.com/v4/spreadsheets/'+jbSid()+'/values:batchUpdate',{ valueInputOption:'RAW', data:data }); }); }
 
 var JB_TAB = { transactions:'Transactions', budget:'Budget', goals:'Goals', recurring:'Recurring', allocations:'Allocations', bundles:'Bundles', categories:'Categories', debts:'Debts' };
@@ -111,7 +115,20 @@ var JB_IMPL = {
   importTransactions: function(rows){ var ch=Promise.resolve(); var n=0; (rows||[]).forEach(function(d){ if(!d||!d.date||!(Number(d.amount)>0)) return; n++; ch=ch.then(function(){ return jbAppend('Transactions', JB_COLS.transactions(d, jbUuid())); }); }); return ch.then(function(){ return {success:true,count:n}; }); },
   renameCategory: function(id,newName){ newName=String(newName||'').trim(); if(!newName) return Promise.reject(new Error('Nome não pode ser vazio.')); var oldName=''; return jbGetVals('Categories').then(function(vals){ var row=-1, names=[]; for(var i=1;i<vals.length;i++){ var r=vals[i]||[]; names.push(String(r[0])); if(String(r[2])===String(id)){ row=i+1; oldName=String(r[0]); } } if(row<0) throw new Error('Categoria não encontrada.'); if(oldName===newName) return 'skip'; if(names.indexOf(newName)>-1) throw new Error('Já existe uma categoria com esse nome.'); return jbPutRange('Categories!A'+row, [[newName]]).then(function(){ return 'go'; }); }).then(function(st){ if(st==='skip') return {success:true}; return jbCascade('Transactions',2,oldName,newName).then(function(){ return jbCascade('Recurring',4,oldName,newName); }).then(function(){ return jbCascade('Budget',0,oldName,newName); }).then(function(){ return {success:true}; }); }); },
   exportBackup: function(){ var tabs=JB_TABS.concat(PRECOS_TABS); var out=[]; var ch=Promise.resolve(); tabs.forEach(function(tb){ ch=ch.then(function(){ return jbGetVals(tb).then(function(vals){ if(!vals.length) return; out.push('### '+tb); vals.forEach(function(row){ out.push((row||[]).map(jbCsvCell).join(',')); }); out.push(''); }).catch(function(){}); }); }); return ch.then(function(){ var name='joelboard-backup-'+JB.todayYmd()+'.csv'; var csv='﻿'+out.join('\r\n'); var blob=new Blob([csv],{type:'text/csv'}); var localUrl=URL.createObjectURL(blob); if(!JB.uploadFileToFolder||!JB.ensureAppFolder) return { url:localUrl, name:name, drive:false }; return JB.ensureAppFolder('finance').then(function(folderId){ return JB.uploadFileToFolder(blob, name, folderId); }).then(function(f){ return { url:(f&&f.webViewLink)||localUrl, name:name, drive:true, fileId:f&&f.id }; }).catch(function(){ return { url:localUrl, name:name, drive:false }; }); }); },
-  addPrecosBusca: function(data){ var id=data.id||jbUuid(); return jbAppend('PrecosBuscas', [id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now()]).then(function(){ return { success:true, id:id }; }); },
+  addPrecosBusca: function(data){
+    var termKey=jbPrecosTermKey(data.termo);
+    return jbGetVals('PrecosBuscas').then(function(vals){
+      if(termKey){
+        for(var i=1;i<vals.length;i++){
+          var r=vals[i]||[];
+          if(!r[0]||!r[1]) continue;
+          if(jbPrecosTermKey(r[1])===termKey && !jbBool(r[5])) return { success:true, id:String(r[0]), existing:true };
+        }
+      }
+      var id=data.id||jbUuid();
+      return jbAppend('PrecosBuscas', [id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now()]).then(function(){ return { success:true, id:id }; });
+    });
+  },
   updatePrecosBusca: function(id,data){ var row=[id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now()]; return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) throw new Error('Busca não encontrada.'); return jbPutRange('PrecosBuscas!A'+r+':G'+r,[row]); }).then(function(){ return {success:true}; }); },
   deletePrecosBusca: function(id){ return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) return {}; return jbDeleteRow('PrecosBuscas', r); }).then(function(){ return {success:true}; }); },
   savePrecosCaptura: function(data){

@@ -292,3 +292,26 @@ test('empty list has no example button', () => {
   assert.match(els.precosList.innerHTML, /Nenhuma busca ainda/);
   assert.doesNotMatch(els.precosList.innerHTML, /exemplo|9070/i);
 });
+
+test('duplicate product term shows one list card', () => {
+  const dup = { id: 'gpu-copy', termo: 'rx 9070 xt', teto: '', obrigatorias: '', proibidas: '', arquivada: false, criado: 2 };
+  const { ctx, els } = boot({
+    precosBuscas: [Object.assign({}, BUSCA), dup],
+    precosCapturas: [capture(TODAY, OFFERS)]
+  });
+  ctx.renderPrecos();
+  assert.equal((els.precosList.innerHTML.match(/precos-card-main/g) || []).length, 1);
+  assert.match(els.precosList.innerHTML, /RX 9070 XT/);
+});
+
+test('submitPrecosNew reuses existing term instead of addPrecosBusca', async () => {
+  const { ctx, els, calls } = boot({ precosBuscas: [Object.assign({}, BUSCA)] });
+  els.precosNewTerm = fakeEl();
+  els.precosNewTerm.value = 'RX 9070 XT';
+  els.precosNewTeto = fakeEl();
+  els.precosNewOverlay = fakeEl();
+  ctx.submitPrecosNew();
+  await Promise.resolve();
+  assert.equal(calls.filter((c) => c[0] === 'addPrecosBusca').length, 0);
+  assert.equal(ctx.PRECOS_OPEN_ID, 'gpu');
+});

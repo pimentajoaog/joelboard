@@ -128,12 +128,45 @@ function precosSavePref(key, val) {
   jbSaveSetting(key, val);
 }
 
+function precosTermKey(term) {
+  return PrecosMath.normCompact(term);
+}
+
+function precosBuscaScore(b) {
+  var caps = ((DATA && DATA.precosCapturas) || []).filter(function (c) { return String(c.buscaId) === String(b.id); }).length;
+  return caps * 1e15 + (Number(b.criado) || 0);
+}
+
+function precosFindBuscaByTerm(term) {
+  var key = precosTermKey(term);
+  if (!key) return null;
+  var best = null;
+  ((DATA && DATA.precosBuscas) || []).forEach(function (b) {
+    if (b.arquivada || precosTermKey(b.termo) !== key) return;
+    if (!best || precosBuscaScore(b) > precosBuscaScore(best)) best = b;
+  });
+  return best;
+}
+
 function precosActiveBuscas() {
-  return ((DATA && DATA.precosBuscas) || []).filter(function (b) { return !b.arquivada; });
+  var list = ((DATA && DATA.precosBuscas) || []).filter(function (b) { return !b.arquivada; });
+  var keep = {};
+  list.forEach(function (b) {
+    var key = precosTermKey(b.termo);
+    if (!key) return;
+    if (!keep[key] || precosBuscaScore(b) > precosBuscaScore(keep[key])) keep[key] = b;
+  });
+  return list.filter(function (b) {
+    var key = precosTermKey(b.termo);
+    return !key || keep[key] === b;
+  });
 }
 
 function precosBusca(id) {
-  return precosActiveBuscas().find(function (b) { return String(b.id) === String(id); }) || null;
+  var row = ((DATA && DATA.precosBuscas) || []).find(function (b) { return String(b.id) === String(id) && !b.arquivada; });
+  if (!row) return null;
+  var canon = precosFindBuscaByTerm(row.termo);
+  return canon && String(canon.id) !== String(id) ? canon : row;
 }
 
 function precosRules(buscaId) {
@@ -899,23 +932,38 @@ function precosSlug(term) {
   return taken ? base + '-' + Date.now().toString(36) : base;
 }
 
+var PRECOS_NEW_BUSY = false;
+
 function submitPrecosNew() {
+  if (PRECOS_NEW_BUSY) return;
   var term = document.getElementById('precosNewTerm').value.trim();
   if (!term) { showToast('Informe o produto.', 'error'); return; }
+  var existing = precosFindBuscaByTerm(term);
+  if (existing) {
+    closeOverlay('precosNewOverlay');
+    renderPrecos();
+    openPrecosSearch(existing.id);
+    showToast('✓ Já existe uma busca para este produto');
+    return;
+  }
   var data = {
     id: precosSlug(term), termo: term,
     teto: document.getElementById('precosNewTeto').value.trim(),
     obrigatorias: '', proibidas: '',
     arquivada: false, criado: Date.now()
   };
+  PRECOS_NEW_BUSY = true;
   jbRun('addPrecosBusca', data).then(function (res) {
     var id = (res && res.id) || data.id;
-    (DATA.precosBuscas = DATA.precosBuscas || []).push(Object.assign({}, data, { id: id }));
+    if (!(res && res.existing)) {
+      (DATA.precosBuscas = DATA.precosBuscas || []).push(Object.assign({}, data, { id: id }));
+    }
     closeOverlay('precosNewOverlay');
     renderPrecos();
     openPrecosSearch(id);
     refreshPrecosSearch();
-  }).catch(function (e) { showToast(t('err.prefix') + e.message, 'error'); });
+  }).catch(function (e) { showToast(t('err.prefix') + e.message, 'error'); })
+    .finally(function () { PRECOS_NEW_BUSY = false; });
 }
 
 function precosFetchOffers(busca) {

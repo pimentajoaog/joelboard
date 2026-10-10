@@ -130,6 +130,56 @@ var JB_IMPL = {
     });
   },
   updatePrecosBusca: function(id,data){ var row=[id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now()]; return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) throw new Error('Busca não encontrada.'); return jbPutRange('PrecosBuscas!A'+r+':G'+r,[row]); }).then(function(){ return {success:true}; }); },
+  mergePrecosBusca: function(fromId,toId){
+    fromId=String(fromId||''); toId=String(toId||'');
+    if(!fromId||!toId||fromId===toId) return Promise.resolve({success:true});
+    function reassignCol(tab,colIdx){
+      return jbGetVals(tab).then(function(vals){
+        var ch=Promise.resolve();
+        for(var i=1;i<vals.length;i++){
+          if(String((vals[i]||[])[colIdx])!==fromId) continue;
+          (function(rowNum){
+            ch=ch.then(function(){ return jbPutRange(tab+'!'+jbColLetter(colIdx)+rowNum, [[toId]]); });
+          })(i+1);
+        }
+        return ch;
+      });
+    }
+    return jbGetVals('PrecosCapturas').then(function(vals){
+      var ch=Promise.resolve();
+      var toByDay={};
+      for(var i=1;i<vals.length;i++){
+        var r=vals[i]||[];
+        if(String(r[1])===toId) toByDay[jbDate(r[2])]={ row:i+1, criado:Number(r[4])||0, id:r[0], json:r[3] };
+      }
+      for(var j=vals.length-1;j>=1;j--){
+        var row=vals[j]||[];
+        if(String(row[1])!==fromId) continue;
+        (function(rowNum,r){
+          var day=jbDate(r[2]);
+          var ex=toByDay[day];
+          ch=ch.then(function(){
+            if(ex){
+              if((Number(r[4])||0)>(ex.criado||0)) return jbPutRange('PrecosCapturas!A'+ex.row+':E'+ex.row, [[ex.id||r[0], toId, day, r[3], Number(r[4])||Date.now()]]);
+              return jbDeleteRow('PrecosCapturas', rowNum);
+            }
+            return jbPutRange('PrecosCapturas!B'+rowNum, [[toId]]);
+          });
+        })(j+1, row);
+      }
+      return ch;
+    }).then(function(){ return reassignCol('PrecosManual', 1); })
+      .then(function(){ return reassignCol('PrecosConferidas', 0); })
+      .then(function(){ return reassignCol('PrecosLojas', 1); })
+      .then(function(){ return jbFindRow('PrecosBuscas',0,fromId).then(function(rn){
+        if(rn<0) return {};
+        return jbGetVals('PrecosBuscas').then(function(vals){
+          var r=vals[rn-1]||[];
+          return jbPutRange('PrecosBuscas!A'+rn+':G'+rn, [[r[0], r[1], r[2], r[3], r[4], 'true', r[6]]]);
+        });
+      }); })
+      .then(function(){ return {success:true}; });
+  },
   deletePrecosBusca: function(id){
     id=String(id||'');
     function dropRows(tab,colIdx){

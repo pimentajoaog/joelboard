@@ -158,6 +158,105 @@ function precosFindBuscaByTerm(term) {
   return best;
 }
 
+function precosRowsSameTerm(term, mode) {
+  var key = precosTermKey(term);
+  if (!key) return [];
+  return ((DATA && DATA.precosBuscas) || []).filter(function (b) {
+    if (precosTermKey(b.termo) !== key) return false;
+    if (mode === 'active') return !b.arquivada;
+    if (mode === 'archived') return b.arquivada;
+    return true;
+  });
+}
+
+function precosBuscaPatch(b, arquivada) {
+  return {
+    termo: b.termo, teto: b.teto, obrigatorias: b.obrigatorias, proibidas: b.proibidas,
+    arquivada: arquivada != null ? arquivada : !!b.arquivada, criado: b.criado
+  };
+}
+
+function precosSetArchived(b, on) {
+  b.arquivada = !!on;
+  return jbRun('updatePrecosBusca', b.id, precosBuscaPatch(b, on));
+}
+
+function precosMergeLocal(fromId, toId) {
+  fromId = String(fromId);
+  toId = String(toId);
+  if (fromId === toId) return;
+  var caps = DATA.precosCapturas || [];
+  var toDay = {};
+  caps.forEach(function (c) {
+    if (String(c.buscaId) === toId) toDay[c.data] = c;
+  });
+  caps.forEach(function (c) {
+    if (String(c.buscaId) !== fromId) return;
+    var ex = toDay[c.data];
+    if (!ex || (Number(c.criado) || 0) > (Number(ex.criado) || 0)) {
+      c.buscaId = toId;
+      toDay[c.data] = c;
+    }
+  });
+  DATA.precosCapturas = caps.filter(function (c) {
+    return String(c.buscaId) !== fromId || toDay[c.data] === c;
+  });
+  ['precosManual', 'precosConferidas', 'precosLojas'].forEach(function (k) {
+    (DATA[k] || []).forEach(function (r) {
+      if (String(r.buscaId) === fromId) r.buscaId = toId;
+    });
+  });
+  var loser = precosBuscaRow(fromId);
+  if (loser) loser.arquivada = true;
+}
+
+function precosChainMergeInto(targetId, others) {
+  var chain = Promise.resolve();
+  others.forEach(function (other) {
+    if (String(other.id) === String(targetId)) return;
+    chain = chain.then(function () {
+      return jbRun('mergePrecosBusca', other.id, targetId).then(function () {
+        precosMergeLocal(other.id, targetId);
+      });
+    });
+  });
+  return chain;
+}
+
+var PRECOS_HEAL_BUSY = false;
+var PRECOS_HEAL_DONE = false;
+
+function precosHealDuplicateActives() {
+  if (PRECOS_HEAL_BUSY || PRECOS_HEAL_DONE || !DATA || !DATA.precosBuscas) return;
+  var groups = {};
+  DATA.precosBuscas.filter(function (b) { return !b.arquivada; }).forEach(function (b) {
+    var k = precosTermKey(b.termo);
+    if (!k) return;
+    (groups[k] = groups[k] || []).push(b);
+  });
+  var jobs = [];
+  Object.keys(groups).forEach(function (k) {
+    var g = groups[k];
+    if (g.length <= 1) return;
+    g.sort(function (a, b) { return precosBuscaScore(b) - precosBuscaScore(a); });
+    var keep = g[0];
+    for (var i = 1; i < g.length; i++) jobs.push({ keep: keep, drop: g[i] });
+  });
+  if (!jobs.length) { PRECOS_HEAL_DONE = true; return; }
+  PRECOS_HEAL_BUSY = true;
+  var chain = Promise.resolve();
+  jobs.forEach(function (j) {
+    chain = chain.then(function () {
+      return jbRun('mergePrecosBusca', j.drop.id, j.keep.id).then(function () {
+        precosMergeLocal(j.drop.id, j.keep.id);
+      });
+    });
+  });
+  chain.then(function () { renderPrecos(); })
+    .catch(function (e) { showToast(t('err.prefix') + e.message, 'error'); })
+    .finally(function () { PRECOS_HEAL_DONE = true; PRECOS_HEAL_BUSY = false; });
+}
+
 function precosActiveBuscas() {
   var list = ((DATA && DATA.precosBuscas) || []).filter(function (b) { return !b.arquivada; });
   var keep = {};
@@ -173,10 +272,8 @@ function precosActiveBuscas() {
 }
 
 function precosBusca(id) {
-  var row = ((DATA && DATA.precosBuscas) || []).find(function (b) { return String(b.id) === String(id) && !b.arquivada; });
-  if (!row) return null;
-  var canon = precosFindBuscaByTerm(row.termo);
-  return canon && String(canon.id) !== String(id) ? canon : row;
+  var row = precosBuscaRow(id);
+  return row && !row.arquivada ? row : null;
 }
 
 function precosRules(buscaId) {
@@ -343,6 +440,7 @@ function precosVerdictShort(v) {
 }
 
 function renderPrecos() {
+  precosHealDuplicateActives();
   renderPrecosList();
   renderPrecosWidget();
   renderPrecosArchiveBtn();
@@ -353,7 +451,13 @@ function precosBuscaRow(id) {
 }
 
 function precosArchivedBuscas() {
-  return ((DATA && DATA.precosBuscas) || []).filter(function (b) { return b.arquivada; })
+  var map = {};
+  ((DATA && DATA.precosBuscas) || []).filter(function (b) { return b.arquivada; }).forEach(function (b) {
+    var k = precosTermKey(b.termo);
+    if (!k) return;
+    if (!map[k] || precosBuscaScore(b) > precosBuscaScore(map[k])) map[k] = b;
+  });
+  return Object.keys(map).map(function (k) { return map[k]; })
     .sort(function (a, b) { return (Number(b.criado) || 0) - (Number(a.criado) || 0); });
 }
 
@@ -408,9 +512,10 @@ function precosPurgeLocal(id) {
 function restorePrecosSearch(id) {
   var b = precosBuscaRow(id);
   if (!b || !b.arquivada) return;
-  var patch = { termo: b.termo, teto: b.teto, obrigatorias: b.obrigatorias, proibidas: b.proibidas, arquivada: false, criado: b.criado };
-  jbRun('updatePrecosBusca', b.id, patch).then(function () {
-    b.arquivada = false;
+  var siblings = precosRowsSameTerm(b.termo);
+  precosChainMergeInto(b.id, siblings).then(function () {
+    return precosSetArchived(b, false);
+  }).then(function () {
     renderPrecosArchiveList();
     renderPrecos();
     showToast(PK.restored);
@@ -771,7 +876,10 @@ function precosFetchAll() {
 }
 
 function openPrecosSearch(id) {
-  PRECOS_OPEN_ID = id;
+  var row = precosBuscaRow(id);
+  if (!row || row.arquivada) return;
+  var canon = precosFindBuscaByTerm(row.termo) || row;
+  PRECOS_OPEN_ID = canon.id;
   PRECOS_SHOW_ALL = false;
   document.getElementById('precosDetailOverlay').classList.add('open');
   paintPrecosSearch();
@@ -1453,13 +1561,16 @@ function submitPrecosManual() {
 function archivePrecosSearch() {
   var b = precosBuscaRow(PRECOS_OPEN_ID);
   if (!b || b.arquivada) return;
+  var targets = precosRowsSameTerm(b.termo, 'active');
   showConfirm(PK.confirmArchive, PK.confirmArchiveMsg, function () {
-    var patch = { termo: b.termo, teto: b.teto, obrigatorias: b.obrigatorias, proibidas: b.proibidas, arquivada: true, criado: b.criado };
-    jbRun('updatePrecosBusca', b.id, patch).then(function () {
-      b.arquivada = true;
+    var chain = Promise.resolve();
+    targets.forEach(function (row) {
+      chain = chain.then(function () { return precosSetArchived(row, true); });
+    });
+    chain.then(function () {
       closePrecosSearch();
       renderPrecos();
-      showToast('✓ Busca arquivada');
+      showToast(targets.length > 1 ? '✓ Produto arquivado (' + targets.length + ' buscas duplicadas)' : '✓ Busca arquivada');
     }).catch(function (e) { showToast(t('err.prefix') + e.message, 'error'); });
   });
 }

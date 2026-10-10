@@ -321,6 +321,19 @@ test('archive button appears and lists archived searches', () => {
   assert.match(els.precosArchiveList.innerHTML, /Excluir/);
 });
 
+test('archive archives every active row for the same product', async () => {
+  const dup = { id: 'gpu-copy', termo: 'rx 9070 xt', teto: '', obrigatorias: '', proibidas: '', arquivada: false, criado: 2 };
+  const { ctx, calls } = boot({
+    precosBuscas: [Object.assign({}, BUSCA), dup],
+    precosCapturas: [capture(TODAY, OFFERS)]
+  });
+  ctx.PRECOS_OPEN_ID = 'gpu';
+  ctx.archivePrecosSearch();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(ctx.DATA.precosBuscas.filter((b) => !b.arquivada).length, 0);
+  assert.equal(calls.filter((c) => c[0] === 'updatePrecosBusca').length, 2);
+});
+
 test('restorePrecosSearch unarchives and deletePrecosSearch purges local data', async () => {
   const archived = { id: 'old', termo: 'Monitor', teto: '', obrigatorias: '', proibidas: '', arquivada: true, criado: 1 };
   const { ctx, calls } = boot({

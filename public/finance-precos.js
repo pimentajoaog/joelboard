@@ -6,6 +6,7 @@ var PRECOS_SHOW_ALL = false;
 var PRECOS_VIEW_OFFERS = [];
 var PRECOS_DRAFT = null;
 var PRECOS_CARD_OPEN = {};
+var PRECOS_COMPRADOS_OPEN = false;
 var PRECOS_WIDGET_OPEN = false;
 var PRECOS_BATCH = null;
 var PRECOS_OFFERS_PREVIEW = 8;
@@ -89,7 +90,12 @@ var PK = {
   confirmDeleteTitle: 'Excluir busca?',
   confirmDeleteMsg: 'Apaga esta busca e todo o histórico de preços dela na planilha. Não dá para desfazer.',
   restored: '✓ Busca restaurada',
-  deleted: '✓ Busca excluída'
+  deleted: '✓ Busca excluída',
+  bought: 'Comprado',
+  boughtSection: 'Comprados',
+  boughtEmpty: 'Nenhum produto marcado como comprado.',
+  allBoughtTitle: 'Tudo comprado por aqui',
+  allBoughtHint: 'Abra Comprados abaixo ou desmarque para voltar a acompanhar.'
 };
 
 function precosFmt(n) {
@@ -152,7 +158,7 @@ function precosFindBuscaByTerm(term) {
   if (!key) return null;
   var best = null;
   ((DATA && DATA.precosBuscas) || []).forEach(function (b) {
-    if (b.arquivada || precosTermKey(b.termo) !== key) return;
+    if (b.arquivada || b.comprada || precosTermKey(b.termo) !== key) return;
     if (!best || precosBuscaScore(b) > precosBuscaScore(best)) best = b;
   });
   return best;
@@ -173,6 +179,7 @@ function precosBuscaPatch(b, arquivada) {
   return {
     termo: b.termo, teto: b.teto, obrigatorias: b.obrigatorias, proibidas: b.proibidas,
     obrigatoriasOr: b.obrigatoriasOr || '',
+    comprada: !!b.comprada,
     arquivada: arquivada != null ? arquivada : !!b.arquivada, criado: b.criado
   };
 }
@@ -230,7 +237,7 @@ var PRECOS_HEAL_DONE = false;
 function precosHealDuplicateActives() {
   if (PRECOS_HEAL_BUSY || PRECOS_HEAL_DONE || !DATA || !DATA.precosBuscas) return;
   var groups = {};
-  DATA.precosBuscas.filter(function (b) { return !b.arquivada; }).forEach(function (b) {
+  DATA.precosBuscas.filter(function (b) { return !b.arquivada && !b.comprada; }).forEach(function (b) {
     var k = precosTermKey(b.termo);
     if (!k) return;
     (groups[k] = groups[k] || []).push(b);
@@ -258,8 +265,13 @@ function precosHealDuplicateActives() {
     .finally(function () { PRECOS_HEAL_DONE = true; PRECOS_HEAL_BUSY = false; });
 }
 
+function precosCompradosBuscas() {
+  return ((DATA && DATA.precosBuscas) || []).filter(function (b) { return !b.arquivada && b.comprada; })
+    .sort(function (a, b) { return (Number(b.criado) || 0) - (Number(a.criado) || 0); });
+}
+
 function precosActiveBuscas() {
-  var list = ((DATA && DATA.precosBuscas) || []).filter(function (b) { return !b.arquivada; });
+  var list = ((DATA && DATA.precosBuscas) || []).filter(function (b) { return !b.arquivada && !b.comprada; });
   var keep = {};
   list.forEach(function (b) {
     var key = precosTermKey(b.termo);
@@ -274,7 +286,13 @@ function precosActiveBuscas() {
 
 function precosBusca(id) {
   var row = precosBuscaRow(id);
-  return row && !row.arquivada ? row : null;
+  return row && !row.arquivada && !row.comprada ? row : null;
+}
+
+function precosCkHtml(text, struck) {
+  var inner = esc(text);
+  if (struck && typeof JB !== 'undefined' && JB.ckT) return JB.ckT(inner);
+  return inner;
 }
 
 function precosRules(buscaId) {
@@ -445,6 +463,7 @@ function precosVerdictShort(v) {
 function renderPrecos() {
   precosHealDuplicateActives();
   renderPrecosList();
+  renderPrecosComprados();
   renderPrecosWidget();
   renderPrecosArchiveBtn();
 }
@@ -543,43 +562,109 @@ function deletePrecosSearch(id) {
 var PRECOS_CHEVRON = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var PRECOS_TAG_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><circle cx="7.5" cy="7.5" r="1.6" fill="currentColor" stroke="none"/></svg>';
 
-function renderPrecosList() {
-  var list = document.getElementById('precosList');
-  if (!list) return;
-  var buscas = precosActiveBuscas();
-  if (!buscas.length) {
-    list.innerHTML = JB.emptyState({ icon: '💰', title: PK.emptyTitle, hint: PK.emptyHint, action: PK.newSearch, onclick: 'openPrecosNew()' });
-    return;
+function precosCardHtml(b, opts) {
+  opts = opts || {};
+  var s = precosSnapshot(b);
+  var open = !!PRECOS_CARD_OPEN[b.id];
+  var idArg = '\'' + escAttr(b.id) + '\'';
+  var price = s.lowPrice;
+  var store = s.low ? precosStoreName(s.low) : '';
+  var when = '';
+  if (price == null && s.last) {
+    var pts = PrecosMath.seriesInRange(s.series, 'all', s.today);
+    var lastPt = pts[pts.length - 1];
+    if (lastPt) { price = lastPt.point.val; store = lastPt.point.loja ? precosStoreName({ loja: lastPt.point.loja }) : ''; when = lastPt.day; }
   }
-  list.innerHTML = buscas.map(function (b) {
-    var s = precosSnapshot(b);
-    var open = !!PRECOS_CARD_OPEN[b.id];
-    var idArg = '\'' + escAttr(b.id) + '\'';
-    var price = s.lowPrice;
-    var store = s.low ? precosStoreName(s.low) : '';
-    var when = '';
-    if (price == null && s.last) {
-      var pts = PrecosMath.seriesInRange(s.series, 'all', s.today);
-      var lastPt = pts[pts.length - 1];
-      if (lastPt) { price = lastPt.point.val; store = lastPt.point.loja ? precosStoreName({ loja: lastPt.point.loja }) : ''; when = lastPt.day; }
-    }
-    var meta = [];
+  var meta = [];
+  if (!opts.bought) {
     var short = precosVerdictShort(s.verdict);
     if (short) meta.push('<span class="' + short.cls + '">' + esc(short.txt) + '</span>');
     if (!s.last) meta.push('<span>Toque para buscar o primeiro preço</span>');
     else if (s.last.data !== s.today) meta.push('<span>Última busca ' + esc(precosDayLabel(s.last.data)) + ' · toque para atualizar</span>');
     else meta.push('<span>Atualizado hoje</span>');
-    return '<div class="precos-card' + (open ? ' open' : '') + (s.hit ? ' target-hit' : '') + '">'
-      + '<button type="button" class="precos-card-arrow" aria-expanded="' + open + '" aria-label="' + escAttr(PK.storesToggle) + '" title="' + escAttr(PK.storesToggle) + '" onclick="precosToggleCard(' + idArg + ')">' + PRECOS_CHEVRON + '</button>'
-      + '<button type="button" class="precos-card-main" onclick="openPrecosSearch(' + idArg + ')">'
-      + '<div class="precos-card-top"><span class="precos-term">' + esc(b.termo) + '</span>'
-      + (s.hit ? '<span class="precos-badge">' + esc(PK.targetHit) + '</span>' : '') + '</div>'
-      + '<div class="precos-card-mid">' + (price != null ? precosFmt(price) : '—')
-      + (store ? '<span class="precos-card-store">' + (when ? esc(precosDayLabel(when)) + ' · ' : '') + 'na ' + esc(store) + '</span>' : '') + '</div>'
-      + '<div class="precos-card-meta">' + meta.join('') + '</div></button>'
-      + (open ? '<div class="precos-card-drop">' + precosStoreDropHtml(b, s) + '</div>' : '')
-      + '</div>';
-  }).join('');
+  } else {
+    meta.push('<span>' + esc(PK.bought) + '</span>');
+  }
+  var priceTxt = price != null ? precosFmt(price) : '—';
+  var mainInner = '<div class="precos-card-top"><span class="precos-term">' + precosCkHtml(b.termo, !!opts.bought) + '</span>'
+    + (!opts.bought && s.hit ? '<span class="precos-badge">' + esc(PK.targetHit) + '</span>' : '') + '</div>'
+    + '<div class="precos-card-mid">' + precosCkHtml(priceTxt, !!opts.bought)
+    + (store ? '<span class="precos-card-store">' + (when ? esc(precosDayLabel(when)) + ' · ' : '') + 'na ' + esc(store) + '</span>' : '') + '</div>'
+    + '<div class="precos-card-meta">' + meta.join('') + '</div>';
+  var main = opts.bought
+    ? '<div class="precos-card-main">' + mainInner + '</div>'
+    : '<button type="button" class="precos-card-main" onclick="openPrecosSearch(' + idArg + ')">' + mainInner + '</button>';
+  return '<div class="precos-card' + (open ? ' open' : '') + (opts.bought ? ' done' : '') + (!opts.bought && s.hit ? ' target-hit' : '') + '" data-id="' + escAttr(b.id) + '">'
+    + '<button type="button" class="precos-card-arrow" aria-expanded="' + open + '" aria-label="' + escAttr(PK.storesToggle) + '" title="' + escAttr(PK.storesToggle) + '" onclick="precosToggleCard(' + idArg + ')">' + PRECOS_CHEVRON + '</button>'
+    + main
+    + (open ? '<div class="precos-card-drop">' + precosStoreDropHtml(b, s) + '</div>' : '')
+    + '</div>';
+}
+
+function renderPrecosList() {
+  var list = document.getElementById('precosList');
+  if (!list) return;
+  var buscas = precosActiveBuscas();
+  if (!buscas.length) {
+    if (precosCompradosBuscas().length) {
+      list.innerHTML = JB.emptyState({ icon: '✓', title: PK.allBoughtTitle, hint: PK.allBoughtHint, action: '', onclick: '' });
+    } else {
+      list.innerHTML = JB.emptyState({ icon: '💰', title: PK.emptyTitle, hint: PK.emptyHint, action: PK.newSearch, onclick: 'openPrecosNew()' });
+    }
+    return;
+  }
+  list.innerHTML = buscas.map(function (b) { return precosCardHtml(b, { bought: false }); }).join('');
+}
+
+function renderPrecosComprados() {
+  var wrap = document.getElementById('precosCompradosWrap');
+  var toggle = document.getElementById('precosCompradosToggle');
+  var list = document.getElementById('precosCompradosList');
+  if (!wrap || !toggle || !list) return;
+  var rows = precosCompradosBuscas();
+  if (!rows.length) {
+    wrap.hidden = true;
+    wrap.classList.remove('open');
+    list.hidden = true;
+    list.innerHTML = '';
+    return;
+  }
+  wrap.hidden = false;
+  toggle.innerHTML = '✓ ' + esc(PK.boughtSection) + ' (' + rows.length + ')<span class="chev" aria-hidden="true">' + PRECOS_CHEVRON + '</span>';
+  toggle.setAttribute('aria-expanded', PRECOS_COMPRADOS_OPEN ? 'true' : 'false');
+  wrap.classList.toggle('open', PRECOS_COMPRADOS_OPEN);
+  list.hidden = !PRECOS_COMPRADOS_OPEN;
+  list.innerHTML = PRECOS_COMPRADOS_OPEN
+    ? rows.map(function (b) { return precosCardHtml(b, { bought: true }); }).join('')
+    : '';
+}
+
+function precosToggleCompradosOpen() {
+  PRECOS_COMPRADOS_OPEN = !PRECOS_COMPRADOS_OPEN;
+  renderPrecosComprados();
+}
+
+function precosToggleComprada(id, inputEl) {
+  var b = precosBuscaRow(id);
+  if (!b || b.arquivada) return;
+  var on = inputEl ? !!inputEl.checked : !b.comprada;
+  var patch = precosBuscaPatch(b, b.arquivada);
+  patch.comprada = on;
+  jbRun('updatePrecosBusca', b.id, patch).then(function () {
+    b.comprada = on;
+    if (on) {
+      PRECOS_CARD_OPEN[id] = false;
+      if (String(PRECOS_OPEN_ID) === String(id)) closePrecosSearch();
+      var card = inputEl && inputEl.closest ? inputEl.closest('.precos-card') : document.querySelector('.precos-card[data-id="' + id + '"]');
+      if (card && typeof JB !== 'undefined' && JB.replayStrike) JB.replayStrike(card);
+      if (!PRECOS_COMPRADOS_OPEN) PRECOS_COMPRADOS_OPEN = true;
+    }
+    renderPrecos();
+    showToast(on ? '✓ ' + PK.bought : '✓ Voltou para acompanhamento');
+  }).catch(function (e) {
+    if (inputEl) inputEl.checked = !on;
+    showToast(t('err.prefix') + e.message, 'error');
+  });
 }
 
 function precosToggleCard(id) {
@@ -656,7 +741,10 @@ function precosStoreDropHtml(busca, s) {
     foot = '<div class="precos-drop-foot">' + (drop.more ? '<span>+ ' + drop.more + ' lojas mais caras</span>' : '<span></span>')
       + '<button type="button" class="sec-action" onclick="precosPickStores(\'' + escAttr(busca.id) + '\')">★ ' + esc(PK.dropPick) + '</button></div>';
   }
-  return head + rows + foot;
+  var idArg = escAttr(busca.id);
+  var comprado = '<label class="precos-comprado"><input type="checkbox" class="echk" ' + (busca.comprada ? 'checked ' : '')
+    + 'onchange="precosToggleComprada(\'' + idArg + '\', this)"><span>' + esc(PK.bought) + '</span></label>';
+  return head + rows + foot + comprado;
 }
 
 function precosPickStores(id) {
@@ -1155,7 +1243,7 @@ function submitPrecosNew() {
   var data = {
     id: precosSlug(term), termo: term,
     teto: document.getElementById('precosNewTeto').value.trim(),
-    obrigatorias: '', obrigatoriasOr: '', proibidas: '',
+    obrigatorias: '', obrigatoriasOr: '', proibidas: '', comprada: false,
     arquivada: false, criado: Date.now()
   };
   PRECOS_NEW_BUSY = true;

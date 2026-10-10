@@ -7,7 +7,7 @@ var JB_LS_SHEET = 'joelboard_sheet_id';
 var JB_TABS = ['Transactions','Budget','Goals','Recurring','Allocations','Bundles','Categories','Debts','WorkLog','Payments','Settings'];
 var PRECOS_TABS = ['PrecosBuscas','PrecosCapturas','PrecosManual','PrecosConferidas','PrecosLojas'];
 var PRECOS_HEADERS = [
-  ['PrecosBuscas',['ID','Termo','Teto','Obrigatorias','Proibidas','Arquivada','Criado','ObrOu']],
+  ['PrecosBuscas',['ID','Termo','Teto','Obrigatorias','Proibidas','Arquivada','Criado','ObrOu','Comprada']],
   ['PrecosCapturas',['ID','BuscaID','Data','Json','Criado']],
   ['PrecosManual',['ID','BuscaID','Data','Valor','Loja','Obs','Criado']],
   ['PrecosConferidas',['BuscaID','ChaveOferta','Data','Preco','ConferidoEm']],
@@ -126,10 +126,10 @@ var JB_IMPL = {
         }
       }
       var id=data.id||jbUuid();
-      return jbAppend('PrecosBuscas', [id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now(), data.obrigatoriasOr||'']).then(function(){ return { success:true, id:id }; });
+      return jbAppend('PrecosBuscas', [id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now(), data.obrigatoriasOr||'', data.comprada?'true':'false']).then(function(){ return { success:true, id:id }; });
     });
   },
-  updatePrecosBusca: function(id,data){ var row=[id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now(), data.obrigatoriasOr||'']; return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) throw new Error('Busca não encontrada.'); return jbPutRange('PrecosBuscas!A'+r+':H'+r,[row]); }).then(function(){ return {success:true}; }); },
+  updatePrecosBusca: function(id,data){ var row=[id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now(), data.obrigatoriasOr||'', data.comprada?'true':'false']; return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) throw new Error('Busca não encontrada.'); return jbPutRange('PrecosBuscas!A'+r+':I'+r,[row]); }).then(function(){ return {success:true}; }); },
   mergePrecosBusca: function(fromId,toId){
     fromId=String(fromId||''); toId=String(toId||'');
     if(!fromId||!toId||fromId===toId) return Promise.resolve({success:true});
@@ -175,7 +175,7 @@ var JB_IMPL = {
         if(rn<0) return {};
         return jbGetVals('PrecosBuscas').then(function(vals){
           var r=vals[rn-1]||[];
-          return jbPutRange('PrecosBuscas!A'+rn+':H'+rn, [[r[0], r[1], r[2], r[3], r[4], 'true', r[6], r[7] || '']]);
+          return jbPutRange('PrecosBuscas!A'+rn+':I'+rn, [[r[0], r[1], r[2], r[3], r[4], 'true', r[6], r[7] || '', r[8] || 'false']]);
         });
       }); })
       .then(function(){ return {success:true}; });
@@ -417,7 +417,7 @@ function jbBuildData(t){
   var payments = jbBody(t.Payments).filter(function(r){ return r[0] && r[2]; }).map(function(r){ return { month:String(r[0]).replace(/^m/,'').slice(0,7), type:r[1], itemId:String(r[2]), paid:jbBool(r[3]), actualAmount:(r[4]===''||r[4]==null)?null:jbNum(r[4]), paidDate:(typeof r[5]==='number'?jbDate(r[5]):(r[5]?String(r[5]).slice(0,10):'')) }; });
   var settings = { hourly_rate:0, exchange_rate:0, off_weekdays:[0,6], mode:'hourly', monthly_salary:0, daily_hours:8, default_due_day:'', overtime_mode:'off', overtime_mult:1.5, convert_enabled:'true', currency_from:'USD', currency_to:'BRL', profile_set:'true' };
   jbBody(t.Settings).forEach(function(r){ if (!r[0]) return; if (r[0]==='off_weekdays'){ var mm=String(r[1]).match(/\d+/g); settings.off_weekdays = mm?mm.map(Number):[]; } else { var n=Number(r[1]); settings[r[0]]=(r[1]===''||isNaN(n))?r[1]:n; } });
-  var precosBuscas = jbBody(t.PrecosBuscas||[]).filter(function(r){ return r[0]&&r[1]; }).map(function(r){ return { id:String(r[0]), termo:r[1], teto:(r[2]===''||r[2]==null)?'':jbNum(r[2]), obrigatorias:r[3]||'', proibidas:r[4]||'', arquivada:jbBool(r[5]), criado:jbNum(r[6])||Date.now(), obrigatoriasOr:r[7]||'' }; });
+  var precosBuscas = jbBody(t.PrecosBuscas||[]).filter(function(r){ return r[0]&&r[1]; }).map(function(r){ return { id:String(r[0]), termo:r[1], teto:(r[2]===''||r[2]==null)?'':jbNum(r[2]), obrigatorias:r[3]||'', proibidas:r[4]||'', arquivada:jbBool(r[5]), criado:jbNum(r[6])||Date.now(), obrigatoriasOr:r[7]||'', comprada:jbBool(r[8]) }; });
   var precosCapturas = jbBody(t.PrecosCapturas||[]).filter(function(r){ return r[1]&&r[2]; }).map(function(r){ return { id:r[0], buscaId:String(r[1]), data:jbDate(r[2]), json:String(r[3]||'[]'), criado:jbNum(r[4])||Date.now() }; });
   var precosManual = jbBody(t.PrecosManual||[]).filter(function(r){ return r[0]&&r[1]; }).map(function(r){ return { id:r[0], buscaId:String(r[1]), data:jbDate(r[2]), valor:jbNum(r[3]), loja:r[4]||'', obs:r[5]||'', criado:jbNum(r[6])||Date.now() }; });
   var precosConferidas = jbBody(t.PrecosConferidas||[]).filter(function(r){ return r[0]&&r[1]; }).map(function(r){ return { buscaId:String(r[0]), chave:String(r[1]), data:jbDate(r[2]), preco:jbNum(r[3]), conferidoEm:jbNum(r[4])||0 }; });

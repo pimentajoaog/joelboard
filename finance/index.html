@@ -162,6 +162,10 @@
     <div class="card" id="precosCard" style="margin-top:16px;">
       <div class="sec-bar"><div class="sec-title">💰 Preços</div><div class="sec-actions"><button class="sec-action muted" type="button" id="precosArchiveBtn" onclick="openPrecosArchive()" hidden>Arquivo</button><button class="sec-action" type="button" onclick="openPrecosNew()">+ Nova busca</button></div></div>
       <div id="precosList"></div>
+      <div class="precos-comprados-wrap" id="precosCompradosWrap" hidden>
+        <button type="button" class="precos-comprados-toggle" id="precosCompradosToggle" onclick="precosToggleCompradosOpen()"></button>
+        <div class="precos-comprados-list" id="precosCompradosList" hidden></div>
+      </div>
     </div>
   </div>
 

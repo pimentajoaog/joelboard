@@ -19,7 +19,7 @@ function fakeEl() {
       add: (c) => classes.add(c), remove: (c) => classes.delete(c), contains: (c) => classes.has(c),
       toggle: (c, on) => (on === undefined ? (classes.has(c) ? classes.delete(c) : classes.add(c)) : on ? classes.add(c) : classes.delete(c))
     },
-    querySelectorAll: () => [], focus() {}, scrollIntoView() {}
+    querySelectorAll: () => [], focus() {}, scrollIntoView() {}, setAttribute() {}
   };
 }
 
@@ -349,6 +349,25 @@ test('restorePrecosSearch unarchives and deletePrecosSearch purges local data', 
   assert.equal(ctx.DATA.precosBuscas.length, 0);
   assert.equal(ctx.DATA.precosCapturas.length, 0);
   assert.equal(calls.filter((c) => c[0] === 'deletePrecosBusca').length, 1);
+});
+
+test('comprado hides from active list and shows in comprados section', () => {
+  const bought = { id: 'gpu', termo: 'RX 9070 XT', teto: '', obrigatorias: '', proibidas: '', arquivada: false, comprada: true, criado: 1 };
+  const active = { id: 'ssd', termo: 'SSD 2TB', teto: '', obrigatorias: '', proibidas: '', arquivada: false, comprada: false, criado: 2 };
+  const { ctx, els } = boot({
+    precosBuscas: [bought, active],
+    precosCapturas: [capture(TODAY, OFFERS)]
+  });
+  els.precosCompradosWrap = fakeEl();
+  els.precosCompradosToggle = fakeEl();
+  els.precosCompradosList = fakeEl();
+  ctx.renderPrecos();
+  assert.equal((els.precosList.innerHTML.match(/precos-card-main/g) || []).length, 1);
+  assert.match(els.precosList.innerHTML, /SSD 2TB/);
+  assert.equal(els.precosCompradosWrap.hidden, false);
+  ctx.precosToggleCompradosOpen();
+  assert.match(els.precosCompradosList.innerHTML, /RX 9070 XT/);
+  assert.match(els.precosCompradosList.innerHTML, /precos-card done/);
 });
 
 test('submitPrecosNew reuses existing term instead of addPrecosBusca', async () => {

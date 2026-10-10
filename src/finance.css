@@ -611,6 +611,18 @@ a.precos-drop-row:hover { background:color-mix(in srgb, var(--primary) 8%, trans
 .precos-arch-actions { display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
 .precos-arch-actions .sec-action { white-space:nowrap; }
 
+.precos-comprados-wrap { margin-top:12px; padding-top:10px; border-top:1px dashed var(--border); }
+.precos-comprados-toggle { display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border:none; border-radius:var(--radius-sm, 12px); background:var(--surface2); color:var(--muted); font:inherit; font-size:13px; font-weight:700; cursor:pointer; text-align:left; }
+.precos-comprados-toggle:hover { color:var(--text); background:color-mix(in srgb, var(--primary) 6%, var(--surface2)); }
+.precos-comprados-toggle .chev { margin-left:auto; transition:transform 0.2s ease; }
+.precos-comprados-wrap.open .precos-comprados-toggle .chev { transform:rotate(90deg); }
+.precos-comprados-list { margin-top:8px; }
+.precos-card.done { opacity:0.82; }
+.precos-card.done .precos-card-main { cursor:default; }
+.precos-card.done.target-hit { border-color:var(--border); box-shadow:none; }
+.precos-comprado { display:flex; align-items:center; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:13px; font-weight:600; color:var(--text); cursor:pointer; user-select:none; }
+.precos-comprado input.echk { flex-shrink:0; }
+
 .modal.precos-detail-modal { max-width:460px; }
 .modal.precos-detail-modal .sec-title { margin-bottom:8px; }
 .modal .precos-chart-head .sec-title, .modal .precos-offers-head .sec-title, .modal .pf-sec .pf-sec-head .sec-title { margin:0; padding-bottom:0; border-bottom:none; text-align:left; }

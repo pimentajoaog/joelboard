@@ -47,6 +47,7 @@ Monitor de preços manual: **Buscar preços de hoje** consulta Google Shopping (
 
 - **Filtros** (por busca): marque várias lojas em **★ Só estas** ou **Ocultar**; palavras que o título precisa ter / não pode ter; preço-alvo. A contagem “X de Y ofertas aparecem” atualiza ao vivo. Variações da mesma loja (ex.: `mercadolivre.com.br` e “Mercado Livre”, vendedores “AliExpress - …”) viram uma loja só (`storeKey` em `lib/precos-math.mjs`).
 - **Exibição** (todas as buscas): preço cheio ou à vista, mostrar PIX junto, ocultar preços fora de reais.
+- **Arquivar** (no detalhe da busca) tira o produto da lista; **Arquivo (N)** em Contas lista arquivadas — **Restaurar** ou **Excluir** (apaga busca + histórico na planilha).
 - Abas: `PrecosBuscas`, `PrecosCapturas`, `PrecosManual`, `PrecosConferidas`, `PrecosLojas` (criadas sozinhas).
 - Deploy: **`SERPAPI_KEY`** nas env vars da Vercel; localmente no `.env` (o Vite faz proxy de `/api/precos`). Não precisa de GitHub Actions nem conta de serviço.
 

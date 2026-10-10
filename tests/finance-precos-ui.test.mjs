@@ -36,7 +36,9 @@ function boot(data, extra) {
     escAttr: (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;'),
     todayStr: () => TODAY,
     t: () => 'Erro: ',
-    showToast: () => {}, closeOverlay: () => {}, showConfirm: () => {}, jbSaveSetting: () => {},
+    showToast: () => {}, closeOverlay: () => {},
+    showConfirm: (_t, _m, onYes) => { if (onYes) onYes(); },
+    jbSaveSetting: () => {},
     parseAmount: Number,
     setTimeout: () => 0,
     JB: { emptyState: (o) => '<div class="empty">' + o.title + ' ' + o.hint + ' ' + o.action + '</div>', dpSet() {}, dpGet() { return TODAY; } },
@@ -302,6 +304,38 @@ test('duplicate product term shows one list card', () => {
   ctx.renderPrecos();
   assert.equal((els.precosList.innerHTML.match(/precos-card-main/g) || []).length, 1);
   assert.match(els.precosList.innerHTML, /RX 9070 XT/);
+});
+
+test('archive button appears and lists archived searches', () => {
+  const archived = { id: 'old', termo: 'Monitor 27"', teto: '', obrigatorias: '', proibidas: '', arquivada: true, criado: 1 };
+  const { ctx, els } = boot({ precosBuscas: [Object.assign({}, BUSCA), archived] });
+  els.precosArchiveBtn = fakeEl();
+  els.precosArchiveOverlay = fakeEl();
+  els.precosArchiveList = fakeEl();
+  ctx.renderPrecos();
+  assert.equal(els.precosArchiveBtn.hidden, false);
+  assert.match(els.precosArchiveBtn.textContent, /Arquivo \(1\)/);
+  ctx.openPrecosArchive();
+  assert.match(els.precosArchiveList.innerHTML, /Monitor 27/);
+  assert.match(els.precosArchiveList.innerHTML, /Restaurar/);
+  assert.match(els.precosArchiveList.innerHTML, /Excluir/);
+});
+
+test('restorePrecosSearch unarchives and deletePrecosSearch purges local data', async () => {
+  const archived = { id: 'old', termo: 'Monitor', teto: '', obrigatorias: '', proibidas: '', arquivada: true, criado: 1 };
+  const { ctx, calls } = boot({
+    precosBuscas: [archived],
+    precosCapturas: [{ id: 'c1', buscaId: 'old', data: TODAY, json: '[]', criado: 1 }]
+  });
+  ctx.restorePrecosSearch('old');
+  await Promise.resolve();
+  assert.equal(ctx.DATA.precosBuscas[0].arquivada, false);
+  assert.equal(calls.filter((c) => c[0] === 'updatePrecosBusca').length, 1);
+  ctx.deletePrecosSearch('old');
+  await Promise.resolve();
+  assert.equal(ctx.DATA.precosBuscas.length, 0);
+  assert.equal(ctx.DATA.precosCapturas.length, 0);
+  assert.equal(calls.filter((c) => c[0] === 'deletePrecosBusca').length, 1);
 });
 
 test('submitPrecosNew reuses existing term instead of addPrecosBusca', async () => {

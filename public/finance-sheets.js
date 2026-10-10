@@ -130,7 +130,22 @@ var JB_IMPL = {
     });
   },
   updatePrecosBusca: function(id,data){ var row=[id, data.termo, data.teto===''||data.teto==null?'':Number(data.teto), data.obrigatorias||'', data.proibidas||'', data.arquivada?'true':'false', Number(data.criado)||Date.now()]; return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) throw new Error('Busca não encontrada.'); return jbPutRange('PrecosBuscas!A'+r+':G'+r,[row]); }).then(function(){ return {success:true}; }); },
-  deletePrecosBusca: function(id){ return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) return {}; return jbDeleteRow('PrecosBuscas', r); }).then(function(){ return {success:true}; }); },
+  deletePrecosBusca: function(id){
+    id=String(id||'');
+    function dropRows(tab,colIdx){
+      return jbGetVals(tab).then(function(vals){
+        var reqs=[];
+        for(var i=vals.length-1;i>=1;i--){
+          if(String((vals[i]||[])[colIdx])===id) reqs.push({ deleteDimension:{ range:{ sheetId:jbGrid[tab], dimension:'ROWS', startIndex:i, endIndex:i+1 } } });
+        }
+        return reqs.length ? jbReq('POST', jbBatchUrl(), { requests:reqs }) : {};
+      });
+    }
+    return dropRows('PrecosCapturas', 1).then(function(){ return dropRows('PrecosManual', 1); })
+      .then(function(){ return dropRows('PrecosConferidas', 0); }).then(function(){ return dropRows('PrecosLojas', 1); })
+      .then(function(){ return jbFindRow('PrecosBuscas',0,id).then(function(r){ if(r<0) return {}; return jbDeleteRow('PrecosBuscas', r); }); })
+      .then(function(){ return {success:true}; });
+  },
   savePrecosCaptura: function(data){
     var buscaId=String(data.buscaId||'');
     var day=String(data.data||'');

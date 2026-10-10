@@ -602,6 +602,15 @@ a.precos-drop-row:hover { background:color-mix(in srgb, var(--primary) 8%, trans
 .precos-card-meta .good { color:var(--income); font-weight:700; }
 .precos-card-meta .bad { color:var(--expense); font-weight:700; }
 
+.precos-arch-hint { margin:0 0 12px; }
+.modal.precos-archive-modal { max-width:420px; }
+.precos-arch-row { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:12px 0; border-bottom:1px solid var(--border); }
+.precos-arch-row:last-child { border-bottom:none; padding-bottom:0; }
+.precos-arch-main { min-width:0; flex:1; }
+.precos-arch-meta { font-size:12px; color:var(--muted); margin-top:4px; }
+.precos-arch-actions { display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0; }
+.precos-arch-actions .sec-action { white-space:nowrap; }
+
 .modal.precos-detail-modal { max-width:460px; }
 .modal.precos-detail-modal .sec-title { margin-bottom:8px; }
 .modal .precos-chart-head .sec-title, .modal .precos-offers-head .sec-title, .modal .pf-sec .pf-sec-head .sec-title { margin:0; padding-bottom:0; border-bottom:none; text-align:left; }

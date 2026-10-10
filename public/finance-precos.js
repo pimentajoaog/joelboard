@@ -79,7 +79,17 @@ var PK = {
   saving: 'Salvando…',
   savedFilters: '✓ Filtros salvos',
   confirmArchive: 'Arquivar esta busca?',
-  confirmArchiveMsg: 'Os preços guardados e filtros ficam na planilha, mas a busca some da lista.'
+  confirmArchiveMsg: 'Os preços guardados e filtros ficam na planilha, mas a busca some da lista.',
+  archiveBtn: 'Arquivo',
+  archiveTitle: 'Arquivo de buscas',
+  archiveHint: 'Buscas arquivadas somem da lista. Restaurar traz de volta; excluir apaga o histórico deste produto na planilha.',
+  archiveEmpty: 'Nenhuma busca arquivada.',
+  restore: 'Restaurar',
+  deleteForever: 'Excluir',
+  confirmDeleteTitle: 'Excluir busca?',
+  confirmDeleteMsg: 'Apaga esta busca e todo o histórico de preços dela na planilha. Não dá para desfazer.',
+  restored: '✓ Busca restaurada',
+  deleted: '✓ Busca excluída'
 };
 
 function precosFmt(n) {
@@ -335,6 +345,91 @@ function precosVerdictShort(v) {
 function renderPrecos() {
   renderPrecosList();
   renderPrecosWidget();
+  renderPrecosArchiveBtn();
+}
+
+function precosBuscaRow(id) {
+  return ((DATA && DATA.precosBuscas) || []).find(function (b) { return String(b.id) === String(id); }) || null;
+}
+
+function precosArchivedBuscas() {
+  return ((DATA && DATA.precosBuscas) || []).filter(function (b) { return b.arquivada; })
+    .sort(function (a, b) { return (Number(b.criado) || 0) - (Number(a.criado) || 0); });
+}
+
+function renderPrecosArchiveBtn() {
+  var btn = document.getElementById('precosArchiveBtn');
+  if (!btn) return;
+  var n = precosArchivedBuscas().length;
+  btn.hidden = !n;
+  btn.textContent = n ? PK.archiveBtn + ' (' + n + ')' : PK.archiveBtn;
+}
+
+function openPrecosArchive() {
+  document.getElementById('precosArchiveOverlay').classList.add('open');
+  renderPrecosArchiveList();
+}
+
+function renderPrecosArchiveList() {
+  var list = document.getElementById('precosArchiveList');
+  if (!list) return;
+  var rows = precosArchivedBuscas();
+  if (!rows.length) {
+    list.innerHTML = JB.emptyState({ icon: '📦', title: PK.archiveEmpty, hint: '', action: '', onclick: '' });
+    return;
+  }
+  list.innerHTML = rows.map(function (b) {
+    var idArg = '\'' + escAttr(b.id) + '\'';
+    var caps = ((DATA && DATA.precosCapturas) || []).filter(function (c) { return String(c.buscaId) === String(b.id); }).length;
+    var meta = caps ? caps + (caps === 1 ? ' dia guardado' : ' dias guardados') : 'Sem histórico';
+    return '<div class="precos-arch-row">'
+      + '<div class="precos-arch-main"><div class="precos-term">' + esc(b.termo) + '</div>'
+      + '<div class="precos-arch-meta">' + esc(meta) + '</div></div>'
+      + '<div class="precos-arch-actions">'
+      + '<button type="button" class="sec-action" onclick="restorePrecosSearch(' + idArg + ')">' + esc(PK.restore) + '</button>'
+      + '<button type="button" class="sec-action danger" onclick="deletePrecosSearch(' + idArg + ')">' + esc(PK.deleteForever) + '</button>'
+      + '</div></div>';
+  }).join('');
+}
+
+function precosPurgeLocal(id) {
+  id = String(id);
+  DATA.precosBuscas = (DATA.precosBuscas || []).filter(function (b) { return String(b.id) !== id; });
+  DATA.precosCapturas = (DATA.precosCapturas || []).filter(function (c) { return String(c.buscaId) !== id; });
+  DATA.precosManual = (DATA.precosManual || []).filter(function (m) { return String(m.buscaId) !== id; });
+  DATA.precosConferidas = (DATA.precosConferidas || []).filter(function (c) { return String(c.buscaId) !== id; });
+  DATA.precosLojas = (DATA.precosLojas || []).filter(function (l) { return String(l.buscaId) !== id; });
+  delete PRECOS_CARD_OPEN[id];
+  var fav = precosFavIds().filter(function (x) { return x !== id; });
+  if (fav.length !== precosFavIds().length) precosSavePref('precos_favoritas', fav.join(','));
+  if (String(PRECOS_OPEN_ID) === id) closePrecosSearch();
+}
+
+function restorePrecosSearch(id) {
+  var b = precosBuscaRow(id);
+  if (!b || !b.arquivada) return;
+  var patch = { termo: b.termo, teto: b.teto, obrigatorias: b.obrigatorias, proibidas: b.proibidas, arquivada: false, criado: b.criado };
+  jbRun('updatePrecosBusca', b.id, patch).then(function () {
+    b.arquivada = false;
+    renderPrecosArchiveList();
+    renderPrecos();
+    showToast(PK.restored);
+    closeOverlay('precosArchiveOverlay');
+  }).catch(function (e) { showToast(t('err.prefix') + e.message, 'error'); });
+}
+
+function deletePrecosSearch(id) {
+  var b = precosBuscaRow(id);
+  if (!b) return;
+  showConfirm(PK.confirmDeleteTitle, PK.confirmDeleteMsg, function () {
+    jbRun('deletePrecosBusca', id).then(function () {
+      precosPurgeLocal(id);
+      renderPrecosArchiveList();
+      renderPrecos();
+      showToast(PK.deleted);
+      if (!precosArchivedBuscas().length) closeOverlay('precosArchiveOverlay');
+    }).catch(function (e) { showToast(t('err.prefix') + e.message, 'error'); });
+  });
 }
 
 var PRECOS_CHEVRON = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -1356,8 +1451,8 @@ function submitPrecosManual() {
 }
 
 function archivePrecosSearch() {
-  var b = precosBusca(PRECOS_OPEN_ID);
-  if (!b) return;
+  var b = precosBuscaRow(PRECOS_OPEN_ID);
+  if (!b || b.arquivada) return;
   showConfirm(PK.confirmArchive, PK.confirmArchiveMsg, function () {
     var patch = { termo: b.termo, teto: b.teto, obrigatorias: b.obrigatorias, proibidas: b.proibidas, arquivada: true, criado: b.criado };
     jbRun('updatePrecosBusca', b.id, patch).then(function () {

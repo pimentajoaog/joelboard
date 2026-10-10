@@ -160,7 +160,7 @@
     <div class="sec-bar"><div class="sec-title" data-i18n="sec.bundles">📨 Payment Bundles</div><button class="sec-action" onclick="openBundle()" data-i18n="action.add">+ Add</button></div>
     <div id="bundleList"><div class="empty" data-i18n="empty.bundles">Group bills &amp; savings you pay to one person, then check them off together.</div></div>
     <div class="card" id="precosCard" style="margin-top:16px;">
-      <div class="sec-bar"><div class="sec-title">💰 Preços</div><button class="sec-action" type="button" onclick="openPrecosNew()">+ Nova busca</button></div>
+      <div class="sec-bar"><div class="sec-title">💰 Preços</div><div class="sec-actions"><button class="sec-action muted" type="button" id="precosArchiveBtn" onclick="openPrecosArchive()" hidden>Arquivo</button><button class="sec-action" type="button" onclick="openPrecosNew()">+ Nova busca</button></div></div>
       <div id="precosList"></div>
     </div>
   </div>
@@ -527,6 +527,13 @@
       <button type="button" class="sec-action" onclick="openPrecosManual()">+ Preço manual</button>
       <button type="button" class="sec-action danger" onclick="archivePrecosSearch()">Arquivar busca</button>
     </div>
+  </div>
+</div>
+<div class="overlay" id="precosArchiveOverlay" onclick="bgClose(event,'precosArchiveOverlay')">
+  <div class="modal precos-archive-modal">
+    <div class="modal-head"><div class="modal-title">Arquivo de buscas</div><button class="close-btn" type="button" onclick="closeOverlay('precosArchiveOverlay')">✕</button></div>
+    <p class="cat-hint precos-arch-hint">Buscas arquivadas somem da lista. Restaurar traz de volta; excluir apaga o histórico deste produto na planilha.</p>
+    <div id="precosArchiveList"></div>
   </div>
 </div>
 <div class="overlay" id="precosNewOverlay" onclick="bgClose(event,'precosNewOverlay')">
